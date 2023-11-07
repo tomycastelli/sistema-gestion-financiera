@@ -34,6 +34,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -42,6 +43,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sessionToken])
 }
 
 model User {
@@ -54,6 +57,10 @@ model User {
   sucursal      String?
   accounts      Account[]
   sessions      Session[]
+  uploadedMetadata  TransactionsMetadata[] @relation("UploadedByUser")
+  confirmedMetadata TransactionsMetadata[] @relation("ConfirmedByUser")
+
+  @@index([email])
 }
 
 model VerificationToken {
@@ -70,6 +77,8 @@ model Operations {
   observations String?
   status       Boolean @default(false)
   transactions Transactions[]
+
+  @@index([date])
 }
 
 model Transactions {
@@ -91,6 +100,8 @@ model Transactions {
   status           Boolean @default(false)
   movements        Movements[]
   transactionMetadata TransactionsMetadata?
+
+  @@index([operationId, fromEntityId, toEntityId])
 }
 
 model Entities {
@@ -100,6 +111,9 @@ model Entities {
   transactionsFrom  Transactions[] @relation("fromEntity")
   transactionsTo    Transactions[] @relation("toEntity")
   transactionsOperator Transactions[] @relation("operatorEntity")
+
+  @@index([name])
+  @@index([tag])
 }
 
 model Movements {
@@ -109,13 +123,20 @@ model Movements {
   direction    Int
   type         String
   observations String?
+
+  @@index([transactionId])
 }
 
 model TransactionsMetadata {
-  id               Int         @id @default(autoincrement())
   transaction     Transactions? @relation(fields: [transactionId], references: [id])
   transactionId   Int @unique
-  metadata         Json
+  uploadedBy      String @default("clohgooer0000z1k5neo2hwcb")
+  uploadedDate    DateTime @default(now())
+  confirmedBy     String?
+  confirmedDate   DateTime?
+  uploadedByUser  User      @relation("UploadedByUser", fields: [uploadedBy], references: [id])
+  confirmedByUser User?      @relation("ConfirmedByUser", fields: [confirmedBy], references: [id])
+  history         Json?
 
-  @@unique([id])
+  @@index([transactionId, uploadedBy, confirmedBy])
 }

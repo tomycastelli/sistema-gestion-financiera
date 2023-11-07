@@ -50,7 +50,7 @@ export function ManageOperationsCard({ className, ...props }: CardProps) {
         </div>
       </CardContent>
       <CardFooter className="w-full">
-        <Link href={"/gestionar"} className="w-full">
+        <Link href={"/operaciones/gestionar"} className="w-full">
           <Button className="w-full">Gestionar</Button>
         </Link>
       </CardFooter>

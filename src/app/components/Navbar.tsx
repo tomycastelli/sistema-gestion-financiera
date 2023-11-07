@@ -1,23 +1,21 @@
 import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
+import LinkTree from "./LinkTree";
 import UserDropdown from "./UserDropdown";
 
 const Navbar = async () => {
   const session = await getServerAuthSession();
 
   return (
-    <header className="h-fit w-full bg-foreground py-4 text-background">
-      <div className="mx-16 flex flex-row items-center justify-between lg:mx-36">
-        <div className="flex flex-row items-center justify-between space-x-8">
-          <Link href="/" className="text-xl font-extrabold">
-            Maika.
-          </Link>
-          <div className="flex flex-row space-x-4">
-            <Link className="text-lg" href="/operaciones">
-              Operaciones
-            </Link>
-          </div>
-        </div>
+    <header className="h-fit w-full py-4 text-foreground">
+      <div className="flex flex-row items-center justify-between">
+        <Link
+          href="/"
+          className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
+        >
+          Maika.
+        </Link>
+        <LinkTree />
         {session?.user ? (
           <UserDropdown />
         ) : (

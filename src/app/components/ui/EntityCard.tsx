@@ -1,7 +1,12 @@
 import type { Entities } from "@prisma/client";
-import { capitalizeFirstLetter, getInitials } from "~/lib/functions";
+import {
+  capitalizeFirstLetter,
+  getInitials,
+  translateWord,
+} from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { tagColors } from "~/lib/variables";
+import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 
 interface EntityCardProps {
   entity: Entities | undefined;
@@ -12,16 +17,20 @@ const EntityCard = ({ entity, className }: EntityCardProps) => {
   return (
     <>
       {entity ? (
-        <div
+        <Card
           className={cn(
-            "flex flex-col items-center justify-center rounded-2xl border-2 py-6",
+            "flex h-36 w-36 items-center justify-center",
             className,
-            `border-${tagColors[entity.tag]}`,
+            `border border-${tagColors[entity.tag]}`,
           )}
         >
-          <h1 className="text-xl font-bold">{getInitials(entity.name)}</h1>
-          <h2 className="text-xl">{capitalizeFirstLetter(entity.tag)}</h2>
-        </div>
+          <CardHeader>
+            <CardTitle>{entity.name}</CardTitle>
+            <CardDescription className="text-md">
+              {capitalizeFirstLetter(translateWord(entity.tag))}
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : (
         <p>Entity not found</p>
       )}

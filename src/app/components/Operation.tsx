@@ -1,16 +1,51 @@
+import type { User } from "next-auth";
 import type { FC } from "react";
-import type { RouterOutputs } from "~/trpc/shared";
+import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
+import Transaction from "./Transaction";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 
 interface OperationProps {
   operation: RouterOutputs["operations"]["getOperations"][number];
+  operationsQueryInput: RouterInputs["operations"]["getOperations"];
+  initialEntities: RouterOutputs["entities"]["getAll"];
+  user: User;
 }
 
-const Operation: FC<OperationProps> = ({ operation }) => {
+const Operation: FC<OperationProps> = ({
+  operation: op,
+  operationsQueryInput,
+  user,
+  initialEntities,
+}) => {
   return (
-    <div className="flex flex-col p-8">
-      <h1>{operation.id}</h1>
-      <h2>{operation.date.toLocaleDateString("es-AR")}</h2>
-      <p>{operation.observations}</p>
+    <div className="my-4 flex flex-col">
+      <Card>
+        <CardHeader>
+          <CardTitle>{op.id}</CardTitle>
+          <CardTitle>{op.date.toLocaleDateString("es-AR")}</CardTitle>
+          <CardDescription>{op.observations}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {op.transactions
+            .sort((a, b) => b.id - a.id)
+            .map((tx, txIdx) => (
+              <Transaction
+                initialEntities={initialEntities}
+                transaction={tx}
+                key={tx.id}
+                operationsQueryInput={operationsQueryInput}
+                txIdx={txIdx}
+                user={user}
+              />
+            ))}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -50,7 +50,7 @@ export function UploadOperationsCard({ className, ...props }: CardProps) {
         </div>
       </CardContent>
       <CardFooter className="w-full">
-        <Link href={"/subir"} className="w-full">
+        <Link href={"/operaciones/carga"} className="w-full">
           <Button className="w-full">Cargar nueva operación</Button>
         </Link>
       </CardFooter>

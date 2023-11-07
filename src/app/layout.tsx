@@ -29,12 +29,12 @@ export default function RootLayout({
       <body
         className={cn(
           `font-sans ${inter.variable}`,
-          "bg-background text-foreground",
+          "mx-4 bg-background text-foreground lg:mx-8",
         )}
       >
         <TRPCReactProvider headers={headers()}>
           <Navbar />
-          <main className="mx-4 my-8 min-h-full lg:mx-8">
+          <main className="my-2 min-h-full">
             {children}
             <Toaster />
           </main>

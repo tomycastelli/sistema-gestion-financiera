@@ -31,7 +31,12 @@ export const entitiesRouter = createTRPCRouter({
         message: "Entities returned empty from database",
       });
 
-    await ctx.redis.set("cached_entities", JSON.stringify(entities), "EX", 120);
+    await ctx.redis.set(
+      "cached_entities",
+      JSON.stringify(entities),
+      "EX",
+      "3600",
+    );
 
     return entities;
   }),
@@ -44,6 +49,6 @@ export const entitiesRouter = createTRPCRouter({
           tag: input.tag,
         },
       });
-      return { message: "User added to entities table", data: insertResponse };
+      return { message: "Entity added to database", data: insertResponse };
     }),
 });

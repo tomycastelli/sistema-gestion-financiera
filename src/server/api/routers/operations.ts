@@ -45,10 +45,8 @@ export const operationsRouter = createTRPCRouter({
               },
               transactionMetadata: {
                 create: {
-                  metadata: {
-                    uploadDate: new Date(),
-                    uploadedBy: ctx.session.user.id,
-                  },
+                  uploadedBy: ctx.session.user.id,
+                  uploadedDate: new Date(),
                 },
               },
             })),
@@ -91,10 +89,7 @@ export const operationsRouter = createTRPCRouter({
         transactions: {
           some: {
             transactionMetadata: {
-              metadata: {
-                path: ["uploadedBy"],
-                equals: ctx.session.user.id,
-              },
+              uploadedBy: ctx.session.user.id,
             },
           },
         },
@@ -111,9 +106,14 @@ export const operationsRouter = createTRPCRouter({
           select: {
             transactionMetadata: {
               select: {
-                metadata: true,
+                uploadedByUser: true,
+                confirmedByUser: true,
+                history: true,
               },
             },
+          },
+          orderBy: {
+            id: "desc",
           },
         },
       },
@@ -154,43 +154,8 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const cachedOperations: typeof queriedOperations = [];
-
-      const stream = ctx.redis.scanStream({ match: "operation_id:*" });
-
-      const fetchCachedOperations = async (keys: string[]) => {
-        for (const key of keys) {
-          const operation = await ctx.redis.get(key);
-          if (operation) {
-            const parsedOperation = JSON.parse(
-              operation,
-            ) as (typeof queriedOperations)[number];
-            cachedOperations.push(parsedOperation);
-          }
-        }
-      };
-
-      stream.on("data", (keys: string[]) => {
-        void fetchCachedOperations(keys);
-      });
-
-      stream.on("end", () => {
-        console.log("All cached operations have been visited");
-      });
-
-      // To exclude this operations from being queried again
-      const listOfIds: number[] = cachedOperations.map((obj) => obj.id);
-
-      let remainingLimit: number = input.limit - cachedOperations.length;
-      if (remainingLimit <= 0) {
-        remainingLimit = 0; // Set take to 0 when the cache meets or exceeds the limit
-      }
-
       const queriedOperations = await ctx.db.operations.findMany({
         where: {
-          id: {
-            notIn: listOfIds,
-          },
           AND: [
             input.opDay
               ? {
@@ -230,10 +195,7 @@ export const operationsRouter = createTRPCRouter({
                 input.uploadedById
                   ? {
                       transactionMetadata: {
-                        metadata: {
-                          path: ["uploadedBy"],
-                          equals: input.uploadedById,
-                        },
+                        uploadedBy: input.uploadedById,
                       },
                     }
                   : {},
@@ -244,7 +206,12 @@ export const operationsRouter = createTRPCRouter({
         include: {
           transactions: {
             include: {
-              transactionMetadata: true,
+              transactionMetadata: {
+                include: {
+                  uploadedByUser: true,
+                  confirmedByUser: true,
+                },
+              },
               operatorEntity: true,
               fromEntity: true,
               toEntity: true,
@@ -258,29 +225,7 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      // hago el mix de queried y cached y ordeno de mayor id a menor id
-      const operations = [...queriedOperations, ...cachedOperations].sort(
-        (a, b) => b.id - a.id,
-      );
-
-      // save operations to cache, set a redis pipeline for faster caching
-      const pipeline = ctx.redis.pipeline();
-      queriedOperations.forEach((op) => {
-        const key = `operation_id:${op.id}`;
-        const exists = pipeline.exists(key);
-        if (!exists) {
-          pipeline.set(
-            `operation_id:${op.id}`,
-            JSON.stringify(op),
-            "EX",
-            "3600",
-          );
-        }
-      });
-      await pipeline.exec((err, results) => {
-        console.log(results);
-      });
-
-      return operations;
+      console.log("All operations queried from database");
+      return queriedOperations;
     }),
 });

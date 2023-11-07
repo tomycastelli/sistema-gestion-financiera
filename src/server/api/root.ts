@@ -1,4 +1,5 @@
 import { createTRPCRouter } from "~/server/api/trpc";
+import { editingOperationsRouter } from "./routers/editingOperations";
 import { entitiesRouter } from "./routers/entities";
 import { operationsRouter } from "./routers/operations";
 
@@ -10,6 +11,7 @@ import { operationsRouter } from "./routers/operations";
 export const appRouter = createTRPCRouter({
   entities: entitiesRouter,
   operations: operationsRouter,
+  editingOperations: editingOperationsRouter,
 });
 
 // export type definition of API

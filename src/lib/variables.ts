@@ -49,7 +49,13 @@ export const operationTypes = [
 ];
 
 export const tagColors: Record<string, string> = {
-  user: "blue-700",
-  client: "red-700",
-  maika: "emerald-700",
+  user: "primary",
+  client: "green",
+  maika: "orange",
+};
+
+export const translations: Record<string, string> = {
+  user: "usuario",
+  client: "cliente",
+  maika: "maika",
 };
