@@ -49,6 +49,8 @@ export const entitiesRouter = createTRPCRouter({
           tag: input.tag,
         },
       });
+
+      await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
     }),
 });

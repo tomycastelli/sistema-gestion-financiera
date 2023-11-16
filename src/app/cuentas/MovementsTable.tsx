@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { MoreHorizontal } from "lucide-react";
 import { type Session } from "next-auth";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -8,6 +9,15 @@ import { createQueryString, removeQueryString } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
+import { Button } from "../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Label } from "../components/ui/label";
 import {
   Select,
@@ -131,6 +141,7 @@ const MovementsTable = ({
 
     return {
       id: movement.id,
+      operationId: movement.transaction.operationId,
       type: movement.type,
       otherEntityId: otherEntity.id,
       otherEntity: otherEntity.name,
@@ -297,6 +308,39 @@ const MovementsTable = ({
             </span>{" "}
             {formatted}
           </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const movement = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              <DropdownMenuItem>
+                <Link
+                  href={`/operaciones/gestionar/${movement.operationId}`}
+                  className="flex flex-row items-center space-x-1"
+                >
+                  <p>Ver operación</p>
+                  <Icons.externalLink className="h-4 text-black" />
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                Ver usuario{" "}
+                {/* menu con usuarios que participaron subiendo, confirmando, actualizando */}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },

@@ -1,35 +1,28 @@
 import type { Entities } from "@prisma/client";
 import Link from "next/link";
-import {
-  capitalizeFirstLetter,
-  getInitials,
-  translateWord,
-} from "~/lib/functions";
+import { capitalizeFirstLetter, translateWord } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { tagColors } from "~/lib/variables";
-import { Icons } from "./Icons";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./card";
+import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 
 interface EntityCardProps {
   entity: Entities | undefined;
   className?: string;
 }
 
-const EntityCard = ({ entity, className }: EntityCardProps) => {
+const EntityCard = ({ entity }: EntityCardProps) => {
   return (
     <>
       {entity ? (
         <Card
           className={cn(
-            "flex h-36 w-36 flex-col",
-            className,
-            `border border-${tagColors[entity.tag]}`,
+            "flex h-36 w-36 flex-col border",
+            entity.tag === "maika"
+              ? "border-green"
+              : entity.tag === "client"
+              ? "border-primary"
+              : entity.tag === "user"
+              ? "border-orange"
+              : "",
           )}
         >
           <CardHeader>

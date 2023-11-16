@@ -72,19 +72,16 @@ const AddOperation = ({
       refetchOnReconnect: false,
     });
 
-  const { mutateAsync, isLoading, isSuccess } =
-    api.operations.insertOperation.useMutation({
+  const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
+    {
       async onMutate(newOperation) {
-        // Doing some ui actions
         const transaccionesCargadas = newOperation.transactions.length;
-
         toast({
           title: `Operacion y ${
             transaccionesCargadas > 1
               ? transaccionesCargadas.toString() + " transacciones cargadas"
               : transaccionesCargadas + " transaccion cargada"
           }`,
-          variant: "success",
         });
 
         setIsInitialOperationSubmitted(false);
@@ -131,11 +128,12 @@ const AddOperation = ({
       onSettled() {
         void utils.operations.getOperationsByUser.invalidate();
       },
-    });
+    },
+  );
 
   const uploadOperation = async () => {
     try {
-      const response = await mutateAsync({
+      await mutateAsync({
         opDate: moment(initialOperationStore.opDate).toDate(),
         opObservations: initialOperationStore.opObservations,
         transactions: transactionsStore.map((transaction) => ({
@@ -148,8 +146,6 @@ const AddOperation = ({
           method: transaction.method,
         })),
       });
-
-      console.log(response);
     } catch (error) {
       console.error(error);
     }
@@ -331,21 +327,11 @@ const AddOperation = ({
         )}
       </div>
       <div className="lg:col-span-1">
-        {user?.id ? (
-          <>
-            {isOperationsLoading ? (
-              <p>Cargando...</p>
-            ) : (
-              <UploadedUserOperations
-                operations={operations}
-                ref={parent}
-                isLoading={isSuccess}
-              />
-            )}
-          </>
-        ) : (
-          <p>El usuario no esta logueado</p>
-        )}
+        <UploadedUserOperations
+          operations={operations}
+          ref={parent}
+          isLoading={isOperationsLoading}
+        />
       </div>
     </div>
   );

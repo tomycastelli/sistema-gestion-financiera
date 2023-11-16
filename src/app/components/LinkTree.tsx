@@ -11,7 +11,7 @@ const LinkTree = () => {
   let currentPath = "";
 
   return (
-    <div className="flex flex-row space-x-1">
+    <div className="flex flex-row space-x-1 text-lg">
       <Link
         href="/"
         className={cn(pathname === "/" ? "text-primary" : "text-black")}

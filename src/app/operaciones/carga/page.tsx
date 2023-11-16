@@ -15,7 +15,7 @@ const page = async () => {
         <AddOperation
           entities={entities}
           user={session?.user}
-          initialOperations={operations} // Now you can access the operations variable here
+          initialOperations={operations}
         />
       )}
     </div>

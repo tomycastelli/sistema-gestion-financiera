@@ -15,6 +15,9 @@ export default function Home() {
       >
         Cuentas
       </Link>
+      <Link className="text-xl font-semibold" href={{ pathname: "/entidades" }}>
+        Entidades
+      </Link>
     </div>
   );
 }
