@@ -12,6 +12,7 @@ import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import UploadedUserOperations from "../UploadedUserOperations";
 import AlertTemplate from "../ui/AlertTemplate";
+import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -20,7 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Icons } from "../ui/icons";
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList } from "../ui/tabs";
 import {
@@ -111,6 +111,7 @@ const AddOperation = ({
 
         utils.operations.getOperationsByUser.setData(undefined, (old) => [
           fakeNewData,
+          // @ts-ignore
           ...old,
         ]);
 

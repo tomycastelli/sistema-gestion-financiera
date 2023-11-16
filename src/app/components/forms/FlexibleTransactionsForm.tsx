@@ -11,6 +11,7 @@ import { currencies, operationTypes, paymentMethods } from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
 import EntityCard from "../ui/EntityCard";
+import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
 import {
   Form,
@@ -20,7 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import { Icons } from "../ui/icons";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
@@ -106,16 +106,12 @@ const FlexibleTransactionsForm = ({
     reset();
   };
 
-  const onError = (error) => {
-    console.log(error);
-  };
-
   const [parent] = useAutoAnimate();
 
   return (
     <Form {...form}>
       <form
-        onSubmit={handleSubmit(onSubmit, onError)}
+        onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col justify-center"
         ref={parent}
       >

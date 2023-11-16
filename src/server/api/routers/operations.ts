@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dateReviver } from "~/lib/functions";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import type { OperationsByUserResponse } from "./types";
 
@@ -63,7 +64,7 @@ export const operationsRouter = createTRPCRouter({
       });
 
       if (response) {
-        await ctx.redis.del(`user_id:${ctx.session.user.id}`);
+        await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
 
       return {
@@ -74,12 +75,14 @@ export const operationsRouter = createTRPCRouter({
 
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
     const cachedUserOperations: string | null = await ctx.redis.get(
-      `user_id:${ctx.session.user.id}`,
+      `user_operations:${ctx.session.user.id}`,
     );
 
     if (cachedUserOperations) {
-      const parsedCachedUserOperations: OperationsByUserResponse[] =
-        JSON.parse(cachedUserOperations);
+      const parsedCachedUserOperations: OperationsByUserResponse[] = JSON.parse(
+        cachedUserOperations,
+        dateReviver(["date"]),
+      );
       console.log("Operations queried from cache");
       return parsedCachedUserOperations;
     }
@@ -124,7 +127,7 @@ export const operationsRouter = createTRPCRouter({
     });
 
     await ctx.redis.set(
-      `user_id:${ctx.session.user.id}`,
+      `user_operations:${ctx.session.user.id}`,
       JSON.stringify(operations),
       "EX",
       "3600",
@@ -227,5 +230,32 @@ export const operationsRouter = createTRPCRouter({
 
       console.log("All operations queried from database");
       return queriedOperations;
+    }),
+  getOperationDetails: protectedProcedure
+    .input(z.object({ operationId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const operationDetails = await ctx.db.operations.findUnique({
+        where: {
+          id: input.operationId,
+        },
+        include: {
+          transactions: {
+            include: {
+              fromEntity: true,
+              toEntity: true,
+              operatorEntity: true,
+              movements: true,
+              transactionMetadata: {
+                include: {
+                  uploadedByUser: true,
+                  confirmedByUser: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return operationDetails;
     }),
 });

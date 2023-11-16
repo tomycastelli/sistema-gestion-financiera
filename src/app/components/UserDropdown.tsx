@@ -23,7 +23,7 @@ const UserDropdown = () => {
       <DropdownMenuTrigger asChild>
         <User className="h-8 w-8" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
+      <DropdownMenuContent className="absolute right-0 z-10 mt-2 w-56">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

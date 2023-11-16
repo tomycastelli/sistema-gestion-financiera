@@ -1,4 +1,5 @@
 import type { Entities } from "@prisma/client";
+import Link from "next/link";
 import {
   capitalizeFirstLetter,
   getInitials,
@@ -6,7 +7,14 @@ import {
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { tagColors } from "~/lib/variables";
-import { Card, CardDescription, CardHeader, CardTitle } from "./card";
+import { Icons } from "./Icons";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./card";
 
 interface EntityCardProps {
   entity: Entities | undefined;
@@ -19,13 +27,20 @@ const EntityCard = ({ entity, className }: EntityCardProps) => {
       {entity ? (
         <Card
           className={cn(
-            "flex h-36 w-36 items-center justify-center",
+            "flex h-36 w-36 flex-col",
             className,
             `border border-${tagColors[entity.tag]}`,
           )}
         >
           <CardHeader>
-            <CardTitle>{entity.name}</CardTitle>
+            <CardTitle>
+              <Link
+                className="flex transition-all hover:scale-105"
+                href={{ pathname: "/cuentas", query: { entidad: entity.id } }}
+              >
+                {entity.name}
+              </Link>
+            </CardTitle>
             <CardDescription className="text-md">
               {capitalizeFirstLetter(translateWord(entity.tag))}
             </CardDescription>

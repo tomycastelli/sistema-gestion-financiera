@@ -9,4 +9,4 @@ const getRedisUrl = () => {
   throw new Error("UPSTASH_URL is not defined");
 };
 
-export const redis = new Redis(getRedisUrl());
+export const redis = new Redis(getRedisUrl(), { enableAutoPipelining: true });

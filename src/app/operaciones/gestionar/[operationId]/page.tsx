@@ -1,0 +1,32 @@
+import { getServerAuthSession } from "~/server/auth";
+import { api } from "~/trpc/server";
+import OperationDetails from "./OperationDetails";
+
+export default async function Page({
+  params,
+}: {
+  params: { operationId: string };
+}) {
+  const operationId = params.operationId;
+
+  const operation = await api.operations.getOperationDetails.query({
+    operationId: parseInt(operationId),
+  });
+
+  const entities = await api.entities.getAll.query();
+
+  const session = await getServerAuthSession();
+
+  return (
+    <div>
+      {session && (
+        <OperationDetails
+          initialOperations={operation}
+          operationId={operationId}
+          initialEntities={entities}
+          session={session}
+        />
+      )}
+    </div>
+  );
+}

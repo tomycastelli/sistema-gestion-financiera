@@ -1,15 +1,15 @@
 "use client";
 
-import type { User } from "@prisma/client";
+import type { Session } from "next-auth";
 import { signIn, signOut } from "next-auth/react";
+import { Icons } from "./ui/Icons";
 import { Button } from "./ui/button";
-import { Icons } from "./ui/icons";
 
 interface AuthFormProps {
-  user: User | undefined;
+  session: Session;
 }
 
-const AuthForm = ({ user }: AuthFormProps) => {
+const AuthForm = ({ session }: AuthFormProps) => {
   const login = async () => {
     await signIn("google");
   };
@@ -20,13 +20,13 @@ const AuthForm = ({ user }: AuthFormProps) => {
 
   return (
     <div>
-      {user ? (
+      {session ? (
         <div>
-          <h2>{`Bienvenido ${user.name}, tu rol es ${user.role}`}</h2>
+          <h2>{`Bienvenido ${session.user.name}, tu rol es ${session.user.role}`}</h2>
           <Button onClick={logout}>Logout</Button>
         </div>
       ) : (
-        <Button className="gap-2" onClick={login}>
+        <Button variant="outline" className="gap-2" onClick={login}>
           <Icons.google className="h-6" />
           Login
         </Button>

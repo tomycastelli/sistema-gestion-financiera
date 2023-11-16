@@ -5,8 +5,8 @@ import { cn } from "~/lib/utils";
 import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
+import { Icons } from "./ui/Icons";
 import { Button } from "./ui/button";
-import { Icons } from "./ui/icons";
 import { ToastAction } from "./ui/toast";
 import { useToast } from "./ui/use-toast";
 
@@ -71,7 +71,7 @@ const TransactionStatusButton = ({
 
       return { prevData };
     },
-    onError(err, newOperation, ctx) {
+    onError(err) {
       const prevData =
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
@@ -107,6 +107,7 @@ const TransactionStatusButton = ({
               onClick={() => {
                 mutate({
                   transactionIds: updatedTxIdsStore,
+                  operationId: tx.operationId,
                 });
               }}
             >
@@ -125,7 +126,7 @@ const TransactionStatusButton = ({
       {tx.status ? (
         <Icons.check className="h-8 text-green" />
       ) : (
-        <Icons.clock className="h-8 text-black" />
+        <Icons.valueNone className="h-7 text-black" />
       )}
     </Button>
   );

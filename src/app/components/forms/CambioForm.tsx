@@ -1,19 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Entities } from "@prisma/client";
 import type { User } from "next-auth";
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
 import EntityCard from "~/app/components/ui/EntityCard";
-import { Icons } from "~/app/components/ui/icons";
+import { Icons } from "~/app/components/ui/Icons";
 import { currencies, paymentMethods } from "~/lib/variables";
 import {
   useTransactionsStore,
   type SingleTransactionInStoreSchema,
 } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/shared";
 import { Button } from "../ui/button";
 import {
   Form,
@@ -44,7 +44,7 @@ const FormSchema = z.object({
 
 interface OperationFormProps {
   user: User;
-  initialEntities: Entities[];
+  initialEntities: RouterOutputs["entities"]["getAll"];
 }
 
 const CambioForm = ({ user, initialEntities }: OperationFormProps) => {

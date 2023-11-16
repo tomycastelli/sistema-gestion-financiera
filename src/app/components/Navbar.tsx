@@ -15,12 +15,12 @@ const Navbar = async () => {
         >
           Maika.
         </Link>
-        <LinkTree />
+        {session?.user && <LinkTree />}
         {session?.user ? (
           <UserDropdown />
         ) : (
-          <Link className="text-lg" href="/login">
-            Login
+          <Link className="text-lg font-semibold" href="/login">
+            Ingresar
           </Link>
         )}
       </div>

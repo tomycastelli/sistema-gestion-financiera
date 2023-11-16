@@ -101,7 +101,7 @@ model Transactions {
   movements        Movements[]
   transactionMetadata TransactionsMetadata?
 
-  @@index([operationId, fromEntityId, toEntityId])
+  @@index([operationId, fromEntityId, toEntityId, date, currency])
 }
 
 model Entities {
@@ -111,6 +111,7 @@ model Entities {
   transactionsFrom  Transactions[] @relation("fromEntity")
   transactionsTo    Transactions[] @relation("toEntity")
   transactionsOperator Transactions[] @relation("operatorEntity")
+  linksSharedEntity Links[] @relation("sharedEntity")
 
   @@index([name])
   @@index([tag])
@@ -122,9 +123,9 @@ model Movements {
   transactionId Int
   direction    Int
   type         String
-  observations String?
+  status       Boolean @default(false)
 
-  @@index([transactionId])
+  @@index([transactionId, direction])
 }
 
 model TransactionsMetadata {
@@ -139,4 +140,12 @@ model TransactionsMetadata {
   history         Json?
 
   @@index([transactionId, uploadedBy, confirmedBy])
+}
+
+model Links {
+  id Int @id @default(autoincrement())
+  sharedEntity Entities @relation("sharedEntity", fields: [sharedEntityId], references: [id])
+  sharedEntityId Int
+  password String
+  expiration DateTime?
 }

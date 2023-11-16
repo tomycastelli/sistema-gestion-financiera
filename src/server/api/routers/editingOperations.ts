@@ -42,8 +42,9 @@ export const editingOperationsRouter = createTRPCRouter({
           const changesMade = findDifferences(
             input.oldTransactionData,
             input.newTransactionData,
+            ctx.session.user.name!,
           );
-
+          // @ts-ignore
           let newHistoryJson = [];
 
           if (
@@ -69,11 +70,18 @@ export const editingOperationsRouter = createTRPCRouter({
               method: input.newTransactionData.method,
               transactionMetadata: {
                 update: {
+                  // @ts-ignore
                   history: newHistoryJson,
                 },
               },
             },
           });
+
+          if (updateTransactionResponse) {
+            await ctx.redis.del(
+              `operation:${updateTransactionResponse.operationId}`,
+            );
+          }
 
           console.log(`Transaction ${input.txId} edited`);
           return updateTransactionResponse;
@@ -93,33 +101,70 @@ export const editingOperationsRouter = createTRPCRouter({
   updateTransactionStatus: protectedProcedure
     .input(
       z.object({
+        operationId: z.number().int(),
         transactionIds: z.array(z.number().int()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.transactions.updateMany({
-        where: {
-          id: {
-            in: input.transactionIds,
+      try {
+        const updateTransactions = ctx.db.transactions.updateMany({
+          where: {
+            id: {
+              in: input.transactionIds,
+            },
           },
-        },
-        data: {
-          status: true,
-        },
-      });
-
-      await ctx.db.transactionsMetadata.updateMany({
-        where: {
-          transactionId: {
-            in: input.transactionIds,
+          data: {
+            status: true,
           },
-        },
-        data: {
-          confirmedBy: ctx.session.user.id,
-        },
-      });
+        });
 
-      console.log(`${response.count} transactions confirmed`);
-      return response;
+        const updateMetadata = ctx.db.transactionsMetadata.updateMany({
+          where: {
+            transactionId: {
+              in: input.transactionIds,
+            },
+          },
+          data: {
+            confirmedBy: ctx.session.user.id,
+          },
+        });
+
+        const movements = input.transactionIds.flatMap((transactionId) => {
+          return [
+            {
+              transactionId,
+              direction: 1,
+              type: "confirmation",
+            },
+            {
+              transactionId,
+              direction: 1,
+              type: "confirmation",
+              status: true,
+            },
+          ];
+        });
+
+        const updateMovements = ctx.db.movements.createMany({
+          data: movements,
+        });
+
+        const responses = await ctx.db.$transaction([
+          updateTransactions,
+          updateMetadata,
+          updateMovements,
+        ]);
+
+        await ctx.redis.del(`operation:${input.operationId}`);
+
+        console.log(`${responses[0].count} transactions confirmed`);
+        return responses;
+      } catch (error) {
+        console.error(
+          "An error occurred while executing the Prisma query:",
+          error,
+        );
+        throw error;
+      }
     }),
 });

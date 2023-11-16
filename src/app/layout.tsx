@@ -26,19 +26,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className={cn(
-          `font-sans ${inter.variable}`,
-          "mx-4 bg-background text-foreground lg:mx-8",
-        )}
-      >
-        <TRPCReactProvider headers={headers()}>
-          <Navbar />
-          <main className="my-2 min-h-full">
-            {children}
-            <Toaster />
-          </main>
-        </TRPCReactProvider>
+      <body>
+        <div
+          className={cn(
+            `font-sans ${inter.variable}`,
+            "mx-4 mb-12 bg-background text-foreground lg:mx-8",
+          )}
+        >
+          <TRPCReactProvider headers={headers()}>
+            <Navbar />
+            <main className="my-2 min-h-full">
+              {children}
+              <Toaster />
+            </main>
+          </TRPCReactProvider>
+        </div>
       </body>
     </html>
   );

@@ -3,17 +3,16 @@
 import Lottie from "lottie-react";
 import type { User } from "next-auth";
 import { type FC } from "react";
-import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import Operation from "./Operation";
-import { Button } from "./ui/button";
-import { Icons } from "./ui/icons";
+import FilterOperationsForm from "./forms/FilterOperationsForm";
 
 interface OperationsFeedProps {
   initialOperations: RouterOutputs["operations"]["getOperations"];
   initialEntities: RouterOutputs["entities"]["getAll"];
+  operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
 }
 
@@ -21,14 +20,8 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   initialOperations,
   user,
   initialEntities,
+  operationsQueryInput,
 }) => {
-  const { pageStore, incrementPage, decrementPage } = useOperationsPageStore();
-
-  const operationsQueryInput: RouterInputs["operations"]["getOperations"] = {
-    limit: 8,
-    page: pageStore,
-  };
-
   const { data: operations, isFetching } =
     api.operations.getOperations.useQuery(operationsQueryInput, {
       initialData: initialOperations,
@@ -37,9 +30,19 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       refetchOnWindowFocus: false,
     });
 
+  const { data: entities } = api.entities.getAll.useQuery(undefined, {
+    initialData: initialEntities,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
   return (
     <div className="flex flex-col">
-      <h1 className="text-3xl font-bold">{pageStore}</h1>
+      <div className="mb-4 w-full">
+        <FilterOperationsForm entities={entities} />
+      </div>
+      <h1 className="text-3xl font-bold">{operationsQueryInput.page}</h1>
       <div className="grid grid-cols-1">
         {isFetching && (
           <Lottie
@@ -52,7 +55,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
           return (
             <div key={op.id} className="flex flex-col">
               <Operation
-                initialEntities={initialEntities}
+                entities={entities}
                 operation={op}
                 operationsQueryInput={operationsQueryInput}
                 user={user}
@@ -61,19 +64,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
           );
         })}
       </div>
-      <div className="flex w-full flex-row items-end justify-end space-x-2">
-        {pageStore > 1 && (
-          <Button variant="outline" onClick={() => decrementPage()}>
-            <Icons.chevronLeft className="h-5" />
-            Anterior
-          </Button>
-        )}
-        {operations.length === operationsQueryInput.limit && (
-          <Button variant="outline" onClick={() => incrementPage()}>
-            Siguiente <Icons.chevronRight className="h-5" />
-          </Button>
-        )}
-      </div>
+      <div className="flex w-full flex-row items-end justify-end space-x-2"></div>
     </div>
   );
 };

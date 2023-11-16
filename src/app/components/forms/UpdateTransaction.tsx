@@ -9,6 +9,7 @@ import { currencies, paymentMethods } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
+import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -32,14 +33,13 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../ui/hover-card";
-import { Icons } from "../ui/icons";
 import { Input } from "../ui/input";
 import { useToast } from "../ui/use-toast";
 import CustomSelector from "./CustomSelector";
 
 interface UpdateTransactionProps {
   transaction: RouterOutputs["operations"]["getOperations"][number]["transactions"][number];
-  initialEntities: RouterOutputs["entities"]["getAll"];
+  entities: RouterOutputs["entities"]["getAll"];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
 }
 
@@ -54,23 +54,13 @@ const FormSchema = z.object({
 
 const UpdateTransaction = ({
   transaction: tx,
-  initialEntities,
+  entities,
   operationsQueryInput,
 }: UpdateTransactionProps) => {
   const { toast } = useToast();
   const [differingKeysCount, setDifferingKeysCount] = useState(0);
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
-
-  const { data: entities, isLoading } = api.entities.getAll.useQuery(
-    undefined,
-    {
-      initialData: initialEntities,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-  );
 
   const { mutate } = api.editingOperations.updateTransactionValues.useMutation({
     async onMutate(newOperation) {
@@ -284,7 +274,7 @@ const UpdateTransaction = ({
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Operador</FormLabel>
-                        {entities ? (
+                        {entities && (
                           <>
                             <CustomSelector
                               data={entities.map((entity) => ({
@@ -294,19 +284,11 @@ const UpdateTransaction = ({
                               field={field}
                               fieldName="operatorEntityId"
                               placeholder="Elegir"
-                              isLoading={isLoading}
                             />
                             {watchOperatorEntity && (
-                              <EntityCard
-                                entity={entities.find(
-                                  (obj) =>
-                                    obj.id.toString() === watchOperatorEntity,
-                                )}
-                              />
+                              <EntityCard entity={tx.operatorEntity} />
                             )}
                           </>
-                        ) : (
-                          isLoading && <p>Cargando...</p>
                         )}
                         <FormMessage />
                       </FormItem>
@@ -349,7 +331,7 @@ const UpdateTransaction = ({
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Origen</FormLabel>
-                            {entities ? (
+                            {entities && (
                               <>
                                 <CustomSelector
                                   data={entities.map((entity) => ({
@@ -359,19 +341,11 @@ const UpdateTransaction = ({
                                   field={field}
                                   fieldName="fromEntityId"
                                   placeholder="Elegir"
-                                  isLoading={isLoading}
                                 />
                                 {watchFromEntity && (
-                                  <EntityCard
-                                    entity={entities.find(
-                                      (obj) =>
-                                        obj.id.toString() === watchFromEntity,
-                                    )}
-                                  />
+                                  <EntityCard entity={tx.fromEntity} />
                                 )}
                               </>
-                            ) : (
-                              isLoading && <p>Cargando...</p>
                             )}
                             <FormMessage />
                           </FormItem>
@@ -435,7 +409,7 @@ const UpdateTransaction = ({
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Origen</FormLabel>
-                          {entities ? (
+                          {entities && (
                             <>
                               <CustomSelector
                                 data={entities.map((entity) => ({
@@ -445,19 +419,11 @@ const UpdateTransaction = ({
                                 field={field}
                                 fieldName="toEntityId"
                                 placeholder="Elegir"
-                                isLoading={isLoading}
                               />
                               {watchToEntity && (
-                                <EntityCard
-                                  entity={entities.find(
-                                    (obj) =>
-                                      obj.id.toString() === watchToEntity,
-                                  )}
-                                />
+                                <EntityCard entity={tx.toEntity} />
                               )}
                             </>
-                          ) : (
-                            isLoading && <p>Cargando...</p>
                           )}
                           <FormMessage />
                         </FormItem>
