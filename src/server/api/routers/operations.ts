@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { dateReviver } from "~/lib/functions";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import type { OperationsByUserResponse } from "./types";
 
 export const operationsRouter = createTRPCRouter({
   insertOperation: protectedProcedure
@@ -74,19 +72,6 @@ export const operationsRouter = createTRPCRouter({
     }),
 
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
-    const cachedUserOperations: string | null = await ctx.redis.get(
-      `user_operations:${ctx.session.user.id}`,
-    );
-
-    if (cachedUserOperations) {
-      const parsedCachedUserOperations: OperationsByUserResponse[] = JSON.parse(
-        cachedUserOperations,
-        dateReviver(["date"]),
-      );
-      console.log("Operations queried from cache");
-      return parsedCachedUserOperations;
-    }
-
     const operations = await ctx.db.operations.findMany({
       where: {
         transactions: {
@@ -105,20 +90,6 @@ export const operationsRouter = createTRPCRouter({
         _count: {
           select: { transactions: true },
         },
-        transactions: {
-          select: {
-            transactionMetadata: {
-              select: {
-                uploadedByUser: true,
-                confirmedByUser: true,
-                history: true,
-              },
-            },
-          },
-          orderBy: {
-            id: "desc",
-          },
-        },
       },
       orderBy: {
         id: "desc",
@@ -126,12 +97,6 @@ export const operationsRouter = createTRPCRouter({
       take: 5,
     });
 
-    await ctx.redis.set(
-      `user_operations:${ctx.session.user.id}`,
-      JSON.stringify(operations),
-      "EX",
-      "3600",
-    );
     return operations;
   }),
 
@@ -257,5 +222,28 @@ export const operationsRouter = createTRPCRouter({
       });
 
       return operationDetails;
+    }),
+  deleteOperation: protectedProcedure
+    .input(z.object({ operationId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const deletedOperation = await ctx.db.operations.delete({
+        where: {
+          id: input.operationId,
+        },
+      });
+
+      return deletedOperation;
+    }),
+
+  deleteTransaction: protectedProcedure
+    .input(z.object({ transactionId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const deletedTransaction = await ctx.db.transactions.delete({
+        where: {
+          id: input.transactionId,
+        },
+      });
+
+      return deletedTransaction;
     }),
 });

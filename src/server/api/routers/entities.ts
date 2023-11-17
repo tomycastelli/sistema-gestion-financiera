@@ -53,4 +53,40 @@ export const entitiesRouter = createTRPCRouter({
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
     }),
+  deleteOne: protectedProcedure
+    .input(z.object({ entityId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const deleteResponse = await ctx.db.entities.delete({
+        where: {
+          id: input.entityId,
+        },
+      });
+
+      await ctx.redis.del("cached_entities");
+
+      return deleteResponse;
+    }),
+  updateOne: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        name: z.string(),
+        tag: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updatedEntity = await ctx.db.entities.update({
+        where: {
+          id: input.id,
+        },
+        data: {
+          name: input.name,
+          tag: input.tag,
+        },
+      });
+
+      await ctx.redis.del("cached_entities");
+
+      return updatedEntity;
+    }),
 });

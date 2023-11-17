@@ -51,12 +51,17 @@ const OperationDetails: FC<OperationDetailsProps> = ({
         <div className="mx-auto flex w-full flex-col rounded-xl border border-muted p-8 shadow-md">
           <div className="mb-4 flex flex-col">
             <div className="flex flex-row items-start justify-between">
-              <h1 className="text-5xl font-bold">
-                <span className="mr-2 text-4xl font-light tracking-tight text-slate-300">
-                  Operación
-                </span>
-                {operation.id}
-              </h1>
+              <div className="flex flex-col justify-start space-y-2">
+                <h1 className="text-5xl font-bold">
+                  <span className="mr-2 text-4xl font-light tracking-tight text-slate-300">
+                    Operación
+                  </span>
+                  {operation.id}
+                </h1>
+                <h3 className="text-slate-400">
+                  {operation.date.toLocaleString("es-AR")}
+                </h3>
+              </div>
               <Button
                 variant="outline"
                 className="border-transparent bg-transparent p-1"

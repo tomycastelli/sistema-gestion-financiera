@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "~/trpc/react";
-import { RouterOutputs } from "~/trpc/shared";
-import { Icons } from "../../components/ui/Icons";
-import { Button } from "../../components/ui/button";
+import { type RouterOutputs } from "~/trpc/shared";
+import { Icons } from "../components/ui/Icons";
+import { Button } from "../components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -15,14 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
+} from "../components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -30,23 +23,31 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
-import { Input } from "../ui/input";
-import { toast } from "../ui/use-toast";
+} from "../components/ui/form";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { toast } from "../components/ui/use-toast";
 
-interface AddEntitiesFormProps {
+interface ChangeEntityFormProps {
   tags: string[];
+  entity: RouterOutputs["entities"]["getAll"][number];
 }
 
 const FormSchema = z.object({
   name: z.string(),
-  tag: z.string(),
+  tag: z.string().optional(),
 });
 
-const AddEntitiesForm = ({ tags }: AddEntitiesFormProps) => {
+const ChangeEntityForm = ({ tags, entity }: ChangeEntityFormProps) => {
   const utils = api.useContext();
 
-  const { mutateAsync } = api.entities.addOne.useMutation({
+  const { mutateAsync } = api.entities.updateOne.useMutation({
     async onMutate(newOperation) {
       toast({
         title: "You submitted the following values:",
@@ -64,16 +65,18 @@ const AddEntitiesForm = ({ tags }: AddEntitiesFormProps) => {
 
       const prevData = utils.entities.getAll.getData();
 
-      const fakeNewData: RouterOutputs["entities"]["getAll"][number] = {
-        id: 0,
-        name: newOperation.name,
-        tag: newOperation.tag,
-      };
-
       utils.entities.getAll.setData(undefined, (old) => [
-        fakeNewData,
         // @ts-ignore
-        ...old,
+        ...old?.map((item) => {
+          if (item.id === entity.id) {
+            return {
+              ...item,
+              name: newOperation.name,
+              tag: newOperation.tag ? newOperation.tag : entity.tag,
+            };
+          }
+          return item;
+        }),
       ]);
 
       return { prevData };
@@ -83,40 +86,42 @@ const AddEntitiesForm = ({ tags }: AddEntitiesFormProps) => {
 
       // Doing some ui actions
       toast({
-        title:
-          "No se pudo cargar la operación y las transacciones relacionadas",
+        title: "No se pudo cargar la entidad",
         description: `${JSON.stringify(err.data)}`,
         variant: "destructive",
       });
     },
     onSettled() {
-      void utils.operations.getOperationsByUser.invalidate();
+      void utils.entities.getAll.invalidate();
     },
   });
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
+    defaultValues: {
+      name: entity.name,
+      tag: entity.tag,
+    },
   });
 
   const { handleSubmit, control } = form;
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    await mutateAsync({ name: data.name, tag: data.tag });
+    await mutateAsync({ id: entity.id, name: data.name, tag: data.tag });
   }
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex flex-row space-x-2">
-          <p>Añadir entidad</p>
-          <Icons.person className="h-4 text-black" />
+        <Button variant="outline" className="border-transparent p-1">
+          <Icons.editing className="h-6 text-green" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>Añadir entidad</DialogTitle>
+              <DialogTitle>Editar entidad {entity.id}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <FormField
@@ -132,34 +137,36 @@ const AddEntitiesForm = ({ tags }: AddEntitiesFormProps) => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={control}
-                name="tag"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tag</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Elegir" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="client">Cliente</SelectItem>
-                        <SelectItem value="maika">Maika</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {entity.tag !== "user" && (
+                <FormField
+                  control={control}
+                  name="tag"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tag</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Elegir" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="client">Cliente</SelectItem>
+                          <SelectItem value="maika">Maika</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="submit">Añadir</Button>
+                <Button type="submit">Editar</Button>
               </DialogClose>
             </DialogFooter>
           </form>
@@ -169,4 +176,4 @@ const AddEntitiesForm = ({ tags }: AddEntitiesFormProps) => {
   );
 };
 
-export default AddEntitiesForm;
+export default ChangeEntityForm;

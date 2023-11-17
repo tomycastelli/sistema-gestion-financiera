@@ -1,6 +1,7 @@
 "use client";
 
 import Lottie from "lottie-react";
+import Link from "next/link";
 import { forwardRef } from "react";
 import { formatDateString } from "~/lib/functions";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -32,7 +33,14 @@ const UploadedUserOperations = forwardRef<
           {operations.map((op, index) => (
             <Card key={op.id}>
               <CardHeader>
-                <CardTitle>Operación {op.id}</CardTitle>
+                <CardTitle>
+                  <Link
+                    href={`/operaciones/gestionar/${op.id}`}
+                    className="flex text-black transition-all hover:scale-105"
+                  >
+                    Operación {op.id}
+                  </Link>
+                </CardTitle>
                 <CardDescription>
                   {op.date ? formatDateString(op.date.toString()) : ""}
                 </CardDescription>

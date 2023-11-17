@@ -25,14 +25,11 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   const { data: operations, isFetching } =
     api.operations.getOperations.useQuery(operationsQueryInput, {
       initialData: initialOperations,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
       refetchOnWindowFocus: false,
     });
 
   const { data: entities } = api.entities.getAll.useQuery(undefined, {
     initialData: initialEntities,
-    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });

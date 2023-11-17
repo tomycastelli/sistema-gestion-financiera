@@ -7,7 +7,6 @@ import { capitalizeFirstLetter, translateWord } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
-import AddEntitiesForm from "../components/forms/AddEntitiesForm";
 import EntityCard from "../components/ui/EntityCard";
 import { Input } from "../components/ui/input";
 import {
@@ -19,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import AddEntitiesForm from "./AddEntitiesForm";
+import EntityOptions from "./EntityOptions";
 
 interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
@@ -74,7 +75,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
             </SelectContent>
           </Select>
         </div>
-        <AddEntitiesForm tags={tags} />
+        <AddEntitiesForm tags={tags} entities={entities} />
       </div>
       <div className="flex items-center justify-center">
         {isLoading ? (
@@ -89,7 +90,15 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
                 return entity.tag === tagFilter;
               })
               .map((entity) => (
-                <EntityCard key={entity.id} entity={entity} />
+                <div
+                  key={entity.id}
+                  className="flex flex-col items-center justify-center space-y-2 self-start"
+                >
+                  <EntityCard entity={entity} />
+                  {entity.tag !== "user" && (
+                    <EntityOptions tags={tags} entity={entity} />
+                  )}
+                </div>
               ))}
           </div>
         ) : (

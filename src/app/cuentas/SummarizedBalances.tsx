@@ -10,7 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { calculateTotalAllEntities } from "~/lib/functions";
+import {
+  calculateTotalAllEntities,
+  getMonthKey,
+  getWeekKey,
+} from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
@@ -237,55 +241,66 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
 
   const totals = calculateTotalAllEntities(balances, selectedTimeframe);
 
-  const barChartData = balances.reduce(
-    (acc, entity) => {
-      entity.balances.forEach((balance) => {
-        const existingCurrencyEntry = acc.find(
-          (entry) => entry.currency === balance.currency,
-        );
+  // Define the type for the entries in the acc array
+  type BarChartEntry = {
+    currency: string;
+    entries: { date: string; cash: number; current_account: number }[];
+  };
 
-        if (!existingCurrencyEntry) {
-          acc.push({
-            currency: balance.currency,
-            entries: [
-              {
-                date: balance.date.toLocaleDateString("es-AR"),
-                cash: balance.status ? balance.amount : 0,
-                current_account: !balance.status ? balance.amount : 0,
-              },
-            ],
-          });
-        } else {
-          const existingDateEntry = existingCurrencyEntry.entries.find(
-            (entry) => entry.date === balance.date.toLocaleDateString("es-AR"),
-          );
+  const barChartData = balances.reduce<BarChartEntry[]>((acc, entity) => {
+    entity.balances.forEach((balance) => {
+      const dateKey =
+        selectedTimeframe === "daily"
+          ? balance.date.toLocaleDateString("es-AR")
+          : selectedTimeframe === "weekly"
+          ? getWeekKey(balance.date)
+          : getMonthKey(balance.date);
 
-          if (!existingDateEntry) {
-            existingCurrencyEntry.entries.push({
-              date: balance.date.toLocaleDateString("es-AR"),
+      const existingCurrencyEntry = acc.find(
+        (entry) => entry.currency === balance.currency,
+      );
+
+      if (!existingCurrencyEntry) {
+        acc.push({
+          currency: balance.currency,
+          entries: [
+            {
+              date: dateKey,
               cash: balance.status ? balance.amount : 0,
               current_account: !balance.status ? balance.amount : 0,
-            });
+            },
+          ],
+        });
+      } else {
+        const existingDateEntry = existingCurrencyEntry.entries.find(
+          (entry) => entry.date === dateKey,
+        );
+
+        if (!existingDateEntry) {
+          existingCurrencyEntry.entries.push({
+            date: dateKey,
+            cash: balance.status ? balance.amount : 0,
+            current_account: !balance.status ? balance.amount : 0,
+          });
+        } else {
+          if (balance.status) {
+            existingDateEntry.cash += balance.amount;
           } else {
-            if (balance.status) {
-              existingDateEntry.cash += balance.amount;
-            } else {
-              existingDateEntry.current_account += balance.amount;
-            }
+            existingDateEntry.current_account += balance.amount;
           }
         }
-      });
+      }
+    });
 
-      return acc;
-    },
-    [] as {
-      currency: string;
-      entries: { date: string; cash: number; current_account: number }[];
-    }[],
-  );
+    return acc;
+  }, []);
 
-  console.log(balances);
-  console.log(barChartData);
+  // Sort barChartData for each currency by date
+  barChartData.forEach((entry) => {
+    entry.entries.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+  });
 
   return (
     <div className="grid grid-cols-4 grid-rows-3 gap-8">
@@ -353,13 +368,11 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <CardContent className="flex h-full w-full items-center justify-center">
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
-                data={barChartData
-                  .find((item) => item.currency === selectedCurrency)
-                  ?.entries.sort((a, b) => {
-                    const dateA = new Date(a.date);
-                    const dateB = new Date(b.date);
-                    return dateA.getTime() - dateB.getTime();
-                  })}
+                data={
+                  barChartData.find(
+                    (item) => item.currency === selectedCurrency,
+                  )?.entries
+                }
               >
                 <XAxis
                   dataKey="date"

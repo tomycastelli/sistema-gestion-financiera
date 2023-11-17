@@ -83,15 +83,15 @@ model Operations {
 
 model Transactions {
   id               Int         @id @default(autoincrement())
-  operation        Operations  @relation(fields: [operationId], references: [id])
+  operation        Operations  @relation(fields: [operationId], references: [id], onDelete: Cascade)
   operationId      Int
   type             String
   date             DateTime?
-  operatorEntity   Entities    @relation("operatorEntity", fields: [operatorEntityId], references: [id])
+  operatorEntity   Entities    @relation("operatorEntity", fields: [operatorEntityId], references: [id], onDelete: Cascade)
   operatorEntityId Int
-  fromEntity       Entities    @relation("fromEntity", fields: [fromEntityId], references: [id])
+  fromEntity       Entities    @relation("fromEntity", fields: [fromEntityId], references: [id], onDelete: Cascade)
   fromEntityId     Int
-  toEntity         Entities    @relation("toEntity", fields: [toEntityId], references: [id])
+  toEntity         Entities    @relation("toEntity", fields: [toEntityId], references: [id], onDelete: Cascade)
   toEntityId       Int
   currency         String
   amount           Float
@@ -119,7 +119,7 @@ model Entities {
 
 model Movements {
   id           Int         @id @default(autoincrement())
-  transaction  Transactions @relation(fields: [transactionId], references: [id])
+  transaction  Transactions @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   transactionId Int
   direction    Int
   type         String
@@ -129,7 +129,7 @@ model Movements {
 }
 
 model TransactionsMetadata {
-  transaction     Transactions? @relation(fields: [transactionId], references: [id])
+  transaction     Transactions? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   transactionId   Int @unique
   uploadedBy      String @default("clohgooer0000z1k5neo2hwcb")
   uploadedDate    DateTime @default(now())
@@ -144,7 +144,7 @@ model TransactionsMetadata {
 
 model Links {
   id Int @id @default(autoincrement())
-  sharedEntity Entities @relation("sharedEntity", fields: [sharedEntityId], references: [id])
+  sharedEntity Entities @relation("sharedEntity", fields: [sharedEntityId], references: [id], onDelete: Cascade)
   sharedEntityId Int
   password String
   expiration DateTime?

@@ -344,3 +344,28 @@ export const calculateTotalAllEntities = (
 
   return result;
 };
+
+// Function to get the week key based on a date
+export function getWeekKey(date: Date) {
+  const year = date.getFullYear();
+  const weekNumber = getISOWeekNumber(date);
+  return `${year}-W${weekNumber}`;
+}
+
+// Function to get the month key based on a date
+export function getMonthKey(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // Adding 1 because months are zero-indexed
+  return `${year}-${month < 10 ? "0" : ""}${month}`;
+}
+
+// Function to get the ISO week number of a date
+function getISOWeekNumber(date: Date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNumber = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+  return weekNumber;
+}

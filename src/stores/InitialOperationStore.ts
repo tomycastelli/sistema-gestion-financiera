@@ -4,7 +4,7 @@ import { getCurrentTime } from "~/lib/functions";
 
 export const InitialOperationStoreSchema = z.object({
   opDate: z.date(),
-  opTime: z.string().optional(),
+  opTime: z.string(),
   opObservations: z.string().optional(),
 });
 

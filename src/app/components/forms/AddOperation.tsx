@@ -68,8 +68,7 @@ const AddOperation = ({
   const { data: operations, isLoading: isOperationsLoading } =
     api.operations.getOperationsByUser.useQuery(undefined, {
       initialData: initialOperations,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
     });
 
   const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
@@ -130,11 +129,19 @@ const AddOperation = ({
       },
     },
   );
+  const [hours, minutes] = initialOperationStore.opTime.split(":").map(Number);
+  let selectedDate = initialOperationStore.opDate;
+
+  if (hours !== undefined && minutes !== undefined) {
+    selectedDate = new Date(
+      initialOperationStore.opDate.setHours(hours, minutes),
+    );
+  }
 
   const uploadOperation = async () => {
     try {
       await mutateAsync({
-        opDate: moment(initialOperationStore.opDate).toDate(),
+        opDate: selectedDate,
         opObservations: initialOperationStore.opObservations,
         transactions: transactionsStore.map((transaction) => ({
           type: transaction.type,
