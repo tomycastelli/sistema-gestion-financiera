@@ -65,14 +65,7 @@ const AddEntitiesForm = ({ tags, entities }: AddEntitiesFormProps) => {
 
       const prevData = utils.entities.getAll.getData();
 
-      const fakeNewData: RouterOutputs["entities"]["getAll"][number] = {
-        id: entities.length + 2,
-        name: newOperation.name,
-        tag: newOperation.tag,
-      };
-
       utils.entities.getAll.setData(undefined, (old) => [
-        fakeNewData,
         // @ts-ignore
         ...old,
       ]);

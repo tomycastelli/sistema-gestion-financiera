@@ -12,12 +12,7 @@ const LinkTree = () => {
 
   return (
     <div className="flex flex-row space-x-1 text-lg">
-      <Link
-        href="/"
-        className={cn(pathname === "/" ? "text-primary" : "text-black")}
-      >
-        Inicio /{" "}
-      </Link>
+      <Link href="/">Inicio / </Link>
       {paths.map((path, index) => {
         currentPath += `/${path}`;
         return (

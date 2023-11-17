@@ -317,15 +317,16 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             <CardContent>
               <div className="flex flex-col space-y-4">
                 {total.balances.map((balance) => (
-                  <div key={balance.amount} className="grid grid-cols-2">
+                  <div key={balance.amount} className="flex flex-col space-y-2">
                     <p>{balance.status ? "Caja" : "Cuenta corriente"}</p>
                     <div className="flex flex-row space-x-4">
-                      <p>
+                      <p className="text-xl font-bold">
                         ${" "}
                         {new Intl.NumberFormat("es-AR").format(balance.amount)}
                       </p>
                       <p
                         className={cn(
+                          "text-lg font-semibold",
                           balance.amount - balance.beforeAmount > 0
                             ? "text-green"
                             : balance.amount - balance.beforeAmount < 0

@@ -5,6 +5,7 @@ import { MoreHorizontal } from "lucide-react";
 import { type Session } from "next-auth";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { createQueryString, removeQueryString } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
@@ -57,6 +58,8 @@ const MovementsTable = ({
   const selectedCurrency = searchParams.get("divisa");
   const selectedToEntity = searchParams.get("entidad_destino");
   const selectedEntityString = searchParams.get("entidad");
+
+  const [selectedFromEntity, setSelectedFromEntity] = useState("");
 
   const selectedPageNumber = parseInt(searchParams.get("pagina")!) || 1;
 
@@ -209,6 +212,20 @@ const MovementsTable = ({
     }
   });
 
+  const fromEntities = Array.from(
+    new Set(updatedTableData.map((item) => item.selectedEntityId)),
+  ).map((uniqueId) => {
+    const matchingObject = updatedTableData.find(
+      (item) => item.selectedEntityId === uniqueId,
+    );
+    if (matchingObject) {
+      return {
+        selectedEntityId: matchingObject.selectedEntityId,
+        selectedEntity: matchingObject.selectedEntity,
+      };
+    }
+  });
+
   const currencies = Array.from(
     new Set(updatedTableData.map((item) => item.currency)),
   ).map((uniqueCurrency) => {
@@ -231,6 +248,11 @@ const MovementsTable = ({
     {
       accessorKey: "selectedEntity",
       header: "Origen",
+    },
+    {
+      accessorKey: "selectedEntityId",
+      header: "Origen ID",
+      filterFn: "equals",
     },
     {
       accessorKey: "otherEntity",
@@ -353,6 +375,40 @@ const MovementsTable = ({
       ) : (
         <div>
           <div className="flex flex-row items-end justify-start space-x-4 py-4">
+            <div className="flex flex-col">
+              <Label className="mb-2">Origen</Label>
+              <Select
+                value={selectedFromEntity ? selectedFromEntity : "todas"}
+                onValueChange={(value) =>
+                  value !== "todas"
+                    ? setSelectedFromEntity(value)
+                    : setSelectedFromEntity("")
+                }
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Entidad origen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem key={"todas"} value="todas">
+                      Todas
+                    </SelectItem>
+                    {fromEntities.map((fromEntity) => (
+                      <SelectItem
+                        key={fromEntity?.selectedEntityId}
+                        value={
+                          fromEntity?.selectedEntityId
+                            ? fromEntity.selectedEntityId.toString()
+                            : " "
+                        }
+                      >
+                        {fromEntity?.selectedEntity}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col space-y-1">
               <Label className="mb-1">Divisa</Label>
               <Select
@@ -451,6 +507,7 @@ const MovementsTable = ({
             columns={columns}
             data={updatedTableData}
             toEntities={toEntities}
+            selectedFromEntity={selectedFromEntity}
           />
         </div>
       )}

@@ -28,14 +28,19 @@ const EntityCard = ({ entity }: EntityCardProps) => {
           <CardHeader>
             <CardTitle>
               <Link
-                className="flex transition-all hover:scale-105"
+                className="flex transition-all hover:scale-110"
                 href={{ pathname: "/cuentas", query: { entidad: entity.id } }}
               >
                 {entity.name}
               </Link>
             </CardTitle>
             <CardDescription className="text-md">
-              {capitalizeFirstLetter(translateWord(entity.tag))}
+              <Link
+                className="flex transition-all hover:scale-110"
+                href={{ pathname: "/cuentas", query: { tag: entity.tag } }}
+              >
+                {capitalizeFirstLetter(translateWord(entity.tag))}
+              </Link>
             </CardDescription>
           </CardHeader>
         </Card>

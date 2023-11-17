@@ -30,11 +30,13 @@ type toEntities =
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  selectedFromEntity?: string;
   toEntities?: toEntities[];
 }
 
 export function DataTable<TData, TValue>({
   columns,
+  selectedFromEntity,
   data,
 }: DataTableProps<TData, TValue>) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -55,6 +57,7 @@ export function DataTable<TData, TValue>({
       columnFilters: [
         { id: "currency", value: selectedCurrency },
         { id: "otherEntityId", value: selectedToEntity },
+        { id: "selectedEntityId", value: selectedFromEntity },
       ],
     },
     state: {
@@ -73,15 +76,22 @@ export function DataTable<TData, TValue>({
       table.getColumn("currency")?.setFilterValue(undefined);
     }
 
+    if (selectedFromEntity) {
+      table
+        .getColumn("selectedEntityId")
+        ?.setFilterValue(parseInt(selectedFromEntity));
+    } else {
+      table.getColumn("selectedEntityId")?.setFilterValue(undefined);
+    }
+
     if (selectedToEntity) {
-      console.log("Setting filter value for toEntityId:", selectedToEntity);
       table
         .getColumn("otherEntityId")
         ?.setFilterValue(parseInt(selectedToEntity));
     } else {
       table.getColumn("otherEntityId")?.setFilterValue(undefined);
     }
-  }, [selectedCurrency, table, selectedToEntity]);
+  }, [selectedCurrency, table, selectedToEntity, selectedFromEntity]);
 
   return (
     <div>

@@ -264,7 +264,6 @@ ORDER BY
 
       return transformedArray;
     }),
-
   getMovementsByCurrency: protectedProcedure
     .input(
       z.object({

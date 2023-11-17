@@ -10,13 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  user
-  admin
-  generalValidator
-  validator
-}
-
 model Account {
   id                 String  @id @default(cuid())
   userId             String
@@ -53,14 +46,22 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  role          UserRole @default(user)
-  sucursal      String?
+  permissions   Json @default("{}")
+  role          Role? @relation(fields: [roleId], references: [id])
+  roleId        Int?
   accounts      Account[]
   sessions      Session[]
   uploadedMetadata  TransactionsMetadata[] @relation("UploadedByUser")
   confirmedMetadata TransactionsMetadata[] @relation("ConfirmedByUser")
 
   @@index([email])
+}
+
+model Role {
+  id    Int @id @default(autoincrement())
+  name String
+  permissions Json
+  users User[]
 }
 
 model VerificationToken {

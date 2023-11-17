@@ -18,6 +18,9 @@ export default function Home() {
       <Link className="text-xl font-semibold" href={{ pathname: "/entidades" }}>
         Entidades
       </Link>
+      <Link className="text-xl font-semibold" href={{ pathname: "/usuarios" }}>
+        Usuarios
+      </Link>
     </div>
   );
 }
