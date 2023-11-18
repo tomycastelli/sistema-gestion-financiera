@@ -16,6 +16,7 @@ export const operationsRouter = createTRPCRouter({
             currency: z.string(),
             amount: z.number(),
             method: z.string().optional(),
+            metadata: z.object({}).optional(),
           }),
         ),
       }),
@@ -46,6 +47,7 @@ export const operationsRouter = createTRPCRouter({
                 create: {
                   uploadedBy: ctx.session.user.id,
                   uploadedDate: new Date(),
+                  metadata: transaction.metadata,
                 },
               },
             })),

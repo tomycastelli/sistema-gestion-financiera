@@ -2,11 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { User } from "next-auth";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
 import EntityCard from "~/app/components/ui/EntityCard";
 import { Icons } from "~/app/components/ui/Icons";
+import { isNumeric } from "~/lib/functions";
 import { currencies, paymentMethods } from "~/lib/variables";
 import {
   useTransactionsStore,
@@ -15,6 +16,7 @@ import {
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import {
   Form,
   FormControl,
@@ -24,7 +26,6 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
-import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
 
 const FormSchema = z.object({
@@ -37,8 +38,10 @@ const FormSchema = z.object({
   currencyB: z.string().min(1),
   amountB: z.string().min(1),
   methodB: z.string().optional(),
-  exchangeRate: z.string().optional(),
-  lockDirection: z.boolean().default(false),
+  exchangeRate: z.string().min(1),
+  lockExchange: z.boolean().default(true),
+  lockAmountA: z.boolean().default(true),
+  lockAmountB: z.boolean().default(false),
   direction: z.boolean().default(true),
 });
 
@@ -64,11 +67,13 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      exchangeRate: "",
+      lockAmountA: true,
+      lockAmountB: false,
+      lockExchange: true,
     },
   });
 
-  const { handleSubmit, watch, control, setValue, reset } = form;
+  const { handleSubmit, watch, control, setValue, reset, setError } = form;
 
   const watchEntityA = useWatch({ name: "entityA", control: control });
   const watchEntityB = useWatch({ name: "entityB", control: control });
@@ -77,85 +82,134 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
   const watchAmountA = watch("amountA");
   const watchAmountB = watch("amountB");
   const watchExchangeRate = watch("exchangeRate");
-  const watchLockDirection = watch("lockDirection");
+  const watchLockExchange = watch("lockExchange");
+  const watchLockAmountA = watch("lockAmountA");
+  const watchLockAmountB = watch("lockAmountB");
 
-  const exchangeCalculation = () => {
-    let exchangeRateValue = watchExchangeRate
-      ? parseFloat(watchExchangeRate)
-      : 0;
-    if (isNaN(exchangeRateValue)) exchangeRateValue = 0;
+  const { addTransactionToStore } = useTransactionsStore();
 
+  const exchangeCalculation = useCallback(() => {
+    const isStrongCurrencyA = currencies.find(
+      (obj) => obj.value === watchCurrencyA,
+    )?.strong;
+    const isStrongCurrencyB = currencies.find(
+      (obj) => obj.value === watchCurrencyB,
+    )?.strong;
+    const amountA = parseFloat(watchAmountA);
+    const amountB = parseFloat(watchAmountB);
+    const exchangeRate = parseFloat(watchExchangeRate);
     if (watchCurrencyA && watchCurrencyB) {
-      const isStrongCurrencyA = currencies.find(
-        (obj) => obj.value === watchCurrencyA,
-      )?.strong;
-      const isStrongCurrencyB = currencies.find(
-        (obj) => obj.value === watchCurrencyB,
-      )?.strong;
-
-      if (!watchLockDirection) {
+      if (watchLockAmountA && amountA > 0 && watchLockAmountB && amountB > 0) {
+        if (!isStrongCurrencyA && isStrongCurrencyB) {
+          setValue("exchangeRate", (amountA / amountB).toFixed(2).toString());
+        }
+        if (isStrongCurrencyA && !isStrongCurrencyB) {
+          setValue("exchangeRate", (amountB / amountA).toFixed(2).toString());
+        }
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
-          const amountA = parseFloat(watchAmountA);
           setValue(
-            "amountB",
-            (amountA / (exchangeRateValue / 100 + 1)).toFixed(4).toString(),
-          );
-        } else if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
-          const amountA = parseFloat(watchAmountA);
-          setValue(
-            "amountB",
-            ((exchangeRateValue / 100 + 1) * amountA).toFixed(4).toString(),
-          );
-        } else if (isStrongCurrencyA && !isStrongCurrencyB) {
-          const amountA = parseFloat(watchAmountA);
-          setValue(
-            "amountB",
-            (amountA * exchangeRateValue).toFixed(2).toString(),
-          );
-        } else if (!isStrongCurrencyA && isStrongCurrencyB) {
-          const amountA = parseFloat(watchAmountA);
-          setValue(
-            "amountB",
-            (amountA / exchangeRateValue).toFixed(2).toString(),
+            "exchangeRate",
+            ((amountB / amountA - 1) * 100).toFixed(4).toString(),
           );
         }
-      } else {
+        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
+          setValue(
+            "exchangeRate",
+            ((amountA / amountB - 1) * 100).toFixed(4).toString(),
+          );
+        }
+      }
+      if (
+        watchLockAmountA &&
+        amountA > 0 &&
+        watchLockExchange &&
+        exchangeRate > 0
+      ) {
+        if (isStrongCurrencyA && !isStrongCurrencyB) {
+          setValue("amountB", (amountA * exchangeRate).toFixed(2).toString());
+        }
+        if (!isStrongCurrencyA && isStrongCurrencyB) {
+          setValue("amountB", (amountA / exchangeRate).toFixed(2).toString());
+        }
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
+          setValue(
+            "amountB",
+            (amountA * (exchangeRate / 100) + 1).toFixed(4).toString(),
+          );
+        }
         if (watchCurrencyB === "usd" && watchCurrencyA === "usdt") {
-          const amountB = parseFloat(watchAmountB);
           setValue(
-            "amountA",
-            (amountB * (exchangeRateValue / 100 + 1)).toFixed(4).toString(),
+            "amountB",
+            ((amountA - 1) * (100 / exchangeRate)).toFixed(4).toString(),
           );
-        } else if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
-          const amountB = parseFloat(watchAmountB);
+        }
+      }
+      if (
+        watchLockAmountB &&
+        amountB > 0 &&
+        watchLockExchange &&
+        exchangeRate > 0
+      ) {
+        if (isStrongCurrencyA && !isStrongCurrencyB) {
+          setValue("amountA", (amountB / exchangeRate).toFixed(2).toString());
+        }
+        if (!isStrongCurrencyA && isStrongCurrencyB) {
+          setValue("amountA", (amountB * exchangeRate).toFixed(2).toString());
+        }
+        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             "amountA",
-            ((exchangeRateValue / 100 + 1) * amountB).toFixed(4).toString(),
+            (amountB * (exchangeRate / 100) + 1).toFixed(4).toString(),
           );
-        } else if (isStrongCurrencyB && !isStrongCurrencyA) {
-          const amountB = parseFloat(watchAmountB);
+        }
+        if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
           setValue(
             "amountA",
-            (amountB * exchangeRateValue).toFixed(2).toString(),
-          );
-        } else if (!isStrongCurrencyB && isStrongCurrencyA) {
-          const amountB = parseFloat(watchAmountB);
-          setValue(
-            "amountA",
-            (amountB / exchangeRateValue).toFixed(2).toString(),
+            ((amountB - 1) * (100 / exchangeRate)).toFixed(4).toString(),
           );
         }
       }
     }
-  };
+  }, [
+    setValue,
+    watchAmountA,
+    watchAmountB,
+    watchCurrencyA,
+    watchCurrencyB,
+    watchExchangeRate,
+    watchLockAmountA,
+    watchLockAmountB,
+    watchLockExchange,
+  ]);
 
   useEffect(() => {
     exchangeCalculation();
-  }, [watchAmountA, watchAmountB, watchExchangeRate]);
-
-  const { addTransactionToStore } = useTransactionsStore();
+  }, [exchangeCalculation]);
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
+    if (values.entityA === values.entityB) {
+      setError(
+        "entityB",
+        {
+          type: "pattern",
+          message: "Las entidades de origen y destino no pueden ser iguales",
+        },
+        { shouldFocus: true },
+      );
+    }
+    if (!isNumeric(values.amountA)) {
+      setError("amountA", {
+        type: "validate",
+        message: "El monto solo puede contener numeros",
+      });
+    }
+    if (!isNumeric(values.amountB)) {
+      setError("amountB", {
+        type: "validate",
+        message: "El monto solo puede contener numeros",
+      });
+    }
+
     const transactions: SingleTransactionInStoreSchema[] = [
       {
         txId: 0,
@@ -164,6 +218,9 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
         toEntityId: parseInt(values.entityB),
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyB,
+        metadata: values.exchangeRate && {
+          exchangeRate: parseFloat(values.exchangeRate),
+        },
         amount: parseFloat(values.amountB),
       },
       {
@@ -173,6 +230,9 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
         toEntityId: parseInt(values.entityA),
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyA,
+        metadata: values.exchangeRate && {
+          exchangeRate: parseFloat(values.exchangeRate),
+        },
         amount: parseFloat(values.amountA),
       },
     ];
@@ -190,7 +250,9 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
       methodA: "",
       methodB: "",
       exchangeRate: "",
-      lockDirection: false,
+      lockAmountA: true,
+      lockAmountB: false,
+      lockExchange: true,
     });
   };
 
@@ -252,7 +314,7 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                   </FormItem>
                 )}
               />
-              <div className="flex flex-row items-end">
+              <div className="flex flex-row items-end space-x-2">
                 <FormField
                   control={control}
                   name="amountA"
@@ -265,6 +327,23 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                     </FormItem>
                   )}
                 />
+                <div className="flex flex-col space-y-1">
+                  <Icons.lock className="h-4 text-slate-900" />
+                  <FormField
+                    control={form.control}
+                    name="lockAmountA"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
               <FormField
                 control={control}
@@ -327,16 +406,14 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                   )}
                 />
                 <div className="flex flex-row items-center justify-center space-x-1">
-                  {!watchLockDirection && (
-                    <Icons.lock className="h-4 text-slate-900" />
-                  )}
+                  <Icons.lock className="h-4 text-slate-900" />
                   <FormField
-                    control={form.control}
-                    name="lockDirection"
+                    control={control}
+                    name="lockExchange"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between">
+                      <FormItem>
                         <FormControl>
-                          <Switch
+                          <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
@@ -344,20 +421,21 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                       </FormItem>
                     )}
                   />
-                  {watchLockDirection && (
-                    <Icons.lock className="h-4 text-slate-900" />
-                  )}
                 </div>
               </div>
               <div className="flex flex-col items-center space-y-4">
                 <div className="flex flex-row items-center space-x-2">
                   <Icons.arrowLeft className="h-8" />
-                  <h3 className="text-sm">{watchAmountA}</h3>
+                  {!isNaN(parseFloat(watchAmountA)) && (
+                    <h3 className="text-sm">{watchAmountA}</h3>
+                  )}
                   <h3 className="text-sm">{watchCurrencyA?.toUpperCase()}</h3>
                 </div>
                 <div className="flex flex-row items-center space-x-2">
                   <h3 className="text-sm">{watchCurrencyB?.toUpperCase()}</h3>
-                  <h3 className="text-sm">{watchAmountB}</h3>
+                  {!isNaN(parseFloat(watchAmountB)) && (
+                    <h3 className="text-sm">{watchAmountB}</h3>
+                  )}
                   <Icons.arrowRight className="h-8" />
                 </div>
               </div>
@@ -414,18 +492,37 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={control}
-                name="amountB"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monto</FormLabel>
-                    <FormControl>
-                      <Input className="w-32" placeholder="$" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="flex flex-row items-end space-x-2">
+                <FormField
+                  control={control}
+                  name="amountB"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monto</FormLabel>
+                      <FormControl>
+                        <Input className="w-32" placeholder="$" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div className="flex flex-col space-y-1">
+                  <Icons.lock className="h-4 text-slate-900" />
+                  <FormField
+                    control={control}
+                    name="lockAmountB"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
               <FormField
                 control={control}
                 name="methodB"

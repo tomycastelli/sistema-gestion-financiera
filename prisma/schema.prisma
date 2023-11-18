@@ -132,13 +132,14 @@ model Movements {
 model TransactionsMetadata {
   transaction     Transactions? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   transactionId   Int @unique
-  uploadedBy      String @default("clohgooer0000z1k5neo2hwcb")
+  uploadedBy      String
   uploadedDate    DateTime @default(now())
   confirmedBy     String?
   confirmedDate   DateTime?
   uploadedByUser  User      @relation("UploadedByUser", fields: [uploadedBy], references: [id])
   confirmedByUser User?      @relation("ConfirmedByUser", fields: [confirmedBy], references: [id])
   history         Json?
+  metadata      Json?
 
   @@index([transactionId, uploadedBy, confirmedBy])
 }

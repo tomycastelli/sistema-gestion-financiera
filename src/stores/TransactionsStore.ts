@@ -11,6 +11,7 @@ const TransactionsStoreSchema = z.array(
     currency: z.string(),
     amount: z.number(),
     method: z.string().optional(),
+    metadata: z.object({}).optional(),
     status: z.boolean().default(false).optional(),
   }),
 );

@@ -369,3 +369,5 @@ function getISOWeekNumber(date: Date) {
   );
   return weekNumber;
 }
+
+export const isNumeric = (value: string) => /^\d+(\.\d+)?$/.test(value);

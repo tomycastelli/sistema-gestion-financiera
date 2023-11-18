@@ -151,6 +151,7 @@ const AddOperation = ({
           currency: transaction.currency,
           amount: transaction.amount,
           method: transaction.method,
+          metadata: transaction.metadata,
         })),
       });
     } catch (error) {

@@ -39,7 +39,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       <div className="mb-4 w-full">
         <FilterOperationsForm entities={entities} />
       </div>
-      <h1 className="text-3xl font-bold">{operationsQueryInput.page}</h1>
+      <h3 className="text-xl font-bold">Página {operationsQueryInput.page}</h3>
       <div className="grid grid-cols-1">
         {isFetching && (
           <Lottie
