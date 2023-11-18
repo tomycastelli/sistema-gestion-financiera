@@ -174,7 +174,7 @@ export const generateLink = ({
   }
 
   // Construct the URL
-  const url = `${env.NEXT_PUBLIC_URL}${pathname}?${queryParams.toString()}`;
+  const url = `${env.NEXTAUTH_URL}${pathname}?${queryParams.toString()}`;
   return url;
 };
 

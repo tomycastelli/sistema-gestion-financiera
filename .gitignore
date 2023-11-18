@@ -43,3 +43,9 @@ yarn-error.log*
 
 # turborepo
 .turbo
+
+# sst
+.sst
+
+# open-next
+.open-next
