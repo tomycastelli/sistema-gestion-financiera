@@ -5,7 +5,6 @@ import { Icons } from "./components/ui/Icons";
 
 export default function Error({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;

@@ -35,7 +35,6 @@ import {
 import { toast } from "../components/ui/use-toast";
 
 interface ChangeEntityFormProps {
-  tags: string[];
   entity: RouterOutputs["entities"]["getAll"][number];
 }
 
@@ -44,7 +43,7 @@ const FormSchema = z.object({
   tag: z.string().optional(),
 });
 
-const ChangeEntityForm = ({ tags, entity }: ChangeEntityFormProps) => {
+const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
   const utils = api.useContext();
 
   const { mutateAsync } = api.entities.updateOne.useMutation({

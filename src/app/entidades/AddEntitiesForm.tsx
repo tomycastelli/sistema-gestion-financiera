@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -34,17 +33,12 @@ import {
 } from "../components/ui/select";
 import { toast } from "../components/ui/use-toast";
 
-interface AddEntitiesFormProps {
-  tags: string[];
-  entities: RouterOutputs["entities"]["getAll"];
-}
-
 const FormSchema = z.object({
   name: z.string(),
   tag: z.string(),
 });
 
-const AddEntitiesForm = ({ tags, entities }: AddEntitiesFormProps) => {
+const AddEntitiesForm = () => {
   const utils = api.useContext();
 
   const { mutateAsync } = api.entities.addOne.useMutation({

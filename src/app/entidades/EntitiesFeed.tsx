@@ -75,7 +75,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
             </SelectContent>
           </Select>
         </div>
-        <AddEntitiesForm tags={tags} entities={entities} />
+        <AddEntitiesForm />
       </div>
       <div className="flex items-center justify-center">
         {isLoading ? (
@@ -95,9 +95,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
                   className="flex flex-col items-center justify-center space-y-2 self-start"
                 >
                   <EntityCard entity={entity} />
-                  {entity.tag !== "user" && (
-                    <EntityOptions tags={tags} entity={entity} />
-                  )}
+                  {entity.tag !== "user" && <EntityOptions entity={entity} />}
                 </div>
               ))}
           </div>

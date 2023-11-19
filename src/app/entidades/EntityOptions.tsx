@@ -2,18 +2,17 @@
 
 import { type FC } from "react";
 import { api } from "~/trpc/react";
-import { RouterOutputs } from "~/trpc/shared";
+import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import { toast } from "../components/ui/use-toast";
 import ChangeEntityForm from "./ChangeEntityForm";
 
 interface EntityOptionsProps {
-  tags: string[];
   entity: RouterOutputs["entities"]["getAll"][number];
 }
 
-const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
+const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
   const utils = api.useContext();
 
   const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
@@ -66,7 +65,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
         <Icons.cross className="h-6 text-red" />
       </Button>
 
-      <ChangeEntityForm entity={entity} tags={tags} />
+      <ChangeEntityForm entity={entity} />
     </div>
   );
 };
