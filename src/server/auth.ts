@@ -5,8 +5,10 @@ import {
   type NextAuthOptions,
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { type z } from "zod";
 
 import { env } from "~/env.mjs";
+import { type PermissionSchema } from "~/lib/permissionsTypes";
 import { db } from "~/server/db";
 import { api } from "~/trpc/server";
 
@@ -21,8 +23,9 @@ declare module "next-auth" {
     user: {
       id: string;
       // ...other properties
-      role: string;
       sucursal: string;
+      roleId: number;
+      permissions: z.infer<typeof PermissionSchema> | null;
     } & DefaultSession["user"];
   }
 
@@ -57,8 +60,8 @@ export const authOptions: NextAuthOptions = {
       user: {
         ...session.user,
         id: user.id,
-        role: session.user.role,
-        sucursal: session.user.sucursal,
+        roleId: session.user.roleId,
+        permissions: session.user.permissions,
       },
     }),
   },

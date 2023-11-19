@@ -46,7 +46,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  permissions   Json @default("{}")
+  permissions   Json?
   role          Role? @relation(fields: [roleId], references: [id])
   roleId        Int?
   accounts      Account[]
