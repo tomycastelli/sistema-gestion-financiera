@@ -13,7 +13,7 @@ const login = async () => {
         Si es tu primer inicio de sesión, se creará una cuenta en este portal
         con el nombre de tu cuenta de Google
       </p>
-      {<AuthForm session={session} />}
+      {session && <AuthForm session={session} />}
     </div>
   );
 };
