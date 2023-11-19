@@ -21,7 +21,7 @@ const login = async () => {
       </p>
       {session ? (
         <div>
-          <h2>{`Bienvenido ${session.user.name}, tu rol es ${session.user.role}`}</h2>
+          <h2>{`Bienvenido ${session.user.name}`}</h2>
           <Button onClick={logout}>Logout</Button>
         </div>
       ) : (
