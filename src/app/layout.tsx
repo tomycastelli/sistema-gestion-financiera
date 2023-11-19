@@ -1,5 +1,7 @@
 import "~/styles/globals.css";
 
+import { Analytics } from "@vercel/analytics/react";
+
 import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 
@@ -37,6 +39,7 @@ export default function RootLayout({
             <Navbar />
             <main className="my-2 min-h-full">
               {children}
+              <Analytics />
               <Toaster />
             </main>
           </TRPCReactProvider>
