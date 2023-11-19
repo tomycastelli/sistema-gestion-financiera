@@ -104,7 +104,6 @@ export const authOptions: NextAuthOptions = {
           id: profile.sub,
           name: `${profile.given_name} ${profile.family_name}`,
           email: profile.email,
-          role: profile.role ? profile.role : "user",
         };
       },
     }),
