@@ -2,7 +2,6 @@
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import type { Entities } from "@prisma/client";
-import moment from "moment-timezone";
 import type { User } from "next-auth";
 import { useState } from "react";
 import { capitalizeFirstLetter } from "~/lib/functions";

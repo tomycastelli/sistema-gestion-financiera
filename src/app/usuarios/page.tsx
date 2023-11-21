@@ -1,11 +1,12 @@
 import { getServerAuthSession } from "~/server/auth";
+import MyUserForm from "./MyUserForm";
 
 const Page = async () => {
   const session = await getServerAuthSession();
 
   return (
-    <div>
-      {session && <h1 className="text-xl font-bold">{session.user.name}</h1>}
+    <div className="space-y-6">
+      {session && <MyUserForm session={session} />}
     </div>
   );
 };

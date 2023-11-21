@@ -9,7 +9,6 @@ import { z } from "zod";
 import { createQueryString } from "~/lib/functions";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
-import { useToast } from "../ui/use-toast";
 import CustomSelector from "./CustomSelector";
 
 const FormSchema = z.object({
@@ -34,7 +33,6 @@ interface FilterOperationsFormProps {
 }
 
 const FilterOperationsForm = ({ entities }: FilterOperationsFormProps) => {
-  const { toast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,7 +42,7 @@ const FilterOperationsForm = ({ entities }: FilterOperationsFormProps) => {
     mode: "onChange",
   });
 
-  const { handleSubmit, control, reset, watch } = form;
+  const { control, reset, watch } = form;
 
   const watchFromEntityId = watch("fromEntityId")!;
 

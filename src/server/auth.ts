@@ -11,6 +11,7 @@ import { env } from "~/env.mjs";
 import { type PermissionSchema } from "~/lib/permissionsTypes";
 import { db } from "~/server/db";
 import { api } from "~/trpc/server";
+import { redis } from "./redis";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -19,20 +20,18 @@ import { api } from "~/trpc/server";
  * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
  */
 declare module "next-auth" {
+  interface User {
+    roleId?: number | null;
+    permissions?: z.infer<typeof PermissionSchema> | null;
+  }
+
   interface Session extends DefaultSession {
     user: {
       id: string;
-      // ...other properties
-      sucursal: string;
-      roleId: number;
-      permissions: z.infer<typeof PermissionSchema> | null;
+      roleId?: number | null;
+      permissions?: z.infer<typeof PermissionSchema> | null;
     } & DefaultSession["user"];
   }
-
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
 }
 
 /**
@@ -48,20 +47,19 @@ export const authOptions: NextAuthOptions = {
     redirect() {
       return "/";
     },
-    signIn: ({ user }) => {
-      if (user.email === "tomycastelli@gmail.com") {
-        return true;
-      } else {
-        return false;
-      }
+    signIn: async ({ user }) => {
+      const isWhitelisted = await api.users.isWhitelisted.query({
+        email: user.email ? user.email : "",
+      });
+      return isWhitelisted;
     },
     session: ({ session, user }) => ({
       ...session,
       user: {
         ...session.user,
         id: user.id,
-        roleId: session.user.roleId,
-        permissions: session.user.permissions,
+        roleId: user.roleId,
+        permissions: user.permissions,
       },
     }),
   },
@@ -69,15 +67,16 @@ export const authOptions: NextAuthOptions = {
   secret: env.NEXTAUTH_SECRET,
   session: {
     strategy: "database",
+    updateAge: 12 * 60 * 60,
   },
   events: {
     createUser: async (message) => {
       if (message.user.name) {
-        const response = await api.entities.addOne.mutate({
+        await api.entities.addOne.mutate({
           name: message.user.name,
           tag: "user",
         });
-        console.log(response);
+        await redis.del("users");
       }
     },
     signIn: (message) => {

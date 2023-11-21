@@ -3,7 +3,9 @@ import { editingOperationsRouter } from "./routers/editingOperations";
 import { entitiesRouter } from "./routers/entities";
 import { movementsRouter } from "./routers/movements";
 import { operationsRouter } from "./routers/operations";
+import { rolesRouter } from "./routers/roles";
 import { shareableLinksRouter } from "./routers/shareableLinks";
+import { usersRouter } from "./routers/users";
 
 /**
  * This is the primary router for your server.
@@ -16,6 +18,8 @@ export const appRouter = createTRPCRouter({
   editingOperations: editingOperationsRouter,
   movements: movementsRouter,
   shareableLinks: shareableLinksRouter,
+  users: usersRouter,
+  roles: rolesRouter,
 });
 
 // export type definition of API

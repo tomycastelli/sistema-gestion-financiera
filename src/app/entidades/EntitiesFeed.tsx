@@ -32,7 +32,6 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
     undefined,
     {
       initialData: initialEntities,
-      refetchOnMount: false,
       refetchOnWindowFocus: false,
     },
   );

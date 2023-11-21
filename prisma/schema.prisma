@@ -107,7 +107,7 @@ model Transactions {
 
 model Entities {
   id         Int          @id @default(autoincrement())
-  name       String
+  name       String @unique
   tag        String
   transactionsFrom  Transactions[] @relation("fromEntity")
   transactionsTo    Transactions[] @relation("toEntity")
@@ -150,4 +150,8 @@ model Links {
   sharedEntityId Int
   password String
   expiration DateTime?
+}
+
+model EmailWhitelist {
+  email String @id
 }

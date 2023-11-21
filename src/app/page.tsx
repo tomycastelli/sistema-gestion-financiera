@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { capitalizeFirstLetter } from "~/lib/functions";
+import { getServerAuthSession } from "~/server/auth";
 import {
   Card,
   CardDescription,
@@ -7,7 +8,9 @@ import {
   CardTitle,
 } from "./components/ui/card";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerAuthSession();
+
   const panels = [
     {
       name: "operaciones",
@@ -32,26 +35,30 @@ export default function Home() {
       <h1 className="mb-8 text-3xl font-semibold tracking-tight">
         Bienvenido al portal de Maika!
       </h1>
-      <div className="grid w-full grid-cols-4 gap-8">
-        {panels.map((panel) => (
-          <Link
-            key={panel.name}
-            href={
-              panel.name === "cuentas"
-                ? { pathname: `/${panel.name}`, query: { tag: "maika" } }
-                : { pathname: `/${panel.name}` }
-            }
-            className="flex transition-all hover:scale-110"
-          >
-            <Card className="h-28 w-96">
-              <CardHeader>
-                <CardTitle>{capitalizeFirstLetter(panel.name)}</CardTitle>
-                <CardDescription>{panel.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {session ? (
+        <div className="grid w-full grid-cols-4 gap-8">
+          {panels.map((panel) => (
+            <Link
+              key={panel.name}
+              href={
+                panel.name === "cuentas"
+                  ? { pathname: `/${panel.name}`, query: { tag: "maika" } }
+                  : { pathname: `/${panel.name}` }
+              }
+              className="flex transition-all hover:scale-110"
+            >
+              <Card className="h-28 w-96">
+                <CardHeader>
+                  <CardTitle>{capitalizeFirstLetter(panel.name)}</CardTitle>
+                  <CardDescription>{panel.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <h2 className="text-lg">Ingresa con tu usuario para poder continuar</h2>
+      )}
     </div>
   );
 }

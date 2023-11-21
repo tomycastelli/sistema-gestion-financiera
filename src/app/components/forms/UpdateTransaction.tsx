@@ -113,7 +113,7 @@ const UpdateTransaction = ({
 
       return { prevData };
     },
-    onError(err, newOperation, ctx) {
+    onError(err) {
       const prevData =
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
