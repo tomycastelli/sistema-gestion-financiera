@@ -28,16 +28,6 @@ const UsersFeed: FC<UsersFeedProps> = ({ initialUsers }) => {
           >
             <h1 className="text-lg font-semibold">{user.name}</h1>
             <p>{user.email}</p>
-            <p className="text-muted-foreground">
-              {
-                // @ts-ignore
-                user.permissions.length
-              }{" "}
-              {
-                // @ts-ignore
-                user.permissions.length > 1 ? "Permisos" : "Permiso"
-              }
-            </p>
           </Link>
         ))
       ) : (

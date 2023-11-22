@@ -137,7 +137,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
     },
   });
 
-  const { handleSubmit, control, watch, reset, setValue } = form;
+  const { handleSubmit, control, setValue } = form;
 
   const { fields } = useFieldArray({
     control,
