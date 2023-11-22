@@ -349,7 +349,10 @@ const MovementsTable = ({
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
               <DropdownMenuItem>
                 <Link
-                  href={`/operaciones/gestionar/${movement.operationId}`}
+                  href={{
+                    pathname: `/operaciones/gestionar/${movement.operationId}`,
+                    query: { row: row.getValue("id") },
+                  }}
                   className="flex flex-row items-center space-x-1"
                 >
                   <p>Ver operación</p>
@@ -505,7 +508,6 @@ const MovementsTable = ({
           <DataTable
             columns={columns}
             data={updatedTableData}
-            toEntities={toEntities}
             selectedFromEntity={selectedFromEntity}
           />
         </div>

@@ -11,6 +11,7 @@ import {
 
 import { useSearchParams } from "next/navigation";
 import React, { useEffect } from "react";
+import { cn } from "~/lib/utils";
 import {
   Table,
   TableBody,
@@ -20,18 +21,10 @@ import {
   TableRow,
 } from "../components/ui/table";
 
-type toEntities =
-  | {
-      otherEntityId: number;
-      otherEntity: string;
-    }
-  | undefined;
-
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectedFromEntity?: string;
-  toEntities?: toEntities[];
 }
 
 export function DataTable<TData, TValue>({
@@ -46,6 +39,9 @@ export function DataTable<TData, TValue>({
   const searchParams = useSearchParams();
   const selectedCurrency = searchParams.get("divisa");
   const selectedToEntity = searchParams.get("entidad_destino");
+  const higlightRowId = searchParams.get("row")
+    ? parseInt(searchParams.get("row")!)
+    : null;
 
   const table = useReactTable({
     data,
@@ -121,6 +117,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={cn(
+                    row.getValue("id") === higlightRowId
+                      ? "bg-blue-100 hover:bg-blue-200"
+                      : "",
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

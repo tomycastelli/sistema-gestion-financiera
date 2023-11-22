@@ -214,53 +214,55 @@ ORDER BY
   DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.status;
     `;
 
-      const transformedArray = entitiesBalances.reduce(
-        (acc, entity) => {
-          const existingEntity = acc.find(
-            (e) => e.entityId === entity.entityid,
-          );
+      const transformedArray = entitiesBalances
+        .filter((entity) => entity.currency)
+        .reduce(
+          (acc, entity) => {
+            const existingEntity = acc.find(
+              (e) => e.entityId === entity.entityid,
+            );
 
-          if (existingEntity) {
-            // Entity already exists, add balance to the respective array
-            existingEntity.balances.push({
-              currency: entity.currency,
-              date: entity.date,
-              status: entity.movementstatus,
-              amount: entity.balance,
-            });
-          } else {
-            // Entity doesn't exist, create a new entry
-            const newEntity = {
-              entityId: entity.entityid,
-              entityName: entity.entityname,
-              entityTag: entity.entitytag,
-              balances: [
-                {
-                  currency: entity.currency,
-                  date: entity.date,
-                  status: entity.movementstatus,
-                  amount: entity.balance,
-                },
-              ],
-            };
+            if (existingEntity) {
+              // Entity already exists, add balance to the respective array
+              existingEntity.balances.push({
+                currency: entity.currency,
+                date: entity.date,
+                status: entity.movementstatus,
+                amount: entity.balance,
+              });
+            } else {
+              // Entity doesn't exist, create a new entry
+              const newEntity = {
+                entityId: entity.entityid,
+                entityName: entity.entityname,
+                entityTag: entity.entitytag,
+                balances: [
+                  {
+                    currency: entity.currency,
+                    date: entity.date,
+                    status: entity.movementstatus,
+                    amount: entity.balance,
+                  },
+                ],
+              };
 
-            acc.push(newEntity);
-          }
+              acc.push(newEntity);
+            }
 
-          return acc;
-        },
-        [] as {
-          entityId: number;
-          entityName: string;
-          entityTag: string;
-          balances: Array<{
-            currency: string;
-            date: Date;
-            status: boolean;
-            amount: number;
-          }>;
-        }[],
-      );
+            return acc;
+          },
+          [] as {
+            entityId: number;
+            entityName: string;
+            entityTag: string;
+            balances: Array<{
+              currency: string;
+              date: Date;
+              status: boolean;
+              amount: number;
+            }>;
+          }[],
+        );
 
       return transformedArray;
     }),

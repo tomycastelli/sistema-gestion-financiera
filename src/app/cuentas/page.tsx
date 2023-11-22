@@ -78,35 +78,34 @@ const Page = async ({
         <TimeRangeSelector />
       </div>
       <div className="mt-4 w-full">
-        {initialMovements.length === 0 && (
-          <h1 className="text-3xl font-semibold tracking-tighter">
-            No hay movimientos
-          </h1>
-        )}
-        {selectedTab === "cuenta_corriente" && initialMovements.length > 0 && (
+        {selectedTab === "cuenta_corriente" && (
           <AccountsTab
             accountType={false}
             searchParams={searchParams}
             initialBalances={initialBalances}
           />
         )}
-        {selectedTab === "caja" && initialMovements.length > 0 && (
+        {selectedTab === "caja" && (
           <AccountsTab
             accountType={true}
             searchParams={searchParams}
             initialBalances={initialBalances}
           />
         )}
-        {selectedTab === "resumen" && initialMovements.length > 0 && (
+        {selectedTab === "resumen" && (
           <div>
-            <SummarizedBalances
-              initialBalances={initialBalances}
-              initialMovements={initialMovements}
-              movementsAmount={movementsAmount}
-              selectedTag={selectedTag}
-              selectedEntityId={selectedEntityId}
-              initialBalancesInput={initialBalancesInput}
-            />
+            {initialBalances.length > 0 ? (
+              <SummarizedBalances
+                initialBalances={initialBalances}
+                initialMovements={initialMovements}
+                movementsAmount={movementsAmount}
+                selectedTag={selectedTag}
+                selectedEntityId={selectedEntityId}
+                initialBalancesInput={initialBalancesInput}
+              />
+            ) : (
+              <p>No hay balances</p>
+            )}
           </div>
         )}
       </div>

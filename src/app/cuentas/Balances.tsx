@@ -50,68 +50,63 @@ const Balances: FC<BalancesProps> = ({ initialBalances, accountType }) => {
   const balancesSummary = calculateTotal(balances, selectedTimeframe);
 
   return (
-    <div className="grid grid-cols-7 gap-4">
-      <div className="col-span-2 flex flex-col space-y-4">
-        {!isBalanceLoading ? (
-          balancesSummary.map((entity) => (
-            <Card key={entity.entityId} className="min-w-[300px]">
-              <CardHeader>
-                <CardTitle>{entity.entityName}</CardTitle>
-                <CardDescription>
-                  {capitalizeFirstLetter(entity.entityTag)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-2">
-                  <p className="flex justify-end font-semibold">
-                    {selectedTimeframe === "daily"
-                      ? "Diario"
-                      : selectedTimeframe === "monthly"
-                      ? "Mensual"
-                      : selectedTimeframe === "weekly"
-                      ? "Semanal"
-                      : ""}
-                  </p>
-                  {entity.totalBalances
-                    .filter((totals) => totals.status === accountType)
-                    .map((totals) => (
-                      <div key={totals.currency} className="grid grid-cols-4">
-                        <p className="col-span-1">
-                          {totals.currency.toUpperCase()}
+    <div className="grid-cols grid grid-flow-col space-y-4">
+      {!isBalanceLoading ? (
+        balancesSummary.map((entity) => (
+          <Card key={entity.entityId} className="min-w-[300px]">
+            <CardHeader>
+              <CardTitle>{entity.entityName}</CardTitle>
+              <CardDescription>
+                {capitalizeFirstLetter(entity.entityTag)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col space-y-2">
+                <p className="flex justify-end font-semibold">
+                  {selectedTimeframe === "daily"
+                    ? "Diario"
+                    : selectedTimeframe === "monthly"
+                    ? "Mensual"
+                    : selectedTimeframe === "weekly"
+                    ? "Semanal"
+                    : ""}
+                </p>
+                {entity.totalBalances
+                  .filter((totals) => totals.status === accountType)
+                  .map((totals) => (
+                    <div key={totals.currency} className="grid grid-cols-4">
+                      <p className="col-span-1">
+                        {totals.currency.toUpperCase()}
+                      </p>
+                      <div className="col-span-3 flex flex-row justify-between space-x-6">
+                        <p className="text-xl font-bold">
+                          ${" "}
+                          {new Intl.NumberFormat("es-AR").format(totals.amount)}
                         </p>
-                        <div className="col-span-3 flex flex-row justify-between space-x-6">
-                          <p className="text-xl font-bold">
-                            ${" "}
-                            {new Intl.NumberFormat("es-AR").format(
-                              totals.amount,
-                            )}
-                          </p>
-                          <p
-                            className={cn(
-                              "text-lg font-semibold",
-                              totals.amount - totals.beforeAmount > 0
-                                ? "text-green"
-                                : totals.amount - totals.beforeAmount < 0
-                                ? "text-red"
-                                : "text-slate-300",
-                            )}
-                          >
-                            {new Intl.NumberFormat("es-AR").format(
-                              totals.amount - totals.beforeAmount,
-                            )}
-                          </p>
-                        </div>
+                        <p
+                          className={cn(
+                            "text-lg font-semibold",
+                            totals.amount - totals.beforeAmount > 0
+                              ? "text-green"
+                              : totals.amount - totals.beforeAmount < 0
+                              ? "text-red"
+                              : "text-slate-300",
+                          )}
+                        >
+                          {new Intl.NumberFormat("es-AR").format(
+                            totals.amount - totals.beforeAmount,
+                          )}
+                        </p>
                       </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <p>Cargando...</p>
-        )}
-      </div>
-      <div className="col-span-5">hello world</div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <p>Cargando...</p>
+      )}
     </div>
   );
 };
