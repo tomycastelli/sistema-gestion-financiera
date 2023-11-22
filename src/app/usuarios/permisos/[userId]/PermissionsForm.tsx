@@ -102,7 +102,10 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
     },
   });
 
-  const permissionsNames = permissions.map((obj) => obj.name);
+  let permissionsNames: string[] = [];
+  if (permissions) {
+    permissionsNames = permissions.map((obj) => obj.name);
+  }
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -112,17 +115,19 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
           return {
             name: permission.name,
             active: true,
-            entitiesIds: permissions.find(
-              (item) => item.name === permission.name,
-            )?.entitiesIds
+            entitiesIds: permissions
               ? permissions.find((item) => item.name === permission.name)
                   ?.entitiesIds
+                ? permissions.find((item) => item.name === permission.name)
+                    ?.entitiesIds
+                : []
               : [],
-            entitiesTags: permissions.find(
-              (item) => item.name === permission.name,
-            )?.entitiesTags
+            entitiesTags: permissions
               ? permissions.find((item) => item.name === permission.name)
                   ?.entitiesTags
+                ? permissions.find((item) => item.name === permission.name)
+                    ?.entitiesTags
+                : []
               : [],
           };
         } else {

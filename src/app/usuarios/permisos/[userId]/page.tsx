@@ -13,7 +13,7 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   return (
     <div>
-      {permissions && session && (
+      {session && (
         <PermissionsForm
           initialEntities={entities}
           initialPermissions={permissions}

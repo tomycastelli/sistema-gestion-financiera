@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getAllPermissions } from "~/lib/getAllPermisions";
 import { PermissionSchema } from "~/lib/permissionsTypes";
@@ -309,9 +310,13 @@ export const usersRouter = createTRPCRouter({
           },
         });
 
-        return permissions as z.infer<typeof PermissionSchema>;
+        return permissions as z.infer<typeof PermissionSchema> | null;
       } else {
-        return [];
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "Usuario sin el siguiente permiso: USERS_PERMISSIONS_VISUALIZE",
+        });
       }
     }),
   updatePermissions: protectedProcedure
