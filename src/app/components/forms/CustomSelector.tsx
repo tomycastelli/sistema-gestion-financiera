@@ -68,7 +68,7 @@ const CustomSelector = ({
                 {data.map((obj) => (
                   <CommandItem
                     key={obj.value}
-                    value={obj.value}
+                    value={obj.label}
                     onSelect={() => {
                       setOpen(false);
                       setValue(fieldName, obj.value);

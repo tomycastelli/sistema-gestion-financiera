@@ -1,11 +1,18 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getAllPermissions } from "~/lib/getAllPermisions";
 import { PermissionSchema } from "~/lib/permissionsTypes";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const rolesRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    const hasPermissions = ctx.session.user.permissions?.find(
+    const permissions = await getAllPermissions(
+      ctx.redis,
+      ctx.session,
+      ctx.db,
+      {},
+    );
+
+    const hasPermissions = permissions?.find(
       (permission) =>
         permission.name === "ADMIN" ||
         permission.name === "USERS_ROLES_VISUALIZE",
@@ -16,16 +23,20 @@ export const rolesRouter = createTRPCRouter({
 
       return response;
     } else {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Usuario no posee permisos",
-      });
+      return null;
     }
   }),
   addOne: protectedProcedure
     .input(z.object({ name: z.string(), permissions: PermissionSchema }))
     .mutation(async ({ ctx, input }) => {
-      const hasPermissions = ctx.session.user.permissions?.find(
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
           permission.name === "USERS_ROLES_MANAGE",
@@ -41,16 +52,20 @@ export const rolesRouter = createTRPCRouter({
 
         return response;
       } else {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no posee permisos",
-        });
+        return null;
       }
     }),
   deleteOne: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const hasPermissions = ctx.session.user.permissions?.find(
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
           permission.name === "USERS_ROLES_MANAGE",
@@ -65,10 +80,7 @@ export const rolesRouter = createTRPCRouter({
 
         return response;
       } else {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no posee permisos",
-        });
+        return null;
       }
     }),
   updateOne: protectedProcedure
@@ -80,10 +92,17 @@ export const rolesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const hasPermissions = ctx.session.user.permissions?.find(
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
-          permission.name === "USERS_ROLES_MANAGE",
+          permission.name === "USERS_PERMISSIONS_MANAGE",
       );
 
       if (hasPermissions) {
@@ -99,10 +118,7 @@ export const rolesRouter = createTRPCRouter({
 
         return response;
       } else {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no posee permisos",
-        });
+        return null;
       }
     }),
 });

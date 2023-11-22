@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 
 const Page = async () => {
-  const session = await getServerAuthSession();
-
-  const permissions = await api.users.getAllPermissions.query();
+  const permissions = await api.users.getAllPermissions.query({});
   const users = await api.users.getAll.query();
 
   return (
@@ -38,7 +35,7 @@ const Page = async () => {
                     <Link
                       href={`/usuarios/permisos/${user.id}`}
                       key={user.id}
-                      className="flex flex-col items-center justify-center space-y-1 rounded-xl border border-muted-foreground p-4 transition-all hover:scale-105"
+                      className="flex flex-col items-center justify-center space-y-1 rounded-xl border border-muted p-4 transition-all hover:scale-105"
                     >
                       <h1 className="text-lg font-semibold">{user.name}</h1>
                       <p>{user.email}</p>

@@ -1,7 +1,11 @@
 "use client";
 
 import { Keyboard, LogOut, Settings, User, Users } from "lucide-react";
+import { type Session } from "next-auth";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
+import { RouterOutputs } from "~/trpc/shared";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,45 +21,71 @@ const logout = async () => {
   await signOut();
 };
 
-const UserDropdown = () => {
+const UserDropdown = ({
+  session,
+  initialPermissions,
+}: {
+  session: Session;
+  initialPermissions: RouterOutputs["users"]["getAllPermissions"];
+}) => {
+  const router = useRouter();
+  const { data: permissions } = api.users.getAllPermissions.useQuery(
+    {},
+    { initialData: initialPermissions },
+  );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <User className="h-8 w-8" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="absolute right-0 z-10 mt-2 w-56">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuLabel>{session.user.name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/usuarios")}>
             <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+            <span>Mi usuario</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {permissions &&
+            permissions.find(
+              (permission) =>
+                permission.name === "USERS_PERMISSIONS_VISUALIZE" ||
+                permission.name === "ADMIN",
+            ) && (
+              <DropdownMenuItem
+                onClick={() => router.push("/usuarios/permisos")}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Permisos</span>
+              </DropdownMenuItem>
+            )}
           <DropdownMenuItem>
             <Keyboard className="mr-2 h-4 w-4" />
             <span>Keyboard shortcuts</span>
-            <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <Users className="mr-2 h-4 w-4" />
-            <span>Team</span>
-          </DropdownMenuItem>
+          {permissions &&
+            permissions.find(
+              (permission) =>
+                permission.name === "USERS_WHITELIST_VISUALIZE" ||
+                permission.name === "ADMIN",
+            ) && (
+              <DropdownMenuItem
+                onClick={() => router.push("/usuarios/whitelist")}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                <span>Whitelist</span>
+              </DropdownMenuItem>
+            )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => logout()}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
-          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

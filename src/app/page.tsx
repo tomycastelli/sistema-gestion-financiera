@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
+import AuthForm from "./components/AuthForm";
 import {
   Card,
   CardDescription,
@@ -57,7 +58,16 @@ export default async function Home() {
           ))}
         </div>
       ) : (
-        <h2 className="text-lg">Ingresa con tu usuario para poder continuar</h2>
+        <div className="flex flex-col items-center justify-center">
+          <h2 className="text-lg">
+            Ingresa con tu usuario para poder continuar
+          </h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Si es tu primer inicio de sesión, se creará una cuenta en este
+            portal con el nombre de tu cuenta de Google
+          </p>
+          <AuthForm />
+        </div>
       )}
     </div>
   );
