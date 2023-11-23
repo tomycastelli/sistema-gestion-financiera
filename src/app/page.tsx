@@ -64,7 +64,7 @@ export default async function Home() {
           </h2>
           <p className="mb-4 text-sm text-muted-foreground">
             Si es tu primer inicio de sesión, se creará una cuenta en este
-            portal con el nombre de tu cuenta de Google
+            portal con el nombre de tu cuenta
           </p>
           <AuthForm />
         </div>

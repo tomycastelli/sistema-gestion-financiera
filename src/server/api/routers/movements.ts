@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { dateReviver } from "~/lib/functions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -163,6 +164,23 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
+      let cachedBalancesString: string | null = "";
+      if (input.entityId) {
+        cachedBalancesString = await ctx.redis.get(`balance:${input.entityId}`);
+      }
+      if (input.entityTag) {
+        cachedBalancesString = await ctx.redis.get(
+          `balance:${input.entityTag}`,
+        );
+      }
+      if (cachedBalancesString) {
+        const cachedBalances: typeof transformedArray = JSON.parse(
+          cachedBalancesString,
+          dateReviver(["date"]),
+        );
+        return cachedBalances;
+      }
+
       const EntitiesBalanceSchema = z.array(
         z.object({
           entityid: z.number(),
@@ -263,6 +281,19 @@ ORDER BY
             }>;
           }[],
         );
+
+      if (input.entityId) {
+        await ctx.redis.set(
+          `balance:${input.entityId}`,
+          JSON.stringify(transformedArray),
+        );
+      }
+      if (input.entityTag) {
+        await ctx.redis.set(
+          `balance:${input.entityTag}`,
+          JSON.stringify(transformedArray),
+        );
+      }
 
       return transformedArray;
     }),
