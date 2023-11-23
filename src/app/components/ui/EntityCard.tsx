@@ -22,10 +22,16 @@ interface EntityCardProps {
 
 const EntityCard = ({ entity }: EntityCardProps) => {
   const { data: balances, isLoading } =
-    api.movements.getBalancesByEntities.useQuery({ entityId: entity?.id });
+    api.movements.getBalancesByEntitiesForCard.useQuery(
+      { entityId: entity?.id },
+      { refetchOnReconnect: false, staleTime: 182000 },
+    );
 
   const { data: balancesTag, isLoading: isLoadingTag } =
-    api.movements.getBalancesByEntities.useQuery({ entityTag: entity?.tag });
+    api.movements.getBalancesByEntitiesForCard.useQuery(
+      { entityTag: entity?.tag },
+      { refetchOnReconnect: false, staleTime: 182000 },
+    );
 
   let totals: ReturnType<typeof calculateTotalAllEntities> = [];
   if (balances) {

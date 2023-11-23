@@ -87,13 +87,6 @@ export const authOptions: NextAuthOptions = {
         } signed in at: ${new Date().toLocaleTimeString("es-AR")}`,
       );
     },
-    signOut: (message) => {
-      console.log(
-        `User ${
-          message.session.user.name
-        } signed out at ${new Date().toLocaleTimeString("es-AR")}`,
-      );
-    },
   },
   providers: [
     GoogleProvider({
