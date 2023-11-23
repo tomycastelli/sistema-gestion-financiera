@@ -63,7 +63,7 @@ export default async function Home() {
             Ingresa con tu usuario para poder continuar
           </h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            Si es tu primer inicio de sesión, se creará una cuenta en este
+            Si es tu primer inicio de sesión, se creará un usuario en este
             portal con el nombre de tu cuenta
           </p>
           <AuthForm />

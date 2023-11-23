@@ -48,12 +48,6 @@ export const authOptions: NextAuthOptions = {
     redirect() {
       return "/";
     },
-    signIn: async ({ user }) => {
-      const isWhitelisted = await api.users.isWhitelisted.query({
-        email: user.email ? user.email : "",
-      });
-      return isWhitelisted;
-    },
     session: ({ session, user }) => ({
       ...session,
       user: {
