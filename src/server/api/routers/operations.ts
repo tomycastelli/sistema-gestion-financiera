@@ -182,9 +182,21 @@ export const operationsRouter = createTRPCRouter({
                   confirmedByUser: true,
                 },
               },
-              operatorEntity: true,
-              fromEntity: true,
-              toEntity: true,
+              operatorEntity: {
+                include: {
+                  tag: true,
+                },
+              },
+              fromEntity: {
+                include: {
+                  tag: true,
+                },
+              },
+              toEntity: {
+                include: {
+                  tag: true,
+                },
+              },
             },
           },
         },
@@ -208,9 +220,21 @@ export const operationsRouter = createTRPCRouter({
         include: {
           transactions: {
             include: {
-              fromEntity: true,
-              toEntity: true,
-              operatorEntity: true,
+              fromEntity: {
+                include: {
+                  tag: true,
+                },
+              },
+              toEntity: {
+                include: {
+                  tag: true,
+                },
+              },
+              operatorEntity: {
+                include: {
+                  tag: true,
+                },
+              },
               movements: true,
               transactionMetadata: {
                 include: {

@@ -5,6 +5,7 @@ import { movementsRouter } from "./routers/movements";
 import { operationsRouter } from "./routers/operations";
 import { rolesRouter } from "./routers/roles";
 import { shareableLinksRouter } from "./routers/shareableLinks";
+import { tagsRouter } from "./routers/tags";
 import { usersRouter } from "./routers/users";
 
 /**
@@ -14,6 +15,7 @@ import { usersRouter } from "./routers/users";
  */
 export const appRouter = createTRPCRouter({
   entities: entitiesRouter,
+  tags: tagsRouter,
   operations: operationsRouter,
   editingOperations: editingOperationsRouter,
   movements: movementsRouter,

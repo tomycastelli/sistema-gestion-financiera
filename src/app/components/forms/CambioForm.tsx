@@ -13,7 +13,6 @@ import {
   useTransactionsStore,
   type SingleTransactionInStoreSchema,
 } from "~/stores/TransactionsStore";
-import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -47,19 +46,11 @@ const FormSchema = z.object({
 
 interface OperationFormProps {
   user: User;
-  initialEntities: RouterOutputs["entities"]["getAll"];
+  entities: RouterOutputs["entities"]["getAll"];
+  isLoading: boolean;
 }
 
-const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
-  const { isLoading, data: entities } = api.entities.getAll.useQuery(
-    undefined,
-    {
-      initialData: initialEntities,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-    },
-  );
-
+const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
     : null;
@@ -284,9 +275,11 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                       />
                       {watchEntityA && (
                         <EntityCard
-                          entity={entities.find(
-                            (obj) => obj.id.toString() === watchEntityA,
-                          )}
+                          entity={
+                            entities.find(
+                              (obj) => obj.id.toString() === watchEntityA,
+                            )!
+                          }
                         />
                       )}
                     </>
@@ -462,9 +455,11 @@ const CambioForm = ({ user, initialEntities }: OperationFormProps) => {
                       />
                       {watchEntityB && (
                         <EntityCard
-                          entity={entities.find(
-                            (obj) => obj.id.toString() === watchEntityB,
-                          )}
+                          entity={
+                            entities.find(
+                              (obj) => obj.id.toString() === watchEntityB,
+                            )!
+                          }
                         />
                       )}
                     </>

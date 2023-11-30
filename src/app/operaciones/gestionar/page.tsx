@@ -32,12 +32,15 @@ const Page = async ({
 
   const initialEntities = await api.entities.getAll.query();
 
+  const userPermissions = await api.users.getAllPermissions.query({});
+
   return (
     <div className="flex w-full flex-col">
       <h1 className="mb-4 text-4xl font-bold tracking-tighter">Operaciones</h1>
       <Suspense fallback={<LoadingAnimation text={"Cargando operaciones"} />}>
         {session && (
           <OperationsFeed
+            userPermissions={userPermissions}
             initialEntities={initialEntities}
             initialOperations={initialOperations}
             operationsQueryInput={operationsQueryInput}

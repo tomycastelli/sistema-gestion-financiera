@@ -41,13 +41,13 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ initialEntities }) => {
 
   const groupedEntities = entities.reduce(
     (acc, entity) => {
-      const existingGroup = acc.find((group) => group.tag === entity.tag);
+      const existingGroup = acc.find((group) => group.tag === entity.tag.name);
 
       if (existingGroup) {
         existingGroup.entities.push({ id: entity.id, name: entity.name });
       } else {
         acc.push({
-          tag: entity.tag,
+          tag: entity.tag.name,
           entities: [{ id: entity.id, name: entity.name }],
         });
       }

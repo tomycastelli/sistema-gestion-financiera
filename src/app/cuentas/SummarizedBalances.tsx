@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import {
   calculateTotalAllEntities,
+  getAllChildrenTags,
   getMonthKey,
   getWeekKey,
 } from "~/lib/functions";
@@ -46,6 +47,7 @@ interface SummarizedBalancesProps {
   movementsAmount: number;
   selectedTag: string | null;
   selectedEntityId: number | null;
+  initialTags: RouterOutputs["tags"]["getAll"];
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -55,6 +57,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   movementsAmount,
   selectedTag,
   selectedEntityId,
+  initialTags,
 }) => {
   const { data: balances } = api.movements.getBalancesByEntities.useQuery(
     initialBalancesInput,
@@ -63,6 +66,11 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       refetchOnWindowFocus: false,
     },
   );
+
+  const { data: tags } = api.tags.getAll.useQuery(undefined, {
+    initialData: initialTags,
+    refetchOnWindowFocus: false,
+  });
 
   const { selectedTimeframe, selectedCurrency, setSelectedCurrency } =
     useCuentasStore();
@@ -85,8 +93,10 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     });
 
   const tableData = movements.map((movement) => {
-    let otherEntity = { id: 0, name: "", tag: "" };
-    let selectedEntity = { id: 0, name: "", tag: "" };
+    let otherEntity = { id: 0, name: "", tagName: "" };
+    let selectedEntity = { id: 0, name: "", tagName: "" };
+    let ingress = 0;
+    let egress = 0;
 
     if (selectedEntityId) {
       otherEntity =
@@ -98,22 +108,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
         selectedEntityId === movement.transaction.fromEntity.id
           ? movement.transaction.fromEntity
           : movement.transaction.toEntity;
-    } else if (selectedTag) {
-      otherEntity =
-        movement.transaction.fromEntity.tag !== selectedTag
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
 
-      selectedEntity =
-        movement.transaction.fromEntity.tag === selectedTag
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
-    }
-
-    let ingress = 0;
-    let egress = 0;
-
-    if (selectedEntityId) {
       ingress =
         (selectedEntityId === movement.transaction.toEntity.id &&
           movement.direction === 1) ||
@@ -130,18 +125,32 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           ? movement.transaction.amount
           : 0;
     } else if (selectedTag) {
+      const tagAndAllChildren = getAllChildrenTags(selectedTag, tags);
+
+      otherEntity = !tagAndAllChildren.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.fromEntity
+        : movement.transaction.toEntity;
+
+      selectedEntity = tagAndAllChildren.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.fromEntity
+        : movement.transaction.toEntity;
+
       ingress =
-        (movement.transaction.toEntity.tag === selectedTag &&
+        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === 1) ||
-        (movement.transaction.fromEntity.tag === selectedTag &&
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
           movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
-        (movement.transaction.toEntity.tag === selectedTag &&
+        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === -1) ||
-        (movement.transaction.fromEntity.tag === selectedTag &&
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
           movement.direction === 1)
           ? movement.transaction.amount
           : 0;

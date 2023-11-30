@@ -1,22 +1,21 @@
 "use client";
 
-import type { Entities } from "@prisma/client";
 import Lottie from "lottie-react";
 import Link from "next/link";
 import loadingJson from "~/../public/animations/loading.json";
 import {
   calculateTotalAllEntities,
   capitalizeFirstLetter,
-  translateWord,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
 import BalanceTotals from "../BalanceTotals";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 
 interface EntityCardProps {
-  entity: Entities | undefined;
+  entity: RouterOutputs["entities"]["getAll"][number];
   className?: string;
 }
 
@@ -29,7 +28,7 @@ const EntityCard = ({ entity }: EntityCardProps) => {
 
   const { data: balancesTag, isLoading: isLoadingTag } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
-      { entityTag: entity?.tag },
+      { entityTag: entity.tag.name },
       { refetchOnReconnect: false, staleTime: 182000 },
     );
 
@@ -39,7 +38,6 @@ const EntityCard = ({ entity }: EntityCardProps) => {
   }
 
   let totalsTag: ReturnType<typeof calculateTotalAllEntities> = [];
-
   if (balancesTag) {
     totalsTag = calculateTotalAllEntities(balancesTag, "daily");
   }
@@ -50,13 +48,7 @@ const EntityCard = ({ entity }: EntityCardProps) => {
         <Card
           className={cn(
             "flex h-36 w-36 flex-col border",
-            entity.tag === "maika"
-              ? "border-green"
-              : entity.tag === "client"
-              ? "border-primary"
-              : entity.tag === "user"
-              ? "border-orange"
-              : "",
+            entity.tag.color && `border-${entity.tag.color}`,
           )}
         >
           <CardHeader>
@@ -95,9 +87,12 @@ const EntityCard = ({ entity }: EntityCardProps) => {
                 <CardDescription className="text-md">
                   <Link
                     className="flex transition-all hover:scale-110"
-                    href={{ pathname: "/cuentas", query: { tag: entity.tag } }}
+                    href={{
+                      pathname: "/cuentas",
+                      query: { tag: entity.tag.name },
+                    }}
                   >
-                    {capitalizeFirstLetter(translateWord(entity.tag))}
+                    {capitalizeFirstLetter(entity.tag.name)}
                   </Link>
                 </CardDescription>
               </HoverCardTrigger>

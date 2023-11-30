@@ -14,6 +14,7 @@ interface OperationsFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
+  userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const OperationsFeed: FC<OperationsFeedProps> = ({
@@ -21,6 +22,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   user,
   initialEntities,
   operationsQueryInput,
+  userPermissions,
 }) => {
   const { data: operations, isFetching } =
     api.operations.getOperations.useQuery(operationsQueryInput, {
@@ -52,6 +54,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
           return (
             <div key={op.id} className="flex flex-col">
               <Operation
+                userPermissions={userPermissions}
                 entities={entities}
                 operation={op}
                 operationsQueryInput={operationsQueryInput}

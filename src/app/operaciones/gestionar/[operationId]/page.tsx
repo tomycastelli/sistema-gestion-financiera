@@ -17,10 +17,13 @@ export default async function Page({
 
   const session = await getServerAuthSession();
 
+  const userPermissions = await api.users.getAllPermissions.query({});
+
   return (
     <div>
       {session && (
         <OperationDetails
+          userPermissions={userPermissions}
           initialOperations={operation}
           operationId={operationId}
           initialEntities={entities}

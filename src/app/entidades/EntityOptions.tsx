@@ -18,14 +18,8 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
   const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
     async onMutate(newOperation) {
       toast({
-        title: "You submitted the following values:",
-        description: (
-          <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-            <code className="text-white">
-              {JSON.stringify(newOperation, null, 2)}
-            </code>
-          </pre>
-        ),
+        title: `Entidad ${newOperation.entityId} eliminada`,
+        variant: "success",
       });
 
       // Doing the Optimistic update
@@ -45,7 +39,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
 
       // Doing some ui actions
       toast({
-        title: "No se pudo cargar la entidad",
+        title: "No se pudo eliminar la entidad",
         description: `${JSON.stringify(err.data)}`,
         variant: "destructive",
       });

@@ -12,6 +12,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^1.0.4",
     "@formkit/auto-animate": "0.8.0",
     "@hookform/resolvers": "3.3.2",
     "@mantine/hooks": "^7.1.7",
@@ -58,6 +59,7 @@
     "react-day-picker": "8.9.1",
     "react-dom": "18.2.0",
     "react-hook-form": "7.47.0",
+    "reactflow": "^11.10.1",
     "recharts": "^2.9.3",
     "superjson": "1.13.1",
     "tailwind-merge": "2.0.0",

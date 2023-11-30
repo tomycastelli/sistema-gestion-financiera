@@ -56,7 +56,6 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
   initialPermissions,
   initialEntities,
   userId,
-  session,
 }) => {
   const utils = api.useContext();
 
@@ -69,6 +68,11 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
     initialData: initialEntities,
     refetchOnWindowFocus: false,
   });
+
+  const { data: user } = api.users.getById.useQuery(
+    { id: userId },
+    { refetchOnReconnect: false },
+  );
 
   const { mutateAsync } = api.users.updatePermissions.useMutation({
     async onMutate(newOperation) {
@@ -164,8 +168,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       >
         <div className="mb-4 flex flex-row justify-between">
           <h1 className="text-2xl">
-            Permisos de{" "}
-            <span className="font-semibold">{session.user.name}</span>
+            Permisos de <span className="font-semibold">{user?.name}</span>
           </h1>
           <Button type="submit">Guardar</Button>
         </div>

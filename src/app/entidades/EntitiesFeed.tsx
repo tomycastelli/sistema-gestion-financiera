@@ -3,7 +3,11 @@
 import Lottie from "lottie-react";
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
-import { capitalizeFirstLetter, translateWord } from "~/lib/functions";
+import {
+  capitalizeFirstLetter,
+  isTagAllowed,
+  translateWord,
+} from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
@@ -19,13 +23,20 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import AddEntitiesForm from "./AddEntitiesForm";
+import AddTagsForm from "./AddTagsForm";
 import EntityOptions from "./EntityOptions";
 
 interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
+  userPermissions: RouterOutputs["users"]["getAllPermissions"];
+  initialTags: RouterOutputs["tags"]["getAll"];
 }
 
-const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
+const EntitiesFeed: FC<EntitiesFeedProps> = ({
+  initialEntities,
+  userPermissions,
+  initialTags,
+}) => {
   const [tagFilter, setTagFilter] = useState("todos");
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
@@ -36,7 +47,31 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
     },
   );
 
-  const tags = [...new Set(entities.map((entity) => entity.tag))];
+  const tags = [...new Set(entities.map((entity) => entity.tag.name))];
+
+  const manageableTags = initialTags.filter((tag) => {
+    if (
+      userPermissions?.find(
+        (p) => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE",
+      )
+    ) {
+      return true;
+    } else if (
+      userPermissions?.find((p) => p.name === "ENTITIES_MANAGE_SOME")
+        ?.entitiesTags
+    ) {
+      if (
+        isTagAllowed(
+          initialTags,
+          tag.name,
+          userPermissions?.find((p) => p.name === "ENTITIES_MANAGE_SOME")
+            ?.entitiesTags,
+        )
+      ) {
+        return true;
+      }
+    }
+  });
 
   const {
     results: filteredEntities,
@@ -74,7 +109,16 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
             </SelectContent>
           </Select>
         </div>
-        <AddEntitiesForm />
+        <div className="flex flex-row space-x-4">
+          <AddEntitiesForm
+            initialTags={initialTags}
+            userPermissions={userPermissions}
+          />
+          <AddTagsForm
+            initialTags={initialTags}
+            userPermissions={userPermissions}
+          />
+        </div>
       </div>
       <div className="flex items-center justify-center">
         {isLoading ? (
@@ -86,7 +130,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
                 if (tagFilter === "todos") {
                   return true;
                 }
-                return entity.tag === tagFilter;
+                return entity.tag.name === tagFilter;
               })
               .map((entity) => (
                 <div
@@ -94,7 +138,21 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({ initialEntities }) => {
                   className="flex flex-col items-center justify-center space-y-2 self-start"
                 >
                   <EntityCard entity={entity} />
-                  {entity.tag !== "user" && <EntityOptions entity={entity} />}
+                  {entity.tag.name !== "user" &&
+                    (userPermissions?.find(
+                      (p) => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE",
+                    ) ||
+                      (userPermissions?.find(
+                        (p) => p.name === "ENTITIES_MANAGE_SOME",
+                      ) &&
+                        (userPermissions
+                          .find((p) => p.name === "ENTITIES_MANAGE_SOME")
+                          ?.entitiesIds?.includes(entity.id) ||
+                          manageableTags
+                            ?.map((tag) => tag.name)
+                            .includes(entity.tag.name)))) && (
+                      <EntityOptions entity={entity} />
+                    )}
                 </div>
               ))}
           </div>

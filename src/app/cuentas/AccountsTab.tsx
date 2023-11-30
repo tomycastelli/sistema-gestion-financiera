@@ -8,10 +8,12 @@ const AccountsTable = async ({
   searchParams,
   initialBalances,
   accountType,
+  initialTags,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
   accountType: boolean;
+  initialTags: RouterOutputs["tags"]["getAll"];
 }) => {
   const session = await getServerAuthSession();
   console.log(session);
@@ -42,11 +44,25 @@ const AccountsTable = async ({
     account: accountType ? "caja" : "cuenta_corriente",
   });
 
+  const initialDetailedBalances = await api.movements.getDetailedBalance.query({
+    linkId: linkId,
+    linkToken: linkToken,
+    entityId: selectedEntity,
+    entityTag: selectedTag,
+  });
+
   return (
     <div className="flex flex-grow flex-col space-y-8">
-      <Balances accountType={accountType} initialBalances={initialBalances} />
+      <Balances
+        accountType={accountType}
+        initialBalances={initialBalances}
+        initialDetailedBalances={initialDetailedBalances}
+      />
       {isPerspectiveSelected && (
         <MovementsTable
+          linkId={linkId}
+          linkToken={linkToken}
+          initialTags={initialTags}
           accountType={accountType}
           session={session}
           pageSize={pageSize}

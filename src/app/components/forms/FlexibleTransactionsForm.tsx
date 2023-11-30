@@ -2,14 +2,13 @@
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Entities } from "@prisma/client";
 import { Separator } from "@radix-ui/react-dropdown-menu";
 import type { User } from "next-auth";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { currencies, operationTypes, paymentMethods } from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
-import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
 import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
@@ -42,22 +41,15 @@ const FormSchema = z.object({
 
 interface FlexibleTransactionsFormProps {
   user: User;
-  initialEntities: Entities[];
+  entities: RouterOutputs["entities"]["getAll"];
+  isLoading: boolean;
 }
 
 const FlexibleTransactionsForm = ({
   user,
-  initialEntities,
+  entities,
+  isLoading,
 }: FlexibleTransactionsFormProps) => {
-  const { isLoading, data: entities } = api.entities.getAll.useQuery(
-    undefined,
-    {
-      initialData: initialEntities,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-    },
-  );
-
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id ?? ""
     : "";
@@ -142,11 +134,13 @@ const FlexibleTransactionsForm = ({
                         {watchTransactions[index]?.fromEntityId && (
                           <EntityCard
                             className="w-[150px]"
-                            entity={entities.find(
-                              (obj) =>
-                                obj.id.toString() ===
-                                watchTransactions[index]?.fromEntityId,
-                            )}
+                            entity={
+                              entities.find(
+                                (obj) =>
+                                  obj.id.toString() ===
+                                  watchTransactions[index]?.fromEntityId,
+                              )!
+                            }
                           />
                         )}
                         <FormMessage />
@@ -285,11 +279,13 @@ const FlexibleTransactionsForm = ({
                       {watchTransactions[index]?.toEntityId && (
                         <EntityCard
                           className="w-[150px]"
-                          entity={entities.find(
-                            (obj) =>
-                              obj.id.toString() ===
-                              watchTransactions[index]?.toEntityId,
-                          )}
+                          entity={
+                            entities.find(
+                              (obj) =>
+                                obj.id.toString() ===
+                                watchTransactions[index]?.toEntityId,
+                            )!
+                          }
                         />
                       )}
                       <FormMessage />
@@ -300,12 +296,17 @@ const FlexibleTransactionsForm = ({
             </div>
             <div className="mt-4 flex flex-row justify-center space-x-8">
               {index > 0 && (
-                <Button type="button" onClick={() => remove(index)}>
+                <Button
+                  type="button"
+                  onClick={() => remove(index)}
+                  variant="outline"
+                >
                   <Icons.removePackage className="h-6 text-red" />
                 </Button>
               )}
               <Button
                 type="button"
+                variant="outline"
                 onClick={() =>
                   append({
                     fromEntityId: "",

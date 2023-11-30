@@ -13,6 +13,7 @@ import DetailMovementsTable from "./DetailMovementsTable";
 interface OperationDetailsProps {
   initialOperations: RouterOutputs["operations"]["getOperationDetails"];
   initialEntities: RouterOutputs["entities"]["getAll"];
+  userPermissions: RouterOutputs["users"]["getAllPermissions"];
   operationId: string;
   session: Session;
 }
@@ -21,6 +22,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
   initialOperations,
   initialEntities,
   operationId,
+  userPermissions,
   session,
 }) => {
   const router = useRouter();
@@ -80,6 +82,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
               {operation.transactions.map((tx, index) => (
                 <Transaction
                   key={tx.id}
+                  userPermissions={userPermissions}
                   transaction={tx}
                   txIdx={index}
                   entities={entities}

@@ -345,6 +345,74 @@ export const calculateTotalAllEntities = (
   return result;
 };
 
+interface Tag {
+  name: string;
+  parent: string | null;
+  color: string | null;
+}
+
+// Recursive function which looks the whole tree branch
+export function isTagAllowed(
+  allTags: Tag[],
+  tagName: string,
+  allowedTags: string[] | undefined,
+): boolean {
+  if (!allowedTags) {
+    return false;
+  }
+
+  const tag = allTags.find((t) => t.name === tagName);
+
+  if (!tag) {
+    return false; // Tag not found, consider it not allowed
+  }
+
+  if (allowedTags.includes(tag.name)) {
+    return true; // Tag directly allowed
+  }
+
+  // Check if any parent is allowed
+  if (tag.parent && isTagAllowed(allTags, tag.parent, allowedTags)) {
+    return true;
+  }
+
+  return false; // Tag and its hierarchy are not allowed
+}
+
+export function getAllChildrenTags(
+  tagName: string,
+  allTags: Tag[],
+  result: string[] = [],
+): string[] {
+  // Find direct children of the current tag
+  const children = allTags.filter((t) => t.parent === tagName);
+
+  // Add the current tag to the result array
+  result.push(tagName);
+
+  // Recursively find children of each child
+  for (const child of children) {
+    getAllChildrenTags(child.name, allTags, result);
+  }
+
+  return result;
+}
+
+export function findColor(tag: Tag, allTags: Tag[]): string | null {
+  if (tag.color !== null) {
+    return tag.color; // If the tag itself has a color, return it
+  }
+
+  if (tag.parent !== null) {
+    const parentTag = allTags.find((t) => t.name === tag.parent);
+    if (parentTag) {
+      return findColor(parentTag, allTags); // Recursively look for the color in the parent tag
+    }
+  }
+
+  return null; // No color found in the tag or its parents
+}
+
 // Function to get the week key based on a date
 export function getWeekKey(date: Date) {
   const year = date.getFullYear();

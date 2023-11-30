@@ -1,7 +1,6 @@
 "use client";
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import type { Entities } from "@prisma/client";
 import type { User } from "next-auth";
 import { useState } from "react";
 import { capitalizeFirstLetter } from "~/lib/functions";
@@ -34,17 +33,19 @@ import FlexibleTransactionsForm from "./FlexibleTransactionsForm";
 import InitialDataOperationForm from "./InitialDataOperationForm";
 
 interface AddOperationProps {
-  entities: Entities[] | undefined;
+  initialEntities: RouterOutputs["entities"]["getAll"];
   user: User;
+  userPermissions: RouterOutputs["users"]["getAllPermissions"];
   initialOperations:
     | RouterOutputs["operations"]["getOperationsByUser"]
     | undefined;
 }
 
 const AddOperation = ({
-  entities,
+  initialEntities,
   user,
   initialOperations,
+  userPermissions,
 }: AddOperationProps) => {
   const { toast } = useToast();
   const [parent] = useAutoAnimate();
@@ -157,6 +158,38 @@ const AddOperation = ({
       console.error(error);
     }
   };
+
+  const { isLoading: isEntitiesLoading, data: allEntities } =
+    api.entities.getAll.useQuery(undefined, {
+      initialData: initialEntities,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    });
+
+  let entities: typeof allEntities = [];
+
+  if (
+    userPermissions?.find(
+      (obj) => obj.name === "ADMIN" || obj.name === "OPERATIONS_CREATE",
+    )
+  ) {
+    entities = allEntities;
+  } else if (
+    userPermissions?.find((obj) => obj.name === "OPERATIONS_CREATE_SOME")
+  ) {
+    const ids = userPermissions.find(
+      (obj) => obj.name === "OPERATIONS_CREATE_SOME",
+    )?.entitiesIds;
+    const tags = userPermissions.find(
+      (obj) => obj.name === "OPERATIONS_CREATE_SOME",
+    )?.entitiesTags;
+    entities = allEntities.filter(
+      (entity) =>
+        tags?.includes(entity.tag.name) ||
+        ids?.includes(entity.id) ||
+        entity.name === user.name,
+    );
+  }
 
   return (
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
@@ -319,12 +352,17 @@ const AddOperation = ({
                   className="mx-auto flex flex-col items-center"
                 >
                   <FlexibleTransactionsForm
-                    initialEntities={entities}
+                    isLoading={isEntitiesLoading}
+                    entities={entities}
                     user={user}
                   />
                 </TabsContent>
                 <TabsContent value="cambio">
-                  <CambioForm initialEntities={entities} user={user} />
+                  <CambioForm
+                    entities={entities}
+                    user={user}
+                    isLoading={isEntitiesLoading}
+                  />
                 </TabsContent>
               </Tabs>
             </div>

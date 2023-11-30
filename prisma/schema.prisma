@@ -63,7 +63,15 @@ model Role {
   id    Int @id @default(autoincrement())
   name String
   permissions Json
+  color String?
   users User[]
+}
+
+model Tag {
+  name String @id
+  parent String?
+  color String?
+  entities Entities[]
 }
 
 model VerificationToken {
@@ -110,14 +118,15 @@ model Transactions {
 model Entities {
   id         Int          @id @default(autoincrement())
   name       String @unique
-  tag        String
+  tag        Tag     @relation(fields: [tagName], references: [name])
+  tagName        String
   transactionsFrom  Transactions[] @relation("fromEntity")
   transactionsTo    Transactions[] @relation("toEntity")
   transactionsOperator Transactions[] @relation("operatorEntity")
   linksSharedEntity Links[] @relation("sharedEntity")
 
   @@index([name])
-  @@index([tag])
+  @@index([tagName])
 }
 
 model Movements {

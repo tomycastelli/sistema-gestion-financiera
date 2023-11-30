@@ -9,11 +9,14 @@ const page = async () => {
 
   const operations = await api.operations.getOperationsByUser.query();
 
+  const userPermissions = await api.users.getAllPermissions.query({});
+
   return (
     <div className="h-full">
       {session?.user && (
         <AddOperation
-          entities={entities}
+          userPermissions={userPermissions}
+          initialEntities={entities}
           user={session?.user}
           initialOperations={operations}
         />

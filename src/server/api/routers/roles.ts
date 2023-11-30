@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getAllPermissions } from "~/lib/getAllPermisions";
 import { PermissionSchema } from "~/lib/permissionsTypes";
+import { getAllPermissions } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const rolesRouter = createTRPCRouter({
@@ -19,15 +19,56 @@ export const rolesRouter = createTRPCRouter({
     );
 
     if (hasPermissions) {
-      const response = await ctx.db.role.findMany();
+      const response = await ctx.db.role.findMany({
+        include: {
+          users: true,
+        },
+      });
 
       return response;
     } else {
       return null;
     }
   }),
+  getById: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
+        (permission) =>
+          permission.name === "ADMIN" ||
+          permission.name === "USERS_ROLES_VISUALIZE",
+      );
+
+      if (hasPermissions) {
+        const response = await ctx.db.role.findUnique({
+          where: {
+            id: input.id,
+          },
+          include: {
+            users: true,
+          },
+        });
+
+        return response;
+      } else {
+        return null;
+      }
+    }),
   addOne: protectedProcedure
-    .input(z.object({ name: z.string(), permissions: PermissionSchema }))
+    .input(
+      z.object({
+        name: z.string(),
+        permissions: PermissionSchema,
+        color: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const permissions = await getAllPermissions(
         ctx.redis,
@@ -47,6 +88,7 @@ export const rolesRouter = createTRPCRouter({
           data: {
             name: input.name,
             permissions: input.permissions,
+            color: input.color,
           },
         });
 
@@ -76,7 +118,17 @@ export const rolesRouter = createTRPCRouter({
           where: {
             id: input.id,
           },
+          include: {
+            users: true,
+          },
         });
+
+        const pipeline = ctx.redis.pipeline();
+        response.users.forEach((user) => {
+          pipeline.del(`user_permissions:${user.id}`);
+        });
+
+        await pipeline.exec();
 
         return response;
       } else {
@@ -89,6 +141,7 @@ export const rolesRouter = createTRPCRouter({
         id: z.number().int(),
         name: z.string(),
         permissions: PermissionSchema,
+        color: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -113,8 +166,19 @@ export const rolesRouter = createTRPCRouter({
           data: {
             name: input.name,
             permissions: input.permissions,
+            color: input.color,
+          },
+          include: {
+            users: true,
           },
         });
+
+        const pipeline = ctx.redis.pipeline();
+        response.users.forEach((user) => {
+          pipeline.del(`user_permissions:${user.id}`);
+        });
+
+        await pipeline.exec();
 
         return response;
       } else {

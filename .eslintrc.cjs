@@ -20,6 +20,7 @@ const config = {
     "@typescript-eslint/no-unsafe-member-access": "off",
     "@typescript-eslint/no-unsafe-call": "off",
     "@typescript-eslint/no-unsafe-argument": "off",
+    "@typescript-eslint/prefer-nullish-coalescing": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/prefer-optional-chain": "off",
     "@typescript-eslint/ban-ts-comment": "off",

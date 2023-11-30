@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { dateReviver } from "~/lib/functions";
+import { dateReviver, getAllChildrenTags } from "~/lib/functions";
+import { getAllTags } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -74,19 +75,22 @@ export const movementsRouter = createTRPCRouter({
       }
 
       if (input.entityTag) {
+        const tags = await getAllTags(ctx.redis, ctx.db);
+        const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
+
         whereConditions.push({
           transaction: {
             OR: [
               {
                 AND: [
-                  { fromEntity: { tag: input.entityTag } },
-                  { toEntity: { tag: { not: input.entityTag } } },
+                  { fromEntity: { tagName: { in: tagAndChildren } } },
+                  { toEntity: { tagName: { notIn: tagAndChildren } } },
                 ],
               },
               {
                 AND: [
-                  { fromEntity: { tag: { not: input.entityTag } } },
-                  { toEntity: { tag: input.entityTag } },
+                  { fromEntity: { tagName: { notIn: tagAndChildren } } },
+                  { toEntity: { tagName: { in: tagAndChildren } } },
                 ],
               },
             ],
@@ -182,7 +186,7 @@ export const movementsRouter = createTRPCRouter({
       SELECT
   e.id as entityId,
   e.name as entityName,
-  e.tag as entityTag,
+  e."tagName" as entityTag,
   DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
   t.currency,
   m.status as movementStatus,
@@ -203,11 +207,22 @@ FROM
   LEFT JOIN "Operations" o ON t."operationId" = o.id
 WHERE
  ${input.entityId ? Prisma.sql`e.id = ${input.entityId}` : Prisma.sql`1=1`}
-  ${input.entityTag ? Prisma.sql`AND e.tag = ${input.entityTag}` : Prisma.sql``}
+ ${
+   input.entityTag
+     ? Prisma.sql`AND e."tagName" = ANY(${Prisma.raw(
+         `ARRAY[${getAllChildrenTags(
+           input.entityTag,
+           await getAllTags(ctx.redis, ctx.db),
+         )
+           .map((tag) => `'${tag}'`)
+           .join(",")}]`,
+       )})`
+     : Prisma.sql``
+ }
 GROUP BY
   e.id,
   e.name,
-  e.tag,
+  e."tagName",
   DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
   t.currency,
   m.status
@@ -337,7 +352,7 @@ ORDER BY
       SELECT
   e.id as entityId,
   e.name as entityName,
-  e.tag as entityTag,
+  e."tagName" as entityTag,
   DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
   t.currency,
   m.status as movementStatus,
@@ -358,11 +373,22 @@ FROM
   LEFT JOIN "Operations" o ON t."operationId" = o.id
 WHERE
  ${input.entityId ? Prisma.sql`e.id = ${input.entityId}` : Prisma.sql`1=1`}
-  ${input.entityTag ? Prisma.sql`AND e.tag = ${input.entityTag}` : Prisma.sql``}
+ ${
+   input.entityTag
+     ? Prisma.sql`AND e."tagName" = ANY(${Prisma.raw(
+         `ARRAY[${getAllChildrenTags(
+           input.entityTag,
+           await getAllTags(ctx.redis, ctx.db),
+         )
+           .map((tag) => `'${tag}'`)
+           .join(",")}]`,
+       )})`
+     : Prisma.sql``
+ }
 GROUP BY
   e.id,
   e.name,
-  e.tag,
+  e."tagName",
   DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
   t.currency,
   m.status
@@ -472,20 +498,23 @@ ORDER BY
           },
         });
       } else if (input.entityTag) {
+        const tags = await getAllTags(ctx.redis, ctx.db);
+        const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
+
         whereConditions.push({
           transaction: {
             currency: input.currency,
             OR: [
               {
                 AND: [
-                  { fromEntity: { tag: input.entityTag } },
-                  { toEntity: { tag: { not: input.entityTag } } },
+                  { fromEntity: { tagName: { in: tagAndChildren } } },
+                  { toEntity: { tagName: { notIn: tagAndChildren } } },
                 ],
               },
               {
                 AND: [
-                  { fromEntity: { tag: { not: input.entityTag } } },
-                  { toEntity: { tag: input.entityTag } },
+                  { fromEntity: { tagName: { notIn: tagAndChildren } } },
+                  { toEntity: { tagName: { in: tagAndChildren } } },
                 ],
               },
             ],
@@ -519,5 +548,128 @@ ORDER BY
       });
 
       return movements;
+    }),
+  getDetailedBalance: publicProcedure
+    .input(
+      z.object({
+        entityId: z.number().int().optional().nullable(),
+        entityTag: z.string().optional().nullable(),
+        linkId: z.number().optional().nullable(),
+        linkToken: z.string().optional().nullable(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      let isRequestValid = false;
+
+      if (ctx.session?.user !== undefined) {
+        isRequestValid = true;
+      } else if (input.linkId && input.linkToken && input.entityId) {
+        const link = await ctx.db.links.findUnique({
+          where: {
+            id: input.linkId,
+            sharedEntityId: input.entityId,
+            password: input.linkToken,
+          },
+        });
+
+        if (link) {
+          isRequestValid = true;
+        }
+      }
+
+      if (!isRequestValid) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no está registrado o el link no es válido",
+        });
+      }
+
+      const balanceSchema = z.array(
+        z.object({
+          currency: z.string(),
+          entityid: z.number().int(),
+          entitytag: z.string(),
+          entityname: z.string(),
+          balance: z.number(),
+        }),
+      );
+
+      const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
+          SELECT
+            t.currency,
+            e.id as entityId,
+            e."tagName" as entityTag,
+            e.name as entityName,
+            COALESCE(SUM(
+              CASE
+                WHEN m."direction" = -1 THEN t."amount"
+                WHEN m."direction" = 1 THEN -t."amount"
+                ELSE 0
+              END
+            ), 0) as balance
+          FROM
+            "Transactions" t
+          JOIN
+            "Entities" e ON t."fromEntityId" = e.id OR t."toEntityId" = e.id
+          LEFT JOIN
+            "Movements" m ON t.id = m."transactionId"
+            WHERE
+  ${
+    input.entityId
+      ? Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId}`
+      : Prisma.sql``
+  }
+  ${
+    input.entityTag
+      ? Prisma.sql`
+      (
+        t."fromEntityId" IN (
+          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+            `ARRAY[${getAllChildrenTags(
+              input.entityTag,
+              await getAllTags(ctx.redis, ctx.db),
+            )
+              .map((tag) => `'${tag}'`)
+              .join(",")}]`,
+          )})
+        ) AND t."toEntityId" NOT IN (
+          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+            `ARRAY[${getAllChildrenTags(
+              input.entityTag,
+              await getAllTags(ctx.redis, ctx.db),
+            )
+              .map((tag) => `'${tag}'`)
+              .join(",")}]`,
+          )})
+        )
+      ) OR (
+        t."toEntityId" IN (
+          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+            `ARRAY[${getAllChildrenTags(
+              input.entityTag,
+              await getAllTags(ctx.redis, ctx.db),
+            )
+              .map((tag) => `'${tag}'`)
+              .join(",")}]`,
+          )})
+        ) AND t."fromEntityId" NOT IN (
+          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+            `ARRAY[${getAllChildrenTags(
+              input.entityTag,
+              await getAllTags(ctx.redis, ctx.db),
+            )
+              .map((tag) => `'${tag}'`)
+              .join(",")}]`,
+          )})
+        )
+      )
+    `
+      : Prisma.sql``
+  }
+          GROUP BY
+            t.currency, e.id, e."tagName", e.name
+        `;
+
+      return balances;
     }),
 });

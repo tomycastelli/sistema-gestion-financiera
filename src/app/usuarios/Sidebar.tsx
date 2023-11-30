@@ -12,7 +12,7 @@ interface SidebarProps {
   session: Session;
 }
 
-const Sidebar: FC<SidebarProps> = ({ session }) => {
+const Sidebar: FC<SidebarProps> = () => {
   const pathname = usePathname();
 
   const { data: permissions } = api.users.getAllPermissions.useQuery({});
@@ -40,7 +40,7 @@ const Sidebar: FC<SidebarProps> = ({ session }) => {
           href="/usuarios/permisos"
           className={cn(
             buttonVariants({ variant: "ghost" }),
-            pathname === "/usuarios/permisos"
+            pathname.startsWith("/usuarios/permisos")
               ? "bg-muted hover:bg-muted"
               : "hover:bg-transparent hover:underline",
             "justify-start",
@@ -52,19 +52,19 @@ const Sidebar: FC<SidebarProps> = ({ session }) => {
       {permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
-          permission.name === "USERS_WHITELIST_VISUALIZE",
+          permission.name === "USERS_ROLES_VISUALIZE",
       ) && (
         <Link
-          href="/usuarios/whitelist"
+          href="/usuarios/roles"
           className={cn(
             buttonVariants({ variant: "ghost" }),
-            pathname === "/usuarios/whitelist"
+            pathname.startsWith("/usuarios/roles")
               ? "bg-muted hover:bg-muted"
               : "hover:bg-transparent hover:underline",
             "justify-start",
           )}
         >
-          Whitelist
+          Roles
         </Link>
       )}
     </nav>

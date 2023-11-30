@@ -28,16 +28,7 @@ const Page = async ({
     ? parseInt(selectedEntityIdString)
     : null;
 
-  let initialEntities = [
-    {
-      id: 0,
-      name: "",
-      tag: "",
-    },
-  ];
-  if (session) {
-    initialEntities = await api.entities.getAll.query();
-  }
+  const initialEntities = await api.entities.getAll.query();
 
   const initialBalancesInput = {
     entityTag: selectedTag,
@@ -66,6 +57,8 @@ const Page = async ({
     queryInput,
   );
 
+  const initialTags = await api.tags.getAll.query();
+
   return (
     <div>
       <div className="flex w-full flex-row justify-between space-x-4 border-b border-muted pb-4">
@@ -83,6 +76,7 @@ const Page = async ({
             accountType={false}
             searchParams={searchParams}
             initialBalances={initialBalances}
+            initialTags={initialTags}
           />
         )}
         {selectedTab === "caja" && (
@@ -90,12 +84,14 @@ const Page = async ({
             accountType={true}
             searchParams={searchParams}
             initialBalances={initialBalances}
+            initialTags={initialTags}
           />
         )}
         {selectedTab === "resumen" && (
           <div>
             {initialBalances.length > 0 ? (
               <SummarizedBalances
+                initialTags={initialTags}
                 initialBalances={initialBalances}
                 initialMovements={initialMovements}
                 movementsAmount={movementsAmount}

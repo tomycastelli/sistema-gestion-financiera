@@ -12,13 +12,12 @@ export const PermissionsNames = [
   "TRANSACTIONS_UPDATE_SOME",
   "TRANSACTIONS_VALIDATE",
   "TRANSACTIONS_VALIDATE_SOME",
+  "TRANSACTIONS_DELETE",
+  "TRANSACTIONS_DELETE_SOME",
   "ACCOUNTS_VISUALIZE",
   "ACCOUNTS_VISUALIZE_SOME",
-  "ENTITIES_CREATE",
-  "ENTITIES_UPDATE",
-  "ENTITIES_DELETE",
-  "USERS_WHITELIST_VISUALIZE",
-  "USERS_WHITELIST_MANAGE",
+  "ENTITIES_MANAGE",
+  "ENTITIES_MANAGE_SOME",
   "USERS_PERMISSIONS_VISUALIZE",
   "USERS_PERMISSIONS_MANAGE",
   "USERS_PERMISSIONS_MANAGE_OPERATIONS",
@@ -41,39 +40,47 @@ export const mergePermissions = (
   permissions1: z.infer<typeof PermissionSchema>,
   permissions2: z.infer<typeof PermissionSchema>,
 ) => {
-  const permissionMap: Record<
-    string,
-    z.infer<typeof PermissionSchema>[number]
-  > = {};
+  const mergedPermissions: typeof permissions1 = [];
 
-  const updatePermission = (
-    permission: z.infer<typeof PermissionSchema>[number],
+  const addToMergedPermissions = (
+    permission: (typeof permissions1)[number],
   ) => {
-    const existingPermission = permissionMap[permission.name];
+    const existingPermission = mergedPermissions.find(
+      (p) => p.name === permission.name,
+    );
 
-    if (!existingPermission) {
-      permissionMap[permission.name] = permission;
-    } else {
+    if (existingPermission) {
+      // Merge entitiesIds and entitiesTags if both have _SOME in their names
       if (
-        (!existingPermission.entitiesIds ||
-          (permission.entitiesIds &&
-            permission.entitiesIds.length >
-              existingPermission.entitiesIds.length)) &&
-        (!existingPermission.entitiesTags ||
-          (permission.entitiesTags &&
-            permission.entitiesTags.length >
-              existingPermission.entitiesTags.length))
+        permission.name.endsWith("_SOME") &&
+        existingPermission.name.endsWith("_SOME")
       ) {
-        permissionMap[permission.name] = permission;
+        existingPermission.entitiesIds = Array.from(
+          new Set([
+            ...(existingPermission.entitiesIds ?? []),
+            ...(permission.entitiesIds ?? []),
+          ]),
+        );
+        existingPermission.entitiesTags = Array.from(
+          new Set([
+            ...(existingPermission.entitiesTags ?? []),
+            ...(permission.entitiesTags ?? []),
+          ]),
+        );
       }
+    } else {
+      // If the permission doesn't exist in the merged array, add it
+      mergedPermissions.push({ ...permission });
     }
   };
 
-  permissions1.forEach(updatePermission);
-  permissions2.forEach(updatePermission);
+  // Add permissions from the first array
+  permissions1.forEach(addToMergedPermissions);
 
-  const result = Object.values(permissionMap);
-  return result;
+  // Add permissions from the second array
+  permissions2.forEach(addToMergedPermissions);
+
+  return mergedPermissions;
 };
 
 const permissionsDataSchema = z.array(
@@ -87,7 +94,7 @@ const permissionsDataSchema = z.array(
 export const permissionsData: z.infer<typeof permissionsDataSchema> = [
   {
     name: "ADMIN",
-    label: "Admin",
+    label: "Administrador",
     description: "Todos los permisos",
   },
   {
@@ -117,7 +124,7 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
   },
   {
     name: "OPERATIONS_VISUALIZE_SOME",
-    label: "Visualize algunas operaciones",
+    label: "Visualizar algunas operaciones",
     description: "Visualizar operaciones según la entidad",
   },
   {
@@ -137,8 +144,18 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
   },
   {
     name: "TRANSACTIONS_VALIDATE_SOME",
-    label: "Validate algunas transacciones",
+    label: "Validar algunas transacciones",
     description: "Validar transacciones según la entidad",
+  },
+  {
+    name: "TRANSACTIONS_DELETE",
+    label: "Eliminar transacciones",
+    description: "Eliminar todas las transacciones",
+  },
+  {
+    name: "TRANSACTIONS_DELETE_SOME",
+    label: "Eliminar algunas transacciones",
+    description: "Eliminar transacciones según la entidad",
   },
   {
     name: "ACCOUNTS_VISUALIZE",
@@ -151,29 +168,14 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     description: "Visualizar cuentas segun la entidad",
   },
   {
-    name: "ENTITIES_CREATE",
-    label: "Crear entidades",
-    description: "Crear entidades",
+    name: "ENTITIES_MANAGE",
+    label: "Manejar entidades",
+    description: "Crear, cambiar y eliminar entidades",
   },
   {
-    name: "ENTITIES_UPDATE",
-    label: "Actualizar entidades",
-    description: "Actualizar entidades",
-  },
-  {
-    name: "ENTITIES_DELETE",
-    label: "Eliminar entidades",
-    description: "Eliminar entidades",
-  },
-  {
-    name: "USERS_WHITELIST_VISUALIZE",
-    label: "Visualizar la whitelist de usuarios",
-    description: "Visualizar la whitelist de usuarios",
-  },
-  {
-    name: "USERS_WHITELIST_MANAGE",
-    label: "Visualizar la whitelist de usuarios",
-    description: "Visualizar la whitelist de usuarios",
+    name: "ENTITIES_MANAGE_SOME",
+    label: "Manejar algunas entidades",
+    description: "Crear, cambiar y eliminar algunas entidades",
   },
   {
     name: "USERS_PERMISSIONS_VISUALIZE",

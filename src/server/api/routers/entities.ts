@@ -1,4 +1,3 @@
-import type { Entities } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -16,12 +15,18 @@ export const entitiesRouter = createTRPCRouter({
 
     if (cachedEntities) {
       console.log("Entities queried from cache");
-      const parsedEntities = JSON.parse(cachedEntities) as Entities[];
+      const parsedEntities: typeof entities = JSON.parse(cachedEntities);
 
       return parsedEntities;
     }
 
-    const entities = await ctx.db.entities.findMany();
+    const entities = await ctx.db.entities.findMany({
+      select: {
+        id: true,
+        name: true,
+        tag: true,
+      },
+    });
 
     console.log("Entities queried from database");
 
@@ -46,7 +51,7 @@ export const entitiesRouter = createTRPCRouter({
       const insertResponse = await ctx.db.entities.create({
         data: {
           name: input.name,
-          tag: input.tag,
+          tagName: input.tag,
         },
       });
 
@@ -81,7 +86,7 @@ export const entitiesRouter = createTRPCRouter({
         },
         data: {
           name: input.name,
-          tag: input.tag,
+          tagName: input.tag,
         },
       });
 

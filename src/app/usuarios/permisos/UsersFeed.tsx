@@ -1,9 +1,9 @@
 "use client";
 
 import Lottie from "lottie-react";
-import Link from "next/link";
 import { type FC } from "react";
 import loadingJson from "~/../public/animations/loading.json";
+import UserCard from "~/app/components/ui/UserCard";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -20,16 +20,7 @@ const UsersFeed: FC<UsersFeedProps> = ({ initialUsers }) => {
   return (
     <div className="grid grid-cols-5 gap-2">
       {!isLoading ? (
-        users.map((user) => (
-          <Link
-            href={`/usuarios/permisos/${user.id}`}
-            key={user.id}
-            className="flex flex-col items-center justify-center space-y-1 rounded-xl border border-muted p-4 transition-all hover:scale-105"
-          >
-            <h1 className="text-lg font-semibold">{user.name}</h1>
-            <p>{user.email}</p>
-          </Link>
-        ))
+        users.map((user) => <UserCard user={user} key={user.id} />)
       ) : (
         <Lottie animationData={loadingJson} className="h-24" loop={true} />
       )}

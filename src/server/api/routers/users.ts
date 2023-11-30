@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getAllPermissions } from "~/lib/getAllPermisions";
-import { PermissionSchema } from "~/lib/permissionsTypes";
+import { PermissionSchema, mergePermissions } from "~/lib/permissionsTypes";
+import { getAllPermissions } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const usersRouter = createTRPCRouter({
@@ -47,241 +47,67 @@ export const usersRouter = createTRPCRouter({
     const response = await ctx.db.user.findMany();
     return response;
   }),
-  isWhitelisted: publicProcedure
-    .input(z.object({ email: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const response = await ctx.db.emailWhitelist.findUnique({
-        where: {
-          email: input.email,
-        },
-      });
-
-      if (response) {
-        return true;
-      } else {
-        return false;
-      }
-    }),
-  getWhitelist: protectedProcedure.query(async ({ ctx }) => {
-    const permissions = await getAllPermissions(
-      ctx.redis,
-      ctx.session,
-      ctx.db,
-      {},
-    );
-
-    const hasPermissions = permissions?.find(
-      (permission) =>
-        permission.name === "ADMIN" ||
-        permission.name === "USERS_WHITELIST_VISUALIZE",
-    );
-
-    if (hasPermissions) {
-      const response = await ctx.db.emailWhitelist.findMany();
-
-      return response;
-    } else {
-      return [];
-    }
-  }),
-  addToWhitelist: protectedProcedure
-    .input(z.object({ email: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
-
-      const hasPermissions = permissions?.find(
-        (permission) =>
-          permission.name === "ADMIN" ||
-          permission.name === "USERS_WHITELIST_MANAGE",
-      );
-
-      if (hasPermissions) {
-        const response = await ctx.db.emailWhitelist.create({
-          data: {
-            email: input.email,
-          },
-        });
-
-        return response;
-      } else {
-        return [];
-      }
-    }),
-  removeFromWhiteList: protectedProcedure
-    .input(z.object({ email: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
-
-      const hasPermissions = permissions?.find(
-        (permission) =>
-          permission.name === "ADMIN" ||
-          permission.name === "USERS_WHITELIST_MANAGE",
-      );
-
-      if (hasPermissions) {
-        const response = await ctx.db.emailWhitelist.delete({
-          where: {
-            email: input.email,
-          },
-        });
-
-        return response;
-      } else {
-        return [];
-      }
-    }),
-  editWhitelist: protectedProcedure
-    .input(z.object({ oldEmail: z.string(), newEmail: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
-
-      const hasPermissions = permissions?.find(
-        (permission) =>
-          permission.name === "ADMIN" ||
-          permission.name === "USERS_WHITELIST_MANAGE",
-      );
-
-      if (hasPermissions) {
-        const response = await ctx.db.emailWhitelist.update({
-          where: {
-            email: input.oldEmail,
-          },
-          data: {
-            email: input.newEmail,
-          },
-        });
-
-        return response;
-      } else {
-        return [];
-      }
-    }),
-  addManyToRole: protectedProcedure
-    .input(z.object({ id: z.array(z.string()), roleId: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
-
-      const hasPermissions = permissions?.find(
-        (permission) =>
-          permission.name === "ADMIN" ||
-          permission.name === "USERS_ROLES_MANAGE",
-      );
-
-      if (hasPermissions) {
-        const response = await ctx.db.user.updateMany({
-          where: {
-            id: {
-              in: input.id,
-            },
-          },
-          data: {
-            roleId: input.roleId,
-          },
-        });
-
-        const pipeline = ctx.redis.pipeline();
-
-        input.id.forEach((item) => pipeline.del(`user_permissions:${item}`));
-
-        pipeline
-          .exec()
-          .then((results) => {
-            console.log("Keys deleted:", results);
-          })
-          .catch((error) => {
-            console.error("Error deleting keys:", error);
-          })
-          .finally(() => {
-            // Don't forget to close the connection
-            void ctx.redis.quit();
-          });
-
-        return response;
-      } else {
-        return [];
-      }
-    }),
-  deleteManyFromRole: protectedProcedure
-    .input(z.object({ id: z.array(z.string()) }))
-    .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
-
-      const hasPermissions = permissions?.find(
-        (permission) =>
-          permission.name === "ADMIN" ||
-          permission.name === "USERS_ROLES_MANAGE",
-      );
-
-      if (hasPermissions) {
-        const response = await ctx.db.user.updateMany({
-          where: {
-            id: {
-              in: input.id,
-            },
-          },
-          data: {
-            roleId: null,
-          },
-        });
-
-        const pipeline = ctx.redis.pipeline();
-
-        input.id.forEach((item) => pipeline.del(`user_permissions:${item}`));
-
-        pipeline
-          .exec()
-          .then((results) => {
-            console.log("Keys deleted:", results);
-          })
-          .catch((error) => {
-            console.error("Error deleting keys:", error);
-          })
-          .finally(() => {
-            // Don't forget to close the connection
-            void ctx.redis.quit();
-          });
-
-        return response;
-      } else {
-        return [];
-      }
-    }),
   getAllPermissions: publicProcedure
     .input(z.object({ userId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const response = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        input,
+      if (!ctx.session) {
+        return [];
+      }
+      const cachedResponseString = await ctx.redis.get(
+        `user_permissions:${ctx.session.user.id}`,
       );
+      if (cachedResponseString) {
+        const cachedResponse: z.infer<typeof PermissionSchema> =
+          JSON.parse(cachedResponseString);
+        return cachedResponse;
+      }
 
-      return response;
+      const user = await ctx.db.user.findUnique({
+        where: {
+          id: input.userId ? input.userId : ctx.session.user.id,
+        },
+      });
+      if (ctx.session.user.roleId) {
+        const role = await ctx.db.role.findUnique({
+          where: {
+            id: ctx.session.user.roleId,
+          },
+        });
+
+        if (role?.permissions && user?.permissions) {
+          // @ts-ignore
+          const merged = mergePermissions(role.permissions, user.permissions);
+
+          await ctx.redis.set(
+            `user_permissions:${ctx.session.user.id}`,
+            JSON.stringify(merged),
+            "EX",
+            300,
+          );
+
+          return merged as z.infer<typeof PermissionSchema> | null;
+        }
+        if (role?.permissions) {
+          await ctx.redis.set(
+            `user_permissions:${ctx.session.user.id}`,
+            JSON.stringify(role.permissions),
+            "EX",
+            300,
+          );
+
+          return role.permissions as z.infer<typeof PermissionSchema> | null;
+        }
+      }
+      if (user?.permissions) {
+        await ctx.redis.set(
+          `user_permissions:${ctx.session.user.id}`,
+          JSON.stringify(user.permissions),
+          "EX",
+          300,
+        );
+
+        return user.permissions as z.infer<typeof PermissionSchema> | null;
+      }
     }),
   getUserPermissions: protectedProcedure
     .input(z.object({ id: z.string() }))
@@ -318,6 +144,17 @@ export const usersRouter = createTRPCRouter({
             "Usuario sin el siguiente permiso: USERS_PERMISSIONS_VISUALIZE",
         });
       }
+    }),
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const response = ctx.db.user.findUnique({
+        where: {
+          id: input.id,
+        },
+      });
+
+      return response;
     }),
   updatePermissions: protectedProcedure
     .input(z.object({ id: z.string(), permissions: PermissionSchema }))
@@ -390,6 +227,72 @@ export const usersRouter = createTRPCRouter({
           },
           data: {
             permissions: newPermissions,
+          },
+        });
+
+        await ctx.redis.del(`user_permissions:${input.id}`);
+
+        return response;
+      } else {
+        return null;
+      }
+    }),
+  addUserToRole: protectedProcedure
+    .input(z.object({ userId: z.string(), roleId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
+        (permission) =>
+          permission.name === "ADMIN" ||
+          permission.name === "USERS_ROLES_MANAGE",
+      );
+
+      if (hasPermissions) {
+        const response = await ctx.db.user.update({
+          where: {
+            id: input.userId,
+          },
+          data: {
+            roleId: input.roleId,
+          },
+        });
+
+        await ctx.redis.del(`user_permissions:${input.userId}`);
+
+        return response;
+      } else {
+        return null;
+      }
+    }),
+  removeUserFromRole: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const permissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        {},
+      );
+
+      const hasPermissions = permissions?.find(
+        (permission) =>
+          permission.name === "ADMIN" ||
+          permission.name === "USERS_ROLES_MANAGE",
+      );
+
+      if (hasPermissions) {
+        const response = await ctx.db.user.update({
+          where: {
+            id: input.id,
+          },
+          data: {
+            roleId: null,
           },
         });
 

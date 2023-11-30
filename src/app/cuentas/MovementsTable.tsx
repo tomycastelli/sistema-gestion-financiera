@@ -6,7 +6,11 @@ import { type Session } from "next-auth";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { createQueryString, removeQueryString } from "~/lib/functions";
+import {
+  createQueryString,
+  getAllChildrenTags,
+  removeQueryString,
+} from "~/lib/functions";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -39,6 +43,9 @@ interface CuentasTableProps {
   pageNumber: number;
   session: Session | null;
   accountType: boolean;
+  initialTags: RouterOutputs["tags"]["getAll"];
+  linkId: number | null;
+  linkToken: string | null;
 }
 
 const MovementsTable = ({
@@ -50,7 +57,15 @@ const MovementsTable = ({
   pageNumber,
   session,
   accountType,
+  initialTags,
+  linkId,
+  linkToken,
 }: CuentasTableProps) => {
+  const { data: tags } = api.tags.getAll.useQuery(undefined, {
+    initialData: initialTags,
+    refetchOnWindowFocus: false,
+  });
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -64,6 +79,8 @@ const MovementsTable = ({
 
   const { data, isLoading } = api.movements.getCurrentAccounts.useQuery(
     {
+      linkId: linkId,
+      linkToken: linkToken,
       account: account,
       entityId: entityId,
       entityTag: entityTag,
@@ -79,8 +96,10 @@ const MovementsTable = ({
   );
 
   const tableData = data.movements.map((movement) => {
-    let otherEntity = { id: 0, name: "", tag: "" };
-    let selectedEntity = { id: 0, name: "", tag: "" };
+    let otherEntity = { id: 0, name: "", tagName: "" };
+    let selectedEntity = { id: 0, name: "", tagName: "" };
+    let ingress = 0;
+    let egress = 0;
 
     if (entityId) {
       otherEntity =
@@ -92,22 +111,7 @@ const MovementsTable = ({
         entityId === movement.transaction.fromEntity.id
           ? movement.transaction.fromEntity
           : movement.transaction.toEntity;
-    } else if (entityTag) {
-      otherEntity =
-        movement.transaction.fromEntity.tag !== entityTag
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
 
-      selectedEntity =
-        movement.transaction.fromEntity.tag === entityTag
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
-    }
-
-    let ingress = 0;
-    let egress = 0;
-
-    if (entityId) {
       ingress =
         (entityId === movement.transaction.toEntity.id &&
           movement.direction === 1) ||
@@ -124,18 +128,32 @@ const MovementsTable = ({
           ? movement.transaction.amount
           : 0;
     } else if (entityTag) {
+      const tagAndAllChildren = getAllChildrenTags(entityTag, tags);
+
+      otherEntity = !tagAndAllChildren.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.fromEntity
+        : movement.transaction.toEntity;
+
+      selectedEntity = tagAndAllChildren.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.fromEntity
+        : movement.transaction.toEntity;
+
       ingress =
-        (movement.transaction.toEntity.tag === entityTag &&
+        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === 1) ||
-        (movement.transaction.fromEntity.tag === entityTag &&
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
           movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
-        (movement.transaction.toEntity.tag === entityTag &&
+        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === -1) ||
-        (movement.transaction.fromEntity.tag === entityTag &&
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
           movement.direction === 1)
           ? movement.transaction.amount
           : 0;

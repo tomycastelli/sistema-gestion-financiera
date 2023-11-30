@@ -99,7 +99,7 @@ const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       name: entity.name,
-      tag: entity.tag,
+      tag: entity.tag.name,
     },
   });
 
@@ -136,7 +136,7 @@ const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
                   </FormItem>
                 )}
               />
-              {entity.tag !== "user" && (
+              {entity.tag.name !== "user" && (
                 <FormField
                   control={control}
                   name="tag"
