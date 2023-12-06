@@ -15,7 +15,9 @@ const Page = async ({ params }: { params: { roleId: string } }) => {
       {role ? (
         <div className="flex flex-col space-y-6">
           <RoleHeader initialRole={role} />
-          <ManageUsers initialRole={role} initialUsers={users} />
+          {userPermissions?.find(
+            (p) => p.name === "ADMIN" || p.name === "USERS_ROLES_MANAGE",
+          ) && <ManageUsers initialRole={role} initialUsers={users} />}
           <ChangeRole
             userPermissions={userPermissions}
             role={role}

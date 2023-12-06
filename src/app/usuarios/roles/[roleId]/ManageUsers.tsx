@@ -6,6 +6,16 @@ import { type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/app/components/ui/alert-dialog";
 import { Button } from "~/app/components/ui/button";
 import {
   Card,
@@ -205,15 +215,34 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
                     {user.name}
                   </Link>
                 </CardTitle>
-                <Button
-                  variant="outline"
-                  className="border-transparent p-1"
-                  onClick={async () =>
-                    await removeUserFromRole({ id: user.id })
-                  }
-                >
-                  <Icons.cross className="h-6 text-red" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="border-transparent p-1"
+                    >
+                      <Icons.cross className="h-6 text-red" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        ¿Seguro que querés eliminar al usuario de este rol?
+                      </AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red"
+                        onClick={async () =>
+                          await removeUserFromRole({ id: user.id })
+                        }
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
               <CardDescription>{user.email}</CardDescription>
             </CardHeader>

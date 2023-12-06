@@ -1,5 +1,4 @@
 import { type ReactNode } from "react";
-import { getServerAuthSession } from "~/server/auth";
 import { Separator } from "../components/ui/separator";
 import Sidebar from "./Sidebar";
 
@@ -7,9 +6,7 @@ interface UsersLayoutProps {
   children: ReactNode;
 }
 
-export default async function UsersLayout({ children }: UsersLayoutProps) {
-  const session = await getServerAuthSession();
-
+export default function UsersLayout({ children }: UsersLayoutProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-1 p-1">
@@ -21,7 +18,7 @@ export default async function UsersLayout({ children }: UsersLayoutProps) {
       <Separator />
       <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
         <aside className="-mx-4 lg:w-1/5">
-          {session && <Sidebar session={session} />}
+          <Sidebar />
         </aside>
         <div className="flex-1 lg:max-w-full">{children}</div>
       </div>

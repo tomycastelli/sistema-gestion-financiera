@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
+import AccountsMenuCard from "./components/AccountsMenuCard";
 import AuthForm from "./components/AuthForm";
+import EntitiesMenuCard from "./components/EntitiesMenuCard";
 import OperationsMenuCard from "./components/OperationsMenuCard";
-import { Card, CardHeader, CardTitle } from "./components/ui/card";
+import UsersMenuCard from "./components/UsersMenuCard";
 
 export default async function Home() {
   const session = await getServerAuthSession();
@@ -15,27 +17,9 @@ export default async function Home() {
       {session ? (
         <div className="grid w-full grid-cols-4 gap-4">
           <OperationsMenuCard userId={session.user.id} />
-          <Link href={"/cuentas"}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Cuentas</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
-          <Link href={"/entidades"}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Entidades</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
-          <Link href={"/usuarios"}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Usuarios</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
+          <AccountsMenuCard />
+          <EntitiesMenuCard />
+          <UsersMenuCard />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center">

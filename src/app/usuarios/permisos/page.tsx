@@ -11,7 +11,8 @@ const Page = async () => {
         permissions.find(
           (permission) =>
             permission.name === "ADMIN" ||
-            permission.name === "USERS_PERMISSIONS_VISUALIZE",
+            permission.name === "USERS_PERMISSIONS_VISUALIZE" ||
+            permission.name.startsWith("USERS_PERMISSIONS_MANAGE"),
         ) && (
           <div className="flex flex-col space-y-4">
             <h1 className="text-xl font-semibold tracking-tight">Permisos</h1>

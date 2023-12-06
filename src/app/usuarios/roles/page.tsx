@@ -9,24 +9,34 @@ const Page = async () => {
   const permissions = await api.users.getAllPermissions.query({});
 
   return (
-    <div className="flex flex-col space-y-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>
-      <RolesFeed initialRoles={roles} />
+    <div>
       {permissions?.find(
-        (permission) =>
-          permission.name === "USERS_ROLES_MANAGE" ||
-          permission.name === "ADMIN",
+        (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
       ) ? (
-        <div className="flex flex-col space-y-4">
-          <h1 className="text-3xl font-semibold tracking-tight">Nuevo rol</h1>
-          <AddRoleForm
-            initialEntities={entities}
-            initialTags={tags}
-            userPermissions={permissions}
-          />
+        <div className="flex flex-col space-y-6">
+          <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>
+          <RolesFeed initialRoles={roles} />
+          {permissions?.find(
+            (permission) =>
+              permission.name === "USERS_ROLES_MANAGE" ||
+              permission.name === "ADMIN",
+          ) ? (
+            <div className="flex flex-col space-y-4">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Nuevo rol
+              </h1>
+              <AddRoleForm
+                initialEntities={entities}
+                initialTags={tags}
+                userPermissions={permissions}
+              />
+            </div>
+          ) : (
+            <p></p>
+          )}
         </div>
       ) : (
-        <p></p>
+        <p>El usuario no tiene los permisos suficientes para ver los roles</p>
       )}
     </div>
   );

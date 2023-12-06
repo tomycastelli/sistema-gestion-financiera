@@ -5,13 +5,20 @@ import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
 import {
   capitalizeFirstLetter,
-  isTagAllowed,
+  getAllChildrenTags,
   translateWord,
 } from "~/lib/functions";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import EntityCard from "../components/ui/EntityCard";
+import { Button } from "../components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../components/ui/hover-card";
 import { Input } from "../components/ui/input";
 import {
   Select,
@@ -22,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
 import EntityOptions from "./EntityOptions";
@@ -38,6 +46,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   initialTags,
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
+  const [tagFilterMode, setTagFilterMode] = useState("children");
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
@@ -47,29 +56,24 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     },
   );
 
-  const tags = [...new Set(entities.map((entity) => entity.tag.name))];
-
-  const manageableTags = initialTags.filter((tag) => {
+  const manageableEntities = entities.filter((entity) => {
     if (
       userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE",
+        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
       )
     ) {
       return true;
     } else if (
-      userPermissions?.find((p) => p.name === "ENTITIES_MANAGE_SOME")
-        ?.entitiesTags
+      userPermissions?.find(
+        (p) =>
+          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
+          (p.entitiesIds?.includes(entity.id) ||
+            getAllChildrenTags(p.entitiesTags, initialTags).includes(
+              entity.tag.name,
+            )),
+      )
     ) {
-      if (
-        isTagAllowed(
-          initialTags,
-          tag.name,
-          userPermissions?.find((p) => p.name === "ENTITIES_MANAGE_SOME")
-            ?.entitiesTags,
-        )
-      ) {
-        return true;
-      }
+      return true;
     }
   });
 
@@ -92,22 +96,60 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
           />
-          <Select onValueChange={setTagFilter} value={tagFilter}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup defaultValue="todos">
-                <SelectLabel>Tags</SelectLabel>
-                <SelectItem value="todos">Todos</SelectItem>
-                {tags.map((tag) => (
-                  <SelectItem key={tag} value={tag}>
-                    {capitalizeFirstLetter(translateWord(tag))}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-row items-center space-x-2">
+            <Select onValueChange={setTagFilter} value={tagFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup defaultValue="todos">
+                  <SelectLabel>Tags</SelectLabel>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {initialTags.map((tag) => (
+                    <SelectItem key={tag.name} value={tag.name}>
+                      {capitalizeFirstLetter(translateWord(tag.name))}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="border-transparent bg-transparent p-0 hover:bg-transparent"
+                >
+                  <Switch
+                    id="tagFilterMode"
+                    checked={tagFilterMode === "strict" ? true : false}
+                    onCheckedChange={(checked) =>
+                      setTagFilterMode(checked ? "strict" : "children")
+                    }
+                  />
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent className="flex w-40 flex-col">
+                <p
+                  className={cn(
+                    tagFilterMode === "strict"
+                      ? "font-semibold"
+                      : "font-light text-gray-300",
+                  )}
+                >
+                  Estricto
+                </p>
+                <p
+                  className={cn(
+                    tagFilterMode === "children"
+                      ? "font-semibold"
+                      : "font-light text-gray-300",
+                  )}
+                >
+                  Todo el arbol
+                </p>
+              </HoverCardContent>
+            </HoverCard>
+          </div>
         </div>
         <div className="flex flex-row space-x-4">
           <AddEntitiesForm
@@ -115,6 +157,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             userPermissions={userPermissions}
           />
           <AddTagsForm
+            entities={initialEntities}
             initialTags={initialTags}
             userPermissions={userPermissions}
           />
@@ -130,7 +173,11 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                 if (tagFilter === "todos") {
                   return true;
                 }
-                return entity.tag.name === tagFilter;
+                return tagFilterMode === "strict"
+                  ? entity.tag.name === tagFilter
+                  : getAllChildrenTags(tagFilter, initialTags).includes(
+                      entity.tag.name,
+                    );
               })
               .map((entity) => (
                 <div
@@ -139,20 +186,9 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                 >
                   <EntityCard entity={entity} />
                   {entity.tag.name !== "user" &&
-                    (userPermissions?.find(
-                      (p) => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE",
-                    ) ||
-                      (userPermissions?.find(
-                        (p) => p.name === "ENTITIES_MANAGE_SOME",
-                      ) &&
-                        (userPermissions
-                          .find((p) => p.name === "ENTITIES_MANAGE_SOME")
-                          ?.entitiesIds?.includes(entity.id) ||
-                          manageableTags
-                            ?.map((tag) => tag.name)
-                            .includes(entity.tag.name)))) && (
-                      <EntityOptions entity={entity} />
-                    )}
+                    manageableEntities.find(
+                      (item) => item.name === entity.name,
+                    ) && <EntityOptions entity={entity} />}
                 </div>
               ))}
           </div>

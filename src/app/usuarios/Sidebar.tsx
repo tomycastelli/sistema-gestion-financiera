@@ -1,18 +1,12 @@
 "use client";
 
-import { type Session } from "next-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type FC } from "react";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { buttonVariants } from "../components/ui/button";
 
-interface SidebarProps {
-  session: Session;
-}
-
-const Sidebar: FC<SidebarProps> = () => {
+const Sidebar = () => {
   const pathname = usePathname();
 
   const { data: permissions } = api.users.getAllPermissions.useQuery({});
@@ -34,7 +28,8 @@ const Sidebar: FC<SidebarProps> = () => {
       {permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
-          permission.name === "USERS_PERMISSIONS_VISUALIZE",
+          permission.name === "USERS_PERMISSIONS_VISUALIZE" ||
+          permission.name.startsWith("USERS_PERMISSIONS_MANAGE"),
       ) && (
         <Link
           href="/usuarios/permisos"
@@ -52,7 +47,8 @@ const Sidebar: FC<SidebarProps> = () => {
       {permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
-          permission.name === "USERS_ROLES_VISUALIZE",
+          permission.name === "USERS_ROLES_VISUALIZE" ||
+          permission.name === "USERS_ROLES_MANAGE",
       ) && (
         <Link
           href="/usuarios/roles"

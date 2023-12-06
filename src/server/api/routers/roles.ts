@@ -15,7 +15,8 @@ export const rolesRouter = createTRPCRouter({
     const hasPermissions = permissions?.find(
       (permission) =>
         permission.name === "ADMIN" ||
-        permission.name === "USERS_ROLES_VISUALIZE",
+        permission.name === "USERS_ROLES_VISUALIZE" ||
+        permission.name === "USERS_ROLES_MANAGE",
     );
 
     if (hasPermissions) {
@@ -43,7 +44,8 @@ export const rolesRouter = createTRPCRouter({
       const hasPermissions = permissions?.find(
         (permission) =>
           permission.name === "ADMIN" ||
-          permission.name === "USERS_ROLES_VISUALIZE",
+          permission.name === "USERS_ROLES_VISUALIZE" ||
+          permission.name === "USERS_ROLES_MANAGE",
       );
 
       if (hasPermissions) {

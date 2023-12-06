@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { capitalizeFirstLetter, isTagAllowed } from "~/lib/functions";
+import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -98,6 +98,24 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
     initialData: initialTags,
   });
 
+  const filteredTags = tags.filter((tag) => {
+    if (
+      userPermissions?.find(
+        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
+      )
+    ) {
+      return true;
+    } else if (
+      userPermissions?.find(
+        (p) =>
+          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
+          getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
+      )
+    ) {
+      return true;
+    }
+  });
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
   });
@@ -165,39 +183,11 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {tags
-                          .filter((tag) => {
-                            if (
-                              userPermissions?.find(
-                                (p) =>
-                                  p.name === "ADMIN" ||
-                                  p.name === "ENTITIES_MANAGE",
-                              )
-                            ) {
-                              return true;
-                            } else if (
-                              userPermissions?.find(
-                                (p) => p.name === "ENTITIES_MANAGE_SOME",
-                              )?.entitiesTags
-                            ) {
-                              if (
-                                isTagAllowed(
-                                  tags,
-                                  tag.name,
-                                  userPermissions?.find(
-                                    (p) => p.name === "ENTITIES_MANAGE_SOME",
-                                  )?.entitiesTags,
-                                )
-                              ) {
-                                return true;
-                              }
-                            }
-                          })
-                          .map((tag) => (
-                            <SelectItem key={tag.name} value={tag.name}>
-                              {capitalizeFirstLetter(tag.name)}
-                            </SelectItem>
-                          ))}
+                        {filteredTags.map((tag) => (
+                          <SelectItem key={tag.name} value={tag.name}>
+                            {capitalizeFirstLetter(tag.name)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
