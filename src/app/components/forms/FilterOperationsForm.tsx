@@ -218,19 +218,37 @@ const FilterOperationsForm = ({
         router.push(
           pathname +
             "?" +
-            createQueryString(searchParams, "monto", watchAmount),
+            createQueryString(
+              new URLSearchParams(
+                removeQueryString(searchParams, ["montoMin", "montoMax"]),
+              ),
+              "monto",
+              watchAmount,
+            ),
         );
       } else if (watchAmountFilterType === "gte") {
         router.push(
           pathname +
             "?" +
-            createQueryString(searchParams, "montoMin", watchAmount),
+            createQueryString(
+              new URLSearchParams(
+                removeQueryString(searchParams, ["monto", "montoMax"]),
+              ),
+              "montoMin",
+              watchAmount,
+            ),
         );
       } else if (watchAmountFilterType === "lte") {
         router.push(
           pathname +
             "?" +
-            createQueryString(searchParams, "montoMax", watchAmount),
+            createQueryString(
+              new URLSearchParams(
+                removeQueryString(searchParams, ["montoMin", "monto"]),
+              ),
+              "montoMax",
+              watchAmount,
+            ),
         );
       }
     }
@@ -352,6 +370,45 @@ const FilterOperationsForm = ({
               </FormItem>
             )}
           />
+          <div className="flex flex-col justify-center space-y-2">
+            <FormField
+              control={control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Monto</FormLabel>
+                  <FormControl>
+                    <Input className="w-32" placeholder="$" {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="amountFilterType"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormControl>
+                    <ToggleGroup
+                      type="single"
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <ToggleGroupItem value="equal" aria-label="Toggle equal">
+                        <Icons.equal className="h-4" />
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="gte" aria-label="Toggle gte">
+                        <Icons.gte className="h-4" />
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="lte" aria-label="Toggle lte">
+                        <Icons.lte className="h-4" />
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
           <FormField
             control={control}
             name="transactionType"
@@ -435,45 +492,7 @@ const FilterOperationsForm = ({
               )}
             />
           </div>
-          <div className="flex flex-col justify-center space-y-2">
-            <FormField
-              control={control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Monto</FormLabel>
-                  <FormControl>
-                    <Input className="w-32" placeholder="$" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name="amountFilterType"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormControl>
-                    <ToggleGroup
-                      type="single"
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <ToggleGroupItem value="equal" aria-label="Toggle equal">
-                        <Icons.equal className="h-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="gte" aria-label="Toggle gte">
-                        <Icons.gte className="h-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="lte" aria-label="Toggle lte">
-                        <Icons.lte className="h-4" />
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
+
           <FormField
             control={control}
             name="uploadedById"

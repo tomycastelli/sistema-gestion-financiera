@@ -1,5 +1,5 @@
 import { api } from "~/trpc/server";
-import { ManageOperationsCard } from "../components/ManageOperationsCard";
+import ManageOperationsCard from "../components/ManageOperationsCard";
 import { UploadOperationsCard } from "../components/UploadOperationsCard";
 
 export default async function Page() {

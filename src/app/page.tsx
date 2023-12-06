@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
 import AccountsMenuCard from "./components/AccountsMenuCard";
 import AuthForm from "./components/AuthForm";
@@ -15,7 +14,7 @@ export default async function Home() {
         Bienvenido al portal de Maika!
       </h1>
       {session ? (
-        <div className="grid w-full grid-cols-4 gap-4">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <OperationsMenuCard userId={session.user.id} />
           <AccountsMenuCard />
           <EntitiesMenuCard />

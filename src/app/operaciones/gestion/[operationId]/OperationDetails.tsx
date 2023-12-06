@@ -22,7 +22,6 @@ const OperationDetails: FC<OperationDetailsProps> = ({
   initialOperations,
   initialEntities,
   operationId,
-  userPermissions,
   session,
 }) => {
   const router = useRouter();
@@ -50,58 +49,63 @@ const OperationDetails: FC<OperationDetailsProps> = ({
       {isLoading ? (
         <p>Cargando...</p>
       ) : operation ? (
-        <div className="mx-auto flex w-full flex-col rounded-xl border border-muted p-8 shadow-md">
-          <div className="mb-4 flex flex-col">
-            <div className="flex flex-row items-start justify-between">
-              <div className="flex flex-col justify-start space-y-2">
-                <h1 className="text-5xl font-bold">
-                  <span className="mr-2 text-4xl font-light tracking-tight text-slate-300">
-                    Operación
-                  </span>
-                  {operation.id}
-                </h1>
-                <h3 className="text-slate-400">
-                  {operation.date.toLocaleString("es-AR")}
-                </h3>
+        operation.isVisualizeAllowed ? (
+          <div className="mx-auto flex w-full flex-col rounded-xl border border-muted p-8 shadow-md">
+            <div className="mb-4 flex flex-col">
+              <div className="flex flex-row items-start justify-between">
+                <div className="flex flex-col justify-start space-y-2">
+                  <h1 className="text-5xl font-bold">
+                    <span className="mr-2 text-4xl font-light tracking-tight text-slate-300">
+                      Operación
+                    </span>
+                    {operation.id}
+                  </h1>
+                  <h3 className="text-slate-400">
+                    {operation.date.toLocaleString("es-AR")}
+                  </h3>
+                </div>
+                <Button
+                  variant="outline"
+                  className="border-transparent bg-transparent p-1"
+                  onClick={() => router.back()}
+                >
+                  <Icons.undo className="h-8" />
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                className="border-transparent bg-transparent p-1"
-                onClick={() => router.back()}
-              >
-                <Icons.undo className="h-8" />
-              </Button>
+              <p className="mt-2 text-lg font-light">
+                {operation.observations}
+              </p>
             </div>
-            <p className="mt-2 text-lg font-light">{operation.observations}</p>
-          </div>
-          <div className="mx-auto flex flex-col">
-            <h1 className="mx-auto mb-4 text-4xl font-semibold tracking-tighter">
-              Transacciones
-            </h1>
-            <div className="mx-auto grid-cols-1 gap-4">
-              {operation.transactions.map((tx) => (
-                <Transaction
-                  key={tx.id}
-                  userPermissions={userPermissions}
-                  transaction={tx}
-                  entities={entities}
-                  operationsQueryInput={{
-                    operationId: operationId,
-                    limit: 1,
-                    page: 1,
-                  }}
-                  user={session.user}
-                />
-              ))}
+            <div className="mx-auto flex flex-col">
+              <h1 className="mx-auto mb-4 text-4xl font-semibold tracking-tighter">
+                Transacciones
+              </h1>
+              <div className="mx-auto grid-cols-1 gap-4">
+                {operation.transactions.map((tx) => (
+                  <Transaction
+                    key={tx.id}
+                    transaction={tx}
+                    entities={entities}
+                    operationsQueryInput={{
+                      operationId: operationId,
+                      limit: 1,
+                      page: 1,
+                    }}
+                    user={session.user}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="mx-auto flex flex-col space-y-4">
+              <h1 className="mx-auto text-4xl font-semibold tracking-tighter">
+                Movimientos
+              </h1>
+              <DetailMovementsTable operation={operation} />
             </div>
           </div>
-          <div className="mx-auto flex flex-col space-y-4">
-            <h1 className="mx-auto text-4xl font-semibold tracking-tighter">
-              Movimientos
-            </h1>
-            <DetailMovementsTable operation={operation} />
-          </div>
-        </div>
+        ) : (
+          <p>El usuario no tiene los permisos para ver esta operación</p>
+        )
       ) : (
         <p>No se encontro la operacion</p>
       )}

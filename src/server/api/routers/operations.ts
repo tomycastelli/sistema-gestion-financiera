@@ -269,13 +269,13 @@ export const operationsRouter = createTRPCRouter({
 
       const operationsWithPermissions = queriedOperations.map((op) => {
         const isVisualizeAllowed = userPermissions?.find(
-          (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
         )
           ? true
           : userPermissions?.find((p) => {
               const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
               if (
-                p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                p.name === "OPERATIONS_VISUALIZE_SOME" &&
                 op.transactions.find(
                   (tx) =>
                     p.entitiesIds?.includes(tx.fromEntityId) ||
@@ -411,7 +411,121 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      return operationDetails;
+      if (operationDetails) {
+        const userPermissions = await getAllPermissions(
+          ctx.redis,
+          ctx.session,
+          ctx.db,
+          { userId: undefined },
+        );
+        const tags = await getAllTags(ctx.redis, ctx.db);
+
+        const isVisualizeAllowed = userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
+        )
+          ? true
+          : userPermissions?.find((p) => {
+              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+              if (
+                p.name === "OPERATIONS_VISUALIZE_SOME" &&
+                operationDetails?.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.fromEntityId) ||
+                    allAllowedTags.includes(tx.fromEntity.tagName),
+                ) &&
+                operationDetails?.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.toEntityId) ||
+                    allAllowedTags.includes(tx.toEntity.tagName),
+                )
+              ) {
+                return true;
+              }
+            })
+          ? true
+          : false;
+
+        const operationDetailsWithPermissions = {
+          ...operationDetails,
+          isVisualizeAllowed,
+          transactions: operationDetails?.transactions.map((tx) => {
+            const isDeleteAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_DELETE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+
+            const isUpdateAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+
+            const isValidateAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_VALIDATE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+            return {
+              ...tx,
+              isDeleteAllowed,
+              isUpdateAllowed,
+              isValidateAllowed,
+            };
+          }),
+        };
+        return operationDetailsWithPermissions;
+      } else {
+        return null;
+      }
     }),
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
