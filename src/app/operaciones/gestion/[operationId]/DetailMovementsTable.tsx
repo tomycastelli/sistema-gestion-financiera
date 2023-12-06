@@ -1,4 +1,5 @@
 import { type ColumnDef } from "@tanstack/react-table";
+import moment from "moment";
 import { type FC } from "react";
 import { DataTable } from "~/app/cuentas/DataTable";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -12,6 +13,9 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ operation }) => {
     .map((transaction) =>
       transaction.movements.map((movement) => ({
         id: movement.id,
+        date: transaction.date
+          ? moment(transaction.date).format("DD/MM/YYYY")
+          : moment(operation!.date).format("DD/MM/YYYY"),
         transactionId: movement.transactionId,
         cuenta: movement.status ? "Caja" : "Cuenta corriente",
         type: movement.type,
@@ -33,6 +37,10 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ operation }) => {
     {
       accessorKey: "id",
       header: "ID",
+    },
+    {
+      accessorKey: "date",
+      header: "Fecha",
     },
     {
       accessorKey: "transactionId",

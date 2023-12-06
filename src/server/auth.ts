@@ -69,7 +69,7 @@ export const authOptions: NextAuthOptions = {
       if (message.user.name) {
         await api.entities.addOne.mutate({
           name: message.user.name,
-          tag: "usuario",
+          tag: "Usuario",
         });
         await redis.del("users");
       }

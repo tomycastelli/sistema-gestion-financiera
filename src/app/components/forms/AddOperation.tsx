@@ -3,7 +3,7 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import type { User } from "next-auth";
 import { useState } from "react";
-import { capitalizeFirstLetter } from "~/lib/functions";
+import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { useToast } from "../ui/use-toast";
+import CableForm from "./CableForm";
 import CambioForm from "./CambioForm";
 import FlexibleTransactionsForm from "./FlexibleTransactionsForm";
 import InitialDataOperationForm from "./InitialDataOperationForm";
@@ -39,6 +40,7 @@ interface AddOperationProps {
   initialOperations:
     | RouterOutputs["operations"]["getOperationsByUser"]
     | undefined;
+  tags: RouterOutputs["tags"]["getAll"];
 }
 
 const AddOperation = ({
@@ -46,6 +48,7 @@ const AddOperation = ({
   user,
   initialOperations,
   userPermissions,
+  tags,
 }: AddOperationProps) => {
   const { toast } = useToast();
   const [parent] = useAutoAnimate();
@@ -166,30 +169,29 @@ const AddOperation = ({
       refetchOnReconnect: false,
     });
 
-  let entities: typeof allEntities = [];
+  const filteredEntities = allEntities.filter((entity) => {
+    if (
+      userPermissions?.find(
+        (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+      )
+    ) {
+      return true;
+    } else if (
+      userPermissions?.find(
+        (p) =>
+          p.name === "OPERATIONS_CREATE_SOME" &&
+          (p.entitiesIds?.includes(entity.id) ||
+            getAllChildrenTags(p.entitiesTags, tags).includes(
+              entity.tag.name,
+            ) ||
+            entity.name === user.name),
+      )
+    ) {
+      return true;
+    }
+  });
 
-  if (
-    userPermissions?.find(
-      (obj) => obj.name === "ADMIN" || obj.name === "OPERATIONS_CREATE",
-    )
-  ) {
-    entities = allEntities;
-  } else if (
-    userPermissions?.find((obj) => obj.name === "OPERATIONS_CREATE_SOME")
-  ) {
-    const ids = userPermissions.find(
-      (obj) => obj.name === "OPERATIONS_CREATE_SOME",
-    )?.entitiesIds;
-    const tags = userPermissions.find(
-      (obj) => obj.name === "OPERATIONS_CREATE_SOME",
-    )?.entitiesTags;
-    entities = allEntities.filter(
-      (entity) =>
-        tags?.includes(entity.tag.name) ||
-        ids?.includes(entity.id) ||
-        entity.name === user.name,
-    );
-  }
+  const tabs = ["flexible", "cambio", "cable"];
 
   return (
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
@@ -247,7 +249,7 @@ const AddOperation = ({
                         <div className="grid grid-cols-3 items-center">
                           <h2>
                             {
-                              entities?.find(
+                              filteredEntities.find(
                                 (obj) => obj.id === transaction.fromEntityId,
                               )?.name
                             }
@@ -266,7 +268,7 @@ const AddOperation = ({
                           </div>
                           <p>
                             {
-                              entities?.find(
+                              filteredEntities.find(
                                 (obj) => obj.id === transaction.toEntityId,
                               )?.name
                             }
@@ -278,7 +280,7 @@ const AddOperation = ({
                         <div className="flex flex-row justify-between">
                           <p className="font-medium">
                             {
-                              entities?.find(
+                              filteredEntities.find(
                                 (obj) => obj.id === transaction.operatorId,
                               )?.name
                             }
@@ -297,13 +299,19 @@ const AddOperation = ({
                     ))}
                   </CardContent>
                   <CardFooter>
-                    <Button
-                      className="w-full"
-                      onClick={() => uploadOperation()}
-                    >
-                      <Icons.addPackage className="mr-2 h-4 w-4" />
-                      {isLoading ? <p>Cargando...</p> : <p>Cargar operación</p>}
-                    </Button>
+                    {transactionsStore.length > 0 && (
+                      <Button
+                        className="w-full"
+                        onClick={() => uploadOperation()}
+                      >
+                        <Icons.addPackage className="mr-2 h-4 w-4" />
+                        {isLoading ? (
+                          <p>Cargando...</p>
+                        ) : (
+                          <p>Cargar operación</p>
+                        )}
+                      </Button>
+                    )}
                   </CardFooter>
                 </>
               )}
@@ -315,37 +323,27 @@ const AddOperation = ({
       </div>
       <div className="lg:col-span-2">
         {isInitialOperationSubmitted ? (
-          entities &&
+          filteredEntities &&
           user && (
             <div>
               <Tabs value={tabName} className="w-full">
-                <TabsList className="mb-8 grid w-full grid-cols-2 gap-2 bg-transparent">
-                  <AlertTemplate
-                    buttonText="Flexible"
-                    buttonStyling={
-                      tabName === "flexible"
-                        ? "bg-white text-foreground"
-                        : "bg-muted text-foreground"
-                    }
-                    alertTitle="Seguro que queres cambiar a flexible?"
-                    alertAccept="Confirmar"
-                    alertCancel="Cancelar"
-                    alertDescription="Se perderan los datos cargados no subidos a la operación"
-                    alertFunction={() => setTabName("flexible")}
-                  />
-                  <AlertTemplate
-                    buttonText="Cambio"
-                    buttonStyling={
-                      tabName === "cambio"
-                        ? "bg-white text-foreground"
-                        : "bg-muted text-foreground"
-                    }
-                    alertTitle="Seguro que queres cambiar a cambio?"
-                    alertAccept="Confirmar"
-                    alertCancel="Cancelar"
-                    alertDescription="Se perderan los datos cargados no subidos a la operación"
-                    alertFunction={() => setTabName("cambio")}
-                  />
+                <TabsList className="mb-8 grid w-full auto-cols-fr grid-flow-col gap-2 bg-transparent">
+                  {tabs.map((tab) => (
+                    <AlertTemplate
+                      key={tab}
+                      buttonText={capitalizeFirstLetter(tab)}
+                      buttonStyling={
+                        tabName === tab
+                          ? "bg-primary text-white"
+                          : "bg-muted text-foreground"
+                      }
+                      alertTitle={`¿Seguro que querés cambiar a ${tab}?`}
+                      alertAccept="Confirmar"
+                      alertCancel="Cancelar"
+                      alertDescription="Se perderán los datos cargados no subidos a la operación"
+                      alertFunction={() => setTabName(tab)}
+                    />
+                  ))}
                 </TabsList>
                 <TabsContent
                   value="flexible"
@@ -353,15 +351,29 @@ const AddOperation = ({
                 >
                   <FlexibleTransactionsForm
                     isLoading={isEntitiesLoading}
-                    entities={entities}
+                    entities={filteredEntities}
                     user={user}
                   />
                 </TabsContent>
                 <TabsContent value="cambio">
                   <CambioForm
-                    entities={entities}
+                    entities={filteredEntities}
                     user={user}
                     isLoading={isEntitiesLoading}
+                  />
+                </TabsContent>
+                <TabsContent value="cable">
+                  <CableForm
+                    entities={filteredEntities}
+                    userEntityId={
+                      allEntities
+                        .find((entity) => entity.name === user.name)!
+                        .id.toString()
+                        ? allEntities
+                            .find((entity) => entity.name === user.name)!
+                            .id.toString()
+                        : ""
+                    }
                   />
                 </TabsContent>
               </Tabs>

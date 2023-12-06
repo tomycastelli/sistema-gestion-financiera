@@ -8,7 +8,7 @@ import {
 } from "~/server/api/trpc";
 
 export const entitiesRouter = createTRPCRouter({
-  getAll: protectedProcedure.query(async ({ ctx }) => {
+  getAll: publicProcedure.query(async ({ ctx }) => {
     const cachedEntities: string | null = await ctx.redis.get(
       "cached_entities",
     );
@@ -45,6 +45,7 @@ export const entitiesRouter = createTRPCRouter({
 
     return entities;
   }),
+
   addOne: publicProcedure
     .input(z.object({ name: z.string(), tag: z.string() }))
     .mutation(async ({ ctx, input }) => {

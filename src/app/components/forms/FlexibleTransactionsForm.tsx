@@ -328,6 +328,7 @@ const FlexibleTransactionsForm = ({
           </>
         ))}
         <Button type="submit" className="mx-auto mt-6">
+          <Icons.addPackage className="mr-2 h-5" />
           Añadir transacciones
         </Button>
       </form>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type Timeframe = "daily" | "weekly" | "monthly";
+type Timeframe = "daily" | "weekly" | "monthly" | "yearly";
 
 interface TimeframeStore {
   selectedTimeframe: Timeframe;

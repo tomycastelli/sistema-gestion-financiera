@@ -34,7 +34,6 @@ interface OperationProps {
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   entities: RouterOutputs["entities"]["getAll"];
   user: User;
-  userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const Operation: FC<OperationProps> = ({
@@ -42,36 +41,7 @@ const Operation: FC<OperationProps> = ({
   operationsQueryInput,
   user,
   entities,
-  userPermissions,
 }) => {
-  function isTransactionAllowed(
-    operation: typeof op,
-    allowedNumbers?: number[],
-    allowedStrings?: string[],
-  ): boolean {
-    for (const transaction of operation.transactions) {
-      if (allowedNumbers) {
-        if (
-          allowedNumbers.includes(transaction.fromEntityId) ||
-          allowedNumbers.includes(transaction.toEntityId) ||
-          allowedNumbers.includes(transaction.operatorEntityId)
-        ) {
-          return true; // At least one transaction number is allowed
-        }
-      }
-      if (allowedStrings) {
-        if (
-          allowedStrings.includes(transaction.fromEntity.tagName) ||
-          allowedStrings.includes(transaction.toEntity.tagName) ||
-          allowedStrings.includes(transaction.operatorEntity.tagName)
-        ) {
-          return true;
-        }
-      }
-    }
-    return false; // None of the transaction numbers are allowed
-  }
-
   const utils = api.useContext();
 
   const { mutateAsync: deleteAsync } =
@@ -123,7 +93,7 @@ const Operation: FC<OperationProps> = ({
         <CardHeader>
           <CardTitle className="flex">
             <Link
-              href={`/operaciones/gestionar/${op.id}`}
+              href={`/operaciones/gestion/${op.id}`}
               className="flex text-black transition-all hover:scale-125"
             >
               {op.id}
@@ -135,32 +105,26 @@ const Operation: FC<OperationProps> = ({
           <CardDescription>{op.observations}</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mx-8 mb-4 grid grid-cols-3 gap-12 text-xl font-semibold text-black">
+            <h1 className="col-span-1 justify-self-center font-semibold tracking-tighter">
+              Operador
+            </h1>
+          </div>
           {op.transactions
             .sort((a, b) => b.id - a.id)
-            .map((tx, txIdx) => (
+            .map((tx) => (
               <Transaction
-                userPermissions={userPermissions}
                 entities={entities}
                 transaction={tx}
                 key={tx.id}
                 operationsQueryInput={operationsQueryInput}
-                txIdx={txIdx}
                 user={user}
               />
             ))}
         </CardContent>
         <CardFooter className="flex flex-row justify-end">
-          {userPermissions?.find(
-            (permission) =>
-              permission.name === "ADMIN" ||
-              permission.name === "TRANSACTIONS_DELETE" ||
-              (permission.name === "TRANSACTIONS_DELETE_SOME" &&
-                isTransactionAllowed(
-                  op,
-                  permission.entitiesIds,
-                  permission.entitiesTags,
-                )),
-          ) && (
+          {op.transactions.filter((tx) => tx.isDeleteAllowed).length ===
+            op.transactions.length && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button className="border-transparent p-2" variant="outline">

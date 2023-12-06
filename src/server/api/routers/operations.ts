@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { getAllChildrenTags } from "~/lib/functions";
+import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const operationsRouter = createTRPCRouter({
@@ -16,12 +18,16 @@ export const operationsRouter = createTRPCRouter({
             currency: z.string(),
             amount: z.number(),
             method: z.string().optional(),
-            metadata: z.object({}).optional(),
+            metadata: z
+              .object({ exchangeRate: z.number().optional() })
+              .optional(),
           }),
         ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const directCashAccountTypes = ["caja"];
+
       const response = await ctx.db.operations.create({
         data: {
           date: input.opDate,
@@ -37,9 +43,14 @@ export const operationsRouter = createTRPCRouter({
               currency: transaction.currency,
               amount: transaction.amount,
               method: transaction.method,
+              status: directCashAccountTypes.includes(transaction.type)
+                ? true
+                : false,
               movements: {
                 create: {
-                  direction: -1,
+                  direction: !directCashAccountTypes.includes(transaction.type)
+                    ? -1
+                    : 1,
                   type: "upload",
                 },
               },
@@ -121,6 +132,10 @@ export const operationsRouter = createTRPCRouter({
         method: z.string().optional(),
         status: z.boolean().optional(),
         uploadedById: z.string().optional(),
+        confirmedById: z.string().optional(),
+        amountIsLesser: z.number().optional(),
+        amountIsGreater: z.number().optional(),
+        amount: z.number().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -144,9 +159,9 @@ export const operationsRouter = createTRPCRouter({
                 }
               : {},
             input.opDateIsGreater
-              ? { date: { gt: input.opDateIsGreater } }
+              ? { date: { gte: input.opDateIsGreater } }
               : {},
-            input.opDateIsLesser ? { date: { lt: input.opDateIsLesser } } : {},
+            input.opDateIsLesser ? { date: { lte: input.opDateIsLesser } } : {},
           ],
           transactions: {
             some: {
@@ -162,10 +177,47 @@ export const operationsRouter = createTRPCRouter({
                 input.currency ? { currency: input.currency } : {},
                 input.method ? { method: input.method } : {},
                 input.status ? { status: input.status } : {},
+                input.amount && input.currency
+                  ? {
+                      amount: input.amount,
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: input.amount }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
+                input.amountIsGreater && input.currency
+                  ? {
+                      amount: { gte: input.amountIsGreater },
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: { gte: input.amount } }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
+                input.amountIsLesser && input.currency
+                  ? {
+                      amount: { lte: input.amountIsLesser },
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: { lte: input.amountIsLesser } }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
                 input.uploadedById
                   ? {
                       transactionMetadata: {
                         uploadedBy: input.uploadedById,
+                      },
+                    }
+                  : {},
+                input.confirmedById
+                  ? {
+                      transactionMetadata: {
+                        confirmedBy: input.confirmedById,
                       },
                     }
                   : {},
@@ -207,8 +259,120 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      console.log("All operations queried from database");
-      return queriedOperations;
+      const userPermissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        { userId: undefined },
+      );
+      const tags = await getAllTags(ctx.redis, ctx.db);
+
+      const operationsWithPermissions = queriedOperations.map((op) => {
+        const isVisualizeAllowed = userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+        )
+          ? true
+          : userPermissions?.find((p) => {
+              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+              if (
+                p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.fromEntityId) ||
+                    allAllowedTags.includes(tx.fromEntity.tagName),
+                ) &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.toEntityId) ||
+                    allAllowedTags.includes(tx.toEntity.tagName),
+                )
+              ) {
+                return true;
+              }
+            })
+          ? true
+          : false;
+
+        return {
+          ...op,
+          isVisualizeAllowed,
+          transactions: op.transactions.map((tx) => {
+            const isDeleteAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_DELETE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+
+            const isUpdateAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+
+            const isValidateAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_VALIDATE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+            return {
+              ...tx,
+              isDeleteAllowed,
+              isUpdateAllowed,
+              isValidateAllowed,
+            };
+          }),
+        };
+      });
+
+      return operationsWithPermissions;
     }),
   getOperationDetails: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
@@ -271,5 +435,53 @@ export const operationsRouter = createTRPCRouter({
       });
 
       return deletedTransaction;
+    }),
+
+  insights: protectedProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const monthCountSchema = z.array(
+        z.object({
+          day: z.date(),
+          operationsCount: z.bigint(),
+          transactionsCount: z.bigint(),
+        }),
+      );
+
+      const monthCount = await ctx.db.$queryRaw`SELECT
+      DATE_TRUNC('day', "o"."date" AT TIME ZONE 'UTC') as "day",
+      COUNT(DISTINCT "o"."id") as "operationsCount",
+      COUNT(DISTINCT "t"."id") as "transactionsCount"
+    FROM
+      "Operations" "o"
+      LEFT JOIN "Transactions" "t" ON "o"."id" = "t"."operationId"
+    WHERE
+      "o"."date" >= NOW() - INTERVAL '1 month'
+    GROUP BY
+      DATE_TRUNC('day', "o"."date" AT TIME ZONE 'UTC')
+    ORDER BY
+      "day" ASC;`;
+      console.log(monthCount);
+
+      const parsedMonthCount = monthCountSchema.parse(monthCount);
+
+      const userUploadsCount = await ctx.db.transactionsMetadata.count({
+        where: {
+          uploadedBy: input.userId,
+        },
+      });
+      console.log(userUploadsCount);
+      const userConfirmationsCount = await ctx.db.transactionsMetadata.count({
+        where: {
+          confirmedBy: input.userId,
+        },
+      });
+      console.log(userConfirmationsCount);
+
+      return {
+        monthCount: parsedMonthCount,
+        uploads: userUploadsCount,
+        confirmations: userConfirmationsCount,
+      };
     }),
 });

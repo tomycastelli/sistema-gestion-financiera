@@ -35,7 +35,7 @@ const UploadedUserOperations = forwardRef<
               <CardHeader>
                 <CardTitle>
                   <Link
-                    href={`/operaciones/gestionar/${op.id}`}
+                    href={`/operaciones/gestion/${op.id}`}
                     className="flex text-black transition-all hover:scale-105"
                   >
                     Operación {op.id}

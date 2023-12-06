@@ -1,35 +1,11 @@
 import Link from "next/link";
-import { capitalizeFirstLetter } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
 import AuthForm from "./components/AuthForm";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./components/ui/card";
+import OperationsMenuCard from "./components/OperationsMenuCard";
+import { Card, CardHeader, CardTitle } from "./components/ui/card";
 
 export default async function Home() {
   const session = await getServerAuthSession();
-
-  const panels = [
-    {
-      name: "operaciones",
-      description: "Visualizar y gestionar operaciones y transacciones",
-    },
-    {
-      name: "cuentas",
-      description: "Acceder a las cuentas de las entidades",
-    },
-    {
-      name: "entidades",
-      description: "Crear, editar o borrar entidades",
-    },
-    {
-      name: "usuarios",
-      description: "Gestionar los roles, permisos, y datos de los usuarios",
-    },
-  ];
 
   return (
     <div className="mt-12 flex h-full w-full flex-col items-center justify-center">
@@ -37,25 +13,29 @@ export default async function Home() {
         Bienvenido al portal de Maika!
       </h1>
       {session ? (
-        <div className="grid w-full grid-cols-4 gap-8">
-          {panels.map((panel) => (
-            <Link
-              key={panel.name}
-              href={
-                panel.name === "cuentas"
-                  ? { pathname: `/${panel.name}`, query: { tag: "maika" } }
-                  : { pathname: `/${panel.name}` }
-              }
-              className="flex transition-all hover:scale-110"
-            >
-              <Card className="h-28 w-96">
-                <CardHeader>
-                  <CardTitle>{capitalizeFirstLetter(panel.name)}</CardTitle>
-                  <CardDescription>{panel.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+        <div className="grid w-full grid-cols-4 gap-4">
+          <OperationsMenuCard userId={session.user.id} />
+          <Link href={"/cuentas"}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Cuentas</CardTitle>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link href={"/entidades"}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Entidades</CardTitle>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link href={"/usuarios"}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Usuarios</CardTitle>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center">

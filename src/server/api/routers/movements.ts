@@ -16,7 +16,7 @@ export const movementsRouter = createTRPCRouter({
         pageNumber: z.number().int(),
         entityId: z.number().int().optional(), // Change from array to single number
         entityTag: z.string().optional(),
-        account: z.enum(["cuenta_corriente", "caja"]),
+        account: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -68,10 +68,8 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
-      if (input.account === "cuenta_corriente") {
-        whereConditions.push({ status: false });
-      } else {
-        whereConditions.push({ status: true });
+      if (input.account !== null) {
+        whereConditions.push({ status: input.account });
       }
 
       if (input.entityTag) {
@@ -118,6 +116,7 @@ export const movementsRouter = createTRPCRouter({
                   date: true,
                 },
               },
+              transactionMetadata: true,
               fromEntity: true,
               toEntity: true,
             },
@@ -553,6 +552,7 @@ ORDER BY
     .input(
       z.object({
         entityId: z.number().int().optional().nullable(),
+        accountType: z.boolean(),
         entityTag: z.string().optional().nullable(),
         linkId: z.number().optional().nullable(),
         linkToken: z.string().optional().nullable(),
@@ -590,23 +590,29 @@ ORDER BY
           entityid: z.number().int(),
           entitytag: z.string(),
           entityname: z.string(),
+          status: z.boolean(),
           balance: z.number(),
         }),
       );
 
-      const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
+      if (input.entityId) {
+        const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
           SELECT
             t.currency,
             e.id as entityId,
             e."tagName" as entityTag,
             e.name as entityName,
-            COALESCE(SUM(
-              CASE
-                WHEN m."direction" = -1 THEN t."amount"
-                WHEN m."direction" = 1 THEN -t."amount"
-                ELSE 0
-              END
-            ), 0) as balance
+            m.status,
+            SUM(CASE
+              WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
+              WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
+              ELSE 0
+            END) -
+            SUM(CASE
+              WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
+              WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
+              ELSE 0
+            END) as balance
           FROM
             "Transactions" t
           JOIN
@@ -614,62 +620,80 @@ ORDER BY
           LEFT JOIN
             "Movements" m ON t.id = m."transactionId"
             WHERE
-  ${
-    input.entityId
-      ? Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId}`
-      : Prisma.sql``
-  }
-  ${
-    input.entityTag
-      ? Prisma.sql`
-      (
-        t."fromEntityId" IN (
-          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-            `ARRAY[${getAllChildrenTags(
-              input.entityTag,
-              await getAllTags(ctx.redis, ctx.db),
-            )
-              .map((tag) => `'${tag}'`)
-              .join(",")}]`,
-          )})
-        ) AND t."toEntityId" NOT IN (
-          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-            `ARRAY[${getAllChildrenTags(
-              input.entityTag,
-              await getAllTags(ctx.redis, ctx.db),
-            )
-              .map((tag) => `'${tag}'`)
-              .join(",")}]`,
-          )})
-        )
-      ) OR (
-        t."toEntityId" IN (
-          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-            `ARRAY[${getAllChildrenTags(
-              input.entityTag,
-              await getAllTags(ctx.redis, ctx.db),
-            )
-              .map((tag) => `'${tag}'`)
-              .join(",")}]`,
-          )})
-        ) AND t."fromEntityId" NOT IN (
-          SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-            `ARRAY[${getAllChildrenTags(
-              input.entityTag,
-              await getAllTags(ctx.redis, ctx.db),
-            )
-              .map((tag) => `'${tag}'`)
-              .join(",")}]`,
-          )})
-        )
-      )
-    `
-      : Prisma.sql``
-  }
+          ${Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId} AND m.status = ${input.accountType}`}
           GROUP BY
-            t.currency, e.id, e."tagName", e.name
+            t.currency, e.id, e.name, m.status
+        `;
+        return balances;
+      } else if (input.entityTag) {
+        const allTags = getAllChildrenTags(
+          input.entityTag,
+          await getAllTags(ctx.redis, ctx.db),
+        );
+
+        const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
+          SELECT
+            t.currency,
+            e.id as entityId,
+            e."tagName" as entityTag,
+            e.name as entityName,
+            m.status,
+            SUM(CASE
+              WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
+              WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
+              ELSE 0
+            END) -
+            SUM(CASE
+              WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
+              WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
+              ELSE 0
+            END) as balance
+          FROM
+            "Transactions" t
+          JOIN
+            "Entities" e ON t."fromEntityId" = e.id OR t."toEntityId" = e.id
+          LEFT JOIN
+            "Movements" m ON t.id = m."transactionId"
+            WHERE
+          ${Prisma.sql`
+              (
+                t."fromEntityId" IN (
+                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
+                  )})
+                ) AND t."toEntityId" NOT IN (
+                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
+                  )})
+                )
+              ) OR (
+                t."toEntityId" IN (
+                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
+                  )})
+                ) AND t."fromEntityId" NOT IN (
+                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
+                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
+                  )})
+                )
+              )
+              AND e."tagName" != ANY(${Prisma.raw(
+                `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
+              )})
+              AND m.status = ${input.accountType}
+            `}
+  
+          GROUP BY
+            t.currency, e.id, e."tagName", e.name, m.status
         `;
 
-      return balances;
+        return balances.filter(
+          (balance) =>
+            !allTags.includes(balance.entitytag) &&
+            balance.status === input.accountType,
+        )!;
+      } else {
+        return [];
+      }
     }),
 });

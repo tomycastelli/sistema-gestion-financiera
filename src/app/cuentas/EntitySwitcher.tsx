@@ -1,6 +1,5 @@
 "use client";
 
-import Lottie from "lottie-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FC } from "react";
 import {
@@ -9,9 +8,7 @@ import {
   getInitials,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import loadingJson from "../../../public/animations/loading.json";
 import { Icons } from "../components/ui/Icons";
 import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
@@ -30,15 +27,11 @@ import {
 } from "../components/ui/popover";
 
 interface EntitySwitcherProps {
-  initialEntities: RouterOutputs["entities"]["getAll"];
+  entities: RouterOutputs["entities"]["getAll"];
+  tags: RouterOutputs["tags"]["getAll"];
 }
 
-const EntitySwitcher: FC<EntitySwitcherProps> = ({ initialEntities }) => {
-  const { data: entities, isLoading } = api.entities.getAll.useQuery(
-    undefined,
-    { initialData: initialEntities },
-  );
-
+const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
   const groupedEntities = entities.reduce(
     (acc, entity) => {
       const existingGroup = acc.find((group) => group.tag === entity.tag.name);
@@ -57,8 +50,6 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ initialEntities }) => {
     [] as { tag: string; entities: { id: number; name: string }[] }[],
   );
 
-  const tags = Array.from(new Set(groupedEntities.map((group) => group.tag)));
-
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -75,35 +66,29 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ initialEntities }) => {
           role="combobox"
           className="w-[200px] justify-between"
         >
-          {isLoading ? (
-            <Lottie animationData={loadingJson} className="h-5" loop={true} />
-          ) : (
-            <>
-              <Avatar className="mr-2 h-7 w-7">
-                <AvatarFallback>
-                  {selectedTag
-                    ? getInitials(selectedTag).toUpperCase()
-                    : selectedEntity
-                    ? (() => {
-                        const foundEntity = entities.find(
-                          (entity) => entity.id === parsedEntity,
-                        );
-                        return foundEntity ? getInitials(foundEntity.name) : "";
-                      })()
-                    : ""}
-                </AvatarFallback>
-              </Avatar>
-              <p>
-                {" "}
-                {selectedTag
-                  ? capitalizeFirstLetter(selectedTag)
-                  : selectedEntity
-                  ? entities.find((entity) => entity.id === parsedEntity)?.name
-                  : "Elegir"}{" "}
-              </p>
-              <Icons.caretSort className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-            </>
-          )}
+          <Avatar className="mr-2 h-7 w-7">
+            <AvatarFallback>
+              {selectedTag
+                ? getInitials(selectedTag).toUpperCase()
+                : selectedEntity
+                ? (() => {
+                    const foundEntity = entities.find(
+                      (entity) => entity.id === parsedEntity,
+                    );
+                    return foundEntity ? getInitials(foundEntity.name) : "";
+                  })()
+                : ""}
+            </AvatarFallback>
+          </Avatar>
+          <p>
+            {" "}
+            {selectedTag
+              ? capitalizeFirstLetter(selectedTag)
+              : selectedEntity
+              ? entities.find((entity) => entity.id === parsedEntity)?.name
+              : "Elegir"}{" "}
+          </p>
+          <Icons.caretSort className="ml-auto h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent>
@@ -114,21 +99,26 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ initialEntities }) => {
             <CommandGroup heading="Tags">
               {tags.map((tag) => (
                 <CommandItem
-                  key={tag}
+                  key={tag.name}
                   className="text-sm"
                   onSelect={() =>
                     router.push(
                       pathname +
                         "?" +
-                        createQueryString(searchParams, "tag", tag, "entidad"),
+                        createQueryString(
+                          searchParams,
+                          "tag",
+                          tag.name,
+                          "entidad",
+                        ),
                     )
                   }
                 >
-                  {capitalizeFirstLetter(tag)}
+                  {capitalizeFirstLetter(tag.name)}
                   <Icons.check
                     className={cn(
                       "ml-auto h-4 w-4",
-                      selectedTag === tag ? "opacity-100" : "opacity-0",
+                      selectedTag === tag.name ? "opacity-100" : "opacity-0",
                     )}
                   />
                 </CommandItem>

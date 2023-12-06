@@ -1,4 +1,4 @@
-import { env } from "~/env.mjs";
+import moment from "moment";
 import { translations } from "./variables";
 
 export const getInitials = (name: string): string => {
@@ -132,22 +132,26 @@ export const createQueryString = (
 
 export const removeQueryString = (
   searchParams: URLSearchParams,
-  name: string,
+  names: string[] | string,
 ): string => {
   const params = new URLSearchParams(searchParams);
-  params.delete(name);
+
+  if (typeof names === "string") {
+    params.delete(names);
+  } else {
+    names.forEach((name) => params.delete(name));
+  }
+
   return params.toString();
 };
 
 type GenerateLinkParams = {
-  pathname: string;
   selectedClient: string | null;
   linkId: number | null;
   linkToken: string | null;
 };
 
 export const generateLink = ({
-  pathname,
   selectedClient,
   linkId,
   linkToken,
@@ -174,7 +178,7 @@ export const generateLink = ({
   }
 
   // Construct the URL
-  const url = `${env.NEXTAUTH_URL}${pathname}?${queryParams.toString()}`;
+  const url = `${queryParams.toString()}`;
   return url;
 };
 
@@ -192,7 +196,7 @@ type Balance = {
 
 export const calculateTotal = (
   balances: Balance,
-  timeframe: "daily" | "weekly" | "monthly",
+  timeframe: "daily" | "weekly" | "monthly" | "yearly",
 ) => {
   return balances.map((entity) => {
     const result: {
@@ -203,27 +207,21 @@ export const calculateTotal = (
     }[] = [];
 
     entity.balances.forEach((balance) => {
-      const currentDate = balance.date;
-      const oneDayBefore = new Date(currentDate);
-      const oneWeekBefore = new Date(currentDate);
-      const oneMonthBefore = new Date(currentDate);
+      const currentDate = moment();
 
-      // Calculate one day, one week, and one month before dates
-      oneDayBefore.setDate(currentDate.getDate() - 1);
-      oneWeekBefore.setDate(currentDate.getDate() - 7);
-      oneMonthBefore.setMonth(currentDate.getMonth() - 1);
-
-      const isBeforeDate = (beforeDate: Date) => balance.date < beforeDate;
-
-      // Choose the appropriate timeframe based on the parameter
-      const beforeDate =
+      // Calculate the duration based on the timeframe
+      const duration =
         timeframe === "daily"
-          ? oneDayBefore
+          ? 1
           : timeframe === "weekly"
-          ? oneWeekBefore
+          ? 7
           : timeframe === "monthly"
-          ? oneMonthBefore
-          : new Date(); // Default to the current date if timeframe is not recognized
+          ? 30
+          : timeframe === "yearly"
+          ? 365
+          : 1; // Default to 1 if the timeframe is not recognized
+
+      const startDate = currentDate.clone().subtract(duration, "days");
 
       // Calculate total amount
       const existingEntry = result.find(
@@ -237,29 +235,13 @@ export const calculateTotal = (
           currency: balance.currency,
           status: balance.status,
           amount: balance.amount,
-          beforeAmount: isBeforeDate(beforeDate)
-            ? 0
-            : entity.balances
-                .filter(
-                  (b) =>
-                    b.date < beforeDate &&
-                    b.currency === balance.currency &&
-                    b.status === balance.status,
-                )
-                .reduce((sum, b) => sum + b.amount, 0),
+          beforeAmount: startDate.isBefore(balance.date) ? 0 : balance.amount,
         });
       } else {
         existingEntry.amount += balance.amount;
-        existingEntry.beforeAmount += isBeforeDate(beforeDate)
+        existingEntry.beforeAmount += startDate.isBefore(balance.date)
           ? 0
-          : entity.balances
-              .filter(
-                (b) =>
-                  b.date < beforeDate &&
-                  b.currency === balance.currency &&
-                  b.status === balance.status,
-              )
-              .reduce((sum, b) => sum + b.amount, 0);
+          : balance.amount;
       }
     });
 
@@ -267,38 +249,38 @@ export const calculateTotal = (
   });
 };
 
+type OutputBalance = {
+  currency: string;
+  balances: {
+    status: boolean;
+    amount: number;
+    beforeAmount: number;
+  }[];
+};
+
 export const calculateTotalAllEntities = (
   balances: Balance,
-  timeframe: "daily" | "weekly" | "monthly",
-) => {
-  const result: {
-    currency: string;
-    balances: { status: boolean; amount: number; beforeAmount: number }[];
-  }[] = [];
+  timeframe: "daily" | "weekly" | "monthly" | "yearly",
+): OutputBalance[] => {
+  const result: OutputBalance[] = [];
 
   balances.forEach((entity) => {
     entity.balances.forEach((balance) => {
-      const currentDate = balance.date;
-      const oneDayBefore = new Date(currentDate);
-      const oneWeekBefore = new Date(currentDate);
-      const oneMonthBefore = new Date(currentDate);
+      const currentDate = moment();
 
-      // Calculate one day, one week, and one month before dates
-      oneDayBefore.setDate(currentDate.getDate() - 1);
-      oneWeekBefore.setDate(currentDate.getDate() - 7);
-      oneMonthBefore.setMonth(currentDate.getMonth() - 1);
-
-      const isBeforeDate = (beforeDate: Date) => balance.date < beforeDate;
-
-      // Choose the appropriate timeframe based on the parameter
-      const beforeDate =
+      // Calculate the duration based on the timeframe
+      const duration =
         timeframe === "daily"
-          ? oneDayBefore
+          ? 1
           : timeframe === "weekly"
-          ? oneWeekBefore
+          ? 7
           : timeframe === "monthly"
-          ? oneMonthBefore
-          : new Date(); // Default to the current date if timeframe is not recognized
+          ? 30
+          : timeframe === "yearly"
+          ? 365
+          : 1; // Default to 1 if the timeframe is not recognized
+
+      const startDate = currentDate.clone().subtract(duration, "days");
 
       const existingCurrency = result.find(
         (entry) => entry.currency === balance.currency,
@@ -328,16 +310,9 @@ export const calculateTotalAllEntities = (
 
       if (existingBalance) {
         existingBalance.amount += balance.amount;
-        existingBalance.beforeAmount += isBeforeDate(beforeDate)
+        existingBalance.beforeAmount += startDate.isBefore(balance.date)
           ? 0
-          : entity.balances
-              .filter(
-                (b) =>
-                  b.date < beforeDate &&
-                  b.currency === balance.currency &&
-                  b.status === balance.status,
-              )
-              .reduce((sum, b) => sum + b.amount, 0);
+          : balance.amount;
       }
     });
   });
@@ -380,19 +355,37 @@ export function isTagAllowed(
 }
 
 export function getAllChildrenTags(
-  tagName: string,
-  allTags: Tag[],
+  tagNames: string | string[] | undefined,
+  allTags: {
+    name: string;
+    parent: string | null;
+    color: string | null;
+    childTags: {
+      name: string;
+      parent: string | null;
+      color: string | null;
+    }[];
+  }[],
   result: string[] = [],
 ): string[] {
-  // Find direct children of the current tag
-  const children = allTags.filter((t) => t.parent === tagName);
+  if (!tagNames) {
+    return [];
+  }
+  const tagNamesArray = Array.isArray(tagNames) ? tagNames : [tagNames];
 
-  // Add the current tag to the result array
-  result.push(tagName);
+  for (const tagName of tagNamesArray) {
+    // Find the tag in the array
+    const currentTag = allTags.find((tag) => tag.name === tagName);
 
-  // Recursively find children of each child
-  for (const child of children) {
-    getAllChildrenTags(child.name, allTags, result);
+    // If the tag is found, add it to the result and continue with children
+    if (currentTag) {
+      result.push(currentTag.name);
+
+      // Recursively find children of the current tag
+      for (const child of currentTag.childTags) {
+        getAllChildrenTags(child.name, allTags, result);
+      }
+    }
   }
 
   return result;
@@ -417,7 +410,7 @@ export function findColor(tag: Tag, allTags: Tag[]): string | null {
 export function getWeekKey(date: Date) {
   const year = date.getFullYear();
   const weekNumber = getISOWeekNumber(date);
-  return `${year}-W${weekNumber}`;
+  return `${year}-${weekNumber}`;
 }
 
 // Function to get the month key based on a date
@@ -425,6 +418,12 @@ export function getMonthKey(date: Date) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1; // Adding 1 because months are zero-indexed
   return `${year}-${month < 10 ? "0" : ""}${month}`;
+}
+
+// Function to get the year key based on a date
+export function getYearKey(date: Date) {
+  const year = date.getFullYear();
+  return `${year}`;
 }
 
 // Function to get the ISO week number of a date
@@ -438,4 +437,17 @@ function getISOWeekNumber(date: Date) {
   return weekNumber;
 }
 
-export const isNumeric = (value: string) => /^\d+(\.\d+)?$/.test(value);
+type BarChartEntry = {
+  date: string;
+  cash: number;
+  current_account: number;
+};
+
+export const sortEntries = (a: BarChartEntry, b: BarChartEntry): number => {
+  const momentA = moment(a.date, ["DD-MM-YYYY", "YYYY", "YYYY-ww", "YYYY-MM"]);
+  const momentB = moment(b.date, ["DD-MM-YYYY", "YYYY", "YYYY-ww", "YYYY-MM"]);
+
+  return momentA.diff(momentB);
+};
+
+export const isNumeric = (value: string) => /^[+-]?\d+(\.\d+)?$/.test(value);

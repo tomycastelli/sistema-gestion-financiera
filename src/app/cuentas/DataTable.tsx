@@ -61,6 +61,10 @@ export function DataTable<TData, TValue>({
       columnVisibility: {
         currency: false,
         otherEntityId: false,
+        selectedEntityId: false,
+        txType: false,
+        metadata: false,
+        id: false,
       },
     },
   });

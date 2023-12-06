@@ -1,3 +1,4 @@
+import moment from "moment";
 import Link from "next/link";
 import { Suspense } from "react";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
@@ -16,6 +17,18 @@ const Page = async ({
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
   const selectedFromEntity = searchParams.origen as string;
+  const selectedToEntity = searchParams.destino as string;
+  const selectedCurrency = searchParams.divisa as string;
+  const selectedDate = searchParams.dia as string;
+  const selectedDateGreater = searchParams.diaMin as string;
+  const selectedDateLesser = searchParams.diaMax as string;
+  const selectedType = searchParams.tipo as string;
+  const selectedOperator = searchParams.operador as string;
+  const selectedAmount = searchParams.monto as string;
+  const selectedAmountGreater = searchParams.montoMin as string;
+  const selectedAmountLesser = searchParams.montoMax as string;
+  const selectedUploadUserId = searchParams.cargadoPor as string;
+  const selectedConfirmationUserId = searchParams.confirmadoPor as string;
 
   const operationsQueryInput: RouterInputs["operations"]["getOperations"] = {
     limit: 8,
@@ -25,6 +38,44 @@ const Page = async ({
   if (selectedFromEntity) {
     operationsQueryInput.fromEntityId = parseInt(selectedFromEntity);
   }
+  if (selectedToEntity) {
+    operationsQueryInput.toEntityId = parseInt(selectedToEntity);
+  }
+  if (selectedCurrency) {
+    operationsQueryInput.currency = selectedCurrency;
+  }
+  if (selectedDate) {
+    operationsQueryInput.opDay = moment(selectedDate, "DD-MM-YYYY").toDate();
+  } else if (selectedDateGreater) {
+    operationsQueryInput.opDateIsGreater = moment(
+      selectedDateGreater,
+      "DD-MM-YYYY",
+    ).toDate();
+  } else if (selectedDateLesser) {
+    operationsQueryInput.opDateIsLesser = moment(
+      selectedDateLesser,
+      "DD-MM-YYYY",
+    ).toDate();
+  }
+  if (selectedType) {
+    operationsQueryInput.transactionType = selectedType;
+  }
+  if (selectedOperator) {
+    operationsQueryInput.operatorEntityId = parseInt(selectedOperator);
+  }
+  if (selectedAmount) {
+    operationsQueryInput.amount = parseFloat(selectedAmount);
+  } else if (selectedAmountGreater) {
+    operationsQueryInput.amountIsGreater = parseFloat(selectedAmountGreater);
+  } else if (selectedAmountLesser) {
+    operationsQueryInput.amountIsLesser = parseFloat(selectedAmountLesser);
+  }
+  if (selectedUploadUserId) {
+    operationsQueryInput.uploadedById = selectedUploadUserId;
+  }
+  if (selectedConfirmationUserId) {
+    operationsQueryInput.confirmedById = selectedConfirmationUserId;
+  }
 
   const initialOperations = await api.operations.getOperations.query(
     operationsQueryInput,
@@ -32,7 +83,7 @@ const Page = async ({
 
   const initialEntities = await api.entities.getAll.query();
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const users = await api.users.getAll.query();
 
   return (
     <div className="flex w-full flex-col">
@@ -40,7 +91,7 @@ const Page = async ({
       <Suspense fallback={<LoadingAnimation text={"Cargando operaciones"} />}>
         {session && (
           <OperationsFeed
-            userPermissions={userPermissions}
+            users={users}
             initialEntities={initialEntities}
             initialOperations={initialOperations}
             operationsQueryInput={operationsQueryInput}
@@ -53,7 +104,7 @@ const Page = async ({
           <Link
             className="flex flex-row items-center space-x-1 rounded-xl border-2 border-foreground p-2 transition-all hover:scale-110 hover:bg-slate-100"
             href={{
-              pathname: "/operaciones/gestionar",
+              pathname: "/operaciones/gestion",
               query: { pagina: parseInt(selectedPage) - 1 },
             }}
           >
@@ -65,7 +116,7 @@ const Page = async ({
           <Link
             className="flex flex-row items-center space-x-1 rounded-xl border-2 border-foreground p-2 transition-all hover:scale-110 hover:bg-slate-100"
             href={{
-              pathname: "/operaciones/gestionar",
+              pathname: "/operaciones/gestion",
               query: { pagina: parseInt(selectedPage) + 1 },
             }}
           >

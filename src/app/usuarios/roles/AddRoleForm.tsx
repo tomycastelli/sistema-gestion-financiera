@@ -271,22 +271,22 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                 ? true
                 : field.name !== "ADMIN",
             )
-            .map((field, index) => (
+            .map((loopField, index) => (
               <div
-                key={field.id}
+                key={loopField.id}
                 className="flex flex-col space-y-0.5 rounded-xl border border-muted-foreground p-4"
               >
                 <h1 className="text-lg font-semibold">
                   {
                     permissionsData.find(
-                      (permission) => permission.name === field.name,
+                      (permission) => permission.name === loopField.name,
                     )?.label
                   }
                 </h1>
                 <p>
                   {
                     permissionsData.find(
-                      (permission) => permission.name === field.name,
+                      (permission) => permission.name === loopField.name,
                     )?.description
                   }
                 </p>
@@ -297,6 +297,36 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                     <FormItem className="flex w-16 flex-row items-center justify-start space-x-2 rounded-lg">
                       <FormControl>
                         <Switch
+                          disabled={
+                            userPermissions?.find(
+                              (p) =>
+                                p.name === "ADMIN" ||
+                                (p.name === "USERS_PERMISSIONS_MANAGE" &&
+                                  loopField.name !== "ADMIN"),
+                            )
+                              ? false
+                              : userPermissions?.find(
+                                  (p) =>
+                                    (p.name ===
+                                      "USERS_PERMISSIONS_MANAGE_ACCOUNTS" &&
+                                      loopField.name.startsWith("ACCOUNTS")) ||
+                                    (p.name ===
+                                      "USERS_PERMISSIONS_MANAGE_OPERATIONS" &&
+                                      loopField.name.startsWith(
+                                        "OPERATIONS",
+                                      )) ||
+                                    (p.name ===
+                                      "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
+                                      loopField.name.startsWith(
+                                        "TRANSACTIONS",
+                                      )) ||
+                                    (p.name ===
+                                      "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
+                                      loopField.name.startsWith("ENTITIES")),
+                                )
+                              ? false
+                              : true
+                          }
                           checked={field.value}
                           onCheckedChange={field.onChange}
                           aria-readonly
@@ -305,7 +335,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                     </FormItem>
                   )}
                 />
-                {field.name.endsWith("_SOME") && (
+                {loopField.name.endsWith("_SOME") && (
                   <div className="flex flex-row space-x-4">
                     <FormField
                       control={form.control}
@@ -336,7 +366,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                             <PopoverContent className="w-[200px] p-0">
                               <Command>
                                 <CommandInput placeholder="Buscar entidad..." />
-                                <CommandEmpty>No language found.</CommandEmpty>
+                                <CommandEmpty>...</CommandEmpty>
                                 <CommandGroup>
                                   {entities.map((entity) => (
                                     <CommandItem
@@ -408,7 +438,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                             <PopoverContent className="w-[200px] p-0">
                               <Command>
                                 <CommandInput placeholder="Buscar entidad..." />
-                                <CommandEmpty>No language found.</CommandEmpty>
+                                <CommandEmpty>...</CommandEmpty>
                                 <CommandGroup>
                                   {tags.map((tag) => (
                                     <CommandItem

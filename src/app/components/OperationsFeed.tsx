@@ -11,18 +11,18 @@ import FilterOperationsForm from "./forms/FilterOperationsForm";
 
 interface OperationsFeedProps {
   initialOperations: RouterOutputs["operations"]["getOperations"];
+  users: RouterOutputs["users"]["getAll"];
   initialEntities: RouterOutputs["entities"]["getAll"];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
-  userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const OperationsFeed: FC<OperationsFeedProps> = ({
   initialOperations,
+  users,
   user,
   initialEntities,
   operationsQueryInput,
-  userPermissions,
 }) => {
   const { data: operations, isFetching } =
     api.operations.getOperations.useQuery(operationsQueryInput, {
@@ -39,7 +39,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   return (
     <div className="flex flex-col">
       <div className="mb-4 w-full">
-        <FilterOperationsForm entities={entities} />
+        <FilterOperationsForm entities={entities} users={users} />
       </div>
       <h3 className="text-xl font-bold">Página {operationsQueryInput.page}</h3>
       <div className="grid grid-cols-1">
@@ -50,19 +50,24 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
             loop={true}
           />
         )}
-        {operations.map((op) => {
-          return (
-            <div key={op.id} className="flex flex-col">
-              <Operation
-                userPermissions={userPermissions}
-                entities={entities}
-                operation={op}
-                operationsQueryInput={operationsQueryInput}
-                user={user}
-              />
-            </div>
-          );
-        })}
+        {operations.length > 0 ? (
+          operations
+            .filter((op) => op.isVisualizeAllowed)
+            .map((op) => {
+              return (
+                <div key={op.id} className="flex flex-col">
+                  <Operation
+                    entities={entities}
+                    operation={op}
+                    operationsQueryInput={operationsQueryInput}
+                    user={user}
+                  />
+                </div>
+              );
+            })
+        ) : (
+          <p className="text-2xl">No se encontraron operaciones</p>
+        )}
       </div>
       <div className="flex w-full flex-row items-end justify-end space-x-2"></div>
     </div>

@@ -79,12 +79,11 @@ const OperationDetails: FC<OperationDetailsProps> = ({
               Transacciones
             </h1>
             <div className="mx-auto grid-cols-1 gap-4">
-              {operation.transactions.map((tx, index) => (
+              {operation.transactions.map((tx) => (
                 <Transaction
                   key={tx.id}
                   userPermissions={userPermissions}
                   transaction={tx}
-                  txIdx={index}
                   entities={entities}
                   operationsQueryInput={{
                     operationId: operationId,

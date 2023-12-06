@@ -72,6 +72,9 @@ model Tag {
   parent String?
   color String?
   entities Entities[]
+
+  parentTag Tag? @relation("ChildTags", fields: [parent], references: [name])
+  childTags Tag[] @relation("ChildTags")
 }
 
 model VerificationToken {

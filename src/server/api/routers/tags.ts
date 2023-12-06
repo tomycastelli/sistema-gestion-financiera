@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { getAllTags } from "~/lib/trpcFunctions";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const tagsRouter = createTRPCRouter({
-  getAll: protectedProcedure.query(async ({ ctx }) => {
+  getAll: publicProcedure.query(async ({ ctx }) => {
     const tags = await getAllTags(ctx.redis, ctx.db);
     return tags;
   }),

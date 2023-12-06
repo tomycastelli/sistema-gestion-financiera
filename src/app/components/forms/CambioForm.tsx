@@ -32,12 +32,24 @@ const FormSchema = z.object({
   entityB: z.string().min(1),
   entityOperator: z.string().min(1),
   currencyA: z.string().min(1),
-  amountA: z.string().min(1),
+  amountA: z
+    .string()
+    .refine((value) => value === undefined || isNumeric(value), {
+      message: "Tiene que ser un valor númerico",
+    }),
   methodA: z.string().optional(),
   currencyB: z.string().min(1),
-  amountB: z.string().min(1),
+  amountB: z
+    .string()
+    .refine((value) => value === undefined || isNumeric(value), {
+      message: "Tiene que ser un valor númerico",
+    }),
   methodB: z.string().optional(),
-  exchangeRate: z.string().min(1),
+  exchangeRate: z
+    .string()
+    .refine((value) => value === undefined || isNumeric(value), {
+      message: "Tiene que ser un valor númerico",
+    }),
   lockExchange: z.boolean().default(true),
   lockAmountA: z.boolean().default(true),
   lockAmountB: z.boolean().default(false),
@@ -209,7 +221,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         toEntityId: parseInt(values.entityB),
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyB,
-        metadata: values.exchangeRate && {
+        metadata: {
           exchangeRate: parseFloat(values.exchangeRate),
         },
         amount: parseFloat(values.amountB),
@@ -221,7 +233,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         toEntityId: parseInt(values.entityA),
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyA,
-        metadata: values.exchangeRate && {
+        metadata: {
           exchangeRate: parseFloat(values.exchangeRate),
         },
         amount: parseFloat(values.amountA),
@@ -537,6 +549,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
           </div>
         </div>
         <Button type="submit" className="mx-auto mt-6">
+          <Icons.addPackage className="mr-2 h-5" />
           Añadir par de cambio
         </Button>
       </form>

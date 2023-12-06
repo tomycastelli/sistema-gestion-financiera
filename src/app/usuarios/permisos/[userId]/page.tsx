@@ -11,14 +11,20 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   const session = await getServerAuthSession();
 
+  const tags = await api.tags.getAll.query();
+
+  const userPermissions = await api.users.getAllPermissions.query({});
+
   return (
     <div>
       {session && (
         <PermissionsForm
+          userPermissions={userPermissions}
           initialEntities={entities}
           initialPermissions={permissions}
           userId={params.userId}
           session={session}
+          tags={tags}
         />
       )}
     </div>

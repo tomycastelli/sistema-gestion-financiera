@@ -46,6 +46,18 @@ export const operationTypes = [
     value: "cable",
     label: "Cable",
   },
+  {
+    value: "cuenta corriente",
+    label: "Cuenta corriente",
+  },
+  {
+    value: "caja",
+    label: "Caja",
+  },
+  {
+    value: "fee",
+    label: "Fee",
+  },
 ];
 
 export const translations: Record<string, string> = {

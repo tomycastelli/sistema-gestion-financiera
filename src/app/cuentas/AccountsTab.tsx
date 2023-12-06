@@ -28,9 +28,6 @@ const AccountsTable = async ({
   const linkId = parseInt(searchParams.id as string) || null;
   const linkToken = (searchParams.token as string) || null;
 
-  const isPerspectiveSelected =
-    selectedEntity !== undefined || selectedTag !== undefined;
-
   const pageSize = 15;
 
   const initialMovements = await api.movements.getCurrentAccounts.query({
@@ -41,7 +38,7 @@ const AccountsTable = async ({
     pageNumber: selectedPageNumber,
     entityId: selectedEntity,
     entityTag: selectedTag,
-    account: accountType ? "caja" : "cuenta_corriente",
+    account: accountType,
   });
 
   const initialDetailedBalances = await api.movements.getDetailedBalance.query({
@@ -49,6 +46,7 @@ const AccountsTable = async ({
     linkToken: linkToken,
     entityId: selectedEntity,
     entityTag: selectedTag,
+    accountType: accountType,
   });
 
   return (
@@ -58,20 +56,24 @@ const AccountsTable = async ({
         initialBalances={initialBalances}
         initialDetailedBalances={initialDetailedBalances}
       />
-      {isPerspectiveSelected && (
-        <MovementsTable
-          linkId={linkId}
-          linkToken={linkToken}
-          initialTags={initialTags}
-          accountType={accountType}
-          session={session}
-          pageSize={pageSize}
-          pageNumber={selectedPageNumber}
-          initialMovements={initialMovements}
-          entityTag={selectedTag}
-          entityId={selectedEntity}
-          account={accountType ? "caja" : "cuenta_corriente"}
-        />
+      {initialMovements.movements.length > 0 && (
+        <div className="flex flex-col space-y-4">
+          <h1 className="text-3xl font-semibold tracking-tighter">
+            Movimientos
+          </h1>
+          <MovementsTable
+            linkId={linkId}
+            linkToken={linkToken}
+            initialTags={initialTags}
+            accountType={accountType}
+            session={session}
+            pageSize={pageSize}
+            pageNumber={selectedPageNumber}
+            initialMovements={initialMovements}
+            entityTag={selectedTag}
+            entityId={selectedEntity}
+          />
+        </div>
       )}
     </div>
   );

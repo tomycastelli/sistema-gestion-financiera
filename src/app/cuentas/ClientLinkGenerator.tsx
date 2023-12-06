@@ -65,14 +65,13 @@ const ClientLinkGenerator = ({
 
     if (data?.id !== undefined) {
       const link = generateLink({
-        pathname: pathname,
         selectedClient: selectedEntityString,
         linkId: data.id,
         linkToken: data.password,
       });
       toast({
         title: "Link generado exitosamente",
-        description: `${link}`,
+        description: `${pathname}?${link}`,
         variant: "success",
       });
 
@@ -132,12 +131,16 @@ const ClientLinkGenerator = ({
               sharedLinks?.map((link) => (
                 <DropdownMenuItem key={link.id}>
                   <Link
-                    href={generateLink({
-                      pathname: pathname,
-                      selectedClient: selectedEntityString,
-                      linkId: link.id,
-                      linkToken: link.password,
-                    })}
+                    target="_blank"
+                    href={
+                      pathname +
+                      "?" +
+                      generateLink({
+                        selectedClient: selectedEntityString,
+                        linkId: link.id,
+                        linkToken: link.password,
+                      })
+                    }
                   >
                     <p className="text-slate-300">
                       {link.id}{" "}

@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+import moment from "moment";
 import { type Session } from "next-auth";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -9,10 +10,11 @@ import { useState } from "react";
 import {
   createQueryString,
   getAllChildrenTags,
+  isNumeric,
   removeQueryString,
 } from "~/lib/functions";
 import { api } from "~/trpc/react";
-import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
+import type { RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -38,7 +40,6 @@ interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   entityId?: number;
   entityTag?: string;
-  account: RouterInputs["movements"]["getCurrentAccounts"]["account"];
   pageSize: number;
   pageNumber: number;
   session: Session | null;
@@ -51,7 +52,6 @@ interface CuentasTableProps {
 const MovementsTable = ({
   initialMovements,
   entityId,
-  account,
   entityTag,
   pageSize,
   pageNumber,
@@ -81,7 +81,7 @@ const MovementsTable = ({
     {
       linkId: linkId,
       linkToken: linkToken,
-      account: account,
+      account: accountType,
       entityId: entityId,
       entityTag: entityTag,
       pageNumber: pageNumber,
@@ -115,16 +115,16 @@ const MovementsTable = ({
       ingress =
         (entityId === movement.transaction.toEntity.id &&
           movement.direction === 1) ||
-        (entityId === movement.transaction.fromEntity.id &&
-          movement.direction === -1)
+          (entityId === movement.transaction.fromEntity.id &&
+            movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (entityId === movement.transaction.toEntity.id &&
           movement.direction === -1) ||
-        (entityId === movement.transaction.fromEntity.id &&
-          movement.direction === 1)
+          (entityId === movement.transaction.fromEntity.id &&
+            movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     } else if (entityTag) {
@@ -145,22 +145,25 @@ const MovementsTable = ({
       ingress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === 1) ||
-        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-          movement.direction === -1)
+          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+            movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === -1) ||
-        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-          movement.direction === 1)
+          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+            movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     }
 
     return {
       id: movement.id,
+      date: movement.transaction.date
+        ? moment(movement.transaction.date).format("DD/MM/YYYY")
+        : moment(movement.transaction.operation.date).format("DD/MM/YYYY"),
       operationId: movement.transaction.operationId,
       type: movement.type,
       otherEntityId: otherEntity.id,
@@ -173,6 +176,7 @@ const MovementsTable = ({
       method: movement.transaction.method,
       status: movement.transaction.status,
       txType: movement.transaction.type,
+      metadata: movement.transaction.transactionMetadata?.metadata,
     };
   });
 
@@ -263,6 +267,10 @@ const MovementsTable = ({
       header: "ID",
     },
     {
+      accessorKey: "date",
+      header: "Fecha",
+    },
+    {
       accessorKey: "selectedEntity",
       header: "Origen",
     },
@@ -291,8 +299,28 @@ const MovementsTable = ({
         if (row.getValue("type") === "confirmation") {
           type = "Confirmación";
         }
-        return <p className="font-medium">{type}</p>;
+        const metadata: JSON = row.getValue("metadata");
+        const mvId: number = row.getValue("id");
+        const txType: string = row.getValue("txType");
+
+        return (
+          <p className="font-medium">{`${type} de ${txType} - ID ${mvId} ${
+            // @ts-ignore
+            metadata && isNumeric(metadata.exchangeRate)
+              ? // @ts-ignore
+              `- $${metadata.exchangeRate}`
+              : ""
+            }`}</p>
+        );
       },
+    },
+    {
+      accessorKey: "txType",
+      header: "Transaction type",
+    },
+    {
+      accessorKey: "metadata",
+      header: "Metadata",
     },
     {
       accessorKey: "currency",
@@ -368,7 +396,7 @@ const MovementsTable = ({
               <DropdownMenuItem>
                 <Link
                   href={{
-                    pathname: `/operaciones/gestionar/${movement.operationId}`,
+                    pathname: `/operaciones/gestion/${movement.operationId}`,
                     query: { row: row.getValue("id") },
                   }}
                   className="flex flex-row items-center space-x-1"
@@ -437,14 +465,16 @@ const MovementsTable = ({
                   if (value === "todas") {
                     router.push(
                       pathname +
-                        "?" +
-                        removeQueryString(searchParams, "divisa"),
+                      "?" +
+                      removeQueryString(searchParams, "divisa"),
+                      { scroll: false },
                     );
                   } else {
                     router.push(
                       pathname +
-                        "?" +
-                        createQueryString(searchParams, "divisa", value),
+                      "?" +
+                      createQueryString(searchParams, "divisa", value),
+                      { scroll: false },
                     );
                   }
                 }}
@@ -477,18 +507,19 @@ const MovementsTable = ({
                   if (value === "todas") {
                     router.push(
                       pathname +
-                        "?" +
-                        removeQueryString(searchParams, "entidad_destino"),
+                      "?" +
+                      removeQueryString(searchParams, "entidad_destino"),
+                      { scroll: false },
                     );
                   } else {
                     router.push(
                       pathname +
-                        "?" +
-                        createQueryString(
-                          searchParams,
-                          "entidad_destino",
-                          value,
-                        ),
+                      "?" +
+                      createQueryString(
+                        searchParams,
+                        "entidad_destino",
+                        value,
+                      ),
                     );
                   }
                 }}
@@ -545,6 +576,7 @@ const MovementsTable = ({
                   (selectedPageNumber - 1).toString(),
                 )
               }
+              scroll={false}
             >
               <Icons.chevronLeft className="h-6" />
               <p>Anterior</p>
@@ -557,22 +589,22 @@ const MovementsTable = ({
           </p>
           {selectedPageNumber <
             Math.ceil(initialMovements.totalRows / pageSize) && (
-            <Link
-              className="flex flex-row items-center space-x-1"
-              href={
-                pathname +
-                "?" +
-                createQueryString(
-                  searchParams,
-                  "pagina",
-                  (selectedPageNumber + 1).toString(),
-                )
-              }
-            >
-              <p>Siguiente</p>
-              <Icons.chevronRight className="h-6" />
-            </Link>
-          )}
+              <Link
+                className="flex flex-row items-center space-x-1"
+                href={
+                  pathname +
+                  "?" +
+                  createQueryString(
+                    searchParams,
+                    "pagina",
+                    (selectedPageNumber + 1).toString(),
+                  )
+                }
+              >
+                <p>Siguiente</p>
+                <Icons.chevronRight className="h-6" />
+              </Link>
+            )}
         </div>
       </div>
     </div>

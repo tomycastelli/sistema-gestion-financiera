@@ -83,7 +83,11 @@ export const getAllTags = async (
     return cachedTags;
   }
 
-  const tags = await db.tag.findMany();
+  const tags = await db.tag.findMany({
+    include: {
+      childTags: true,
+    },
+  });
   if (tags) {
     await redis.set("tags", JSON.stringify(tags), "EX", 3600);
   }

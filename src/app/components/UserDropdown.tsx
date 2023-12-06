@@ -1,11 +1,11 @@
 "use client";
 
-import { Keyboard, LogOut, Settings, User, Users } from "lucide-react";
+import { Keyboard, LogOut, Settings, User } from "lucide-react";
 import { type Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
-import { RouterOutputs } from "~/trpc/shared";
+import { type RouterOutputs } from "~/trpc/shared";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 
@@ -65,23 +64,6 @@ const UserDropdown = ({
             <span>Keyboard shortcuts</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {permissions &&
-            permissions.find(
-              (permission) =>
-                permission.name === "USERS_WHITELIST_VISUALIZE" ||
-                permission.name === "ADMIN",
-            ) && (
-              <DropdownMenuItem
-                onClick={() => router.push("/usuarios/whitelist")}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                <span>Whitelist</span>
-              </DropdownMenuItem>
-            )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => logout()}>
           <LogOut className="mr-2 h-4 w-4" />

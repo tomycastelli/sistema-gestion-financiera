@@ -23,6 +23,7 @@ const TimeRangeSelector = () => {
           <SelectItem value="daily">Diario</SelectItem>
           <SelectItem value="weekly">Semanal</SelectItem>
           <SelectItem value="monthly">Mensual</SelectItem>
+          <SelectItem value="yearly">Anual</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>

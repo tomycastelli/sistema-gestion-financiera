@@ -1,12 +1,19 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import Lottie from "lottie-react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type FC } from "react";
-import { calculateTotal, capitalizeFirstLetter } from "~/lib/functions";
+import {
+  calculateTotal,
+  capitalizeFirstLetter,
+  createQueryString,
+} from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
+import loadingJson from "../../../public/animations/loading.json";
 import {
   Card,
   CardContent,
@@ -27,6 +34,8 @@ const Balances: FC<BalancesProps> = ({
   initialDetailedBalances,
 }) => {
   const searchParams = useSearchParams();
+
+  const pathname = usePathname();
 
   const selectedTag = searchParams.get("tag");
   const selectedEntityIdString = searchParams.get("entidad");
@@ -59,6 +68,7 @@ const Balances: FC<BalancesProps> = ({
       {
         entityId: selectedEntityId,
         entityTag: selectedTag,
+        accountType: accountType,
         linkId: linkId,
         linkToken: linkToken,
       },
@@ -97,10 +107,11 @@ const Balances: FC<BalancesProps> = ({
     ),
   );
 
-  const currencyOrder = ["USD", "ARS", "USDT", "EUR", "BRL"];
+  const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   return (
-    <div className="flex flex-col space-y-8">
+    <div className="flex flex-col space-y-4">
+      <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
       <div className="grid-cols grid grid-flow-col gap-4">
         {!isBalanceLoading ? (
           balancesSummary.map((entity) => (
@@ -158,36 +169,66 @@ const Balances: FC<BalancesProps> = ({
             </Card>
           ))
         ) : (
-          <p>Cargando...</p>
+          <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}
       </div>
-      <div className="grid grid-cols-1 gap-2">
-        <div className="grid grid-cols-6 rounded-xl border border-muted-foreground p-3">
+      <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
+      <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-6 justify-items-center rounded-xl border border-muted-foreground p-2">
           <p>Entidad</p>
           {currencyOrder.map((currency) => (
-            <p key={currency}>{currency}</p>
+            <p key={currency}>{currency.toUpperCase()}</p>
           ))}
         </div>
         {!isDetailedLoading ? (
-          groupedDetailedBalances.map((item) => (
-            <div
-              key={item.entityid}
-              className="grid grid-cols-6 rounded-xl p-3 font-semibold"
-            >
-              <p>{item.entityname}</p>
-              {item.balances
-                .sort(
-                  (a, b) =>
-                    currencyOrder.indexOf(a.currency) -
-                    currencyOrder.indexOf(b.currency),
-                )
-                .map((balance) => (
-                  <p key={balance.currency}>{balance.balance}</p>
-                ))}
-            </div>
-          ))
+          groupedDetailedBalances.length > 0 ? (
+            groupedDetailedBalances.map((item, index) => (
+              <div
+                key={item.entityid}
+                className={cn(
+                  "grid grid-cols-6 justify-items-center rounded-xl p-2 font-semibold",
+                  index % 2 === 0 ? "bg-muted" : "bg-white",
+                )}
+              >
+                <p className="p-2">{item.entityname}</p>
+                {currencyOrder.map((currency) => {
+                  const matchingBalance = item.balances.find(
+                    (balance) => balance.currency === currency,
+                  );
+
+                  return matchingBalance ? (
+                    <Link
+                      href={
+                        pathname +
+                        "?" +
+                        createQueryString(
+                          new URLSearchParams(
+                            createQueryString(
+                              searchParams,
+                              "entidad_destino",
+                              item.entityid.toString(),
+                            ),
+                          ),
+                          "divisa",
+                          currency,
+                        )
+                      }
+                      key={currency}
+                      className="rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md"
+                    >
+                      {matchingBalance.balance}
+                    </Link>
+                  ) : (
+                    <p></p>
+                  );
+                })}
+              </div>
+            ))
+          ) : (
+            <p>No hay movimientos</p>
+          )
         ) : (
-          <p>Cargando...</p>
+          <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}
       </div>
     </div>

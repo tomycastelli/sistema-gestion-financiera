@@ -390,4 +390,38 @@ export const Icons = {
       ></path>
     </svg>
   ),
+  equal: (props: LucideProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" {...props} viewBox="0 0 24 24">
+      <path
+        fill="currentColor"
+        d="M18 9.998H6a1 1 0 1 1 0-2h12a1 1 0 0 1 0 2zm0 6H6a1 1 0 0 1 0-2h12a1 1 0 0 1 0 2z"
+      />
+    </svg>
+  ),
+  gte: (props: LucideProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" {...props} viewBox="0 0 24 24">
+      <path
+        fill="currentColor"
+        fill-rule="evenodd"
+        d="m7.25 15l7.5-5l-7.5-5a.901.901 0 1 1 1-1.5l8.502 5.668a1 1 0 0 1 0 1.664L8.25 16.5a.901.901 0 1 1-1-1.5z"
+      />
+      <path
+        fill="currentColor"
+        d="M17 20.998H7a1 1 0 0 1 0-2h10a1 1 0 0 1 0 2z"
+      />
+    </svg>
+  ),
+  lte: (props: LucideProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" {...props} viewBox="0 0 24 24">
+      <path
+        fill="currentColor"
+        fill-rule="evenodd"
+        d="m16.75 15l-7.5-5l7.5-5a.901.901 0 1 0-1-1.5L7.248 9.168a1 1 0 0 0 0 1.664L15.75 16.5a.901.901 0 1 0 1-1.5z"
+      />
+      <path
+        fill="currentColor"
+        d="M17 20.998H7a1 1 0 0 1 0-2h10a1 1 0 0 1 0 2z"
+      />
+    </svg>
+  ),
 };
