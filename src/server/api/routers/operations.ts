@@ -570,7 +570,7 @@ export const operationsRouter = createTRPCRouter({
       "Operations" "o"
       LEFT JOIN "Transactions" "t" ON "o"."id" = "t"."operationId"
     WHERE
-      "o"."date" >= NOW() - INTERVAL '1 month'
+      "o"."date" >= NOW() - INTERVAL '7 days'
     GROUP BY
       DATE_TRUNC('day', "o"."date" AT TIME ZONE 'UTC')
     ORDER BY

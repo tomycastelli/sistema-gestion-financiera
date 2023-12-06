@@ -94,9 +94,10 @@ const Operation: FC<OperationProps> = ({
           <CardTitle className="flex">
             <Link
               href={`/operaciones/gestion/${op.id}`}
-              className="flex text-black transition-all hover:scale-125"
+              className="flex flex-row space-x-1 text-black transition-all hover:scale-125"
             >
-              {op.id}
+              <p className="text-muted-foreground">Op</p>
+              <p>{op.id}</p>
             </Link>
           </CardTitle>
           <CardDescription className="text-lg">

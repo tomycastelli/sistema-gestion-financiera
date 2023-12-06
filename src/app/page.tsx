@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
 import AccountsMenuCard from "./components/AccountsMenuCard";
 import AuthForm from "./components/AuthForm";
 import EntitiesMenuCard from "./components/EntitiesMenuCard";
 import OperationsMenuCard from "./components/OperationsMenuCard";
 import UsersMenuCard from "./components/UsersMenuCard";
+import { Icons } from "./components/ui/Icons";
+import { Button } from "./components/ui/button";
 
 export default async function Home() {
   const session = await getServerAuthSession();
@@ -14,11 +17,19 @@ export default async function Home() {
         Bienvenido al portal de Maika!
       </h1>
       {session ? (
-        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <OperationsMenuCard userId={session.user.id} />
-          <AccountsMenuCard />
-          <EntitiesMenuCard />
-          <UsersMenuCard />
+        <div className="flex flex-col items-center justify-center space-y-8">
+          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <OperationsMenuCard userId={session.user.id} />
+            <AccountsMenuCard />
+            <EntitiesMenuCard />
+            <UsersMenuCard />
+          </div>
+          <Link href={"/guia"}>
+            <Button variant="outline" className="flex flex-row space-x-2 p-6">
+              <p>Guía del sistema</p>
+              <Icons.info className="h-4" />
+            </Button>
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center">

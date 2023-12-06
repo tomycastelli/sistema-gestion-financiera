@@ -25,8 +25,11 @@ const OperationsMenuCard = async ({ userId }: { userId: string }) => {
           >
             <h1 className="text-3xl font-semibold tracking-tight">Gestión</h1>
           </Link>
-          <div className="h-full w-full">
+          <div className="flex h-full w-full flex-col space-y-2">
             <OperationsMenuBarChart data={insights.monthCount} />
+            <h1 className="ml-auto text-lg font-semibold">
+              Cargadas los últimos 7 días
+            </h1>
           </div>
         </div>
       </CardContent>

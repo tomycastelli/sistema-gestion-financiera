@@ -304,7 +304,7 @@ const MovementsTable = ({
         const txType: string = row.getValue("txType");
 
         return (
-          <p className="font-medium">{`${type} de ${txType} - ID ${mvId} ${
+          <p className="font-medium">{`${type} de ${txType} - Mto ${mvId} ${
             // @ts-ignore
             metadata && isNumeric(metadata.exchangeRate)
               ? // @ts-ignore
