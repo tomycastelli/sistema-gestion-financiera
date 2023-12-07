@@ -1,5 +1,6 @@
 import { type calculateTotalAllEntities } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { Separator } from "./ui/separator";
 
 interface BalanceTotalsProps {
   totals: ReturnType<typeof calculateTotalAllEntities>;
@@ -10,12 +11,14 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
     <div>
       {totals.map((total) => (
         <div key={total.currency}>
-          <h1>{total.currency.toUpperCase()}</h1>
+          <h1 className="text-lg font-semibold">
+            {total.currency.toUpperCase()}
+          </h1>
           {total.balances.map((balance, index) => (
             <div key={index}>
               <p>{balance.status ? "Caja" : "Cuenta corriente"}</p>
               <div className="flex flex-row space-x-2">
-                <p className="text-xl font-bold">
+                <p className="font-bold">
                   $ {new Intl.NumberFormat("es-AR").format(balance.amount)}
                 </p>
                 <p
@@ -40,6 +43,7 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
               </div>
             </div>
           ))}
+          <Separator className="my-2" />
         </div>
       ))}
     </div>

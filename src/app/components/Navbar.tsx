@@ -2,11 +2,12 @@ import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import LinkTree from "./LinkTree";
-import UserDropdown from "./UserDropdown";
+import CommandMenu from "./ui/CommandMenu";
 
 const Navbar = async () => {
   const session = await getServerAuthSession();
-  const permissions = await api.users.getAllPermissions.query({});
+  const filteredEntities = await api.entities.getFiltered.query();
+  const filteredTags = await api.tags.getFiltered.query();
 
   return (
     <header className="h-fit w-full py-4 text-foreground">
@@ -19,7 +20,9 @@ const Navbar = async () => {
         </Link>
         {session?.user && <LinkTree />}
         {session?.user && (
-          <UserDropdown session={session} initialPermissions={permissions} />
+          <div className="flex flex-row space-x-4">
+            <CommandMenu tags={filteredTags} entities={filteredEntities} />
+          </div>
         )}
       </div>
     </header>

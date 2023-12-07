@@ -1,5 +1,10 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getAllChildrenTags } from "~/lib/functions";
+import {
+  getAllEntities,
+  getAllPermissions,
+  getAllTags,
+} from "~/lib/trpcFunctions";
 
 import {
   createTRPCRouter,
@@ -9,45 +14,53 @@ import {
 
 export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    const cachedEntities: string | null = await ctx.redis.get(
-      "cached_entities",
-    );
-
-    if (cachedEntities) {
-      console.log("Entities queried from cache");
-      const parsedEntities: typeof entities = JSON.parse(cachedEntities);
-
-      return parsedEntities;
-    }
-
-    const entities = await ctx.db.entities.findMany({
-      select: {
-        id: true,
-        name: true,
-        tag: true,
-      },
-    });
-
-    console.log("Entities queried from database");
-
-    if (!entities)
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Entities returned empty from database",
-      });
-
-    await ctx.redis.set(
-      "cached_entities",
-      JSON.stringify(entities),
-      "EX",
-      "3600",
-    );
+    const entities = await getAllEntities(ctx.redis, ctx.db);
 
     return entities;
   }),
 
+  getFiltered: protectedProcedure.query(async ({ ctx }) => {
+    const userPermissions = await getAllPermissions(
+      ctx.redis,
+      ctx.session,
+      ctx.db,
+      { userId: undefined },
+    );
+    const tags = await getAllTags(ctx.redis, ctx.db);
+    const entities = await getAllEntities(ctx.redis, ctx.db);
+
+    const filteredEntities = entities.filter((entity) => {
+      if (
+        userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
+        )
+      ) {
+        return true;
+      } else if (
+        userPermissions?.find(
+          (p) =>
+            p.name === "ACCOUNTS_VISUALIZE_SOME" &&
+            (p.entitiesIds?.includes(entity.id) ||
+              getAllChildrenTags(p.entitiesTags, tags).includes(
+                entity.tag.name,
+              )),
+        )
+      ) {
+        return true;
+      }
+    });
+
+    return filteredEntities;
+  }),
+
   addOne: publicProcedure
-    .input(z.object({ name: z.string(), tag: z.string() }))
+    .input(
+      z.object({
+        name: z.string(),
+        tag: z.string(),
+        userId: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const insertResponse = await ctx.db.entities.create({
         data: {
@@ -55,6 +68,17 @@ export const entitiesRouter = createTRPCRouter({
           tagName: input.tag,
         },
       });
+
+      if (input.tag === "Usuario" && input.userId) {
+        await ctx.db.user.update({
+          where: {
+            id: input.userId,
+          },
+          data: {
+            entityId: insertResponse.id,
+          },
+        });
+      }
 
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };

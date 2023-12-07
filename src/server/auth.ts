@@ -24,6 +24,7 @@ declare module "next-auth" {
   interface User {
     roleId?: number | null;
     permissions?: z.infer<typeof PermissionSchema> | null;
+    entityId?: number | null;
   }
 
   interface Session extends DefaultSession {
@@ -31,6 +32,7 @@ declare module "next-auth" {
       id: string;
       roleId?: number | null;
       permissions?: z.infer<typeof PermissionSchema> | null;
+      entityId?: number | null;
     } & DefaultSession["user"];
   }
 }
@@ -55,6 +57,7 @@ export const authOptions: NextAuthOptions = {
         id: user.id,
         roleId: user.roleId,
         permissions: user.permissions,
+        entityId: user.entityId,
       },
     }),
   },
@@ -70,6 +73,7 @@ export const authOptions: NextAuthOptions = {
         await api.entities.addOne.mutate({
           name: message.user.name,
           tag: "Usuario",
+          userId: message.user.id,
         });
         await redis.del("users");
       }

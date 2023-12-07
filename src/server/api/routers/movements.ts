@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { dateReviver, getAllChildrenTags } from "~/lib/functions";
-import { getAllTags } from "~/lib/trpcFunctions";
+import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -145,7 +145,30 @@ export const movementsRouter = createTRPCRouter({
       let isRequestValid = false;
 
       if (ctx.session?.user !== undefined) {
-        isRequestValid = true;
+        const userPermissions = await getAllPermissions(
+          ctx.redis,
+          ctx.session,
+          ctx.db,
+          { userId: undefined },
+        );
+        const tags = await getAllTags(ctx.redis, ctx.db);
+        if (
+          userPermissions?.find(
+            (p) =>
+              p.name === "ADMIN" ||
+              p.name === "ACCOUNTS_VISUALIZE" ||
+              (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
+                (input.entityId
+                  ? p.entitiesIds?.includes(input.entityId)
+                  : input.entityTag
+                  ? getAllChildrenTags(p.entitiesTags, tags).includes(
+                      input.entityTag,
+                    )
+                  : false)),
+          )
+        ) {
+          isRequestValid = true;
+        }
       } else if (input.linkId && input.linkToken && input.entityId) {
         const link = await ctx.db.links.findUnique({
           where: {
@@ -161,10 +184,18 @@ export const movementsRouter = createTRPCRouter({
       }
 
       if (!isRequestValid) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "El usuario no está registrado o el link no es válido",
-        });
+        if (ctx.session?.user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message:
+              "El usuario no tiene los permisos suficientes para ver esta cuenta",
+          });
+        } else {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "El usuario no está registrado o el link no es válido",
+          });
+        }
       }
 
       const EntitiesBalanceSchema = z.array(

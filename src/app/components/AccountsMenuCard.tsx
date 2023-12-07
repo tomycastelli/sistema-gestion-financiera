@@ -1,50 +1,11 @@
 import Link from "next/link";
-import { getAllChildrenTags } from "~/lib/functions";
 import { api } from "~/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
 
 const OperationsMenuCard = async () => {
-  const tags = await api.tags.getAll.query();
-  const entities = await api.entities.getAll.query();
-  const userPermissions = await api.users.getAllPermissions.query({});
-
-  const filteredTags = tags.filter((tag) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
-      )
-    ) {
-      return true;
-    }
-  });
-
-  const filteredEntities = entities.filter((entity) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          (p.entitiesIds?.includes(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, tags).includes(entity.tag.name)),
-      )
-    ) {
-      return true;
-    }
-  });
+  const filteredTags = await api.tags.getFiltered.query();
+  const filteredEntities = await api.entities.getFiltered.query();
 
   return (
     <Card>

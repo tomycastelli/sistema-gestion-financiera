@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { getAllTags } from "~/lib/trpcFunctions";
+import { getAllChildrenTags } from "~/lib/functions";
+import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const tagsRouter = createTRPCRouter({
@@ -37,4 +38,34 @@ export const tagsRouter = createTRPCRouter({
 
       return response;
     }),
+  getFiltered: protectedProcedure.query(async ({ ctx }) => {
+    const userPermissions = await getAllPermissions(
+      ctx.redis,
+      ctx.session,
+      ctx.db,
+      { userId: undefined },
+    );
+
+    const tags = await getAllTags(ctx.redis, ctx.db);
+
+    const filteredTags = tags.filter((tag) => {
+      if (
+        userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
+        )
+      ) {
+        return true;
+      } else if (
+        userPermissions?.find(
+          (p) =>
+            p.name === "ACCOUNTS_VISUALIZE_SOME" &&
+            getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
+        )
+      ) {
+        return true;
+      }
+    });
+
+    return filteredTags;
+  }),
 });

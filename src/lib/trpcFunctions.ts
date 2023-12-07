@@ -1,5 +1,6 @@
 import { type Prisma, type PrismaClient } from "@prisma/client";
 import { type DefaultArgs } from "@prisma/client/runtime/library";
+import { TRPCError } from "@trpc/server";
 import type Redis from "ioredis";
 import { type Session } from "next-auth";
 import { z } from "zod";
@@ -38,8 +39,11 @@ export const getAllPermissions = async (
     });
 
     if (role?.permissions && user?.permissions) {
-      // @ts-ignore
-      const merged = mergePermissions(role.permissions, user.permissions);
+      const merged = mergePermissions(
+        // @ts-ignore
+        role.permissions,
+        user.permissions,
+      );
 
       await redis.set(
         `user_permissions:${session.user.id}`,
@@ -92,4 +96,38 @@ export const getAllTags = async (
     await redis.set("tags", JSON.stringify(tags), "EX", 3600);
   }
   return tags;
+};
+
+export const getAllEntities = async (
+  redis: Redis,
+  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+) => {
+  const cachedEntities: string | null = await redis.get("cached_entities");
+
+  if (cachedEntities) {
+    console.log("Entities queried from cache");
+    const parsedEntities: typeof entities = JSON.parse(cachedEntities);
+
+    return parsedEntities;
+  }
+
+  const entities = await db.entities.findMany({
+    select: {
+      id: true,
+      name: true,
+      tag: true,
+    },
+  });
+
+  console.log("Entities queried from database");
+
+  if (!entities)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Entities returned empty from database",
+    });
+
+  await redis.set("cached_entities", JSON.stringify(entities), "EX", "3600");
+
+  return entities;
 };

@@ -114,12 +114,14 @@ export const dateReviver = (keys: string[]) => (key: string, value: string) => {
 };
 
 export const createQueryString = (
-  searchParams: URLSearchParams,
+  searchParams: URLSearchParams | undefined,
   name: string,
   value: string,
   deleteParam?: string,
 ): string => {
-  const params = new URLSearchParams(searchParams.toString());
+  const params = searchParams
+    ? new URLSearchParams(searchParams.toString())
+    : new URLSearchParams();
 
   // Delete the specified parameter if deleteParam is provided
   if (deleteParam) {

@@ -70,7 +70,7 @@ export const mergePermissions = (
       }
     } else {
       // If the permission doesn't exist in the merged array, add it
-      mergedPermissions.push({ ...permission });
+      mergedPermissions.push(permission);
     }
   };
 
