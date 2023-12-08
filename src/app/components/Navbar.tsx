@@ -6,8 +6,6 @@ import CommandMenu from "./ui/CommandMenu";
 
 const Navbar = async () => {
   const session = await getServerAuthSession();
-  const filteredEntities = await api.entities.getFiltered.query();
-  const filteredTags = await api.tags.getFiltered.query();
 
   return (
     <header className="h-fit w-full py-4 text-foreground">
@@ -21,7 +19,10 @@ const Navbar = async () => {
         {session?.user && <LinkTree />}
         {session?.user && (
           <div className="flex flex-row space-x-4">
-            <CommandMenu tags={filteredTags} entities={filteredEntities} />
+            <CommandMenu
+              tags={await api.tags.getFiltered.query()}
+              entities={await api.entities.getFiltered.query()}
+            />
           </div>
         )}
       </div>
