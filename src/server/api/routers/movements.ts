@@ -2,7 +2,11 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { dateReviver, getAllChildrenTags } from "~/lib/functions";
-import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
+import {
+  getAllEntities,
+  getAllPermissions,
+  getAllTags,
+} from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -69,7 +73,7 @@ export const movementsRouter = createTRPCRouter({
       }
 
       if (input.account !== null) {
-        whereConditions.push({ status: input.account });
+        whereConditions.push({ account: input.account });
       }
 
       if (input.entityTag) {
@@ -152,6 +156,11 @@ export const movementsRouter = createTRPCRouter({
           { userId: undefined },
         );
         const tags = await getAllTags(ctx.redis, ctx.db);
+
+        const entities = await getAllEntities(ctx.redis, ctx.db);
+        const entityTag = entities.find((e) => e.id === input.entityId)?.tag
+          .name;
+
         if (
           userPermissions?.find(
             (p) =>
@@ -159,7 +168,11 @@ export const movementsRouter = createTRPCRouter({
               p.name === "ACCOUNTS_VISUALIZE" ||
               (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
                 (input.entityId
-                  ? p.entitiesIds?.includes(input.entityId)
+                  ? p.entitiesIds?.includes(input.entityId) ||
+                    (entityTag &&
+                      getAllChildrenTags(p.entitiesTags, tags).includes(
+                        entityTag,
+                      ))
                   : input.entityTag
                   ? getAllChildrenTags(p.entitiesTags, tags).includes(
                       input.entityTag,
@@ -219,7 +232,7 @@ export const movementsRouter = createTRPCRouter({
   e."tagName" as entityTag,
   DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
   t.currency,
-  m.status as movementStatus,
+  m.account as movementStatus,
   SUM(CASE
     WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
     WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
@@ -255,9 +268,9 @@ GROUP BY
   e."tagName",
   DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
   t.currency,
-  m.status
+  m.account
 ORDER BY
-  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.status;
+  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.account;
     `;
 
       const transformedArray = entitiesBalances
@@ -385,7 +398,7 @@ ORDER BY
   e."tagName" as entityTag,
   DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
   t.currency,
-  m.status as movementStatus,
+  m.account as movementStatus,
   SUM(CASE
     WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
     WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
@@ -421,9 +434,9 @@ GROUP BY
   e."tagName",
   DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
   t.currency,
-  m.status
+  m.account
 ORDER BY
-  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.status;
+  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.account;
     `;
 
       const transformedArray = entitiesBalances
@@ -633,7 +646,7 @@ ORDER BY
             e.id as entityId,
             e."tagName" as entityTag,
             e.name as entityName,
-            m.status,
+            m.account,
             SUM(CASE
               WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
               WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
@@ -651,9 +664,9 @@ ORDER BY
           LEFT JOIN
             "Movements" m ON t.id = m."transactionId"
             WHERE
-          ${Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId} AND m.status = ${input.accountType}`}
+          ${Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId} AND m.account = ${input.accountType}`}
           GROUP BY
-            t.currency, e.id, e.name, m.status
+            t.currency, e.id, e.name, m.account
         `;
         return balances;
       } else if (input.entityTag) {
@@ -668,7 +681,7 @@ ORDER BY
             e.id as entityId,
             e."tagName" as entityTag,
             e.name as entityName,
-            m.status,
+            m.account,
             SUM(CASE
               WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
               WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
@@ -711,11 +724,11 @@ ORDER BY
               AND e."tagName" != ANY(${Prisma.raw(
                 `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
               )})
-              AND m.status = ${input.accountType}
+              AND m.account = ${input.accountType}
             `}
   
           GROUP BY
-            t.currency, e.id, e."tagName", e.name, m.status
+            t.currency, e.id, e."tagName", e.name, m.account
         `;
 
         return balances.filter(

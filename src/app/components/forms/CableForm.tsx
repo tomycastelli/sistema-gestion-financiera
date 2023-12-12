@@ -193,7 +193,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
                   <CustomSelector
                     data={paymentMethods}
                     field={field}
-                    fieldName="emitingMethod"
+                    fieldName="emittingMethod"
                     placeholder="Elegir"
                   />
                 </FormItem>

@@ -11,6 +11,7 @@ import type { RouterOutputs } from "~/trpc/shared";
 import UploadedUserOperations from "../UploadedUserOperations";
 import AlertTemplate from "../ui/AlertTemplate";
 import { Icons } from "../ui/Icons";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -263,7 +264,8 @@ const AddOperation = ({
                               {transaction.currency.toUpperCase()}
                             </p>
                             <p className="mt-1 font-medium leading-none text-muted-foreground">
-                              {transaction.method}
+                              {transaction.method &&
+                                capitalizeFirstLetter(transaction.method)}
                             </p>
                           </div>
                           <p>
@@ -274,9 +276,13 @@ const AddOperation = ({
                             }
                           </p>
                         </div>
-                        <p className="text-green">
+
+                        <Badge
+                          variant="outline"
+                          className="mr-auto flex justify-center"
+                        >
                           {capitalizeFirstLetter(transaction.type)}
-                        </p>
+                        </Badge>
                         <div className="flex flex-row justify-between">
                           <p className="font-medium">
                             {

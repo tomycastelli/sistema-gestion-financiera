@@ -7,7 +7,10 @@ const Page = async () => {
 
   return (
     <div>
-      <FlowProvider initialEntities={entities} initialTags={tags} />
+      <FlowProvider
+        initialEntities={entities.slice(0, 10)}
+        initialTags={tags}
+      />
     </div>
   );
 };

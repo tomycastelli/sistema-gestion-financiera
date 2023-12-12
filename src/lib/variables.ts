@@ -58,6 +58,10 @@ export const operationTypes = [
     value: "fee",
     label: "Fee",
   },
+  {
+    value: "gasto",
+    label: "Gasto",
+  },
 ];
 
 export const translations: Record<string, string> = {

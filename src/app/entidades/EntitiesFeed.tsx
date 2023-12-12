@@ -1,10 +1,13 @@
 "use client";
 
 import Lottie from "lottie-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
 import {
   capitalizeFirstLetter,
+  createQueryString,
   getAllChildrenTags,
   translateWord,
 } from "~/lib/functions";
@@ -13,6 +16,7 @@ import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import EntityCard from "../components/ui/EntityCard";
+import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
   HoverCard,
@@ -29,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Slider } from "../components/ui/slider";
 import { Switch } from "../components/ui/switch";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
@@ -47,6 +52,12 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
   const [tagFilterMode, setTagFilterMode] = useState("children");
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const selectedPage = searchParams.get("pagina");
+  const page = selectedPage ? parseInt(selectedPage) : 1;
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
@@ -84,6 +95,15 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   } = useSearch<(typeof entities)[0]>({
     dataSet: entities,
     keys: ["name"],
+  });
+
+  const twiceFilteredEntities = filteredEntities.filter((entity) => {
+    if (tagFilter === "todos") {
+      return true;
+    }
+    return tagFilterMode === "strict"
+      ? entity.tag.name === tagFilter
+      : getAllChildrenTags(tagFilter, initialTags).includes(entity.tag.name);
   });
 
   return (
@@ -167,30 +187,43 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         {isLoading ? (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
-          <div className="mx-auto grid grid-cols-5 gap-11">
-            {filteredEntities
-              .filter((entity) => {
-                if (tagFilter === "todos") {
-                  return true;
+          <div className="flex flex-col space-y-6">
+            <div className="mx-auto grid grid-cols-5 gap-11">
+              {twiceFilteredEntities
+                .slice((page - 1) * 30, page * 30)
+                .map((entity) => (
+                  <div
+                    key={entity.id}
+                    className="flex flex-col items-center justify-center space-y-2 self-start"
+                  >
+                    <EntityCard entity={entity} />
+                    {entity.tag.name !== "user" &&
+                      manageableEntities.find(
+                        (item) => item.name === entity.name,
+                      ) && <EntityOptions entity={entity} />}
+                  </div>
+                ))}
+            </div>
+            <div className="mx-12 flex flex-row items-center justify-center space-x-2">
+              <Slider
+                defaultValue={[page]}
+                max={Math.round(twiceFilteredEntities.length / 30)}
+                min={1}
+                onValueChange={(e) =>
+                  router.push(
+                    "/entidades" +
+                      "?" +
+                      createQueryString(
+                        searchParams,
+                        "pagina",
+                        e[0]!.toString(),
+                      ),
+                    { scroll: false },
+                  )
                 }
-                return tagFilterMode === "strict"
-                  ? entity.tag.name === tagFilter
-                  : getAllChildrenTags(tagFilter, initialTags).includes(
-                      entity.tag.name,
-                    );
-              })
-              .map((entity) => (
-                <div
-                  key={entity.id}
-                  className="flex flex-col items-center justify-center space-y-2 self-start"
-                >
-                  <EntityCard entity={entity} />
-                  {entity.tag.name !== "user" &&
-                    manageableEntities.find(
-                      (item) => item.name === entity.name,
-                    ) && <EntityOptions entity={entity} />}
-                </div>
-              ))}
+                step={1}
+              />
+            </div>
           </div>
         ) : (
           <h1 className="text-xl font-semibold tracking-tight">

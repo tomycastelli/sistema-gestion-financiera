@@ -57,6 +57,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
               return (
                 <div key={op.id} className="flex flex-col">
                   <Operation
+                    users={users}
                     entities={entities}
                     operation={op}
                     operationsQueryInput={operationsQueryInput}

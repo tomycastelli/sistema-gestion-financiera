@@ -26,7 +26,7 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const directCashAccountTypes = ["caja"];
+      const directCashAccountTypes = ["caja", "gasto"];
 
       const response = await ctx.db.operations.create({
         data: {

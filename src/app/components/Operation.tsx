@@ -34,6 +34,7 @@ interface OperationProps {
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   entities: RouterOutputs["entities"]["getAll"];
   user: User;
+  users: RouterOutputs["users"]["getAll"];
 }
 
 const Operation: FC<OperationProps> = ({
@@ -41,6 +42,7 @@ const Operation: FC<OperationProps> = ({
   operationsQueryInput,
   user,
   entities,
+  users,
 }) => {
   const utils = api.useContext();
 
@@ -115,6 +117,7 @@ const Operation: FC<OperationProps> = ({
             .sort((a, b) => b.id - a.id)
             .map((tx) => (
               <Transaction
+                users={users}
                 entities={entities}
                 transaction={tx}
                 key={tx.id}

@@ -115,16 +115,16 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       ingress =
         (selectedEntityId === movement.transaction.toEntity.id &&
           movement.direction === 1) ||
-          (selectedEntityId === movement.transaction.fromEntity.id &&
-            movement.direction === -1)
+        (selectedEntityId === movement.transaction.fromEntity.id &&
+          movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (selectedEntityId === movement.transaction.toEntity.id &&
           movement.direction === -1) ||
-          (selectedEntityId === movement.transaction.fromEntity.id &&
-            movement.direction === 1)
+        (selectedEntityId === movement.transaction.fromEntity.id &&
+          movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     } else if (selectedTag) {
@@ -145,16 +145,16 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       ingress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === 1) ||
-          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-            movement.direction === -1)
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+          movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === -1) ||
-          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-            movement.direction === 1)
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+          movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     }
@@ -303,10 +303,10 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
         selectedTimeframe === "daily"
           ? moment(balance.date).format("DD-MM-YYYY")
           : selectedTimeframe === "weekly"
-            ? getWeekKey(balance.date)
-            : selectedTimeframe === "monthly"
-              ? getMonthKey(balance.date)
-              : getYearKey(balance.date);
+          ? getWeekKey(balance.date)
+          : selectedTimeframe === "monthly"
+          ? getMonthKey(balance.date)
+          : getYearKey(balance.date);
 
       const existingCurrencyEntry = acc.find(
         (entry) => entry.currency === balance.currency,
@@ -375,15 +375,15 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                           balance.amount - balance.beforeAmount > 0
                             ? "text-green"
                             : balance.amount - balance.beforeAmount < 0
-                              ? "text-red"
-                              : "text-slate-300",
+                            ? "text-red"
+                            : "text-slate-300",
                         )}
                       >
                         {(balance.amount - balance.beforeAmount > 0
                           ? "+"
                           : balance.amount - balance.beforeAmount < 0
-                            ? ""
-                            : " ") +
+                          ? ""
+                          : " ") +
                           new Intl.NumberFormat("es-AR").format(
                             balance.amount - balance.beforeAmount,
                           )}
@@ -404,12 +404,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               {selectedTimeframe === "daily"
                 ? "Diario"
                 : selectedTimeframe === "weekly"
-                  ? "Semanal"
-                  : selectedTimeframe === "monthly"
-                    ? "Mensual"
-                    : selectedTimeframe === "yearly"
-                      ? "Anual"
-                      : ""}
+                ? "Semanal"
+                : selectedTimeframe === "monthly"
+                ? "Mensual"
+                : selectedTimeframe === "yearly"
+                ? "Anual"
+                : ""}
             </CardTitle>
             <CardDescription>{selectedCurrency.toUpperCase()}</CardDescription>
           </CardHeader>

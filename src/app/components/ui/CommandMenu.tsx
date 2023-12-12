@@ -20,9 +20,14 @@ import { Icons } from "./Icons";
 interface CommandMenuProps {
   tags: RouterOutputs["tags"]["getFiltered"];
   entities: RouterOutputs["entities"]["getFiltered"];
+  userPermissons: RouterOutputs["users"]["getAllPermissions"];
 }
 
-const CommandMenu: FC<CommandMenuProps> = ({ tags, entities }) => {
+const CommandMenu: FC<CommandMenuProps> = ({
+  tags,
+  entities,
+  userPermissons,
+}) => {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const isMac =
@@ -91,16 +96,28 @@ const CommandMenu: FC<CommandMenuProps> = ({ tags, entities }) => {
         <CommandList>
           <CommandEmpty>No se encontraron comandos.</CommandEmpty>
           <CommandGroup heading="Operaciones">
-            <CommandItem onSelect={() => handleSelect("/operaciones/carga")}>
-              <Icons.addPackage className="mr-2 h-4 w-4" />
-              <span>Carga</span>
-              <CommandShortcut>⌘C</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect("/operaciones/gestion")}>
-              <Icons.editing className="mr-2 h-4 w-4" />
-              <span>Gestionar operaciones</span>
-              <CommandShortcut>⌘A</CommandShortcut>
-            </CommandItem>
+            {userPermissons?.find(
+              (p) =>
+                p.name === "ADMIN" || p.name.startsWith("OPERATIONS_CREATE"),
+            ) && (
+              <CommandItem onSelect={() => handleSelect("/operaciones/carga")}>
+                <Icons.addPackage className="mr-2 h-4 w-4" />
+                <span>Carga</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+            )}
+            {userPermissons?.find(
+              (p) =>
+                p.name === "ADMIN" || p.name.startsWith("OPERATIONS_VISUALIZE"),
+            ) && (
+              <CommandItem
+                onSelect={() => handleSelect("/operaciones/gestion")}
+              >
+                <Icons.editing className="mr-2 h-4 w-4" />
+                <span>Gestionar operaciones</span>
+                <CommandShortcut>⌘A</CommandShortcut>
+              </CommandItem>
+            )}
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Cuentas">
@@ -161,16 +178,25 @@ const CommandMenu: FC<CommandMenuProps> = ({ tags, entities }) => {
               <span>Mi usuario</span>
               <CommandShortcut>⌘U</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => handleSelect("/usuarios/permisos")}>
-              <Icons.settings className="mr-2 h-4 w-4" />
-              <span>Permisos</span>
-              <CommandShortcut>⌘P</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => handleSelect("/usuarios/roles")}>
-              <Icons.roles className="mr-2 h-4 w-4" />
-              <span>Roles</span>
-              <CommandShortcut>⌘R</CommandShortcut>
-            </CommandItem>
+            {userPermissons?.find(
+              (p) =>
+                p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
+            ) && (
+              <CommandItem onSelect={() => handleSelect("/usuarios/permisos")}>
+                <Icons.settings className="mr-2 h-4 w-4" />
+                <span>Permisos</span>
+                <CommandShortcut>⌘P</CommandShortcut>
+              </CommandItem>
+            )}
+            {userPermissons?.find(
+              (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
+            ) && (
+              <CommandItem onSelect={() => handleSelect("/usuarios/roles")}>
+                <Icons.roles className="mr-2 h-4 w-4" />
+                <span>Roles</span>
+                <CommandShortcut>⌘R</CommandShortcut>
+              </CommandItem>
+            )}
           </CommandGroup>
         </CommandList>
       </CommandDialog>

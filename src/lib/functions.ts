@@ -76,7 +76,7 @@ type Changes<T> = {
 export const findDifferences = <T>(
   oldObject: T,
   newObject: T,
-  changedBy: string,
+  changedById: string,
 ): {
   changeData: Array<Changes<T[keyof T] & { key: string }>>;
   changeDate: string;
@@ -95,7 +95,7 @@ export const findDifferences = <T>(
   return {
     changeData: changes,
     changeDate: new Date().toISOString(),
-    changedBy: changedBy,
+    changedBy: changedById,
   };
 };
 

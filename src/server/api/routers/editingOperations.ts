@@ -42,7 +42,7 @@ export const editingOperationsRouter = createTRPCRouter({
           const changesMade = findDifferences(
             input.oldTransactionData,
             input.newTransactionData,
-            ctx.session.user.name!,
+            ctx.session.user.id,
           );
           // @ts-ignore
           let newHistoryJson = [];
@@ -76,12 +76,6 @@ export const editingOperationsRouter = createTRPCRouter({
               },
             },
           });
-
-          if (updateTransactionResponse) {
-            await ctx.redis.del(
-              `operation:${updateTransactionResponse.operationId}`,
-            );
-          }
 
           console.log(`Transaction ${input.txId} edited`);
           return updateTransactionResponse;
@@ -135,12 +129,13 @@ export const editingOperationsRouter = createTRPCRouter({
               transactionId,
               direction: 1,
               type: "confirmation",
+              account: false,
             },
             {
               transactionId,
               direction: 1,
               type: "confirmation",
-              status: true,
+              account: true,
             },
           ];
         });
@@ -154,8 +149,6 @@ export const editingOperationsRouter = createTRPCRouter({
           updateMetadata,
           updateMovements,
         ]);
-
-        await ctx.redis.del(`operation:${input.operationId}`);
 
         console.log(`${responses[0].count} transactions confirmed`);
         return responses;

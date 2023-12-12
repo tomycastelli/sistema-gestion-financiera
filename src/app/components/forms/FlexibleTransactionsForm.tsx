@@ -60,8 +60,8 @@ const FlexibleTransactionsForm = ({
       transactions: [
         {
           operatorId: userEntityId?.toString(),
-          currency: "usd",
-          direction: false,
+          currency: "ars",
+          direction: true,
         },
       ],
     },
@@ -83,11 +83,11 @@ const FlexibleTransactionsForm = ({
       addTransactionToStore({
         type: transaction.type,
         fromEntityId: transaction.direction
-          ? parseInt(transaction.toEntityId)
-          : parseInt(transaction.fromEntityId),
-        toEntityId: transaction.direction
           ? parseInt(transaction.fromEntityId)
           : parseInt(transaction.toEntityId),
+        toEntityId: transaction.direction
+          ? parseInt(transaction.toEntityId)
+          : parseInt(transaction.fromEntityId),
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFloat(transaction.amount),
@@ -313,7 +313,7 @@ const FlexibleTransactionsForm = ({
                     toEntityId: "",
                     amount: "",
                     currency: "",
-                    direction: false,
+                    direction: !watchTransactions[index]?.direction,
                     operatorId: userEntityId.toString(),
                     method: "",
                     type: "",

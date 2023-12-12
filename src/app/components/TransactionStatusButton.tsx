@@ -103,6 +103,7 @@ const TransactionStatusButton = ({
           )}`,
           action: (
             <ToastAction
+              disabled={updatedTxIdsStore.length === 0 ? true : false}
               altText="Confirmar transacciones"
               onClick={() => {
                 mutate({

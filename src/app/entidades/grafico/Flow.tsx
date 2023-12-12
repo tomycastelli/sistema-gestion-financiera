@@ -120,8 +120,8 @@ const Flow: FC<FlowProps> = ({ initialTags, initialEntities }) => {
   return (
     <ReactFlow
       proOptions={{ hideAttribution: true }}
-      nodes={layouted.nodes}
-      edges={layouted.edges}
+      nodes={layouted.nodes.slice(0, 10)}
+      edges={layouted.edges.slice(0, 50)}
       nodeTypes={nodeTypes}
       className="bg-teal-50"
       fitView

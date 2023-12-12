@@ -28,6 +28,7 @@ interface TransactionProps {
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
+  users: RouterOutputs["users"]["getAll"];
 }
 
 const ChangeData = z.object({
@@ -47,6 +48,7 @@ const Transaction: FC<TransactionProps> = ({
   operationsQueryInput,
   user,
   entities,
+  users,
 }) => {
   const utils = api.useContext();
 
@@ -174,7 +176,9 @@ const Transaction: FC<TransactionProps> = ({
                         <h2 className="text-md font-semibold">
                           {new Date(item.changeDate).toLocaleString("es-AR")}
                         </h2>
-                        <h3 className="text-md">{item.changedBy}</h3>
+                        <h3 className="text-md">
+                          {users.find((u) => u.id === item.changedBy)?.name}
+                        </h3>
                         <div className="mt-2 flex flex-col space-y-1">
                           {item.changeData.map((change) => (
                             <div key={change.key}>

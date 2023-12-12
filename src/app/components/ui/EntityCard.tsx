@@ -48,7 +48,13 @@ const EntityCard = ({ entity }: EntityCardProps) => {
         <Card
           className={cn(
             "flex h-36 w-36 flex-col border",
-            entity.tag.color && `border-${entity.tag.color}`,
+            entity.tag.color === "primary"
+              ? "border-primary"
+              : entity.tag.color === "green"
+              ? "border-green"
+              : entity.tag.color === "orange"
+              ? "border-orange"
+              : "",
           )}
         >
           <CardHeader>
@@ -56,7 +62,10 @@ const EntityCard = ({ entity }: EntityCardProps) => {
               <HoverCardTrigger asChild>
                 <CardTitle>
                   <Link
-                    className="flex transition-all hover:scale-110"
+                    className={cn(
+                      "flex transition-all hover:scale-110",
+                      entity.name.length <= 15 ? "text-2xl" : "text-[20px]",
+                    )}
                     href={{
                       pathname: "/cuentas",
                       query: { entidad: entity.id },
