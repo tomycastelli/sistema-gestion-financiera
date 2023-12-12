@@ -15,6 +15,8 @@ export default async function Page({
 
   const entities = await api.entities.getAll.query();
 
+  const users = await api.users.getAll.query();
+
   const session = await getServerAuthSession();
 
   const userPermissions = await api.users.getAllPermissions.query({});
@@ -23,6 +25,7 @@ export default async function Page({
     <div>
       {session && (
         <OperationDetails
+          users={users}
           userPermissions={userPermissions}
           initialOperations={operation}
           operationId={operationId}

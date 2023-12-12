@@ -17,7 +17,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ operation }) => {
           ? moment(transaction.date).format("DD/MM/YYYY")
           : moment(operation!.date).format("DD/MM/YYYY"),
         transactionId: movement.transactionId,
-        cuenta: movement.status ? "Caja" : "Cuenta corriente",
+        cuenta: movement.account ? "Caja" : "Cuenta corriente",
         type: movement.type,
         fromEntityName:
           movement.direction === 1

@@ -16,6 +16,7 @@ interface OperationDetailsProps {
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   operationId: string;
   session: Session;
+  users: RouterOutputs["users"]["getAll"];
 }
 
 const OperationDetails: FC<OperationDetailsProps> = ({
@@ -23,6 +24,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
   initialEntities,
   operationId,
   session,
+  users,
 }) => {
   const router = useRouter();
 
@@ -83,6 +85,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
               <div className="mx-auto grid-cols-1 gap-4">
                 {operation.transactions.map((tx) => (
                   <Transaction
+                    users={users}
                     key={tx.id}
                     transaction={tx}
                     entities={entities}
