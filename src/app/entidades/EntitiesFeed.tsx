@@ -1,7 +1,6 @@
 "use client";
 
 import Lottie from "lottie-react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
@@ -16,7 +15,6 @@ import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import EntityCard from "../components/ui/EntityCard";
-import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
   HoverCard,

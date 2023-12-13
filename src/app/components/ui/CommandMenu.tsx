@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FC } from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CommandDialog,
@@ -14,8 +15,10 @@ import {
   CommandShortcut,
 } from "~/app/components/ui/command";
 import { createQueryString } from "~/lib/functions";
+import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "./Icons";
+import { Button } from "./button";
 
 interface CommandMenuProps {
   tags: RouterOutputs["tags"]["getFiltered"];
@@ -29,6 +32,8 @@ const CommandMenu: FC<CommandMenuProps> = ({
   userPermissons,
 }) => {
   const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState<string>();
+
   const router = useRouter();
   const isMac =
     typeof window !== "undefined"
@@ -66,12 +71,10 @@ const CommandMenu: FC<CommandMenuProps> = ({
         handleSelect("/usuarios/roles");
       } else if (e.key === "c") {
         handleSelect("/operaciones/carga");
-      } else if (e.key === "a") {
+      } else if (e.key === "g") {
         handleSelect("/operaciones/gestion");
       } else if (e.key === "e") {
         handleSelect("/entidades");
-      } else if (e.key === "g") {
-        handleSelect("/entidades/grafico");
       }
     }
   };
@@ -92,7 +95,34 @@ const CommandMenu: FC<CommandMenuProps> = ({
         onOpenChange={setOpen}
         handleKeyDown={handleKeyDown}
       >
-        <CommandInput placeholder="Buscar comando" />
+        <CommandInput
+          placeholder="Buscar comando"
+          onValueChange={(search) => setSearchValue(search)}
+        />
+        {searchValue?.startsWith("op:") && (
+          <Link
+            href={{
+              pathname: `/operaciones/gestion/${searchValue.split("op:")[1]}`,
+            }}
+          >
+            <Button
+              className="flex w-full flex-row justify-start space-x-2 border-transparent"
+              variant="outline"
+              onClick={() => {
+                setOpen(false);
+                setSearchValue(undefined);
+              }}
+            >
+              <Icons.addPackage className="h-5" />
+              <p>
+                {searchValue.split("op:")[1] &&
+                searchValue.split("op:")[1]!.length >= 1
+                  ? searchValue.split("op:")[1]
+                  : "Elegi un numero de operacion"}
+              </p>
+            </Button>
+          </Link>
+        )}
         <CommandList>
           <CommandEmpty>No se encontraron comandos.</CommandEmpty>
           <CommandGroup heading="Operaciones">
@@ -110,13 +140,15 @@ const CommandMenu: FC<CommandMenuProps> = ({
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_VISUALIZE"),
             ) && (
-              <CommandItem
-                onSelect={() => handleSelect("/operaciones/gestion")}
-              >
-                <Icons.editing className="mr-2 h-4 w-4" />
-                <span>Gestionar operaciones</span>
-                <CommandShortcut>⌘A</CommandShortcut>
-              </CommandItem>
+              <>
+                <CommandItem
+                  onSelect={() => handleSelect("/operaciones/gestion")}
+                >
+                  <Icons.editing className="mr-2 h-4 w-4" />
+                  <span>Gestionar operaciones</span>
+                  <CommandShortcut>⌘G</CommandShortcut>
+                </CommandItem>
+              </>
             )}
           </CommandGroup>
           <CommandSeparator />

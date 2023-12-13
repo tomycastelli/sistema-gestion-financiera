@@ -3,7 +3,8 @@
 import Lottie from "lottie-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { type FC } from "react";
+import { useState, type FC } from "react";
+import useSearch from "~/hooks/useSearch";
 import {
   calculateTotal,
   capitalizeFirstLetter,
@@ -14,6 +15,8 @@ import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
+import { Icons } from "../components/ui/Icons";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,6 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -33,6 +45,11 @@ const Balances: FC<BalancesProps> = ({
   accountType,
   initialDetailedBalances,
 }) => {
+  const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
+  const pageSize = 10;
+
+  const [filteredEntity, setFilteredEntity] = useState<string>();
+
   const searchParams = useSearchParams();
 
   const pathname = usePathname();
@@ -107,6 +124,24 @@ const Balances: FC<BalancesProps> = ({
     ),
   );
 
+  const {
+    results: filteredDetailedBalances,
+    searchValue: searchDetailedBalanceValue,
+    setSearchValue: setSearchDetailedBalanceValue,
+  } = useSearch<(typeof groupedDetailedBalances)[0]>({
+    dataSet: groupedDetailedBalances,
+    keys: ["entityname"],
+  });
+
+  const balanceArrayToRender = filteredEntity
+    ? groupedDetailedBalances.filter(
+        (item) => item.entityname === filteredEntity,
+      )
+    : filteredDetailedBalances.slice(
+        (detailedBalancesPage - 1) * pageSize,
+        detailedBalancesPage * pageSize,
+      );
+
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   return (
@@ -172,7 +207,62 @@ const Balances: FC<BalancesProps> = ({
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}
       </div>
-      <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
+      <div className="flex flex-row items-center justify-between">
+        <div className="flex flex-row items-center space-x-4">
+          <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
+          <Input
+            value={searchDetailedBalanceValue}
+            onChange={(e) => setSearchDetailedBalanceValue(e.target.value)}
+            placeholder="Buscar"
+            className="w-32"
+          />
+          <Select
+            onValueChange={(value) =>
+              value === "todos"
+                ? setFilteredEntity(undefined)
+                : setFilteredEntity(value)
+            }
+            defaultValue={filteredEntity}
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue placeholder="Elegir" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="todos">Todos</SelectItem>
+                {groupedDetailedBalances.map((balance) => (
+                  <SelectItem key={balance.entityid} value={balance.entityname}>
+                    {balance.entityname}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-row items-center justify-end space-x-2">
+          {detailedBalancesPage > 1 && (
+            <Button
+              variant="outline"
+              className="p-1"
+              onClick={() => setDetailedBalancesPage(detailedBalancesPage - 1)}
+            >
+              <Icons.chevronLeft className="h-5" />
+            </Button>
+          )}
+
+          <p className="text-lg">{detailedBalancesPage}</p>
+          {Math.round(filteredDetailedBalances.length / pageSize) >=
+            detailedBalancesPage && (
+            <Button
+              variant="outline"
+              className="p-1"
+              onClick={() => setDetailedBalancesPage(detailedBalancesPage + 1)}
+            >
+              <Icons.chevronRight className="h-5" />
+            </Button>
+          )}
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-3">
         <div className="grid grid-cols-6 justify-items-center rounded-xl border border-muted-foreground p-2">
           <p>Entidad</p>
@@ -181,13 +271,13 @@ const Balances: FC<BalancesProps> = ({
           ))}
         </div>
         {!isDetailedLoading ? (
-          groupedDetailedBalances.length > 0 ? (
-            groupedDetailedBalances.map((item, index) => (
+          balanceArrayToRender.length > 0 ? (
+            balanceArrayToRender.map((item, index) => (
               <div
                 key={item.entityid}
                 className={cn(
-                  "grid grid-cols-6 justify-items-center rounded-xl p-2 font-semibold",
-                  index % 2 === 0 ? "bg-muted" : "bg-white",
+                  "grid grid-cols-6 justify-items-center rounded-xl font-semibold",
+                  index % 2 === 0 ? "bg-muted p-3" : "bg-white",
                 )}
               >
                 <p className="p-2">{item.entityname}</p>
@@ -216,7 +306,9 @@ const Balances: FC<BalancesProps> = ({
                       key={currency}
                       className="rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md"
                     >
-                      {matchingBalance.balance}
+                      {new Intl.NumberFormat("es-AR").format(
+                        matchingBalance.balance,
+                      )}
                     </Link>
                   ) : (
                     <p></p>

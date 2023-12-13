@@ -2,6 +2,7 @@
 
 import Lottie from "lottie-react";
 import Link from "next/link";
+import React, { useState } from "react";
 import loadingJson from "~/../public/animations/loading.json";
 import {
   calculateTotalAllEntities,
@@ -19,17 +20,20 @@ interface EntityCardProps {
   className?: string;
 }
 
-const EntityCard = ({ entity }: EntityCardProps) => {
+const EntityCard = React.memo(({ entity }: EntityCardProps) => {
+  const [enableQueryId, setEnableQueryId] = useState<boolean>(false);
+  const [enableQueryTag, setEnableQueryTag] = useState<boolean>(false);
+
   const { data: balances, isLoading } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityId: entity?.id },
-      { refetchOnReconnect: false, staleTime: 182000 },
+      { refetchOnReconnect: false, staleTime: 182000, enabled: enableQueryId },
     );
 
   const { data: balancesTag, isLoading: isLoadingTag } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityTag: entity.tag.name },
-      { refetchOnReconnect: false, staleTime: 182000 },
+      { refetchOnReconnect: false, staleTime: 182000, enabled: enableQueryTag },
     );
 
   let totals: ReturnType<typeof calculateTotalAllEntities> = [];
@@ -58,7 +62,7 @@ const EntityCard = ({ entity }: EntityCardProps) => {
           )}
         >
           <CardHeader>
-            <HoverCard>
+            <HoverCard onOpenChange={(open) => setEnableQueryId(open)}>
               <HoverCardTrigger asChild>
                 <CardTitle>
                   <Link
@@ -91,7 +95,7 @@ const EntityCard = ({ entity }: EntityCardProps) => {
                 )}
               </HoverCardContent>
             </HoverCard>
-            <HoverCard>
+            <HoverCard onOpenChange={(open) => setEnableQueryTag(open)}>
               <HoverCardTrigger asChild>
                 <CardDescription className="text-md">
                   <Link
@@ -128,6 +132,8 @@ const EntityCard = ({ entity }: EntityCardProps) => {
       )}
     </>
   );
-};
+});
+
+EntityCard.displayName = "EntityCard";
 
 export default EntityCard;

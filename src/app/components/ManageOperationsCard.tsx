@@ -13,12 +13,12 @@ const ManageOperationsCard = () => {
   return (
     <Card className="w-[380px]">
       <CardHeader>
-        <CardTitle>Carga</CardTitle>
-        <CardDescription>Visualizá y carga operaciones</CardDescription>
+        <CardTitle>Gestión</CardTitle>
+        <CardDescription>Visualizá y modifica operaciones</CardDescription>
       </CardHeader>
       <CardFooter className="w-full">
-        <Link href={"/operaciones/carga"} className="w-full">
-          <Button className="w-full">Cargar nueva operación</Button>
+        <Link href={"/operaciones/gestion"} className="w-full">
+          <Button className="w-full">Gestionar</Button>
         </Link>
       </CardFooter>
     </Card>

@@ -25,6 +25,8 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectedFromEntity?: string;
+  selectedToEntity?: string | undefined;
+  selectedCurrency?: string | undefined;
 }
 
 export function DataTable<TData, TValue>({
@@ -37,8 +39,6 @@ export function DataTable<TData, TValue>({
   );
 
   const searchParams = useSearchParams();
-  const selectedCurrency = searchParams.get("divisa");
-  const selectedToEntity = searchParams.get("entidad_destino");
   const higlightRowId = searchParams.get("row")
     ? parseInt(searchParams.get("row")!)
     : null;
@@ -50,11 +50,7 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     initialState: {
-      columnFilters: [
-        { id: "currency", value: selectedCurrency },
-        { id: "otherEntityId", value: selectedToEntity },
-        { id: "selectedEntityId", value: selectedFromEntity },
-      ],
+      columnFilters: [{ id: "selectedEntityId", value: selectedFromEntity }],
     },
     state: {
       columnFilters,
@@ -70,12 +66,6 @@ export function DataTable<TData, TValue>({
   });
 
   useEffect(() => {
-    if (selectedCurrency) {
-      table.getColumn("currency")?.setFilterValue(selectedCurrency);
-    } else {
-      table.getColumn("currency")?.setFilterValue(undefined);
-    }
-
     if (selectedFromEntity) {
       table
         .getColumn("selectedEntityId")
@@ -83,15 +73,7 @@ export function DataTable<TData, TValue>({
     } else {
       table.getColumn("selectedEntityId")?.setFilterValue(undefined);
     }
-
-    if (selectedToEntity) {
-      table
-        .getColumn("otherEntityId")
-        ?.setFilterValue(parseInt(selectedToEntity));
-    } else {
-      table.getColumn("otherEntityId")?.setFilterValue(undefined);
-    }
-  }, [selectedCurrency, table, selectedToEntity, selectedFromEntity]);
+  }, [table, selectedFromEntity]);
 
   return (
     <div>

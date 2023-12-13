@@ -17,7 +17,7 @@ export function UploadOperationsCard({ className, ...props }: CardProps) {
     <Card className={cn("w-[380px]", className)} {...props}>
       <CardHeader>
         <CardTitle>Carga</CardTitle>
-        <CardDescription>Visualizá y carga operaciones</CardDescription>
+        <CardDescription>Cargá operaciones</CardDescription>
       </CardHeader>
       <CardFooter className="w-full">
         <Link href={"/operaciones/carga"} className="w-full">

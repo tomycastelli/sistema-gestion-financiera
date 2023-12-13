@@ -18,6 +18,8 @@ const AccountsTable = async ({
   const session = await getServerAuthSession();
   console.log(session);
 
+  const entities = await api.entities.getAll.query();
+
   const selectedEntityString = searchParams.entidad as string;
   const selectedEntity = selectedEntityString
     ? parseInt(selectedEntityString)
@@ -62,6 +64,7 @@ const AccountsTable = async ({
             Movimientos
           </h1>
           <MovementsTable
+            entities={entities}
             linkId={linkId}
             linkToken={linkToken}
             initialTags={initialTags}

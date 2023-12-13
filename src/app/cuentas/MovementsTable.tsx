@@ -5,18 +5,25 @@ import { MoreHorizontal } from "lucide-react";
 import moment from "moment";
 import { type Session } from "next-auth";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
   createQueryString,
   getAllChildrenTags,
   isNumeric,
-  removeQueryString,
 } from "~/lib/functions";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "../components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +32,11 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Label } from "../components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -38,6 +50,7 @@ import { DataTable } from "./DataTable";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
+  entities: RouterOutputs["entities"]["getAll"];
   entityId?: number;
   entityTag?: string;
   pageSize: number;
@@ -51,6 +64,7 @@ interface CuentasTableProps {
 
 const MovementsTable = ({
   initialMovements,
+  entities,
   entityId,
   entityTag,
   pageSize,
@@ -66,14 +80,13 @@ const MovementsTable = ({
     refetchOnWindowFocus: false,
   });
 
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedCurrency = searchParams.get("divisa");
-  const selectedToEntity = searchParams.get("entidad_destino");
   const selectedEntityString = searchParams.get("entidad");
 
-  const [selectedFromEntity, setSelectedFromEntity] = useState("");
+  const [selectedFromEntity, setSelectedFromEntity] = useState<string>("");
+  const [selectedToEntity, setSelectedToEntity] = useState<string>();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>();
 
   const selectedPageNumber = parseInt(searchParams.get("pagina")!) || 1;
 
@@ -84,6 +97,8 @@ const MovementsTable = ({
       account: accountType,
       entityId: entityId,
       entityTag: entityTag,
+      toEntityId: selectedToEntity ? parseInt(selectedToEntity) : undefined,
+      currency: selectedCurrency,
       pageNumber: pageNumber,
       pageSize: pageSize,
     },
@@ -115,16 +130,16 @@ const MovementsTable = ({
       ingress =
         (entityId === movement.transaction.toEntity.id &&
           movement.direction === 1) ||
-          (entityId === movement.transaction.fromEntity.id &&
-            movement.direction === -1)
+        (entityId === movement.transaction.fromEntity.id &&
+          movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (entityId === movement.transaction.toEntity.id &&
           movement.direction === -1) ||
-          (entityId === movement.transaction.fromEntity.id &&
-            movement.direction === 1)
+        (entityId === movement.transaction.fromEntity.id &&
+          movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     } else if (entityTag) {
@@ -145,16 +160,16 @@ const MovementsTable = ({
       ingress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === 1) ||
-          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-            movement.direction === -1)
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+          movement.direction === -1)
           ? movement.transaction.amount
           : 0;
 
       egress =
         (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
           movement.direction === -1) ||
-          (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-            movement.direction === 1)
+        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
+          movement.direction === 1)
           ? movement.transaction.amount
           : 0;
     }
@@ -218,20 +233,6 @@ const MovementsTable = ({
       };
     })
     .reverse();
-
-  const toEntities = Array.from(
-    new Set(updatedTableData.map((item) => item.otherEntityId)),
-  ).map((uniqueId) => {
-    const matchingObject = updatedTableData.find(
-      (item) => item.otherEntityId === uniqueId,
-    );
-    if (matchingObject) {
-      return {
-        otherEntityId: matchingObject.otherEntityId,
-        otherEntity: matchingObject.otherEntity,
-      };
-    }
-  });
 
   const fromEntities = Array.from(
     new Set(updatedTableData.map((item) => item.selectedEntityId)),
@@ -298,6 +299,8 @@ const MovementsTable = ({
         }
         if (row.getValue("type") === "confirmation") {
           type = "Confirmación";
+        } else {
+          type = row.getValue("type");
         }
         const metadata: JSON = row.getValue("metadata");
         const mvId: number = row.getValue("id");
@@ -308,9 +311,9 @@ const MovementsTable = ({
             // @ts-ignore
             metadata && isNumeric(metadata.exchangeRate)
               ? // @ts-ignore
-              `- $${metadata.exchangeRate}`
+                `- $${metadata.exchangeRate}`
               : ""
-            }`}</p>
+          }`}</p>
         );
       },
     },
@@ -461,23 +464,11 @@ const MovementsTable = ({
               <Label className="mb-1">Divisa</Label>
               <Select
                 value={selectedCurrency ? selectedCurrency : "todas"}
-                onValueChange={(value) => {
-                  if (value === "todas") {
-                    router.push(
-                      pathname +
-                      "?" +
-                      removeQueryString(searchParams, "divisa"),
-                      { scroll: false },
-                    );
-                  } else {
-                    router.push(
-                      pathname +
-                      "?" +
-                      createQueryString(searchParams, "divisa", value),
-                      { scroll: false },
-                    );
-                  }
-                }}
+                onValueChange={(value) =>
+                  value === "todas"
+                    ? setSelectedCurrency(undefined)
+                    : setSelectedCurrency(value)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Divisa" />
@@ -501,52 +492,53 @@ const MovementsTable = ({
             </div>
             <div className="flex flex-col">
               <Label className="mb-2">Entidad</Label>
-              <Select
-                value={selectedToEntity ? selectedToEntity : "todas"}
-                onValueChange={(value) => {
-                  if (value === "todas") {
-                    router.push(
-                      pathname +
-                      "?" +
-                      removeQueryString(searchParams, "entidad_destino"),
-                      { scroll: false },
-                    );
-                  } else {
-                    router.push(
-                      pathname +
-                      "?" +
-                      createQueryString(
-                        searchParams,
-                        "entidad_destino",
-                        value,
-                      ),
-                    );
-                  }
-                }}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Entidad destino" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem key={"todas"} value="todas">
-                      Todas
-                    </SelectItem>
-                    {toEntities.map((toEntity) => (
-                      <SelectItem
-                        key={toEntity?.otherEntityId}
-                        value={
-                          toEntity?.otherEntityId
-                            ? toEntity.otherEntityId.toString()
-                            : " "
-                        }
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-[200px] justify-between",
+                      !selectedToEntity && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedToEntity
+                      ? entities.find(
+                          (e) => e.id === parseInt(selectedToEntity),
+                        )?.name
+                      : "Elegir"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Elegir..." />
+                    <CommandEmpty>...</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="todas"
+                        onSelect={() => setSelectedToEntity(undefined)}
                       >
-                        {toEntity?.otherEntity}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+                        Todas
+                      </CommandItem>
+                      {entities
+                        .filter(
+                          (e) => e.id !== entityId && e.tag.name !== entityTag,
+                        )
+                        .map((entity) => (
+                          <CommandItem
+                            key={entity.id}
+                            value={entity.name}
+                            onSelect={() =>
+                              setSelectedToEntity(entity.id.toString())
+                            }
+                          >
+                            {entity.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             {session && selectedEntityString && !accountType && (
               <ClientLinkGenerator
@@ -562,7 +554,6 @@ const MovementsTable = ({
         </div>
       )}
       <div className="mt-2 flex flex-row items-center justify-between text-lg text-muted-foreground">
-        <p className="font-light">{initialMovements.totalRows} movimientos</p>
         <div className="flex flex-row items-center space-x-3">
           {selectedPageNumber > 1 && (
             <Link
@@ -583,28 +574,26 @@ const MovementsTable = ({
             </Link>
           )}
           <p>
-            {selectedPageNumber +
-              " / " +
-              Math.ceil(initialMovements.totalRows / pageSize)}
+            {selectedPageNumber + " / " + Math.ceil(data.totalRows / pageSize)}
           </p>
-          {selectedPageNumber <
-            Math.ceil(initialMovements.totalRows / pageSize) && (
-              <Link
-                className="flex flex-row items-center space-x-1"
-                href={
-                  pathname +
-                  "?" +
-                  createQueryString(
-                    searchParams,
-                    "pagina",
-                    (selectedPageNumber + 1).toString(),
-                  )
-                }
-              >
-                <p>Siguiente</p>
-                <Icons.chevronRight className="h-6" />
-              </Link>
-            )}
+          {selectedPageNumber < Math.ceil(data.totalRows / pageSize) && (
+            <Link
+              className="flex flex-row items-center space-x-1"
+              scroll={false}
+              href={
+                pathname +
+                "?" +
+                createQueryString(
+                  searchParams,
+                  "pagina",
+                  (selectedPageNumber + 1).toString(),
+                )
+              }
+            >
+              <p>Siguiente</p>
+              <Icons.chevronRight className="h-6" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

@@ -20,6 +20,8 @@ export const movementsRouter = createTRPCRouter({
         pageNumber: z.number().int(),
         entityId: z.number().int().optional(), // Change from array to single number
         entityTag: z.string().optional(),
+        toEntityId: z.number().int().optional().nullable(),
+        currency: z.string().optional().nullable(),
         account: z.boolean().optional(),
       }),
     )
@@ -54,17 +56,22 @@ export const movementsRouter = createTRPCRouter({
       if (input.entityId !== undefined) {
         whereConditions.push({
           transaction: {
+            currency: input.currency ? input.currency : {},
             OR: [
               {
                 fromEntityId: input.entityId,
-                toEntityId: {
-                  not: input.entityId,
-                },
+                toEntityId: input.toEntityId
+                  ? input.toEntityId
+                  : {
+                      not: input.entityId,
+                    },
               },
               {
-                fromEntityId: {
-                  not: input.entityId,
-                },
+                fromEntityId: input.toEntityId
+                  ? input.toEntityId
+                  : {
+                      not: input.entityId,
+                    },
                 toEntityId: input.entityId,
               },
             ],
@@ -82,16 +89,25 @@ export const movementsRouter = createTRPCRouter({
 
         whereConditions.push({
           transaction: {
+            currency: input.currency ? input.currency : {},
             OR: [
               {
                 AND: [
                   { fromEntity: { tagName: { in: tagAndChildren } } },
-                  { toEntity: { tagName: { notIn: tagAndChildren } } },
+                  {
+                    toEntity: input.toEntityId
+                      ? { id: input.toEntityId }
+                      : { tagName: { notIn: tagAndChildren } },
+                  },
                 ],
               },
               {
                 AND: [
-                  { fromEntity: { tagName: { notIn: tagAndChildren } } },
+                  {
+                    fromEntity: input.toEntityId
+                      ? { id: input.toEntityId }
+                      : { tagName: { notIn: tagAndChildren } },
+                  },
                   { toEntity: { tagName: { in: tagAndChildren } } },
                 ],
               },

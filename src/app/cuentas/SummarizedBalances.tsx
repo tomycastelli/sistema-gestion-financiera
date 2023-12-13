@@ -418,7 +418,14 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               <BarChart
                 data={barChartData
                   .find((item) => item.currency === selectedCurrency)
-                  ?.entries.sort(sortEntries)}
+                  ?.entries.map((entry) => ({
+                    date: entry.date,
+                    cash: parseFloat(entry.cash.toFixed(2)),
+                    current_account: parseFloat(
+                      entry.current_account.toFixed(2),
+                    ),
+                  }))
+                  .sort(sortEntries)}
               >
                 <XAxis
                   dataKey="date"
