@@ -66,8 +66,8 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
           role="combobox"
           className="w-[200px] justify-between"
         >
-          <Avatar className="mr-2 h-7 w-7">
-            <AvatarFallback>
+          <Avatar className="mr-2 h-8 w-8">
+            <AvatarFallback className="bg-primary text-white">
               {selectedTag
                 ? getInitials(selectedTag).toUpperCase()
                 : selectedEntity
@@ -147,7 +147,11 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                     }}
                   >
                     <Avatar className="mr-2">
-                      <AvatarFallback>
+                      <AvatarFallback
+                        className={cn(
+                          parsedEntity === entity.id && "bg-primary text-white",
+                        )}
+                      >
                         {getInitials(entity.name)}
                       </AvatarFallback>
                     </Avatar>

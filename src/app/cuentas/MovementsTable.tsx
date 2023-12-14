@@ -13,6 +13,7 @@ import {
   isNumeric,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { currencies } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -50,6 +51,7 @@ import { DataTable } from "./DataTable";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
+  tags: RouterOutputs["tags"]["getAll"];
   entities: RouterOutputs["entities"]["getAll"];
   entityId?: number;
   entityTag?: string;
@@ -57,13 +59,13 @@ interface CuentasTableProps {
   pageNumber: number;
   session: Session | null;
   accountType: boolean;
-  initialTags: RouterOutputs["tags"]["getAll"];
   linkId: number | null;
   linkToken: string | null;
 }
 
 const MovementsTable = ({
   initialMovements,
+  tags,
   entities,
   entityId,
   entityTag,
@@ -71,20 +73,14 @@ const MovementsTable = ({
   pageNumber,
   session,
   accountType,
-  initialTags,
   linkId,
   linkToken,
 }: CuentasTableProps) => {
-  const { data: tags } = api.tags.getAll.useQuery(undefined, {
-    initialData: initialTags,
-    refetchOnWindowFocus: false,
-  });
-
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
 
-  const [selectedFromEntity, setSelectedFromEntity] = useState<string>("");
+  const [selectedFromEntity, setSelectedFromEntity] = useState<string>();
   const [selectedToEntity, setSelectedToEntity] = useState<string>();
   const [selectedCurrency, setSelectedCurrency] = useState<string>();
 
@@ -95,8 +91,8 @@ const MovementsTable = ({
       linkId: linkId,
       linkToken: linkToken,
       account: accountType,
-      entityId: entityId,
-      entityTag: entityTag,
+      entityId: selectedFromEntity ? parseInt(selectedFromEntity) : entityId,
+      entityTag: selectedFromEntity ? undefined : entityTag,
       toEntityId: selectedToEntity ? parseInt(selectedToEntity) : undefined,
       currency: selectedCurrency,
       pageNumber: pageNumber,
@@ -233,34 +229,6 @@ const MovementsTable = ({
       };
     })
     .reverse();
-
-  const fromEntities = Array.from(
-    new Set(updatedTableData.map((item) => item.selectedEntityId)),
-  ).map((uniqueId) => {
-    const matchingObject = updatedTableData.find(
-      (item) => item.selectedEntityId === uniqueId,
-    );
-    if (matchingObject) {
-      return {
-        selectedEntityId: matchingObject.selectedEntityId,
-        selectedEntity: matchingObject.selectedEntity,
-      };
-    }
-  });
-
-  const currencies = Array.from(
-    new Set(updatedTableData.map((item) => item.currency)),
-  ).map((uniqueCurrency) => {
-    const matchingObject = updatedTableData.find(
-      (item) => item.currency === uniqueCurrency,
-    );
-    if (matchingObject) {
-      return {
-        value: matchingObject.currency,
-        label: matchingObject.currency.toUpperCase(),
-      };
-    }
-  });
 
   const columns: ColumnDef<(typeof updatedTableData)[number]>[] = [
     {
@@ -426,40 +394,61 @@ const MovementsTable = ({
       ) : (
         <div>
           <div className="flex flex-row items-end justify-start space-x-4 py-4">
-            <div className="flex flex-col">
-              <Label className="mb-2">Origen</Label>
-              <Select
-                value={selectedFromEntity ? selectedFromEntity : "todas"}
-                onValueChange={(value) =>
-                  value !== "todas"
-                    ? setSelectedFromEntity(value)
-                    : setSelectedFromEntity("")
-                }
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Entidad origen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem key={"todas"} value="todas">
-                      Todas
-                    </SelectItem>
-                    {fromEntities.map((fromEntity) => (
-                      <SelectItem
-                        key={fromEntity?.selectedEntityId}
-                        value={
-                          fromEntity?.selectedEntityId
-                            ? fromEntity.selectedEntityId.toString()
-                            : " "
-                        }
-                      >
-                        {fromEntity?.selectedEntity}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            {entityTag && (
+              <div className="flex flex-col">
+                <Label className="mb-2">Entidad</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-[200px] justify-between",
+                        !selectedFromEntity && "text-muted-foreground",
+                      )}
+                    >
+                      {selectedFromEntity
+                        ? entities.find(
+                            (e) => e.id === parseInt(selectedFromEntity),
+                          )?.name
+                        : "Elegir"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Elegir..." />
+                      <CommandEmpty>...</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="todas"
+                          onSelect={() => setSelectedFromEntity(undefined)}
+                        >
+                          Todas
+                        </CommandItem>
+                        {entities
+                          .filter(
+                            (e) =>
+                              getAllChildrenTags(entityTag, tags).includes(
+                                e.tag.name,
+                              ) || e.id === entityId,
+                          )
+                          .map((entity) => (
+                            <CommandItem
+                              key={entity.id}
+                              value={entity.name}
+                              onSelect={() =>
+                                setSelectedFromEntity(entity.id.toString())
+                              }
+                            >
+                              {entity.name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
             <div className="flex flex-col space-y-1">
               <Label className="mb-1">Divisa</Label>
               <Select
@@ -546,11 +535,7 @@ const MovementsTable = ({
               />
             )}
           </div>
-          <DataTable
-            columns={columns}
-            data={updatedTableData}
-            selectedFromEntity={selectedFromEntity}
-          />
+          <DataTable columns={columns} data={updatedTableData} />
         </div>
       )}
       <div className="mt-2 flex flex-row items-center justify-between text-lg text-muted-foreground">

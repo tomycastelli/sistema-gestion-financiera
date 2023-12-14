@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-table";
 
 import { useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
+import React from "react";
 import { cn } from "~/lib/utils";
 import {
   Table,
@@ -24,14 +24,10 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  selectedFromEntity?: string;
-  selectedToEntity?: string | undefined;
-  selectedCurrency?: string | undefined;
 }
 
 export function DataTable<TData, TValue>({
   columns,
-  selectedFromEntity,
   data,
 }: DataTableProps<TData, TValue>) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -49,9 +45,6 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: {
-      columnFilters: [{ id: "selectedEntityId", value: selectedFromEntity }],
-    },
     state: {
       columnFilters,
       columnVisibility: {
@@ -64,16 +57,6 @@ export function DataTable<TData, TValue>({
       },
     },
   });
-
-  useEffect(() => {
-    if (selectedFromEntity) {
-      table
-        .getColumn("selectedEntityId")
-        ?.setFilterValue(parseInt(selectedFromEntity));
-    } else {
-      table.getColumn("selectedEntityId")?.setFilterValue(undefined);
-    }
-  }, [table, selectedFromEntity]);
 
   return (
     <div>

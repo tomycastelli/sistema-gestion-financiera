@@ -147,7 +147,7 @@ const Balances: FC<BalancesProps> = ({
   return (
     <div className="flex flex-col space-y-4">
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
-      <div className="grid-cols grid grid-flow-col gap-4">
+      <div className="grid-cols grid grid-cols-4 gap-4">
         {!isBalanceLoading ? (
           balancesSummary.map((entity) => (
             <Card key={entity.entityId} className="min-w-[300px]">

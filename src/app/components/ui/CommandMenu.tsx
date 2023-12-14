@@ -15,7 +15,6 @@ import {
   CommandShortcut,
 } from "~/app/components/ui/command";
 import { createQueryString } from "~/lib/functions";
-import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "./Icons";
 import { Button } from "./button";
@@ -130,9 +129,12 @@ const CommandMenu: FC<CommandMenuProps> = ({
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_CREATE"),
             ) && (
-              <CommandItem onSelect={() => handleSelect("/operaciones/carga")}>
+              <CommandItem
+                onSelect={() => handleSelect("/operaciones/carga")}
+                value="Cargar operaciones"
+              >
                 <Icons.addPackage className="mr-2 h-4 w-4" />
-                <span>Carga</span>
+                <span>Cargar operaciones</span>
                 <CommandShortcut>⌘C</CommandShortcut>
               </CommandItem>
             )}
@@ -143,6 +145,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
               <>
                 <CommandItem
                   onSelect={() => handleSelect("/operaciones/gestion")}
+                  value="Gestionar operaciones"
                 >
                   <Icons.editing className="mr-2 h-4 w-4" />
                   <span>Gestionar operaciones</span>
@@ -157,6 +160,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
             {entities.map((entity) => (
               <CommandItem
                 key={entity.id}
+                value={entity.name}
                 onSelect={() =>
                   handleSelect(
                     "/cuentas" +
@@ -177,6 +181,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
             {tags.map((tag) => (
               <CommandItem
                 key={tag.name}
+                value={tag.name}
                 onSelect={() =>
                   handleSelect(
                     "/cuentas" +
@@ -205,7 +210,10 @@ const CommandMenu: FC<CommandMenuProps> = ({
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Usuarios">
-            <CommandItem onSelect={() => handleSelect("/usuarios")}>
+            <CommandItem
+              onSelect={() => handleSelect("/usuarios")}
+              value="Mi usuario"
+            >
               <Icons.person className="mr-2 h-4 w-4" />
               <span>Mi usuario</span>
               <CommandShortcut>⌘U</CommandShortcut>
@@ -214,7 +222,10 @@ const CommandMenu: FC<CommandMenuProps> = ({
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
             ) && (
-              <CommandItem onSelect={() => handleSelect("/usuarios/permisos")}>
+              <CommandItem
+                onSelect={() => handleSelect("/usuarios/permisos")}
+                value="Permisos"
+              >
                 <Icons.settings className="mr-2 h-4 w-4" />
                 <span>Permisos</span>
                 <CommandShortcut>⌘P</CommandShortcut>
@@ -223,7 +234,10 @@ const CommandMenu: FC<CommandMenuProps> = ({
             {userPermissons?.find(
               (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
             ) && (
-              <CommandItem onSelect={() => handleSelect("/usuarios/roles")}>
+              <CommandItem
+                onSelect={() => handleSelect("/usuarios/roles")}
+                value="Roles"
+              >
                 <Icons.roles className="mr-2 h-4 w-4" />
                 <span>Roles</span>
                 <CommandShortcut>⌘R</CommandShortcut>
