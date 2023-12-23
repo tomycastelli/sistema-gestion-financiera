@@ -1,6 +1,14 @@
+import type { Transactions } from "@prisma/client";
+import moment from "moment";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
-import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
+import {
+  generateMovements,
+  getAllPermissions,
+  getAllTags,
+  undoBalances,
+} from "~/lib/trpcFunctions";
+import { cashAccountOnlyTypes } from "~/lib/variables";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const operationsRouter = createTRPCRouter({
@@ -9,6 +17,116 @@ export const operationsRouter = createTRPCRouter({
       z.object({
         opDate: z.date(),
         opObservations: z.string().optional(),
+        opId: z.number().int().optional().nullable(),
+        transactions: z.array(
+          z.object({
+            type: z.string(),
+            date: z.date().optional(),
+            operatorEntityId: z.number().int(),
+            fromEntityId: z.number().int(),
+            toEntityId: z.number().int(),
+            currency: z.string(),
+            amount: z.number(),
+            method: z.string().optional(),
+            metadata: z
+              .object({ exchangeRate: z.number().optional() })
+              .optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.opId) {
+        const response: Transactions[] = [];
+        for (const transactionToInsert of input.transactions) {
+          const tx = await ctx.db.transactions.create({
+            data: { ...transactionToInsert, operationId: input.opId },
+          });
+          response.push(tx);
+          if (
+            cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(ctx.db, tx, true, 1, "upload");
+          }
+          if (
+            !cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(ctx.db, tx, false, -1, "upload");
+          }
+        }
+
+        if (response) {
+          await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
+        }
+        return response;
+      } else {
+        const response = await ctx.db.operations.create({
+          data: {
+            date: input.opDate,
+            observations: input.opObservations,
+            transactions: {
+              create: input.transactions.map((transaction) => ({
+                type: transaction.type,
+                date: transaction.date,
+                operatorEntity: {
+                  connect: { id: transaction.operatorEntityId },
+                },
+                fromEntity: { connect: { id: transaction.fromEntityId } },
+                toEntity: { connect: { id: transaction.toEntityId } },
+                currency: transaction.currency,
+                amount: transaction.amount,
+                method: transaction.method,
+                status:
+                  cashAccountOnlyTypes.includes(transaction.type) ||
+                  transaction.type === "pago por cta cte"
+                    ? "confirmed"
+                    : "pending",
+                transactionMetadata: {
+                  create: {
+                    uploadedBy: ctx.session.user.id,
+                    uploadedDate: new Date(),
+                    metadata: transaction.metadata,
+                  },
+                },
+              })),
+            },
+          },
+          include: {
+            transactions: {
+              include: {
+                transactionMetadata: true,
+              },
+            },
+          },
+        });
+        for (const tx of response.transactions) {
+          if (
+            cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(ctx.db, tx, true, 1, "upload");
+          }
+          if (
+            !cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(ctx.db, tx, false, -1, "upload");
+          }
+        }
+
+        if (response) {
+          await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
+        }
+        return response;
+      }
+    }),
+
+  insertTransactions: protectedProcedure
+    .input(
+      z.object({
+        operationId: z.number().int(),
         transactions: z.array(
           z.object({
             type: z.string(),
@@ -26,62 +144,18 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const directCashAccountTypes = ["caja", "gasto"];
-
-      const response = await ctx.db.operations.create({
-        data: {
-          date: input.opDate,
-          observations: input.opObservations,
-          transactions: {
-            create: input.transactions.map((transaction) => ({
-              type: transaction.type,
-              operatorEntity: {
-                connect: { id: transaction.operatorEntityId },
-              },
-              fromEntity: { connect: { id: transaction.fromEntityId } },
-              toEntity: { connect: { id: transaction.toEntityId } },
-              currency: transaction.currency,
-              amount: transaction.amount,
-              method: transaction.method,
-              status: directCashAccountTypes.includes(transaction.type)
-                ? true
-                : false,
-              movements: {
-                create: {
-                  direction: !directCashAccountTypes.includes(transaction.type)
-                    ? -1
-                    : 1,
-                  type: "upload",
-                },
-              },
-              transactionMetadata: {
-                create: {
-                  uploadedBy: ctx.session.user.id,
-                  uploadedDate: new Date(),
-                  metadata: transaction.metadata,
-                },
-              },
-            })),
-          },
-        },
-        include: {
-          transactions: {
-            include: {
-              movements: true,
-              transactionMetadata: true,
-            },
-          },
-        },
+      const response = await ctx.db.transactions.createMany({
+        data: input.transactions.map((tx) => ({
+          ...tx,
+          operationId: input.operationId,
+        })),
       });
 
       if (response) {
         await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
 
-      return {
-        message: "Inserted the operation and associated rows",
-        data: response,
-      };
+      return response;
     }),
 
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
@@ -99,7 +173,6 @@ export const operationsRouter = createTRPCRouter({
         id: true,
         date: true,
         observations: true,
-        status: true,
         _count: {
           select: { transactions: true },
         },
@@ -130,7 +203,7 @@ export const operationsRouter = createTRPCRouter({
         toEntityId: z.number().optional(),
         currency: z.string().optional(),
         method: z.string().optional(),
-        status: z.boolean().optional(),
+        status: z.enum(["pending", "confirmed", "cancelled"]).optional(),
         uploadedById: z.string().optional(),
         confirmedById: z.string().optional(),
         amountIsLesser: z.number().optional(),
@@ -232,6 +305,7 @@ export const operationsRouter = createTRPCRouter({
                 include: {
                   uploadedByUser: true,
                   confirmedByUser: true,
+                  cancelledByUser: true,
                 },
               },
               operatorEntity: {
@@ -293,12 +367,38 @@ export const operationsRouter = createTRPCRouter({
           ? true
           : false;
 
+        const isCreateAllowed = userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+        )
+          ? true
+          : userPermissions?.find((p) => {
+              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+              if (
+                p.name === "OPERATIONS_CREATE_SOME" &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.fromEntityId) ||
+                    allAllowedTags.includes(tx.fromEntity.tagName),
+                ) &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.toEntityId) ||
+                    allAllowedTags.includes(tx.toEntity.tagName),
+                )
+              ) {
+                return true;
+              }
+            })
+          ? true
+          : false;
+
         return {
           ...op,
           isVisualizeAllowed,
+          isCreateAllowed,
           transactions: op.transactions.map((tx) => {
-            const isDeleteAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
+            const isCancelAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
             )
               ? true
               : userPermissions?.find((p) => {
@@ -307,7 +407,7 @@ export const operationsRouter = createTRPCRouter({
                     tags,
                   );
                   if (
-                    p.name === "TRANSACTIONS_DELETE_SOME" &&
+                    p.name === "TRANSACTIONS_CANCEL_SOME" &&
                     (p.entitiesIds?.includes(tx.fromEntityId) ||
                       allAllowedTags.includes(tx.fromEntity.tagName)) &&
                     (p.entitiesIds?.includes(tx.toEntityId) ||
@@ -319,27 +419,57 @@ export const operationsRouter = createTRPCRouter({
               ? true
               : false;
 
-            const isUpdateAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isDeleteAllowed =
+              (tx.date
+                ? moment().isSame(tx.date, "day")
+                : moment().isSame(op.date, "day")) &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_DELETE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
+
+            const isUpdateAllowed =
+              (tx.date
+                ? moment().isSame(tx.date, "day")
+                : moment().isSame(op.date, "day")) &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
             const isValidateAllowed = userPermissions?.find(
               (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
@@ -365,6 +495,7 @@ export const operationsRouter = createTRPCRouter({
             return {
               ...tx,
               isDeleteAllowed,
+              isCancelAllowed,
               isUpdateAllowed,
               isValidateAllowed,
             };
@@ -404,6 +535,7 @@ export const operationsRouter = createTRPCRouter({
                 include: {
                   uploadedByUser: true,
                   confirmedByUser: true,
+                  cancelledByUser: true,
                 },
               },
             },
@@ -445,10 +577,58 @@ export const operationsRouter = createTRPCRouter({
           ? true
           : false;
 
+        const isCreateAllowed = userPermissions?.find(
+          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+        )
+          ? true
+          : userPermissions?.find((p) => {
+              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+              if (
+                p.name === "OPERATIONS_CREATE_SOME" &&
+                operationDetails?.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.fromEntityId) ||
+                    allAllowedTags.includes(tx.fromEntity.tagName),
+                ) &&
+                operationDetails?.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.toEntityId) ||
+                    allAllowedTags.includes(tx.toEntity.tagName),
+                )
+              ) {
+                return true;
+              }
+            })
+          ? true
+          : false;
+
         const operationDetailsWithPermissions = {
           ...operationDetails,
           isVisualizeAllowed,
+          isCreateAllowed,
           transactions: operationDetails?.transactions.map((tx) => {
+            const isCancelAllowed = userPermissions?.find(
+              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
+            )
+              ? true
+              : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_CANCEL_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
+
             const isDeleteAllowed = userPermissions?.find(
               (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
             )
@@ -519,6 +699,7 @@ export const operationsRouter = createTRPCRouter({
               isDeleteAllowed,
               isUpdateAllowed,
               isValidateAllowed,
+              isCancelAllowed,
             };
           }),
         };
@@ -530,25 +711,50 @@ export const operationsRouter = createTRPCRouter({
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
+      const deletedBalances = await undoBalances(
+        ctx.db,
+        undefined,
+        input.operationId,
+      );
+
       const deletedOperation = await ctx.db.operations.delete({
         where: {
           id: input.operationId,
         },
+        select: {
+          transactions: {
+            include: {
+              movements: true,
+            },
+          },
+        },
       });
 
-      return deletedOperation;
+      return { deletedOperation, deletedBalances };
     }),
 
   deleteTransaction: protectedProcedure
     .input(z.object({ transactionId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
+      const deletedBalances = await undoBalances(
+        ctx.db,
+        input.transactionId,
+        undefined,
+      );
+
       const deletedTransaction = await ctx.db.transactions.delete({
         where: {
           id: input.transactionId,
         },
+        select: {
+          movements: true,
+          fromEntityId: true,
+          toEntityId: true,
+          amount: true,
+        },
       });
 
-      return deletedTransaction;
+      return { deletedTransaction, deletedBalances };
     }),
 
   insights: protectedProcedure

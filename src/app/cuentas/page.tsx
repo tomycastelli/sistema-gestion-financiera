@@ -76,12 +76,26 @@ const Page = async ({
   const initialBalancesInput = {
     entityTag: selectedTag,
     entityId: selectedEntityId,
+    account:
+      selectedTab === "cuenta_corriente"
+        ? false
+        : selectedTab === "caja"
+        ? true
+        : undefined,
     linkToken: linkToken,
     linkId: linkId,
   };
   const initialBalances = await api.movements.getBalancesByEntities.query(
     initialBalancesInput,
   );
+
+  const initialBalancesForCard =
+    await api.movements.getBalancesByEntitiesForCard.query({
+      entityId: initialBalancesInput.entityId,
+      entityTag: initialBalancesInput.entityTag,
+      linkId: initialBalancesInput.linkId,
+      linkToken: initialBalancesInput.linkToken,
+    });
 
   const movementsAmount = 5;
 
@@ -107,7 +121,7 @@ const Page = async ({
 
   return (
     <div>
-      {(session ? true : initialBalances.length > 0) ? (
+      {initialBalances ? (
         <>
           <div className="flex w-full flex-row justify-between space-x-4 border-b border-muted pb-4">
             {session && (
@@ -123,37 +137,35 @@ const Page = async ({
           </div>
           {selectedEntityId || selectedTag ? (
             <div className="mt-4 w-full">
-              {selectedTab === "cuenta_corriente" && (
+              {(selectedTab === "cuenta_corriente" ||
+                selectedTab === "caja") && (
                 <AccountsTab
-                  accountType={false}
+                  entityId={selectedEntityId}
+                  entityTag={selectedTag}
+                  accountType={selectedTab === "caja" ? true : false}
                   searchParams={searchParams}
                   initialBalances={initialBalances}
                   initialTags={initialTags}
-                />
-              )}
-              {selectedTab === "caja" && (
-                <AccountsTab
-                  accountType={true}
-                  searchParams={searchParams}
-                  initialBalances={initialBalances}
-                  initialTags={initialTags}
+                  linkId={linkId}
+                  linkToken={linkToken}
                 />
               )}
               {selectedTab === "resumen" && (
                 <div>
-                  {initialBalances.length > 0 ? (
-                    <SummarizedBalances
-                      initialTags={initialTags}
-                      initialBalances={initialBalances}
-                      initialMovements={initialMovements}
-                      movementsAmount={movementsAmount}
-                      selectedTag={selectedTag}
-                      selectedEntityId={selectedEntityId}
-                      initialBalancesInput={initialBalancesInput}
-                    />
-                  ) : (
-                    <p>No hay balances</p>
-                  )}
+                  <SummarizedBalances
+                    tags={initialTags}
+                    initialMovements={initialMovements}
+                    movementsAmount={movementsAmount}
+                    selectedTag={selectedTag}
+                    selectedEntityId={selectedEntityId}
+                    initialBalancesForCard={initialBalancesForCard}
+                    initialBalancesForCardInput={{
+                      linkId: initialBalancesInput.linkId,
+                      linkToken: initialBalancesInput.linkToken,
+                      entityId: initialBalancesInput.entityId,
+                      entityTag: initialBalancesInput.entityTag,
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -163,6 +175,8 @@ const Page = async ({
             </h1>
           )}
         </>
+      ) : session?.user ? (
+        <p className="text-3xl font-semibold">No se encontraron balances</p>
       ) : (
         <p className="text-3xl font-semibold">
           El usuario no tiene los permisos suficientes

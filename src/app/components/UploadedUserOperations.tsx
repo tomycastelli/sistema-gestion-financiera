@@ -38,7 +38,7 @@ const UploadedUserOperations = forwardRef<
                     href={`/operaciones/gestion/${op.id}`}
                     className="flex text-black transition-all hover:scale-105"
                   >
-                    Operación {op.id}
+                    Operación {op.id !== 0 ? op.id : "..."}
                   </Link>
                 </CardTitle>
                 <CardDescription>
@@ -60,17 +60,6 @@ const UploadedUserOperations = forwardRef<
                   </p>
                 )}
                 <div className="flex w-full flex-row justify-between">
-                  {!op.status ? (
-                    <div className="flex flex-row">
-                      <span className="mr-2 rounded-full bg-green p-1"></span>
-                      <p>Activa</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-row">
-                      <span className="bg-red p-1"></span>
-                      <p>Anulada</p>
-                    </div>
-                  )}
                   {isLoading && index === 0 ? (
                     <Lottie
                       animationData={loadingJson}

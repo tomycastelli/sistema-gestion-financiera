@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
@@ -86,15 +87,31 @@ export const entitiesRouter = createTRPCRouter({
   deleteOne: protectedProcedure
     .input(z.object({ entityId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const deleteResponse = await ctx.db.entities.delete({
+      const transaction = await ctx.db.transactions.findFirst({
         where: {
-          id: input.entityId,
+          OR: [
+            { fromEntityId: input.entityId },
+            { toEntityId: input.entityId },
+          ],
         },
       });
 
-      await ctx.redis.del("cached_entities");
+      if (!transaction) {
+        const deleteResponse = await ctx.db.entities.delete({
+          where: {
+            id: input.entityId,
+          },
+        });
 
-      return deleteResponse;
+        await ctx.redis.del("cached_entities");
+
+        return deleteResponse;
+      } else {
+        throw new TRPCError({
+          message: `La entidad tiene aunque sea una transacción (${transaction.id}) relacionada`,
+          code: "CONFLICT",
+        });
+      }
     }),
   updateOne: protectedProcedure
     .input(

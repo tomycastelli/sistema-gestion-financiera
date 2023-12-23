@@ -4,8 +4,6 @@ export const PermissionsNames = [
   "ADMIN",
   "OPERATIONS_CREATE",
   "OPERATIONS_CREATE_SOME",
-  "OPERATIONS_DELETE",
-  "OPERATIONS_DELETE_SOME",
   "OPERATIONS_VISUALIZE",
   "OPERATIONS_VISUALIZE_SOME",
   "TRANSACTIONS_UPDATE",
@@ -14,18 +12,22 @@ export const PermissionsNames = [
   "TRANSACTIONS_VALIDATE_SOME",
   "TRANSACTIONS_DELETE",
   "TRANSACTIONS_DELETE_SOME",
+  "TRANSACTIONS_CANCEL",
+  "TRANSACTIONS_CANCEL_SOME",
   "ACCOUNTS_VISUALIZE",
   "ACCOUNTS_VISUALIZE_SOME",
   "ENTITIES_MANAGE",
   "ENTITIES_MANAGE_SOME",
   "USERS_PERMISSIONS_VISUALIZE",
   "USERS_PERMISSIONS_MANAGE",
+  "USERS_PERMISSIONS_MANAGE_SOME",
   "USERS_PERMISSIONS_MANAGE_OPERATIONS",
   "USERS_PERMISSIONS_MANAGE_TRANSACTIONS",
   "USERS_PERMISSIONS_MANAGE_ACCOUNTS",
   "USERS_PERMISSIONS_MANAGE_ENTITIES",
   "USERS_ROLES_VISUALIZE",
   "USERS_ROLES_MANAGE",
+  "USERS_ROLES_MANAGE_SOME",
 ] as const;
 
 export const PermissionSchema = z.array(
@@ -108,16 +110,6 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     description: "Crear operaciones según la entidad",
   },
   {
-    name: "OPERATIONS_DELETE",
-    label: "Eliminar operaciones",
-    description: "Eliminar todo tipo de operaciones",
-  },
-  {
-    name: "OPERATIONS_DELETE_SOME",
-    label: "Eliminar algunas operaciones",
-    description: "Eliminar operaciones según la entidad",
-  },
-  {
     name: "OPERATIONS_VISUALIZE",
     label: "Visualizar operaciones",
     description: "Visualizar todas las operaciones",
@@ -158,6 +150,16 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     description: "Eliminar transacciones según la entidad",
   },
   {
+    name: "TRANSACTIONS_CANCEL",
+    label: "Cancelar transacciones",
+    description: "Cancelar todas las transacciones",
+  },
+  {
+    name: "TRANSACTIONS_CANCEL_SOME",
+    label: "Cancelar algunas transacciones",
+    description: "Cancelar transacciones según la entidad",
+  },
+  {
     name: "ACCOUNTS_VISUALIZE",
     label: "Visualizar cuentas",
     description: "Visualizar todas las cuentas",
@@ -188,6 +190,11 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     description: "Manejar los permisos de los usuarios",
   },
   {
+    name: "USERS_PERMISSIONS_MANAGE_SOME",
+    label: "Manejar los permisos de algunos usuarios",
+    description: "Manejar los permisos de algunos usuarios",
+  },
+  {
     name: "USERS_PERMISSIONS_MANAGE_OPERATIONS",
     label: "Manejar los permisos de operaciones",
     description: "Manear los permisos relacionados a operaciones",
@@ -216,5 +223,10 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     name: "USERS_ROLES_MANAGE",
     label: "Manejar los roles",
     description: "Manejar los roles",
+  },
+  {
+    name: "USERS_ROLES_MANAGE_SOME",
+    label: "Manejar algunos roles",
+    description: "Manejar algunos roles",
   },
 ];

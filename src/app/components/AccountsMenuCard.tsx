@@ -2,7 +2,6 @@ import Link from "next/link";
 import { api } from "~/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
-
 const OperationsMenuCard = async () => {
   const filteredTags = await api.tags.getFiltered.query();
   const filteredEntities = await api.entities.getFiltered.query();

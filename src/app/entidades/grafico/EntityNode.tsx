@@ -9,7 +9,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "~/app/components/ui/hover-card";
-import { calculateTotalAllEntities } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -22,11 +21,6 @@ const EntityNode = (
       { entityId: props.data.id },
       { refetchOnReconnect: false, staleTime: 182000 },
     );
-
-  let totals: ReturnType<typeof calculateTotalAllEntities> = [];
-  if (balances) {
-    totals = calculateTotalAllEntities(balances, "daily");
-  }
 
   return (
     <Card
@@ -50,8 +44,8 @@ const EntityNode = (
           </HoverCardTrigger>
           <HoverCardContent className="w-80">
             {!isLoading ? (
-              totals ? (
-                <BalanceTotals totals={totals} />
+              balances ? (
+                <BalanceTotals totals={balances} />
               ) : (
                 <p>No tiene movimientos</p>
               )

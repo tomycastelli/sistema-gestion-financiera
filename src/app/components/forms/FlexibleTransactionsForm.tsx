@@ -3,15 +3,24 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@radix-ui/react-dropdown-menu";
+import { CalendarIcon } from "lucide-react";
 import type { User } from "next-auth";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { currencies, operationTypes, paymentMethods } from "~/lib/variables";
+import { cn } from "~/lib/utils";
+import {
+  cashAccountOnlyTypes,
+  currencies,
+  currentAccountOnlyTypes,
+  operationTypes,
+  paymentMethods,
+} from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { type RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
 import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
+import { Calendar } from "../ui/calendar";
 import {
   Form,
   FormControl,
@@ -21,6 +30,7 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
 
@@ -35,6 +45,8 @@ const FormSchema = z.object({
       amount: z.string().min(1),
       method: z.string().optional(),
       direction: z.boolean().optional().default(false),
+      date: z.date().optional(),
+      time: z.string().optional(),
     }),
   ),
 });
@@ -51,15 +63,15 @@ const FlexibleTransactionsForm = ({
   isLoading,
 }: FlexibleTransactionsFormProps) => {
   const userEntityId = user
-    ? entities?.find((obj) => obj.name === user.name)?.id ?? ""
-    : "";
+    ? entities?.find((obj) => obj.name === user.name)?.id
+    : undefined;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       transactions: [
         {
-          operatorId: userEntityId?.toString(),
+          operatorId: userEntityId ? userEntityId.toString() : undefined,
           currency: "ars",
           direction: true,
         },
@@ -92,6 +104,8 @@ const FlexibleTransactionsForm = ({
         currency: transaction.currency,
         amount: parseFloat(transaction.amount),
         method: transaction.method,
+        date: transaction.date,
+        time: transaction.time,
       }),
     );
 
@@ -114,7 +128,7 @@ const FlexibleTransactionsForm = ({
               className="grid grid-cols-1 justify-center gap-4 lg:grid-cols-3"
             >
               {entities && (
-                <div className="justify-self-end">
+                <div className="justify-self-start">
                   <FormField
                     control={control}
                     name={`transactions.${index}.fromEntityId`}
@@ -172,7 +186,63 @@ const FlexibleTransactionsForm = ({
                     <Icons.arrowLeft className="h-12" />
                   )}
                 </div>
-
+                <div className="flex flex-row items-end space-x-2">
+                  <FormField
+                    control={control}
+                    name={`transactions.${index}.date`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel className="mb-1">Fecha</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
+                                  !field.value && "text-muted-foreground",
+                                )}
+                              >
+                                {field.value ? (
+                                  field.value.toLocaleDateString("es-AR")
+                                ) : (
+                                  <span>Elegir</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() ||
+                                date < new Date("2023-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={control}
+                    name={`transactions.${index}.time`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tiempo</FormLabel>
+                        <FormControl>
+                          <Input className="w-[72px]" type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <div className="flex flex-row items-end space-x-2">
                   <FormField
                     control={control}
@@ -220,22 +290,42 @@ const FlexibleTransactionsForm = ({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={control}
-                    name={`transactions.${index}.type`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo</FormLabel>
-                        <CustomSelector
-                          buttonClassName="w-30"
-                          data={operationTypes}
-                          field={field}
-                          fieldName={`transactions.${index}.type`}
-                          placeholder="Elegir"
-                        />
-                      </FormItem>
+                  <div className="flex flex-col items-center space-y-1">
+                    <FormField
+                      control={control}
+                      name={`transactions.${index}.type`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo</FormLabel>
+                          <CustomSelector
+                            buttonClassName="w-36"
+                            data={operationTypes}
+                            field={field}
+                            fieldName={`transactions.${index}.type`}
+                            placeholder="Elegir"
+                          />
+                        </FormItem>
+                      )}
+                    />
+                    {watchTransactions[index]?.type && (
+                      <p className="text-sm text-muted-foreground">
+                        {currentAccountOnlyTypes.includes(
+                          // @ts-ignore
+                          watchTransactions[index].type,
+                        )
+                          ? "La transacción no podrá ser confirmada"
+                          : cashAccountOnlyTypes.includes(
+                              // @ts-ignore
+                              watchTransactions[index].type,
+                            )
+                          ? "La transacción solo afectará caja"
+                          : watchTransactions[index]?.type ===
+                            "pago por cta cte"
+                          ? "La transacción será confirmada automaticamente"
+                          : ""}
+                      </p>
                     )}
-                  />
+                  </div>
                 </div>
                 {entities && (
                   <FormField
@@ -260,38 +350,40 @@ const FlexibleTransactionsForm = ({
                 )}
               </div>
               {entities && (
-                <FormField
-                  control={control}
-                  name={`transactions.${index}.toEntityId`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Entidad</FormLabel>
-                      <CustomSelector
-                        isLoading={isLoading}
-                        placeholder="Entidad"
-                        data={entities.map((entity) => ({
-                          value: entity.id.toString(),
-                          label: entity.name,
-                        }))}
-                        field={field}
-                        fieldName={`transactions.${index}.toEntityId`}
-                      />
-                      {watchTransactions[index]?.toEntityId && (
-                        <EntityCard
-                          className="w-[150px]"
-                          entity={
-                            entities.find(
-                              (obj) =>
-                                obj.id.toString() ===
-                                watchTransactions[index]?.toEntityId,
-                            )!
-                          }
+                <div className="justify-self-end">
+                  <FormField
+                    control={control}
+                    name={`transactions.${index}.toEntityId`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Entidad</FormLabel>
+                        <CustomSelector
+                          isLoading={isLoading}
+                          placeholder="Entidad"
+                          data={entities.map((entity) => ({
+                            value: entity.id.toString(),
+                            label: entity.name,
+                          }))}
+                          field={field}
+                          fieldName={`transactions.${index}.toEntityId`}
                         />
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        {watchTransactions[index]?.toEntityId && (
+                          <EntityCard
+                            className="w-[150px]"
+                            entity={
+                              entities.find(
+                                (obj) =>
+                                  obj.id.toString() ===
+                                  watchTransactions[index]?.toEntityId,
+                              )!
+                            }
+                          />
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
             </div>
             <div className="mt-4 flex flex-row justify-center space-x-8">
@@ -312,9 +404,9 @@ const FlexibleTransactionsForm = ({
                     fromEntityId: "",
                     toEntityId: "",
                     amount: "",
-                    currency: "",
-                    direction: !watchTransactions[index]?.direction,
-                    operatorId: userEntityId.toString(),
+                    currency: "ars",
+                    direction: !!watchTransactions[index]?.direction,
+                    operatorId: userEntityId ? userEntityId.toString() : "",
                     method: "",
                     type: "",
                   })

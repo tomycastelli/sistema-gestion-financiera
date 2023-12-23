@@ -24,9 +24,9 @@ export default async function Home() {
             <EntitiesMenuCard />
             <UsersMenuCard />
           </div>
-          <Link href={"/guia"}>
+          <Link href={"/docs"}>
             <Button variant="outline" className="flex flex-row space-x-2 p-6">
-              <p>Guía del sistema</p>
+              <p>Documentación</p>
               <Icons.info className="h-4" />
             </Button>
           </Link>
@@ -34,7 +34,7 @@ export default async function Home() {
       ) : (
         <div className="flex flex-col items-center justify-center">
           <h2 className="text-lg">
-            Ingresa con tu usuario para poder continuar
+            Ingresá con tu usuario para poder continuar
           </h2>
           <p className="mb-4 text-sm text-muted-foreground">
             Si es tu primer inicio de sesión, se creará un usuario en este

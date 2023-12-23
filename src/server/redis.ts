@@ -6,7 +6,7 @@ const getRedisUrl = () => {
     return env.REDIS_URL;
   }
 
-  throw new Error("UPSTASH_URL is not defined");
+  throw new Error("REDIS_URL is not defined");
 };
 
 export const redis = new Redis(getRedisUrl(), { enableAutoPipelining: true });

@@ -2,26 +2,18 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
-import moment from "moment";
 import Link from "next/link";
 import { type FC } from "react";
 import {
   Bar,
   BarChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  calculateTotalAllEntities,
-  getAllChildrenTags,
-  getMonthKey,
-  getWeekKey,
-  getYearKey,
-  sortEntries,
-} from "~/lib/functions";
-import { cn } from "~/lib/utils";
+import { generateTableData } from "~/lib/functions";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -44,39 +36,42 @@ import {
 import { DataTable } from "./DataTable";
 
 interface SummarizedBalancesProps {
-  initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
-  initialBalancesInput: RouterInputs["movements"]["getBalancesByEntities"];
+  initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
+  initialBalancesForCardInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getMovementsByCurrency"];
   movementsAmount: number;
   selectedTag: string | null;
   selectedEntityId: number | null;
-  initialTags: RouterOutputs["tags"]["getAll"];
+  tags: RouterOutputs["tags"]["getAll"];
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
-  initialBalances,
-  initialBalancesInput,
+  initialBalancesForCard,
+  initialBalancesForCardInput,
   initialMovements,
   movementsAmount,
   selectedTag,
   selectedEntityId,
-  initialTags,
+  tags,
 }) => {
-  const { data: balances } = api.movements.getBalancesByEntities.useQuery(
-    initialBalancesInput,
-    {
-      initialData: initialBalances,
-      refetchOnWindowFocus: false,
-    },
-  );
-
-  const { data: tags } = api.tags.getAll.useQuery(undefined, {
-    initialData: initialTags,
-    refetchOnWindowFocus: false,
-  });
+  const { data: balancesForCard } =
+    api.movements.getBalancesByEntitiesForCard.useQuery(
+      initialBalancesForCardInput,
+      {
+        initialData: initialBalancesForCard,
+        refetchOnWindowFocus: false,
+      },
+    );
 
   const { selectedTimeframe, selectedCurrency, setSelectedCurrency } =
     useCuentasStore();
+
+  const { data: balancesHistory } = api.movements.getBalancesHistory.useQuery({
+    currency: selectedCurrency,
+    timeRange: selectedTimeframe,
+    entityId: selectedEntityId,
+    entityTag: selectedTag,
+  });
 
   const queryInput: RouterInputs["movements"]["getMovementsByCurrency"] = {
     currency: selectedCurrency,
@@ -95,86 +90,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       refetchOnReconnect: false,
     });
 
-  const tableData = movements.map((movement) => {
-    let otherEntity = { id: 0, name: "", tagName: "" };
-    let selectedEntity = { id: 0, name: "", tagName: "" };
-    let ingress = 0;
-    let egress = 0;
-
-    if (selectedEntityId) {
-      otherEntity =
-        selectedEntityId !== movement.transaction.fromEntity.id
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
-
-      selectedEntity =
-        selectedEntityId === movement.transaction.fromEntity.id
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
-
-      ingress =
-        (selectedEntityId === movement.transaction.toEntity.id &&
-          movement.direction === 1) ||
-        (selectedEntityId === movement.transaction.fromEntity.id &&
-          movement.direction === -1)
-          ? movement.transaction.amount
-          : 0;
-
-      egress =
-        (selectedEntityId === movement.transaction.toEntity.id &&
-          movement.direction === -1) ||
-        (selectedEntityId === movement.transaction.fromEntity.id &&
-          movement.direction === 1)
-          ? movement.transaction.amount
-          : 0;
-    } else if (selectedTag) {
-      const tagAndAllChildren = getAllChildrenTags(selectedTag, tags);
-
-      otherEntity = !tagAndAllChildren.includes(
-        movement.transaction.fromEntity.tagName,
-      )
-        ? movement.transaction.fromEntity
-        : movement.transaction.toEntity;
-
-      selectedEntity = tagAndAllChildren.includes(
-        movement.transaction.fromEntity.tagName,
-      )
-        ? movement.transaction.fromEntity
-        : movement.transaction.toEntity;
-
-      ingress =
-        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
-          movement.direction === 1) ||
-        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-          movement.direction === -1)
-          ? movement.transaction.amount
-          : 0;
-
-      egress =
-        (tagAndAllChildren.includes(movement.transaction.toEntity.tagName) &&
-          movement.direction === -1) ||
-        (tagAndAllChildren.includes(movement.transaction.fromEntity.tagName) &&
-          movement.direction === 1)
-          ? movement.transaction.amount
-          : 0;
-    }
-
-    return {
-      id: movement.id,
-      operationId: movement.transaction.operationId,
-      type: movement.type,
-      otherEntityId: otherEntity.id,
-      otherEntity: otherEntity.name,
-      selectedEntityId: selectedEntity.id,
-      selectedEntity: selectedEntity.name,
-      currency: movement.transaction.currency,
-      ingress,
-      egress,
-      method: movement.transaction.method,
-      status: movement.transaction.status,
-      txType: movement.transaction.type,
-    };
-  });
+  const tableData = generateTableData(
+    movements,
+    selectedEntityId,
+    selectedTag,
+    tags,
+  );
 
   const columns: ColumnDef<(typeof tableData)[number]>[] = [
     {
@@ -248,6 +169,23 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       },
     },
     {
+      accessorKey: "balance",
+      header: () => <div className="text-right">Saldo</div>,
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("balance"));
+        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        return (
+          <div className="text-right font-medium">
+            {" "}
+            <span className="font-light text-muted-foreground">
+              {tableData[row.index]!.currency.toUpperCase()}
+            </span>{" "}
+            {formatted}
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       cell: ({ row }) => {
         const movement = row.original;
@@ -285,197 +223,127 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     },
   ];
 
-  const totals = calculateTotalAllEntities(balances, selectedTimeframe);
-
-  console.log(`Balances: ${JSON.stringify(balances)}`);
-  console.log(`Timeframe: ${selectedTimeframe}`);
-  console.log(`Totals: ${JSON.stringify(totals)}}`);
-
-  // Define the type for the entries in the acc array
-  type BarChartEntry = {
-    currency: string;
-    entries: { date: string; cash: number; current_account: number }[];
-  };
-
-  const barChartData = balances.reduce<BarChartEntry[]>((acc, entity) => {
-    entity.balances.forEach((balance) => {
-      const dateKey =
-        selectedTimeframe === "daily"
-          ? moment(balance.date).format("DD-MM-YYYY")
-          : selectedTimeframe === "weekly"
-          ? getWeekKey(balance.date)
-          : selectedTimeframe === "monthly"
-          ? getMonthKey(balance.date)
-          : getYearKey(balance.date);
-
-      const existingCurrencyEntry = acc.find(
-        (entry) => entry.currency === balance.currency,
-      );
-
-      if (!existingCurrencyEntry) {
-        acc.push({
-          currency: balance.currency,
-          entries: [
-            {
-              date: dateKey,
-              cash: balance.status ? balance.amount : 0,
-              current_account: !balance.status ? balance.amount : 0,
-            },
-          ],
-        });
-      } else {
-        const existingDateEntry = existingCurrencyEntry.entries.find(
-          (entry) => entry.date === dateKey,
-        );
-
-        if (!existingDateEntry) {
-          existingCurrencyEntry.entries.push({
-            date: dateKey,
-            cash: balance.status ? balance.amount : 0,
-            current_account: !balance.status ? balance.amount : 0,
-          });
-        } else {
-          if (balance.status) {
-            existingDateEntry.cash += balance.amount;
-          } else {
-            existingDateEntry.current_account += balance.amount;
-          }
-        }
-      }
-    });
-
-    return acc;
-  }, []);
-
   return (
-    <div className="grid grid-cols-4 grid-rows-3 gap-8">
-      <div className="col-span-4 row-span-1 grid grid-flow-col gap-8">
-        {totals.map((total) => (
-          <Card
-            key={total.currency}
-            onClick={() => setSelectedCurrency(total.currency)}
-            className="transition-all hover:shadow-lg"
-          >
-            <CardHeader>
-              <CardTitle>{total.currency.toUpperCase()}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col space-y-4">
-                {total.balances.map((balance) => (
-                  <div key={balance.amount} className="flex flex-col space-y-2">
-                    <p>{balance.status ? "Caja" : "Cuenta corriente"}</p>
-                    <div className="flex flex-row space-x-4">
-                      <p className="text-xl font-bold">
-                        ${" "}
-                        {new Intl.NumberFormat("es-AR").format(balance.amount)}
-                      </p>
-                      <p
-                        className={cn(
-                          "text-lg font-semibold",
-                          balance.amount - balance.beforeAmount > 0
-                            ? "text-green"
-                            : balance.amount - balance.beforeAmount < 0
-                            ? "text-red"
-                            : "text-slate-300",
-                        )}
-                      >
-                        {(balance.amount - balance.beforeAmount > 0
-                          ? "+"
-                          : balance.amount - balance.beforeAmount < 0
-                          ? ""
-                          : " ") +
-                          new Intl.NumberFormat("es-AR").format(
-                            balance.amount - balance.beforeAmount,
-                          )}
-                      </p>
+    <div className="grid grid-cols-4 gap-8">
+      <div className="col-span-4 grid grid-cols-3 gap-8">
+        {balancesForCard &&
+          balancesForCard.map((item) => (
+            <Card
+              key={item.currency}
+              onClick={() => setSelectedCurrency(item.currency)}
+              className="transition-all hover:shadow-lg"
+            >
+              <CardHeader>
+                <CardTitle>{item.currency.toUpperCase()}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col space-y-4">
+                  {item.balances.map((balance) => (
+                    <div
+                      key={balance.amount}
+                      className="flex flex-col space-y-2"
+                    >
+                      <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
+                      <p className="text-xl font-semibold">{balance.amount}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+      </div>
+      <div className="col-span-4 grid grid-cols-2 gap-8">
+        {selectedCurrency ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Resumen{" "}
+                {selectedTimeframe === "day"
+                  ? "Diario"
+                  : selectedTimeframe === "week"
+                  ? "Semanal"
+                  : selectedTimeframe === "month"
+                  ? "Mensual"
+                  : selectedTimeframe === "year"
+                  ? "Anual"
+                  : ""}
+              </CardTitle>
+              <CardDescription>
+                {selectedCurrency.toUpperCase()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex h-full w-full items-center justify-center">
+              {balancesHistory && (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={balancesHistory}>
+                    <XAxis
+                      dataKey="datestring"
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <ReferenceLine y={0} stroke="#888888" strokeWidth={1.5} />
+                    <YAxis
+                      stroke="#888888"
+                      width={90}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <Tooltip isAnimationActive={true} />
+                    <Bar
+                      dataKey="cash"
+                      fill="#3662E3"
+                      radius={[4, 4, 0, 0]}
+                      legendType="circle"
+                      label="Caja"
+                    />
+                    <Bar
+                      dataKey="current_account"
+                      legendType="circle"
+                      label="Cuenta corriente"
+                      fill="#E87B35"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
-        ))}
-      </div>
-      <div className="col-span-4 row-span-2 grid grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Resumen{" "}
-              {selectedTimeframe === "daily"
-                ? "Diario"
-                : selectedTimeframe === "weekly"
-                ? "Semanal"
-                : selectedTimeframe === "monthly"
-                ? "Mensual"
-                : selectedTimeframe === "yearly"
-                ? "Anual"
-                : ""}
-            </CardTitle>
-            <CardDescription>{selectedCurrency.toUpperCase()}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex h-full w-full items-center justify-center">
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={barChartData
-                  .find((item) => item.currency === selectedCurrency)
-                  ?.entries.map((entry) => ({
-                    date: entry.date,
-                    cash: parseFloat(entry.cash.toFixed(2)),
-                    current_account: parseFloat(
-                      entry.current_account.toFixed(2),
-                    ),
-                  }))
-                  .sort(sortEntries)}
-              >
-                <XAxis
-                  dataKey="date"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  width={90}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `$${value}`}
-                />
-                <Tooltip isAnimationActive={true} />
-                <Bar
-                  dataKey="cash"
-                  fill="#3662E3"
-                  radius={[4, 4, 0, 0]}
-                  legendType="circle"
-                  label="Caja"
-                />
-                <Bar
-                  dataKey="current_account"
-                  legendType="circle"
-                  label="Cuenta corriente"
-                  fill="#E87B35"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Movimientos recientes</CardTitle>
-            <CardDescription>{selectedCurrency.toUpperCase()}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <p>Cargando...</p>
-            ) : movements.length > 0 ? (
-              <DataTable columns={columns} data={tableData} />
-            ) : (
-              <p>Seleccioná una divisa</p>
-            )}
-          </CardContent>
-        </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Elegir divisa</CardTitle>
+            </CardHeader>
+          </Card>
+        )}
+        {selectedCurrency ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Movimientos recientes</CardTitle>
+              <CardDescription>
+                {selectedCurrency.toUpperCase()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>Cargando...</p>
+              ) : movements.length > 0 ? (
+                <DataTable columns={columns} data={tableData} />
+              ) : (
+                <p>Seleccioná una divisa</p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Elegir divisa</CardTitle>
+            </CardHeader>
+          </Card>
+        )}
       </div>
     </div>
   );

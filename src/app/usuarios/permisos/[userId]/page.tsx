@@ -15,10 +15,13 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   const userPermissions = await api.users.getAllPermissions.query({});
 
+  const initialRoles = await api.roles.getAll.query();
+
   return (
     <div>
       {session && (
         <PermissionsForm
+          initialRoles={initialRoles}
           userPermissions={userPermissions}
           initialEntities={entities}
           initialPermissions={permissions}

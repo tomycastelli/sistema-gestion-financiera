@@ -1,15 +1,10 @@
 "use client";
 
 import Lottie from "lottie-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { useState, type FC } from "react";
+import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
-import {
-  calculateTotal,
-  capitalizeFirstLetter,
-  createQueryString,
-} from "~/lib/functions";
+import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
@@ -36,169 +31,291 @@ import {
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
-  initialDetailedBalances: RouterOutputs["movements"]["getDetailedBalance"];
   accountType: boolean;
+  linkId: number | null;
+  linkToken: string | null;
+  selectedEntityId: number | null;
+  selectedTag: string | null;
+  tags: RouterOutputs["tags"]["getAll"];
 }
 
 const Balances: FC<BalancesProps> = ({
   initialBalances,
   accountType,
-  initialDetailedBalances,
+  linkId,
+  linkToken,
+  selectedEntityId,
+  selectedTag,
+  tags,
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 10;
 
   const [filteredEntity, setFilteredEntity] = useState<string>();
 
-  const searchParams = useSearchParams();
+  const allChildrenTags = getAllChildrenTags(selectedTag, tags);
 
-  const pathname = usePathname();
-
-  const selectedTag = searchParams.get("tag");
-  const selectedEntityIdString = searchParams.get("entidad");
-  const linkIdString = searchParams.get("id");
-  const linkId = linkIdString ? parseInt(linkIdString) : null;
-
-  const linkToken = searchParams.get("token");
-
-  const selectedEntityId = selectedEntityIdString
-    ? parseInt(selectedEntityIdString)
-    : null;
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    setDestinationEntityId,
+    destinationEntityId,
+  } = useCuentasStore();
 
   const { data: balances, isLoading: isBalanceLoading } =
     api.movements.getBalancesByEntities.useQuery(
       {
         entityId: selectedEntityId,
         entityTag: selectedTag,
+        account: accountType,
         linkId: linkId,
         linkToken: linkToken,
       },
       { initialData: initialBalances, refetchOnWindowFocus: false },
     );
 
-  const { selectedTimeframe } = useCuentasStore();
-
-  const balancesSummary = calculateTotal(balances, selectedTimeframe);
-
-  const { data: detailedBalances, isLoading: isDetailedLoading } =
-    api.movements.getDetailedBalance.useQuery(
-      {
-        entityId: selectedEntityId,
-        entityTag: selectedTag,
-        accountType: accountType,
-        linkId: linkId,
-        linkToken: linkToken,
-      },
-      { initialData: initialDetailedBalances, refetchOnWindowFocus: false },
-    );
-
-  type GroupedBalanceResult = {
-    entityid: number;
-    entitytag: string;
-    entityname: string;
-    balances: { currency: string; balance: number }[];
-  };
-
-  const groupedDetailedBalances: GroupedBalanceResult[] = Object.values(
-    detailedBalances.reduce(
-      (grouped, balance) => {
-        const entityid = balance.entityid;
-
-        if (!grouped[entityid]) {
-          grouped[entityid] = {
-            entityid,
-            entitytag: balance.entitytag,
-            entityname: balance.entityname,
-            balances: [],
-          };
-        }
-
-        grouped[entityid]!.balances.push({
-          currency: balance.currency,
-          balance: balance.balance,
-        });
-
-        return grouped;
-      },
-      {} as Record<number, GroupedBalanceResult>,
-    ),
-  );
-
-  const {
-    results: filteredDetailedBalances,
-    searchValue: searchDetailedBalanceValue,
-    setSearchValue: setSearchDetailedBalanceValue,
-  } = useSearch<(typeof groupedDetailedBalances)[0]>({
-    dataSet: groupedDetailedBalances,
-    keys: ["entityname"],
+  const transformedBalancesSchema = z.object({
+    entity: z.object({
+      id: z.number().int(),
+      name: z.string(),
+      tagName: z.string(),
+    }),
+    data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  const balanceArrayToRender = filteredEntity
-    ? groupedDetailedBalances.filter(
-        (item) => item.entityname === filteredEntity,
-      )
-    : filteredDetailedBalances.slice(
-        (detailedBalancesPage - 1) * pageSize,
-        detailedBalancesPage * pageSize,
-      );
+  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
+    balances!.reduce(
+      (acc, balance) => {
+        if (selectedEntityId) {
+          let entityEntry = acc.find(
+            (entry) =>
+              entry.entity.id ===
+              (balance.selectedEntityId === selectedEntityId
+                ? balance.selectedEntityId
+                : balance.otherEntityId),
+          );
+
+          if (!entityEntry) {
+            entityEntry = {
+              entity:
+                selectedEntityId === balance.selectedEntityId
+                  ? balance.selectedEntity
+                  : balance.otherEntity,
+              data: [],
+            };
+            acc.push(entityEntry);
+          }
+
+          const balanceMultiplier =
+            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
+
+          let dataEntry = entityEntry.data.find(
+            (d) => d.currency === balance.currency,
+          );
+
+          if (!dataEntry) {
+            dataEntry = {
+              currency: balance.currency,
+              balance: 0,
+            };
+            entityEntry.data.push(dataEntry);
+          }
+
+          dataEntry.balance += balance.balance * balanceMultiplier;
+        } else if (selectedTag) {
+          const myPOVEntity = allChildrenTags.includes(
+            balance.selectedEntity.tagName,
+          )
+            ? balance.selectedEntity
+            : balance.otherEntity;
+          let entityEntry = acc.find(
+            (entry) => entry.entity.id === myPOVEntity.id,
+          );
+
+          if (!entityEntry) {
+            entityEntry = {
+              entity: myPOVEntity,
+              data: [],
+            };
+            acc.push(entityEntry);
+          }
+
+          const balanceMultiplier =
+            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
+
+          let dataEntry = entityEntry.data.find(
+            (d) => d.currency === balance.currency,
+          );
+
+          if (!dataEntry) {
+            dataEntry = {
+              currency: balance.currency,
+              balance: 0,
+            };
+            entityEntry.data.push(dataEntry);
+          }
+
+          dataEntry.balance += balance.balance * balanceMultiplier;
+        }
+
+        return acc;
+      },
+      [] as z.infer<typeof transformedBalancesSchema>[],
+    );
+
+  const uniqueEntities: { id: number; name: string; tagName: string }[] =
+    balances?.reduce(
+      (acc, balance) => {
+        const { selectedEntity, otherEntity } = balance;
+
+        // Check conditions for selectedEntity
+        if (
+          selectedEntity.id !== selectedEntityId &&
+          selectedEntity.tagName !== selectedTag
+        ) {
+          acc.push(selectedEntity);
+        }
+
+        // Check conditions for otherEntity
+        if (
+          otherEntity.id !== selectedEntityId &&
+          otherEntity.tagName !== selectedTag
+        ) {
+          acc.push(otherEntity);
+        }
+
+        return acc;
+      },
+      [] as { id: number; name: string; tagName: string }[],
+    ) || [];
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
+
+  let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
+
+  if (selectedEntityId) {
+    detailedBalances = balances!.reduce(
+      (acc, balance) => {
+        let entityEntry = acc.find(
+          (entry) =>
+            entry.entity.id ===
+            (balance.selectedEntityId === selectedEntityId
+              ? balance.otherEntity.id
+              : balance.selectedEntity.id),
+        );
+
+        if (!entityEntry) {
+          entityEntry = {
+            entity:
+              balance.selectedEntityId === selectedEntityId
+                ? balance.otherEntity
+                : balance.selectedEntity,
+            data: [],
+          };
+          acc.push(entityEntry);
+        }
+
+        const balanceMultiplier =
+          entityEntry.entity.id === balance.selectedEntityId ? -1 : 1;
+
+        let dataEntry = entityEntry.data.find(
+          (d) => d.currency === balance.currency,
+        );
+
+        if (!dataEntry) {
+          dataEntry = {
+            currency: balance.currency,
+            balance: 0,
+          };
+          entityEntry.data.push(dataEntry);
+        }
+
+        dataEntry.balance += balance.balance * balanceMultiplier;
+
+        return acc;
+      },
+      [] as z.infer<typeof transformedBalancesSchema>[],
+    );
+  } else if (selectedTag) {
+    detailedBalances = balances!.reduce(
+      (acc, balance) => {
+        const myPOVEntity = allChildrenTags.includes(
+          balance.selectedEntity.tagName,
+        )
+          ? balance.otherEntity
+          : balance.selectedEntity;
+        let entityEntry = acc.find(
+          (entry) => entry.entity.id === myPOVEntity.id,
+        );
+
+        if (!entityEntry) {
+          entityEntry = {
+            entity: myPOVEntity,
+            data: [],
+          };
+          acc.push(entityEntry);
+        }
+
+        const balanceMultiplier =
+          entityEntry.entity.id === balance.selectedEntityId ? -1 : 1;
+
+        let dataEntry = entityEntry.data.find(
+          (d) => d.currency === balance.currency,
+        );
+
+        if (!dataEntry) {
+          dataEntry = {
+            currency: balance.currency,
+            balance: 0,
+          };
+          entityEntry.data.push(dataEntry);
+        }
+
+        dataEntry.balance += balance.balance * balanceMultiplier;
+
+        return acc;
+      },
+      [] as z.infer<typeof transformedBalancesSchema>[],
+    );
+  }
+
+  const {
+    results: filteredBalances,
+    searchValue,
+    setSearchValue,
+  } = useSearch<(typeof detailedBalances)[0]>({
+    dataSet: detailedBalances,
+    keys: ["entity.name"],
+  });
 
   return (
     <div className="flex flex-col space-y-4">
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
-      <div className="grid-cols grid grid-cols-4 gap-4">
+      <div className="grid-cols grid grid-cols-1 gap-4 lg:grid-cols-3">
         {!isBalanceLoading ? (
-          balancesSummary.map((entity) => (
-            <Card key={entity.entityId} className="min-w-[300px]">
+          transformedBalances.map((item) => (
+            <Card key={item.entity.id} className="min-w-[300px]">
               <CardHeader>
-                <CardTitle>{entity.entityName}</CardTitle>
+                <CardTitle>{item.entity.name}</CardTitle>
                 <CardDescription>
-                  {capitalizeFirstLetter(entity.entityTag)}
+                  {capitalizeFirstLetter(item.entity.tagName)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col space-y-2">
-                  <p className="flex justify-end font-semibold">
-                    {selectedTimeframe === "daily"
-                      ? "Diario"
-                      : selectedTimeframe === "monthly"
-                      ? "Mensual"
-                      : selectedTimeframe === "weekly"
-                      ? "Semanal"
-                      : ""}
-                  </p>
-                  {entity.totalBalances
-                    .filter((totals) => totals.status === accountType)
-                    .map((totals) => (
-                      <div key={totals.currency} className="grid grid-cols-4">
-                        <p className="col-span-1">
-                          {totals.currency.toUpperCase()}
-                        </p>
-                        <div className="col-span-3 flex flex-row justify-between space-x-6">
-                          <p className="text-xl font-bold">
-                            ${" "}
-                            {new Intl.NumberFormat("es-AR").format(
-                              totals.amount,
-                            )}
-                          </p>
-                          <p
-                            className={cn(
-                              "text-lg font-semibold",
-                              totals.amount - totals.beforeAmount > 0
-                                ? "text-green"
-                                : totals.amount - totals.beforeAmount < 0
-                                ? "text-red"
-                                : "text-slate-300",
-                            )}
-                          >
-                            {new Intl.NumberFormat("es-AR").format(
-                              totals.amount - totals.beforeAmount,
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                  {item.data.map((balances) => (
+                    <div key={balances.currency} className="grid grid-cols-4">
+                      <p className="col-span-1">
+                        {balances.currency.toUpperCase()}
+                      </p>
+                      <p className="text-xl font-bold">
+                        ${" "}
+                        {new Intl.NumberFormat("es-AR").format(
+                          balances.balance,
+                        )}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -211,8 +328,8 @@ const Balances: FC<BalancesProps> = ({
         <div className="flex flex-row items-center space-x-4">
           <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
           <Input
-            value={searchDetailedBalanceValue}
-            onChange={(e) => setSearchDetailedBalanceValue(e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             placeholder="Buscar"
             className="w-32"
           />
@@ -230,9 +347,9 @@ const Balances: FC<BalancesProps> = ({
             <SelectContent>
               <SelectGroup>
                 <SelectItem value="todos">Todos</SelectItem>
-                {groupedDetailedBalances.map((balance) => (
-                  <SelectItem key={balance.entityid} value={balance.entityname}>
-                    {balance.entityname}
+                {uniqueEntities.map((entity) => (
+                  <SelectItem key={entity.id} value={entity.name}>
+                    {entity.name}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -251,7 +368,7 @@ const Balances: FC<BalancesProps> = ({
           )}
 
           <p className="text-lg">{detailedBalancesPage}</p>
-          {Math.round(filteredDetailedBalances.length / pageSize) >=
+          {Math.round(filteredBalances.length / pageSize) >=
             detailedBalancesPage && (
             <Button
               variant="outline"
@@ -270,55 +387,53 @@ const Balances: FC<BalancesProps> = ({
             <p key={currency}>{currency.toUpperCase()}</p>
           ))}
         </div>
-        {!isDetailedLoading ? (
-          balanceArrayToRender.length > 0 ? (
-            balanceArrayToRender.map((item, index) => (
-              <div
-                key={item.entityid}
-                className={cn(
-                  "grid grid-cols-6 justify-items-center rounded-xl font-semibold",
-                  index % 2 === 0 ? "bg-muted p-3" : "bg-white",
-                )}
-              >
-                <p className="p-2">{item.entityname}</p>
-                {currencyOrder.map((currency) => {
-                  const matchingBalance = item.balances.find(
-                    (balance) => balance.currency === currency,
-                  );
+        {!isBalanceLoading ? (
+          filteredBalances.map((item, index) => (
+            <div
+              key={item.entity.id}
+              className={cn(
+                "grid grid-cols-6 justify-items-center rounded-xl font-semibold",
+                index % 2 === 0 ? "bg-muted p-3" : "bg-white",
+              )}
+            >
+              <p className="p-2">{item.entity.name}</p>
+              {currencyOrder.map((currency) => {
+                const matchingBalance = item.data.find(
+                  (balance) => balance.currency === currency,
+                );
 
-                  return matchingBalance ? (
-                    <Link
-                      href={
-                        pathname +
-                        "?" +
-                        createQueryString(
-                          new URLSearchParams(
-                            createQueryString(
-                              searchParams,
-                              "entidad_destino",
-                              item.entityid.toString(),
-                            ),
-                          ),
-                          "divisa",
-                          currency,
-                        )
+                return matchingBalance ? (
+                  <p
+                    onClick={() => {
+                      if (
+                        selectedCurrency !== currency &&
+                        destinationEntityId !== item.entity.id
+                      ) {
+                        setSelectedCurrency(currency);
+                        setDestinationEntityId(item.entity.id);
+                      } else {
+                        setSelectedCurrency(undefined);
+                        setDestinationEntityId(undefined);
                       }
-                      key={currency}
-                      className="rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md"
-                    >
-                      {new Intl.NumberFormat("es-AR").format(
-                        matchingBalance.balance,
-                      )}
-                    </Link>
-                  ) : (
-                    <p></p>
-                  );
-                })}
-              </div>
-            ))
-          ) : (
-            <p>No hay movimientos</p>
-          )
+                    }}
+                    key={currency}
+                    className={cn(
+                      "rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                      selectedCurrency === currency &&
+                        destinationEntityId === item.entity.id &&
+                        "bg-primary text-white shadow-md",
+                    )}
+                  >
+                    {new Intl.NumberFormat("es-AR").format(
+                      matchingBalance.balance,
+                    )}
+                  </p>
+                ) : (
+                  <p></p>
+                );
+              })}
+            </div>
+          ))
         ) : (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}

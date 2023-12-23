@@ -205,7 +205,11 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             <div className="mx-12 flex flex-row items-center justify-center space-x-2">
               <Slider
                 defaultValue={[page]}
-                max={Math.round(twiceFilteredEntities.length / 30)}
+                max={
+                  Math.round(twiceFilteredEntities.length / 30) < 1
+                    ? 1
+                    : Math.round(twiceFilteredEntities.length / 30)
+                }
                 min={1}
                 onValueChange={(e) =>
                   router.push(

@@ -3,7 +3,7 @@ import { getAllChildrenTags } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 
-const page = async () => {
+const Page = async () => {
   const entities = await api.entities.getAll.query();
 
   const session = await getServerAuthSession();
@@ -51,4 +51,4 @@ const page = async () => {
   );
 };
 
-export default page;
+export default Page;

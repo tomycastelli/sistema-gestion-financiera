@@ -10,6 +10,7 @@ const config = {
     "plugin:@typescript-eslint/recommended-type-checked",
     "plugin:@typescript-eslint/stylistic-type-checked",
   ],
+  ignorePatterns: ["contentlayer.config.js"],
   rules: {
     // These opinionated rules are enabled in stylistic-type-checked above.
     // Feel free to reconfigure them to your own preference.
@@ -23,6 +24,7 @@ const config = {
     "@typescript-eslint/prefer-nullish-coalescing": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/prefer-optional-chain": "off",
+    "@typescript-eslint/no-redundant-type-constituents": "off",
     "@typescript-eslint/ban-ts-comment": "off",
 
     "@typescript-eslint/consistent-type-imports": [

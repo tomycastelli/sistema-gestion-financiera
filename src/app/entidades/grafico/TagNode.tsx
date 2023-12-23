@@ -9,10 +9,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "~/app/components/ui/hover-card";
-import {
-  calculateTotalAllEntities,
-  capitalizeFirstLetter,
-} from "~/lib/functions";
+import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -23,11 +20,6 @@ const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
       { entityTag: props.data.name },
       { refetchOnReconnect: false, staleTime: 182000 },
     );
-
-  let totalsTag: ReturnType<typeof calculateTotalAllEntities> = [];
-  if (balancesTag) {
-    totalsTag = calculateTotalAllEntities(balancesTag, "daily");
-  }
 
   return (
     <Card className={cn(`border border-${props.data.color} rounded-sm`)}>
@@ -49,8 +41,8 @@ const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
           </HoverCardTrigger>
           <HoverCardContent className="w-80">
             {!isLoadingTag ? (
-              totalsTag ? (
-                <BalanceTotals totals={totalsTag} />
+              balancesTag ? (
+                <BalanceTotals totals={balancesTag} />
               ) : (
                 <p>No tiene movimientos</p>
               )

@@ -19,6 +19,20 @@ export const rolesRouter = createTRPCRouter({
         permission.name === "USERS_ROLES_MANAGE",
     );
 
+    const hasSpecificRoles = permissions?.find(
+      (p) => p.name === "USERS_ROLES_MANAGE_SOME",
+    )?.entitiesTags;
+
+    if (hasSpecificRoles && !hasPermissions) {
+      const response = await ctx.db.role.findMany({
+        where: { name: { in: hasSpecificRoles } },
+        include: {
+          users: true,
+        },
+      });
+
+      return response;
+    }
     if (hasPermissions) {
       const response = await ctx.db.role.findMany({
         include: {

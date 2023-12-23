@@ -4,10 +4,7 @@ import Lottie from "lottie-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import loadingJson from "~/../public/animations/loading.json";
-import {
-  calculateTotalAllEntities,
-  capitalizeFirstLetter,
-} from "~/lib/functions";
+import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -27,24 +24,14 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
   const { data: balances, isLoading } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityId: entity?.id },
-      { refetchOnReconnect: false, staleTime: 182000, enabled: enableQueryId },
+      { enabled: enableQueryId },
     );
 
   const { data: balancesTag, isLoading: isLoadingTag } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityTag: entity.tag.name },
-      { refetchOnReconnect: false, staleTime: 182000, enabled: enableQueryTag },
+      { enabled: enableQueryTag },
     );
-
-  let totals: ReturnType<typeof calculateTotalAllEntities> = [];
-  if (balances) {
-    totals = calculateTotalAllEntities(balances, "daily");
-  }
-
-  let totalsTag: ReturnType<typeof calculateTotalAllEntities> = [];
-  if (balancesTag) {
-    totalsTag = calculateTotalAllEntities(balancesTag, "daily");
-  }
 
   return (
     <>
@@ -81,8 +68,8 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
               </HoverCardTrigger>
               <HoverCardContent className="w-80">
                 {!isLoading ? (
-                  totals ? (
-                    <BalanceTotals totals={totals} />
+                  balances ? (
+                    <BalanceTotals totals={balances} />
                   ) : (
                     <p>No tiene movimientos</p>
                   )
@@ -111,8 +98,8 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
               </HoverCardTrigger>
               <HoverCardContent className="w-80">
                 {!isLoadingTag ? (
-                  totalsTag ? (
-                    <BalanceTotals totals={totalsTag} />
+                  balancesTag ? (
+                    <BalanceTotals totals={balancesTag} />
                   ) : (
                     <p>No tiene movimientos</p>
                   )

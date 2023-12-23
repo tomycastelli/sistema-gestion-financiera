@@ -80,7 +80,25 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
           roles?.map((role) => (
             <Card
               key={role.id}
-              className={cn(role.color && `border-${role.color}`)}
+              className={cn(
+                role.color === "red"
+                  ? "border-red"
+                  : role.color === "amber-400"
+                  ? "border-amber-400"
+                  : role.color === "green"
+                  ? "border-green"
+                  : role.color === "primary"
+                  ? "border-primary"
+                  : role.color === "violet-500"
+                  ? "border-violet-500"
+                  : role.color === "orange"
+                  ? "border-orange"
+                  : role.color === "pink-500"
+                  ? "border-pink-500"
+                  : role.color === "blue-400"
+                  ? "border-blue-400"
+                  : "border-gray-400",
+              )}
             >
               <div className="mr-4 flex flex-row items-center justify-between">
                 <CardHeader>

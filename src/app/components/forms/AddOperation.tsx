@@ -1,7 +1,9 @@
 "use client";
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import moment from "moment";
 import type { User } from "next-auth";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
@@ -54,6 +56,10 @@ const AddOperation = ({
   const { toast } = useToast();
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState("flexible");
+  const searchParams = useSearchParams();
+
+  const selectedOpIdString = searchParams.get("operacion");
+  const selectedOpId = selectedOpIdString ? parseInt(selectedOpIdString) : null;
 
   const utils = api.useContext();
 
@@ -79,13 +85,25 @@ const AddOperation = ({
     {
       async onMutate(newOperation) {
         const transaccionesCargadas = newOperation.transactions.length;
-        toast({
-          title: `Operacion y ${
-            transaccionesCargadas > 1
-              ? transaccionesCargadas.toString() + " transacciones cargadas"
-              : transaccionesCargadas + " transaccion cargada"
-          }`,
-        });
+        if (newOperation.opId) {
+          toast({
+            title: `${
+              transaccionesCargadas > 1
+                ? transaccionesCargadas.toString() +
+                  ` transacciones cargadas a la operación ${newOperation.opId}`
+                : transaccionesCargadas +
+                  ` transaccion cargada a la operación ${newOperation.opId}`
+            }`,
+          });
+        } else {
+          toast({
+            title: `Operacion y ${
+              transaccionesCargadas > 1
+                ? transaccionesCargadas.toString() + " transacciones cargadas"
+                : transaccionesCargadas + " transaccion cargada"
+            }`,
+          });
+        }
 
         setIsInitialOperationSubmitted(false);
         resetTransactionsStore();
@@ -96,16 +114,13 @@ const AddOperation = ({
 
         const prevData = utils.operations.getOperationsByUser.getData();
 
-        const predictedId = operations?.[0]?.id ? operations[0].id + 1 : 1;
-
         const fakeNewData: RouterOutputs["operations"]["getOperationsByUser"][number] =
           {
-            id: predictedId,
+            id: 0,
             date: newOperation.opDate,
             observations: newOperation.opObservations
               ? newOperation.opObservations
               : "",
-            status: false,
             _count: { transactions: newOperation.transactions.length },
           };
 
@@ -133,22 +148,30 @@ const AddOperation = ({
       },
     },
   );
-  const [hours, minutes] = initialOperationStore.opTime.split(":").map(Number);
-  let selectedDate = initialOperationStore.opDate;
-
-  if (hours !== undefined && minutes !== undefined) {
-    selectedDate = new Date(
-      initialOperationStore.opDate.setHours(hours, minutes),
-    );
-  }
-
   const uploadOperation = async () => {
     try {
       await mutateAsync({
-        opDate: selectedDate,
+        opDate: moment(
+          `${moment(initialOperationStore.opDate).format("YYYY-MM-DD")} ${
+            initialOperationStore.opTime
+          }`,
+          "YYYY-MM-DD HH:mm",
+        ).toDate(),
         opObservations: initialOperationStore.opObservations,
+        opId: selectedOpId,
         transactions: transactionsStore.map((transaction) => ({
           type: transaction.type,
+          date:
+            transaction.date && transaction.time
+              ? moment(
+                  `${moment(transaction.date).format("YYYY-MM-DD")} ${
+                    transaction.time
+                  }`,
+                  "YYYY-MM-DD HH:mm",
+                ).toDate()
+              : transaction.date
+              ? transaction.date
+              : undefined,
           operatorEntityId: transaction.operatorId,
           fromEntityId: transaction.fromEntityId,
           toEntityId: transaction.toEntityId,
@@ -228,7 +251,9 @@ const AddOperation = ({
                   <span className="mr-2 text-primary">
                     {transactionsStore.length}
                   </span>
-                  transacciones
+                  {transactionsStore.length > 1
+                    ? "transacciones"
+                    : "transacción"}
                 </CardTitle>
                 {initialOperationStore.opObservations && (
                   <h1 className="text-sm text-muted-foreground">
@@ -242,23 +267,28 @@ const AddOperation = ({
                     {transactionsStore.map((transaction) => (
                       <div
                         key={transaction.txId}
-                        className="flex flex-col space-y-1"
+                        className="flex flex-col space-y-4"
                       >
                         <h1 className="text-sm text-muted-foreground">
-                          id {transaction.txId}
+                          Tx {transaction.txId}
                         </h1>
                         <div className="grid grid-cols-3 items-center">
-                          <h2>
+                          <Badge
+                            className="justify-self-center"
+                            variant="outline"
+                          >
                             {
                               filteredEntities.find(
                                 (obj) => obj.id === transaction.fromEntityId,
                               )?.name
                             }
-                          </h2>
-                          <div className="flex flex-col items-center">
+                          </Badge>
+                          <div className="flex flex-col items-center justify-self-center">
                             <Icons.arrowRight className="h-6" />
                             <p className="font-semibold">
-                              {transaction.amount}
+                              {new Intl.NumberFormat("es-AR").format(
+                                transaction.amount,
+                              )}
                             </p>
                             <p className="font-medium leading-none text-muted-foreground">
                               {transaction.currency.toUpperCase()}
@@ -268,29 +298,48 @@ const AddOperation = ({
                                 capitalizeFirstLetter(transaction.method)}
                             </p>
                           </div>
-                          <p>
+                          <Badge
+                            className="justify-self-center"
+                            variant="outline"
+                          >
                             {
                               filteredEntities.find(
                                 (obj) => obj.id === transaction.toEntityId,
                               )?.name
                             }
-                          </p>
+                          </Badge>
                         </div>
-
-                        <Badge
-                          variant="outline"
-                          className="mr-auto flex justify-center"
-                        >
-                          {capitalizeFirstLetter(transaction.type)}
-                        </Badge>
+                        <div className="flex flex-col items-start space-y-2">
+                          <Badge
+                            variant="outline"
+                            className="mr-auto flex justify-center"
+                          >
+                            {capitalizeFirstLetter(transaction.type)}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="mr-auto flex flex-row justify-center space-x-1"
+                          >
+                            <p>
+                              {moment(transaction.date).format("DD-MM-YYYY")}
+                            </p>
+                            <span className="text-muted-foreground">
+                              {transaction.time}
+                            </span>
+                          </Badge>
+                        </div>
                         <div className="flex flex-row justify-between">
-                          <p className="font-medium">
-                            {
-                              filteredEntities.find(
-                                (obj) => obj.id === transaction.operatorId,
-                              )?.name
-                            }
-                          </p>
+                          <div className="flex flex-col justify-start space-y-1">
+                            <p className="text-sm font-medium">Operador</p>
+                            <Badge variant="outline">
+                              {
+                                filteredEntities.find(
+                                  (obj) => obj.id === transaction.operatorId,
+                                )?.name
+                              }
+                            </Badge>
+                          </div>
+
                           <Button
                             onClick={() =>
                               removeTransactionFromStore(transaction.txId)
@@ -304,19 +353,25 @@ const AddOperation = ({
                       </div>
                     ))}
                   </CardContent>
-                  <CardFooter>
-                    {transactionsStore.length > 0 && (
-                      <Button
-                        className="w-full"
-                        onClick={() => uploadOperation()}
-                      >
-                        <Icons.addPackage className="mr-2 h-4 w-4" />
-                        {isLoading ? (
-                          <p>Cargando...</p>
-                        ) : (
-                          <p>Cargar operación</p>
-                        )}
-                      </Button>
+                  <CardFooter className="flex flex-col items-center space-y-2">
+                    <Button
+                      className="w-full"
+                      disabled={transactionsStore.length > 0 ? false : true}
+                      onClick={() => uploadOperation()}
+                    >
+                      <Icons.addPackage className="mr-2 h-4 w-4" />
+                      {isLoading ? (
+                        <p>Cargando...</p>
+                      ) : !!selectedOpId ? (
+                        <p>Cargar a la operación {selectedOpId} </p>
+                      ) : (
+                        <p>Cargar operación</p>
+                      )}
+                    </Button>
+                    {transactionsStore.length < 1 && (
+                      <p className="text-sm">
+                        Añadí una transacción para continuar{" "}
+                      </p>
                     )}
                   </CardFooter>
                 </>
@@ -346,7 +401,7 @@ const AddOperation = ({
                       alertTitle={`¿Seguro que querés cambiar a ${tab}?`}
                       alertAccept="Confirmar"
                       alertCancel="Cancelar"
-                      alertDescription="Se perderán los datos cargados no subidos a la operación"
+                      alertDescription="Se perderán los datos no cargados a la operación"
                       alertFunction={() => setTabName(tab)}
                     />
                   ))}

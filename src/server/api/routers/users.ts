@@ -44,7 +44,7 @@ export const usersRouter = createTRPCRouter({
       return response[0];
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    const response = await ctx.db.user.findMany();
+    const response = await ctx.db.user.findMany({ include: { role: true } });
     return response;
   }),
   getAllPermissions: publicProcedure
@@ -152,6 +152,9 @@ export const usersRouter = createTRPCRouter({
       const response = ctx.db.user.findUnique({
         where: {
           id: input.id,
+        },
+        include: {
+          role: true,
         },
       });
 

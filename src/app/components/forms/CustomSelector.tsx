@@ -13,6 +13,7 @@ import {
   CommandItem,
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface Data {
   value: string;
@@ -48,7 +49,7 @@ const CustomSelector = ({
               variant="outline"
               role="combobox"
               className={cn(
-                "w-[150px] justify-between bg-transparent",
+                "w-36 justify-between bg-transparent",
                 !field.value && "text-muted-foreground",
                 buttonClassName,
               )}
@@ -64,26 +65,30 @@ const CustomSelector = ({
             <Command>
               <CommandInput placeholder="Buscar..." />
               <CommandEmpty>...</CommandEmpty>
-              <CommandGroup>
-                {data.map((obj) => (
-                  <CommandItem
-                    key={obj.value}
-                    value={obj.label}
-                    onSelect={() => {
-                      setOpen(false);
-                      setValue(fieldName, obj.value);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        obj.value === field.value ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    {obj.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              <ScrollArea className="h-62 w-48 rounded-md">
+                <CommandGroup>
+                  {data.map((obj) => (
+                    <CommandItem
+                      key={obj.value}
+                      value={obj.label}
+                      onSelect={() => {
+                        setOpen(false);
+                        setValue(fieldName, obj.value);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          obj.value === field.value
+                            ? "opacity-100"
+                            : "opacity-0",
+                        )}
+                      />
+                      {obj.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </ScrollArea>
             </Command>
           </PopoverContent>
         </Popover>

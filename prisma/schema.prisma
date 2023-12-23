@@ -53,21 +53,25 @@ model User {
   roleId        Int?
   accounts      Account[]
   sessions      Session[]
+  logs          Logs[] @relation("LoggedUser")
   uploadedMetadata  TransactionsMetadata[] @relation("UploadedByUser")
   confirmedMetadata TransactionsMetadata[] @relation("ConfirmedByUser")
+  cancelledMetadata TransactionsMetadata[] @relation("CancelledByUser")
 
   entity  Entities? @relation(fields: [entityId], references: [id])
   entityId Int? @unique 
 
-  @@index([email])
+  @@index([email, name])
 }
 
 model Role {
   id    Int @id @default(autoincrement())
-  name String
+  name String @unique
   permissions Json
   color String?
   users User[]
+
+  @@index([name])
 }
 
 model Tag {
@@ -92,10 +96,15 @@ model Operations {
   id           Int       @id @default(autoincrement())
   date         DateTime
   observations String?
-  status       Boolean @default(false)
   transactions Transactions[]
 
   @@index([date])
+}
+
+enum Status {
+  pending
+  confirmed
+  cancelled
 }
 
 model Transactions {
@@ -114,7 +123,7 @@ model Transactions {
   amount           Float
   method           String?
   observations     String?
-  status           Boolean @default(false)
+  status           Status @default(pending)
   movements        Movements[]
   transactionMetadata TransactionsMetadata?
 
@@ -128,6 +137,8 @@ model Entities {
   tagName        String
   transactionsFrom  Transactions[] @relation("fromEntity")
   transactionsTo    Transactions[] @relation("toEntity")
+  balancesSelected  Balances[] @relation("selectedEntityBalance")
+  balancesOther    Balances[] @relation("otherEntityBalance")
   transactionsOperator Transactions[] @relation("operatorEntity")
   linksSharedEntity Links[] @relation("sharedEntity")
 
@@ -144,8 +155,26 @@ model Movements {
   direction    Int
   type         String
   account      Boolean @default(false)
+  balance      Float
+  balanceId    Int 
+  balanceObject Balances @relation(fields: [balanceId], references: [id], onDelete: Cascade)
 
   @@index([transactionId, direction])
+}
+
+model Balances {
+  id                   Int @id @default(autoincrement())
+  selectedEntity       Entities    @relation("selectedEntityBalance", fields: [selectedEntityId], references: [id], onDelete: Cascade)
+  selectedEntityId     Int
+  otherEntity          Entities    @relation("otherEntityBalance", fields: [otherEntityId], references: [id], onDelete: Cascade)
+  otherEntityId        Int 
+  currency             String
+  account              Boolean
+  date                 DateTime
+  balance              Float
+  movements            Movements[]
+
+  @@index([selectedEntityId, otherEntityId, date, account, currency])
 }
 
 model TransactionsMetadata {
@@ -155,8 +184,11 @@ model TransactionsMetadata {
   uploadedDate    DateTime @default(now())
   confirmedBy     String?
   confirmedDate   DateTime?
+  cancelledBy String?
+  cancelledDate DateTime?
   uploadedByUser  User      @relation("UploadedByUser", fields: [uploadedBy], references: [id])
   confirmedByUser User?      @relation("ConfirmedByUser", fields: [confirmedBy], references: [id])
+  cancelledByUser User?     @relation("CancelledByUser", fields: [cancelledBy], references: [id])
   history         Json?
   metadata      Json?
 
@@ -171,6 +203,12 @@ model Links {
   expiration DateTime?
 }
 
-model EmailWhitelist {
-  email String @id
+model Logs {
+  id  Int @id @default(autoincrement())
+  time DateTime
+  name String
+  userId String?
+  user  User?  @relation("LoggedUser", fields: [userId], references: [id])
+  input Json
+  response Json
 }

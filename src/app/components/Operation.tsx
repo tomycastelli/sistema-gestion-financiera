@@ -1,8 +1,13 @@
 "use client";
 
+import { Status } from "@prisma/client";
+import moment from "moment";
 import type { User } from "next-auth";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FC } from "react";
+import { cn } from "~/lib/utils";
+import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import Transaction from "./Transaction";
@@ -45,6 +50,65 @@ const Operation: FC<OperationProps> = ({
   users,
 }) => {
   const utils = api.useContext();
+  const router = useRouter();
+
+  const { setInitialOperationStore, setIsInitialOperationSubmitted } =
+    useInitialOperationStore();
+
+  const { mutateAsync: cancelAsync } =
+    api.editingOperations.cancelTransaction.useMutation({
+      async onMutate(newOperation) {
+        toast({
+          title: `Operación ${newOperation.operationId} y ${
+            op.transactions.length
+          } ${
+            op.transactions.length === 1 ? "transacción" : "transacciones"
+          } cancelada${op.transactions.length === 1 ? "" : "s"}`,
+          variant: "success",
+        });
+
+        // Doing the Optimistic update
+        await utils.operations.getOperations.cancel();
+
+        const prevData = utils.operations.getOperations.getData();
+
+        utils.operations.getOperations.setData(operationsQueryInput, (old) => [
+          // @ts-ignore
+          ...old?.map((item) => {
+            if (item.id === newOperation.operationId) {
+              return {
+                ...item,
+                transactions: item.transactions.map((tx) => ({
+                  ...tx,
+                  status: "cancelled",
+                })),
+              };
+            } else {
+              return item;
+            }
+          }),
+        ]);
+
+        return { prevData };
+      },
+      onError(err, newOperation, ctx) {
+        utils.operations.getOperations.setData(
+          operationsQueryInput,
+          ctx?.prevData,
+        );
+
+        // Doing some ui actions
+        toast({
+          title:
+            "No se pudo anular la operación y las transacciones relacionadas",
+          description: `${JSON.stringify(err.data)}`,
+          variant: "destructive",
+        });
+      },
+      onSettled() {
+        void utils.operations.getOperations.invalidate();
+      },
+    });
 
   const { mutateAsync: deleteAsync } =
     api.operations.deleteOperation.useMutation({
@@ -91,7 +155,13 @@ const Operation: FC<OperationProps> = ({
 
   return (
     <div className="my-4 flex flex-col">
-      <Card>
+      <Card
+        className={cn(
+          op.transactions.filter((tx) => tx.status === Status.cancelled)
+            .length === op.transactions.length &&
+            "border border-red opacity-80",
+        )}
+      >
         <CardHeader>
           <CardTitle className="flex">
             <Link
@@ -127,8 +197,79 @@ const Operation: FC<OperationProps> = ({
             ))}
         </CardContent>
         <CardFooter className="flex flex-row justify-end">
-          {op.transactions.filter((tx) => tx.isDeleteAllowed).length ===
-            op.transactions.length && (
+          {op.isCreateAllowed && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="border-transparent p-2" variant="outline">
+                  <Icons.plus className="h-6 text-green" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Añadir transacciones a la operación {op.id}
+                  </AlertDialogTitle>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setInitialOperationStore({
+                        opDate: op.date,
+                        opTime: moment(op.date).format("HH:mm"),
+                        opObservations: op.observations
+                          ? op.observations
+                          : undefined,
+                      });
+                      setIsInitialOperationSubmitted(true);
+                      router.push(`/operaciones/carga?operacion=${op.id}`);
+                    }}
+                    className="bg-green"
+                  >
+                    Añadir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {op.transactions.filter(
+            (tx) =>
+              tx.isCancelAllowed &&
+              tx.status !== Status.cancelled &&
+              tx.status !== Status.confirmed,
+          ).length === op.transactions.length && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="border-transparent p-2" variant="outline">
+                  <Icons.valueNone className="h-6 text-red" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Se anularán completamente {op.transactions.length}{" "}
+                    transacciones y sus movimientos relacionados
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => cancelAsync({ operationId: op.id })}
+                    className="bg-red"
+                  >
+                    Anular
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {op.transactions.filter(
+            (tx) =>
+              tx.isDeleteAllowed &&
+              tx.status !== Status.confirmed &&
+              tx.status !== Status.cancelled,
+          ).length === op.transactions.length && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button className="border-transparent p-2" variant="outline">

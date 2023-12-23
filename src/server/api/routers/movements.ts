@@ -1,12 +1,13 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { dateReviver, getAllChildrenTags } from "~/lib/functions";
+import { getAllChildrenTags } from "~/lib/functions";
 import {
   getAllEntities,
   getAllPermissions,
   getAllTags,
 } from "~/lib/trpcFunctions";
+import { dateFormatting } from "~/lib/variables";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -15,13 +16,13 @@ export const movementsRouter = createTRPCRouter({
       z.object({
         linkId: z.number().int().optional().nullable(),
         linkToken: z.string().optional().nullable(),
-        sharedEntityId: z.number().optional().nullable(),
+        sharedEntityId: z.number().optional().nullish(),
         pageSize: z.number().int(),
         pageNumber: z.number().int(),
-        entityId: z.number().int().optional(), // Change from array to single number
-        entityTag: z.string().optional(),
-        toEntityId: z.number().int().optional().nullable(),
-        currency: z.string().optional().nullable(),
+        entityId: z.number().int().optional().nullish(), // Change from array to single number
+        entityTag: z.string().optional().nullish(),
+        toEntityId: z.number().int().optional().nullish(),
+        currency: z.string().optional().nullish(),
         account: z.boolean().optional(),
       }),
     )
@@ -53,7 +54,7 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
-      if (input.entityId !== undefined) {
+      if (input.entityId) {
         whereConditions.push({
           transaction: {
             currency: input.currency ? input.currency : {},
@@ -159,6 +160,7 @@ export const movementsRouter = createTRPCRouter({
         entityTag: z.string().optional().nullable(),
         linkId: z.number().optional().nullable(),
         linkToken: z.string().optional().nullable(),
+        account: z.boolean().optional().nullable(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -227,119 +229,76 @@ export const movementsRouter = createTRPCRouter({
         }
       }
 
-      const EntitiesBalanceSchema = z.array(
-        z.object({
-          entityid: z.number(),
-          entityname: z.string(),
-          entitytag: z.string(),
-          date: z.date(),
-          currency: z.string(),
-          movementstatus: z.boolean(),
-          balance: z.number(),
-        }),
-      );
+      if (input.entityTag) {
+        const allTags = await getAllTags(ctx.redis, ctx.db);
+        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-      const entitiesBalances = await ctx.db.$queryRaw<
-        z.infer<typeof EntitiesBalanceSchema>
-      >`
-      SELECT
-  e.id as entityId,
-  e.name as entityName,
-  e."tagName" as entityTag,
-  DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
-  t.currency,
-  m.account as movementStatus,
-  SUM(CASE
-    WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-    WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-    ELSE 0
-  END) -
-  SUM(CASE
-    WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-    WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-    ELSE 0
-  END) as balance
-FROM
-  "Entities" e
-  LEFT JOIN "Transactions" t ON e.id = t."fromEntityId" OR e.id = t."toEntityId"
-  LEFT JOIN "Movements" m ON t.id = m."transactionId"
-  LEFT JOIN "Operations" o ON t."operationId" = o.id
-WHERE
- ${input.entityId ? Prisma.sql`e.id = ${input.entityId}` : Prisma.sql`1=1`}
- ${
-   input.entityTag
-     ? Prisma.sql`AND e."tagName" = ANY(${Prisma.raw(
-         `ARRAY[${getAllChildrenTags(
-           input.entityTag,
-           await getAllTags(ctx.redis, ctx.db),
-         )
-           .map((tag) => `'${tag}'`)
-           .join(",")}]`,
-       )})`
-     : Prisma.sql``
- }
-GROUP BY
-  e.id,
-  e.name,
-  e."tagName",
-  DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
-  t.currency,
-  m.account
-ORDER BY
-  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.account;
-    `;
-
-      const transformedArray = entitiesBalances
-        .filter((entity) => entity.currency)
-        .reduce(
-          (acc, entity) => {
-            const existingEntity = acc.find(
-              (e) => e.entityId === entity.entityid,
-            );
-
-            if (existingEntity) {
-              // Entity already exists, add balance to the respective array
-              existingEntity.balances.push({
-                currency: entity.currency,
-                date: entity.date,
-                status: entity.movementstatus,
-                amount: entity.balance,
-              });
-            } else {
-              // Entity doesn't exist, create a new entry
-              const newEntity = {
-                entityId: entity.entityid,
-                entityName: entity.entityname,
-                entityTag: entity.entitytag,
-                balances: [
+        const balances = await ctx.db.balances.findMany({
+          where: {
+            AND: [
+              {
+                OR: [
                   {
-                    currency: entity.currency,
-                    date: entity.date,
-                    status: entity.movementstatus,
-                    amount: entity.balance,
+                    selectedEntity: { tagName: { in: allChildrenTags } },
+                    otherEntity: { tagName: { notIn: allChildrenTags } },
+                  },
+                  {
+                    selectedEntity: { tagName: { notIn: allChildrenTags } },
+                    otherEntity: { tagName: { in: allChildrenTags } },
                   },
                 ],
-              };
-
-              acc.push(newEntity);
-            }
-
-            return acc;
+              },
+              typeof input.account === "boolean"
+                ? { account: input.account }
+                : {},
+            ],
           },
-          [] as {
-            entityId: number;
-            entityName: string;
-            entityTag: string;
-            balances: Array<{
-              currency: string;
-              date: Date;
-              status: boolean;
-              amount: number;
-            }>;
-          }[],
-        );
-
-      return transformedArray;
+          orderBy: {
+            date: "desc",
+          },
+          distinct: [
+            "selectedEntityId",
+            "otherEntityId",
+            "account",
+            "currency",
+          ],
+          include: {
+            selectedEntity: true,
+            otherEntity: true,
+          },
+        });
+        return balances;
+      } else if (input.entityId) {
+        const balances = await ctx.db.balances.findMany({
+          where: {
+            AND: [
+              {
+                OR: [
+                  { selectedEntityId: input.entityId },
+                  { otherEntityId: input.entityId },
+                ],
+              },
+              typeof input.account === "boolean"
+                ? { account: input.account }
+                : {},
+            ],
+          },
+          orderBy: {
+            date: "desc",
+          },
+          distinct: [
+            "selectedEntityId",
+            "otherEntityId",
+            "account",
+            "currency",
+          ],
+          include: {
+            selectedEntity: true,
+            otherEntity: true,
+          },
+        });
+        return balances;
+      }
     }),
   getBalancesByEntitiesForCard: publicProcedure
     .input(
@@ -376,158 +335,332 @@ ORDER BY
         });
       }
 
-      let cachedBalancesString: string | null = "";
-      if (input.entityId) {
-        cachedBalancesString = await ctx.redis.get(`balance:${input.entityId}`);
-      }
+      const TotalBalanceSchema = z.object({
+        currency: z.string(),
+        balances: z.array(
+          z.object({
+            account: z.boolean(),
+            amount: z.number(),
+          }),
+        ),
+      });
+
       if (input.entityTag) {
-        cachedBalancesString = await ctx.redis.get(
-          `balance:${input.entityTag}`,
-        );
-      }
-      if (cachedBalancesString) {
-        const cachedBalances: typeof transformedArray = JSON.parse(
-          cachedBalancesString,
-          dateReviver(["date"]),
-        );
-        return cachedBalances;
-      }
+        const allTags = await getAllTags(ctx.redis, ctx.db);
+        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-      const EntitiesBalanceSchema = z.array(
-        z.object({
-          entityid: z.number(),
-          entityname: z.string(),
-          entitytag: z.string(),
-          date: z.date(),
-          currency: z.string(),
-          movementstatus: z.boolean(),
-          balance: z.number(),
-        }),
-      );
-
-      const entitiesBalances = await ctx.db.$queryRaw<
-        z.infer<typeof EntitiesBalanceSchema>
-      >`
-      SELECT
-  e.id as entityId,
-  e.name as entityName,
-  e."tagName" as entityTag,
-  DATE_TRUNC('day', COALESCE(t.date, o.date)) as date,
-  t.currency,
-  m.account as movementStatus,
-  SUM(CASE
-    WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-    WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-    ELSE 0
-  END) -
-  SUM(CASE
-    WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-    WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-    ELSE 0
-  END) as balance
-FROM
-  "Entities" e
-  LEFT JOIN "Transactions" t ON e.id = t."fromEntityId" OR e.id = t."toEntityId"
-  LEFT JOIN "Movements" m ON t.id = m."transactionId"
-  LEFT JOIN "Operations" o ON t."operationId" = o.id
-WHERE
- ${input.entityId ? Prisma.sql`e.id = ${input.entityId}` : Prisma.sql`1=1`}
- ${
-   input.entityTag
-     ? Prisma.sql`AND e."tagName" = ANY(${Prisma.raw(
-         `ARRAY[${getAllChildrenTags(
-           input.entityTag,
-           await getAllTags(ctx.redis, ctx.db),
-         )
-           .map((tag) => `'${tag}'`)
-           .join(",")}]`,
-       )})`
-     : Prisma.sql``
- }
-GROUP BY
-  e.id,
-  e.name,
-  e."tagName",
-  DATE_TRUNC('day', COALESCE(t.date, o.date)),  -- Specify the table for the date column
-  t.currency,
-  m.account
-ORDER BY
-  DATE_TRUNC('day', COALESCE(t.date, o.date)), e.id, t.currency, m.account;
-    `;
-
-      const transformedArray = entitiesBalances
-        .filter((entity) => entity.currency)
-        .reduce(
-          (acc, entity) => {
-            const existingEntity = acc.find(
-              (e) => e.entityId === entity.entityid,
-            );
-
-            if (existingEntity) {
-              // Entity already exists, add balance to the respective array
-              existingEntity.balances.push({
-                currency: entity.currency,
-                date: entity.date,
-                status: entity.movementstatus,
-                amount: entity.balance,
-              });
-            } else {
-              // Entity doesn't exist, create a new entry
-              const newEntity = {
-                entityId: entity.entityid,
-                entityName: entity.entityname,
-                entityTag: entity.entitytag,
-                balances: [
-                  {
-                    currency: entity.currency,
-                    date: entity.date,
-                    status: entity.movementstatus,
-                    amount: entity.balance,
-                  },
-                ],
-              };
-
-              acc.push(newEntity);
-            }
-
-            return acc;
+        const balances = await ctx.db.balances.findMany({
+          where: {
+            OR: [
+              {
+                selectedEntity: { tagName: { in: allChildrenTags } },
+                otherEntity: { tagName: { notIn: allChildrenTags } },
+              },
+              {
+                selectedEntity: { tagName: { notIn: allChildrenTags } },
+                otherEntity: { tagName: { in: allChildrenTags } },
+              },
+            ],
           },
-          [] as {
-            entityId: number;
-            entityName: string;
-            entityTag: string;
-            balances: Array<{
-              currency: string;
-              date: Date;
-              status: boolean;
-              amount: number;
-            }>;
-          }[],
-        );
+          orderBy: {
+            date: "desc",
+          },
+          distinct: [
+            "selectedEntityId",
+            "otherEntityId",
+            "account",
+            "currency",
+          ],
+          include: {
+            selectedEntity: true,
+            otherEntity: true,
+          },
+        });
+
+        const totalBalances: z.infer<typeof TotalBalanceSchema>[] =
+          balances.reduce(
+            (acc, balance) => {
+              const isEntityTagSelected = allChildrenTags.includes(
+                balance.selectedEntity.tagName,
+              );
+
+              // Find the corresponding total balance entry
+              const existingEntry = acc.find(
+                (entry) => entry.currency === balance.currency,
+              );
+
+              // Calculate the beforeAmount based on the specified duration
+              // If the entry exists, update the amount and beforeAmount based on the conditions
+              if (existingEntry) {
+                // Find the balance entry within the existing total balance entry
+                const existingBalance = existingEntry.balances.find(
+                  (b) => b.account === balance.account,
+                );
+
+                if (existingBalance) {
+                  // Update the existing balance entry
+                  existingBalance.amount += isEntityTagSelected
+                    ? balance.balance
+                    : -balance.balance;
+                } else {
+                  // Add a new balance entry to the existing total balance entry
+                  existingEntry.balances.push({
+                    account: balance.account,
+                    amount: isEntityTagSelected
+                      ? balance.balance
+                      : -balance.balance,
+                  });
+                }
+              } else {
+                // If the entry doesn't exist, create a new entry with a new balance entry
+                acc.push({
+                  currency: balance.currency,
+                  balances: [
+                    {
+                      account: balance.account,
+                      amount: isEntityTagSelected
+                        ? balance.balance
+                        : -balance.balance,
+                    },
+                  ],
+                });
+              }
+
+              return acc;
+            },
+            [] as z.infer<typeof TotalBalanceSchema>[],
+          );
+
+        return totalBalances;
+      } else if (input.entityId) {
+        const balances = await ctx.db.balances.findMany({
+          where: {
+            OR: [
+              { selectedEntityId: input.entityId },
+              { otherEntityId: input.entityId },
+            ],
+          },
+          orderBy: {
+            date: "desc",
+          },
+          distinct: [
+            "selectedEntityId",
+            "otherEntityId",
+            "account",
+            "currency",
+          ],
+          include: {
+            selectedEntity: true,
+            otherEntity: true,
+          },
+        });
+
+        const totalBalances: z.infer<typeof TotalBalanceSchema>[] =
+          balances.reduce(
+            (acc, balance) => {
+              const isEntityIdSelected =
+                input.entityId === balance.selectedEntityId;
+
+              // Find the corresponding total balance entry
+              const existingEntry = acc.find(
+                (entry) => entry.currency === balance.currency,
+              );
+
+              // If the entry exists, update the amount and beforeAmount based on the conditions
+              if (existingEntry) {
+                // Find the balance entry within the existing total balance entry
+                const existingBalance = existingEntry.balances.find(
+                  (b) => b.account === balance.account,
+                );
+
+                if (existingBalance) {
+                  // Update the existing balance entry
+                  existingBalance.amount += isEntityIdSelected
+                    ? balance.balance
+                    : -balance.balance;
+                } else {
+                  // Add a new balance entry to the existing total balance entry
+                  existingEntry.balances.push({
+                    account: balance.account,
+                    amount: isEntityIdSelected
+                      ? balance.balance
+                      : -balance.balance,
+                  });
+                }
+              } else {
+                // If the entry doesn't exist, create a new entry with a new balance entry
+                acc.push({
+                  currency: balance.currency,
+                  balances: [
+                    {
+                      account: balance.account,
+                      amount: isEntityIdSelected
+                        ? balance.balance
+                        : -balance.balance,
+                    },
+                  ],
+                });
+              }
+
+              return acc;
+            },
+            [] as z.infer<typeof TotalBalanceSchema>[],
+          );
+
+        return totalBalances;
+      }
+    }),
+
+  getBalancesHistory: protectedProcedure
+    .input(
+      z.object({
+        entityId: z.number().int().optional().nullish(),
+        entityTag: z.string().optional().nullable(),
+        timeRange: z.enum(["day", "week", "month", "year"]),
+        currency: z.string().nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!input.currency) {
+        return undefined;
+      }
+      const balancesSchema = z.object({
+        account: z.boolean(),
+        currency: z.string(),
+        datestring: z.string(),
+        balance: z.number(),
+      });
+
+      const transformedBalancesSchema = z.object({
+        datestring: z.string(),
+        cash: z.number(),
+        current_account: z.number(),
+      });
 
       if (input.entityId) {
-        await ctx.redis.set(
-          `balance:${input.entityId}`,
-          JSON.stringify(transformedArray),
-          "EX",
-          180,
-        );
-      }
-      if (input.entityTag) {
-        await ctx.redis.set(
-          `balance:${input.entityTag}`,
-          JSON.stringify(transformedArray),
-          "EX",
-          180,
-        );
-      }
+        const balances: z.infer<typeof balancesSchema>[] = await ctx.db
+          .$queryRaw`
+            SELECT 
+            account,
+            currency,
+            TO_CHAR(DATE_TRUNC(${input.timeRange}, date), ${
+              dateFormatting[input.timeRange]
+            }) AS datestring,
+            SUM(CASE WHEN "selectedEntityId" = ${
+              input.entityId
+            } THEN balance ELSE -balance END) balance
+            FROM "Balances"
+            WHERE
+            ("selectedEntityId" = ${input.entityId} OR "otherEntityId" = ${
+              input.entityId
+            })
+            AND "currency" = ${input.currency}
+            GROUP BY 
+            account,
+            currency,
+            datestring;
+          `;
 
-      return transformedArray;
+        const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
+          balances.reduce(
+            (acc, entry) => {
+              const existingEntry = acc.find(
+                (groupedEntry) => groupedEntry.datestring === entry.datestring,
+              );
+
+              if (existingEntry) {
+                if (entry.account) {
+                  existingEntry.current_account = entry.balance;
+                } else {
+                  existingEntry.cash = entry.balance;
+                }
+              } else {
+                acc.push({
+                  datestring: entry.datestring,
+                  cash: entry.account ? 0 : entry.balance,
+                  current_account: entry.account ? entry.balance : 0,
+                });
+              }
+
+              return acc;
+            },
+            [] as z.infer<typeof transformedBalancesSchema>[],
+          );
+
+        return transformedBalances;
+      } else if (input.entityTag) {
+        const allTags = await getAllTags(ctx.redis, ctx.db);
+        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
+
+        const balances: z.infer<typeof balancesSchema>[] = await ctx.db
+          .$queryRaw`
+        SELECT 
+          account,
+          currency,
+          TO_CHAR(DATE_TRUNC(${Prisma.raw(
+            `'${input.timeRange}'`,
+          )}, date), ${Prisma.raw(
+            `'${dateFormatting[input.timeRange]}'`,
+          )}) AS datestring,
+          SUM(CASE WHEN e."tagName" IN (${Prisma.join(
+            allChildrenTags,
+            ",",
+          )}) THEN balance ELSE -balance END) balance
+        FROM "Balances" b
+        JOIN "Entities" e ON b."selectedEntityId" = e."id"
+        JOIN "Entities" e2 ON b."otherEntityId" = e2."id"
+        WHERE
+          (
+            (e."tagName" IN (${Prisma.join(
+              allChildrenTags,
+              ",",
+            )}) AND e2."tagName" NOT IN (${Prisma.join(allChildrenTags, ",")}))
+            OR
+            (e2."tagName" IN (${Prisma.join(
+              allChildrenTags,
+              ",",
+            )}) AND e."tagName" NOT IN (${Prisma.join(allChildrenTags, ",")}))
+          )
+          AND b."currency" = ${Prisma.raw(`'${input.currency}'`)}
+        GROUP BY 
+          account,
+          currency,
+          datestring;
+      `;
+
+        const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
+          balances.reduce(
+            (acc, entry) => {
+              const existingEntry = acc.find(
+                (groupedEntry) => groupedEntry.datestring === entry.datestring,
+              );
+
+              if (existingEntry) {
+                if (entry.account) {
+                  existingEntry.current_account = entry.balance;
+                } else {
+                  existingEntry.cash = entry.balance;
+                }
+              } else {
+                acc.push({
+                  datestring: entry.datestring,
+                  cash: entry.account ? 0 : entry.balance,
+                  current_account: entry.account ? entry.balance : 0,
+                });
+              }
+
+              return acc;
+            },
+            [] as z.infer<typeof transformedBalancesSchema>[],
+          );
+
+        return transformedBalances;
+      }
     }),
   getMovementsByCurrency: protectedProcedure
     .input(
       z.object({
-        currency: z.string(),
+        currency: z.string().nullish(),
         entityId: z.number().int().optional(),
         entityTag: z.string().optional(),
         limit: z.number().int(),
@@ -535,6 +668,10 @@ ORDER BY
     )
     .query(async ({ ctx, input }) => {
       const whereConditions = [];
+
+      if (!input.currency) {
+        return [];
+      }
 
       if (input.entityId !== undefined) {
         whereConditions.push({
@@ -588,6 +725,7 @@ ORDER BY
         include: {
           transaction: {
             include: {
+              transactionMetadata: true,
               operation: {
                 select: {
                   id: true,
@@ -607,153 +745,5 @@ ORDER BY
       });
 
       return movements;
-    }),
-  getDetailedBalance: publicProcedure
-    .input(
-      z.object({
-        entityId: z.number().int().optional().nullable(),
-        accountType: z.boolean(),
-        entityTag: z.string().optional().nullable(),
-        linkId: z.number().optional().nullable(),
-        linkToken: z.string().optional().nullable(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      let isRequestValid = false;
-
-      if (ctx.session?.user !== undefined) {
-        isRequestValid = true;
-      } else if (input.linkId && input.linkToken && input.entityId) {
-        const link = await ctx.db.links.findUnique({
-          where: {
-            id: input.linkId,
-            sharedEntityId: input.entityId,
-            password: input.linkToken,
-          },
-        });
-
-        if (link) {
-          isRequestValid = true;
-        }
-      }
-
-      if (!isRequestValid) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "El usuario no está registrado o el link no es válido",
-        });
-      }
-
-      const balanceSchema = z.array(
-        z.object({
-          currency: z.string(),
-          entityid: z.number().int(),
-          entitytag: z.string(),
-          entityname: z.string(),
-          status: z.boolean(),
-          balance: z.number(),
-        }),
-      );
-
-      if (input.entityId) {
-        const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
-          SELECT
-            t.currency,
-            e.id as entityId,
-            e."tagName" as entityTag,
-            e.name as entityName,
-            m.account,
-            SUM(CASE
-              WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-              WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-              ELSE 0
-            END) -
-            SUM(CASE
-              WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-              WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-              ELSE 0
-            END) as balance
-          FROM
-            "Transactions" t
-          JOIN
-            "Entities" e ON t."fromEntityId" = e.id OR t."toEntityId" = e.id
-          LEFT JOIN
-            "Movements" m ON t.id = m."transactionId"
-            WHERE
-          ${Prisma.sql`(t."fromEntityId" = ${input.entityId} OR t."toEntityId" = ${input.entityId}) AND e.id != ${input.entityId} AND m.account = ${input.accountType}`}
-          GROUP BY
-            t.currency, e.id, e.name, m.account
-        `;
-        return balances;
-      } else if (input.entityTag) {
-        const allTags = getAllChildrenTags(
-          input.entityTag,
-          await getAllTags(ctx.redis, ctx.db),
-        );
-
-        const balances: z.infer<typeof balanceSchema> = await ctx.db.$queryRaw`
-          SELECT
-            t.currency,
-            e.id as entityId,
-            e."tagName" as entityTag,
-            e.name as entityName,
-            m.account,
-            SUM(CASE
-              WHEN t."fromEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-              WHEN t."toEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-              ELSE 0
-            END) -
-            SUM(CASE
-              WHEN t."fromEntityId" = e.id AND m."direction" = -1 THEN t."amount"
-              WHEN t."toEntityId" = e.id AND m."direction" = 1 THEN t."amount"
-              ELSE 0
-            END) as balance
-          FROM
-            "Transactions" t
-          JOIN
-            "Entities" e ON t."fromEntityId" = e.id OR t."toEntityId" = e.id
-          LEFT JOIN
-            "Movements" m ON t.id = m."transactionId"
-            WHERE
-          ${Prisma.sql`
-              (
-                t."fromEntityId" IN (
-                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
-                  )})
-                ) AND t."toEntityId" NOT IN (
-                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
-                  )})
-                )
-              ) OR (
-                t."toEntityId" IN (
-                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
-                  )})
-                ) AND t."fromEntityId" NOT IN (
-                  SELECT id FROM "Entities" WHERE "tagName" = ANY(${Prisma.raw(
-                    `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
-                  )})
-                )
-              )
-              AND e."tagName" != ANY(${Prisma.raw(
-                `ARRAY[${allTags.map((tag) => `'${tag}'`).join(",")}]`,
-              )})
-              AND m.account = ${input.accountType}
-            `}
-  
-          GROUP BY
-            t.currency, e.id, e."tagName", e.name, m.account
-        `;
-
-        return balances.filter(
-          (balance) =>
-            !allTags.includes(balance.entitytag) &&
-            balance.status === input.accountType,
-        )!;
-      } else {
-        return [];
-      }
     }),
 });

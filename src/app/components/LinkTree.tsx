@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { capitalizeFirstLetter } from "~/lib/functions";
-import { cn } from "~/lib/utils";
 
 const LinkTree = () => {
   const pathname = usePathname();
@@ -11,7 +10,7 @@ const LinkTree = () => {
   let currentPath = "";
 
   return (
-    <div className="flex flex-row space-x-1 text-lg">
+    <div className="text-md flex flex-row space-x-1 lg:text-lg">
       <Link href="/">Inicio / </Link>
       {paths.map((path, index) => {
         currentPath += `/${path}`;
@@ -20,7 +19,10 @@ const LinkTree = () => {
             {currentPath === pathname ? (
               <p className="font-bold">{capitalizeFirstLetter(path)}</p>
             ) : (
-              <Link href={currentPath} className="text-black">
+              <Link
+                href={currentPath}
+                className="rounded-xl p-2 text-black transition-all hover:text-primary hover:shadow-md"
+              >
                 {capitalizeFirstLetter(path)}
               </Link>
             )}

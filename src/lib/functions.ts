@@ -1,4 +1,6 @@
+import type { Balances } from "@prisma/client";
 import moment from "moment";
+import type { RouterOutputs } from "~/trpc/shared";
 import { translations } from "./variables";
 
 export const getInitials = (name: string): string => {
@@ -184,144 +186,6 @@ export const generateLink = ({
   return url;
 };
 
-type Balance = {
-  entityId: number;
-  entityName: string;
-  entityTag: string;
-  balances: {
-    currency: string;
-    date: Date;
-    status: boolean;
-    amount: number;
-  }[];
-}[];
-
-export const calculateTotal = (
-  balances: Balance,
-  timeframe: "daily" | "weekly" | "monthly" | "yearly",
-) => {
-  return balances.map((entity) => {
-    const result: {
-      currency: string;
-      status: boolean;
-      amount: number;
-      beforeAmount: number;
-    }[] = [];
-
-    entity.balances.forEach((balance) => {
-      const currentDate = moment();
-
-      // Calculate the duration based on the timeframe
-      const duration =
-        timeframe === "daily"
-          ? 1
-          : timeframe === "weekly"
-          ? 7
-          : timeframe === "monthly"
-          ? 30
-          : timeframe === "yearly"
-          ? 365
-          : 1; // Default to 1 if the timeframe is not recognized
-
-      const startDate = currentDate.clone().subtract(duration, "days");
-
-      // Calculate total amount
-      const existingEntry = result.find(
-        (entry) =>
-          entry.currency === balance.currency &&
-          entry.status === balance.status,
-      );
-
-      if (!existingEntry) {
-        result.push({
-          currency: balance.currency,
-          status: balance.status,
-          amount: balance.amount,
-          beforeAmount: startDate.isBefore(balance.date) ? 0 : balance.amount,
-        });
-      } else {
-        existingEntry.amount += balance.amount;
-        existingEntry.beforeAmount += startDate.isBefore(balance.date)
-          ? 0
-          : balance.amount;
-      }
-    });
-
-    return { ...entity, totalBalances: result };
-  });
-};
-
-type OutputBalance = {
-  currency: string;
-  balances: {
-    status: boolean;
-    amount: number;
-    beforeAmount: number;
-  }[];
-};
-
-export const calculateTotalAllEntities = (
-  balances: Balance,
-  timeframe: "daily" | "weekly" | "monthly" | "yearly",
-): OutputBalance[] => {
-  const result: OutputBalance[] = [];
-
-  balances.forEach((entity) => {
-    entity.balances.forEach((balance) => {
-      const currentDate = moment();
-
-      // Calculate the duration based on the timeframe
-      const duration =
-        timeframe === "daily"
-          ? 1
-          : timeframe === "weekly"
-          ? 7
-          : timeframe === "monthly"
-          ? 30
-          : timeframe === "yearly"
-          ? 365
-          : 1; // Default to 1 if the timeframe is not recognized
-
-      const startDate = currentDate.clone().subtract(duration, "days");
-
-      const existingCurrency = result.find(
-        (entry) => entry.currency === balance.currency,
-      );
-
-      if (!existingCurrency) {
-        result.push({
-          currency: balance.currency,
-          balances: [
-            {
-              status: true,
-              amount: 0,
-              beforeAmount: 0,
-            },
-            {
-              status: false,
-              amount: 0,
-              beforeAmount: 0,
-            },
-          ],
-        });
-      }
-
-      const existingBalance = result
-        .find((entry) => entry.currency === balance.currency)
-        ?.balances.find((b) => b.status === balance.status);
-
-      if (existingBalance) {
-        existingBalance.amount += balance.amount;
-        existingBalance.beforeAmount += startDate.isBefore(balance.date)
-          ? 0
-          : balance.amount;
-      }
-    });
-  });
-
-  return result;
-};
-
 interface Tag {
   name: string;
   parent: string | null;
@@ -357,7 +221,7 @@ export function isTagAllowed(
 }
 
 export function getAllChildrenTags(
-  tagNames: string | string[] | undefined,
+  tagNames: string | string[] | undefined | null,
   allTags: {
     name: string;
     parent: string | null;
@@ -383,9 +247,11 @@ export function getAllChildrenTags(
     if (currentTag) {
       result.push(currentTag.name);
 
-      // Recursively find children of the current tag
-      for (const child of currentTag.childTags) {
-        getAllChildrenTags(child.name, allTags, result);
+      if (currentTag.childTags) {
+        // Recursively find children of the current tag
+        for (const child of currentTag.childTags) {
+          getAllChildrenTags(child.name, allTags, result);
+        }
       }
     }
   }
@@ -453,3 +319,159 @@ export const sortEntries = (a: BarChartEntry, b: BarChartEntry): number => {
 };
 
 export const isNumeric = (value: string) => /^[+-]?\d+(\.\d+)?$/.test(value);
+
+interface HeadingNode {
+  text: string;
+  children?: HeadingNode[];
+}
+
+export function getHeadingsTree(mdxContent: string): HeadingNode[] {
+  const regex = /^#{2,3}\s+(.*)/gm;
+  const matches = mdxContent.match(regex);
+
+  const headings = matches ? matches.map((match) => match.trim()) : [];
+
+  const root: HeadingNode[] = [];
+
+  headings.forEach((heading) => {
+    const level = heading.startsWith("###") ? 3 : 2;
+    const node: HeadingNode = {
+      text: heading.replace(/^#{2,3}\s+/, ""),
+      children: level === 3 ? undefined : [],
+    };
+
+    if (level === 2) {
+      root.push(node);
+    } else if (level === 3) {
+      root.findLast(() => true)?.children?.push(node);
+    }
+  });
+
+  return root;
+}
+
+export function convertToSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, "")
+    .replace(/\s+/g, "-")
+    .trim();
+}
+
+export const movementBalanceDirection = (
+  fromEntityId: number,
+  toEntityId: number,
+  direction: number,
+) => {
+  return fromEntityId < toEntityId ? -1 * direction : direction;
+};
+
+// Function to calculate the beforeAmount based on the duration
+export const calculateBeforeAmount = (
+  balancesData: Balances[],
+  duration: "day" | "week" | "month" | "year",
+): number => {
+  const currentDate = moment();
+
+  const filteredBalances = balancesData.filter((balance) =>
+    moment(balance.date).isBefore(currentDate, duration),
+  );
+
+  return filteredBalances.reduce(
+    (total, balance) => total + balance.balance,
+    0,
+  );
+};
+
+export const generateTableData = (
+  movements: RouterOutputs["movements"]["getCurrentAccounts"]["movements"],
+  entityId: number | undefined | null,
+  entityTag: string | undefined | null,
+  allTags: RouterOutputs["tags"]["getAll"],
+) => {
+  const tableData = movements.map((movement) => {
+    if (entityId) {
+      // Esto indica, si es 1, que gano, si es -1, que pierdo
+      const direction =
+        entityId === movement.transaction.fromEntityId
+          ? -movement.direction
+          : movement.direction;
+      const selectedEntity =
+        entityId === movement.transaction.fromEntityId
+          ? movement.transaction.fromEntity
+          : movement.transaction.toEntity;
+      const otherEntity =
+        entityId === movement.transaction.fromEntityId
+          ? movement.transaction.toEntity
+          : movement.transaction.fromEntity;
+
+      return {
+        id: movement.id,
+        date: movement.transaction.date
+          ? moment(movement.transaction.date).format("DD/MM/YYYY")
+          : moment(movement.transaction.operation.date).format("DD/MM/YYYY"),
+        operationId: movement.transaction.operationId,
+        type: movement.type,
+        otherEntityId: otherEntity.id,
+        otherEntity: otherEntity.name,
+        selectedEntityId: selectedEntity.id,
+        selectedEntity: selectedEntity.name,
+        currency: movement.transaction.currency,
+        ingress: direction === 1 ? movement.transaction.amount : 0,
+        egress: direction === -1 ? movement.transaction.amount : 0,
+        method: movement.transaction.method,
+        status: movement.transaction.status,
+        txType: movement.transaction.type,
+        metadata: movement.transaction.transactionMetadata?.metadata,
+        balance:
+          selectedEntity.id < otherEntity.id
+            ? movement.balance
+            : -movement.balance,
+      };
+    } else {
+      const allChildrenTags = getAllChildrenTags(entityTag, allTags);
+      // Esto indica, si es 1, que gano, si es -1, que pierdo
+      const direction = allChildrenTags.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? -movement.direction
+        : movement.direction;
+      const selectedEntity = allChildrenTags.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.fromEntity
+        : movement.transaction.toEntity;
+      const otherEntity = allChildrenTags.includes(
+        movement.transaction.fromEntity.tagName,
+      )
+        ? movement.transaction.toEntity
+        : movement.transaction.fromEntity;
+
+      return {
+        id: movement.id,
+        date: movement.transaction.date
+          ? moment(movement.transaction.date).format("DD/MM/YYYY")
+          : moment(movement.transaction.operation.date).format("DD/MM/YYYY"),
+        operationId: movement.transaction.operationId,
+        type: movement.type,
+        otherEntityId: otherEntity.id,
+        otherEntity: otherEntity.name,
+        selectedEntityId: selectedEntity.id,
+        selectedEntity: selectedEntity.name,
+        currency: movement.transaction.currency,
+        ingress: direction === 1 ? movement.transaction.amount : 0,
+        egress: direction === -1 ? movement.transaction.amount : 0,
+        method: movement.transaction.method,
+        status: movement.transaction.status,
+        txType: movement.transaction.type,
+        metadata: movement.transaction.transactionMetadata?.metadata,
+        balance:
+          selectedEntity.id < otherEntity.id
+            ? movement.balance
+            : -movement.balance,
+      };
+    }
+  });
+
+  return tableData;
+};

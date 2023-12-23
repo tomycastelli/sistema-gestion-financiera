@@ -5,58 +5,51 @@ import Balances from "./Balances";
 import MovementsTable from "./MovementsTable";
 
 const AccountsTable = async ({
-  searchParams,
   initialBalances,
   accountType,
   initialTags,
+  linkId,
+  linkToken,
+  entityId,
+  entityTag,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
   accountType: boolean;
   initialTags: RouterOutputs["tags"]["getAll"];
+  linkId: number | null;
+  linkToken: string | null;
+  entityId: number | null;
+  entityTag: string | null;
 }) => {
   const session = await getServerAuthSession();
   console.log(session);
 
   const entities = await api.entities.getAll.query();
 
-  const selectedEntityString = searchParams.entidad as string;
-  const selectedEntity = selectedEntityString
-    ? parseInt(selectedEntityString)
-    : undefined;
-  const selectedTag = searchParams.tag as string;
-  const selectedPageNumber = parseInt(searchParams.pagina as string) || 1;
-
-  const linkId = parseInt(searchParams.id as string) || null;
-  const linkToken = (searchParams.token as string) || null;
-
-  const pageSize = 15;
+  const pageSize = 20;
 
   const initialMovements = await api.movements.getCurrentAccounts.query({
     linkId: linkId,
     linkToken: linkToken,
-    sharedEntityId: selectedEntity,
+    sharedEntityId: entityId,
     pageSize: pageSize,
-    pageNumber: selectedPageNumber,
-    entityId: selectedEntity,
-    entityTag: selectedTag,
+    pageNumber: 1,
+    entityId: entityId,
+    entityTag: entityTag,
     account: accountType,
-  });
-
-  const initialDetailedBalances = await api.movements.getDetailedBalance.query({
-    linkId: linkId,
-    linkToken: linkToken,
-    entityId: selectedEntity,
-    entityTag: selectedTag,
-    accountType: accountType,
   });
 
   return (
     <div className="flex flex-grow flex-col space-y-8">
       <Balances
+        tags={initialTags}
         accountType={accountType}
         initialBalances={initialBalances}
-        initialDetailedBalances={initialDetailedBalances}
+        linkId={linkId}
+        linkToken={linkToken}
+        selectedEntityId={entityId}
+        selectedTag={entityTag}
       />
       {initialMovements.movements.length > 0 && (
         <div className="flex flex-col space-y-4">
@@ -71,10 +64,9 @@ const AccountsTable = async ({
             accountType={accountType}
             session={session}
             pageSize={pageSize}
-            pageNumber={selectedPageNumber}
             initialMovements={initialMovements}
-            entityTag={selectedTag}
-            entityId={selectedEntity}
+            entityTag={entityTag}
+            entityId={entityId}
           />
         </div>
       )}

@@ -50,6 +50,7 @@ interface PermissionsFormProps {
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   initialPermissions: RouterOutputs["users"]["getUserPermissions"];
   initialEntities: RouterOutputs["entities"]["getAll"];
+  initialRoles: RouterOutputs["roles"]["getAll"];
   userId: string;
   session: Session;
   tags: RouterOutputs["tags"]["getAll"];
@@ -59,6 +60,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
   userPermissions,
   initialPermissions,
   initialEntities,
+  initialRoles,
   userId,
   tags,
 }) => {
@@ -68,6 +70,11 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
     { id: userId },
     { initialData: initialPermissions, refetchOnWindowFocus: false },
   );
+
+  const { data: roles } = api.roles.getAll.useQuery(undefined, {
+    initialData: initialRoles,
+    refetchOnWindowFocus: false,
+  });
 
   const { data: entities } = api.entities.getAll.useQuery(undefined, {
     initialData: initialEntities,
@@ -222,6 +229,9 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                 (p.name ===
                                   "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
                                   loopField.name.startsWith("TRANSACTIONS")) ||
+                                (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
+                                  user?.role?.name &&
+                                  p.entitiesTags?.includes(user.role.name)) ||
                                 (p.name ===
                                   "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
                                   loopField.name.startsWith("ENTITIES")),
@@ -239,82 +249,86 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
             />
             {loopField.name.endsWith("_SOME") && (
               <div className="flex flex-row space-x-4">
-                <FormField
-                  control={form.control}
-                  name={`permissions.${index}.entitiesIds`}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Entidades</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-[200px] justify-start space-x-2",
-                                !field.value && "text-muted-foreground",
-                              )}
-                            >
-                              {field.value
-                                ? field.value.map((number) => (
-                                    <p key={number}>{number}</p>
-                                  ))
-                                : "Añadir entidad"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Buscar entidad..." />
-                            <CommandEmpty>...</CommandEmpty>
-                            <CommandGroup>
-                              {entities.map((entity) => (
-                                <CommandItem
-                                  value={entity.name}
-                                  key={entity.id}
-                                  onSelect={() => {
-                                    if (!field.value.includes(entity.id)) {
-                                      setValue(
-                                        `permissions.${index}.entitiesIds`,
-                                        [...field.value, entity.id],
-                                      );
-                                    } else {
-                                      setValue(
-                                        `permissions.${index}.entitiesIds`,
-                                        field.value.filter(
-                                          (number) => number !== entity.id,
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value.includes(entity.id)
-                                        ? "opacity-100"
-                                        : "opacity-0",
-                                    )}
-                                  />
-                                  {entity.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!loopField.name.startsWith("USERS_") && (
+                  <FormField
+                    control={form.control}
+                    name={`permissions.${index}.entitiesIds`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Entidades</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-[200px] justify-start space-x-2",
+                                  !field.value && "text-muted-foreground",
+                                )}
+                              >
+                                {field.value
+                                  ? field.value.map((number) => (
+                                      <p key={number}>{number}</p>
+                                    ))
+                                  : "Añadir entidad"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[200px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Buscar entidad..." />
+                              <CommandEmpty>...</CommandEmpty>
+                              <CommandGroup>
+                                {entities.map((entity) => (
+                                  <CommandItem
+                                    value={entity.name}
+                                    key={entity.id}
+                                    onSelect={() => {
+                                      if (!field.value.includes(entity.id)) {
+                                        setValue(
+                                          `permissions.${index}.entitiesIds`,
+                                          [...field.value, entity.id],
+                                        );
+                                      } else {
+                                        setValue(
+                                          `permissions.${index}.entitiesIds`,
+                                          field.value.filter(
+                                            (number) => number !== entity.id,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value.includes(entity.id)
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {entity.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={control}
                   name={`permissions.${index}.entitiesTags`}
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Tags</FormLabel>
+                      <FormLabel>
+                        {loopField.name.startsWith("USERS_") ? "Roles" : "Tags"}
+                      </FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -332,47 +346,88 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       {capitalizeFirstLetter(tag)}
                                     </p>
                                   ))
-                                : "Añadir entidad"}
+                                : loopField.name.startsWith("USERS_")
+                                ? "Añadir rol"
+                                : "Añadir Tag"}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-[200px] p-0">
                           <Command>
-                            <CommandInput placeholder="Buscar entidad..." />
+                            <CommandInput
+                              placeholder={
+                                loopField.name.startsWith("USERS_")
+                                  ? "Buscar rol..."
+                                  : "Buscar entidad..."
+                              }
+                            />
                             <CommandEmpty>...</CommandEmpty>
                             <CommandGroup>
-                              {tags.map((tag) => (
-                                <CommandItem
-                                  value={tag.name}
-                                  key={tag.name}
-                                  onSelect={() => {
-                                    if (!field.value.includes(tag.name)) {
-                                      setValue(
-                                        `permissions.${index}.entitiesTags`,
-                                        [...field.value, tag.name],
-                                      );
-                                    } else {
-                                      setValue(
-                                        `permissions.${index}.entitiesTags`,
-                                        field.value.filter(
-                                          (number) => number !== tag.name,
-                                        ),
-                                      );
-                                    }
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value.includes(tag.name)
-                                        ? "opacity-100"
-                                        : "opacity-0",
-                                    )}
-                                  />
-                                  {capitalizeFirstLetter(tag.name)}
-                                </CommandItem>
-                              ))}
+                              {loopField.name.startsWith("USERS_")
+                                ? roles &&
+                                  roles.map((role) => (
+                                    <CommandItem
+                                      key={role.id}
+                                      value={role.name}
+                                      onSelect={() => {
+                                        if (!field.value.includes(role.name)) {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            [...field.value, role.name],
+                                          );
+                                        } else {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            field.value.filter(
+                                              (number) => number !== role.name,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value.includes(role.name)
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      {capitalizeFirstLetter(role.name)}
+                                    </CommandItem>
+                                  ))
+                                : tags.map((tag) => (
+                                    <CommandItem
+                                      value={tag.name}
+                                      key={tag.name}
+                                      onSelect={() => {
+                                        if (!field.value.includes(tag.name)) {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            [...field.value, tag.name],
+                                          );
+                                        } else {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            field.value.filter(
+                                              (number) => number !== tag.name,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value.includes(tag.name)
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      {capitalizeFirstLetter(tag.name)}
+                                    </CommandItem>
+                                  ))}
                             </CommandGroup>
                           </Command>
                         </PopoverContent>

@@ -20,10 +20,10 @@ const TimeRangeSelector = () => {
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="daily">Diario</SelectItem>
-          <SelectItem value="weekly">Semanal</SelectItem>
-          <SelectItem value="monthly">Mensual</SelectItem>
-          <SelectItem value="yearly">Anual</SelectItem>
+          <SelectItem value="day">Diario</SelectItem>
+          <SelectItem value="week">Semanal</SelectItem>
+          <SelectItem value="month">Mensual</SelectItem>
+          <SelectItem value="year">Anual</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>

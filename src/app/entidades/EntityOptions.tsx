@@ -4,6 +4,17 @@ import { type FC } from "react";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
 import { Button } from "../components/ui/button";
 import { toast } from "../components/ui/use-toast";
 import ChangeEntityForm from "./ChangeEntityForm";
@@ -40,7 +51,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
       // Doing some ui actions
       toast({
         title: "No se pudo eliminar la entidad",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },
@@ -51,13 +62,31 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
 
   return (
     <div className="mx-auto flex w-2/3 flex-row space-x-4">
-      <Button
-        variant="outline"
-        className="border-transparent p-1"
-        onClick={() => deleteAsync({ entityId: entity.id })}
-      >
-        <Icons.cross className="h-6 text-red" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" className="border-transparent p-1">
+            <Icons.cross className="h-6 text-red" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará la entidad (si la misma no tiene transacciones
+              relacionadas)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red"
+              onClick={() => deleteAsync({ entityId: entity.id })}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ChangeEntityForm entity={entity} />
     </div>

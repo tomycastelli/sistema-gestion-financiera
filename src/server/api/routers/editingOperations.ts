@@ -1,5 +1,7 @@
+import moment from "moment";
 import { z } from "zod";
-import { findDifferences } from "~/lib/functions";
+import { findDifferences, movementBalanceDirection } from "~/lib/functions";
+import { generateMovements } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const editingOperationsRouter = createTRPCRouter({
@@ -75,7 +77,48 @@ export const editingOperationsRouter = createTRPCRouter({
                 },
               },
             },
+            include: {
+              movements: true,
+            },
           });
+
+          // Borro todos los movimientos y retrocedo en los balances
+          await ctx.db.movements.deleteMany({
+            where: {
+              id: {
+                in: updateTransactionResponse.movements.flatMap((mv) => mv.id),
+              },
+            },
+          });
+
+          for (const mv of updateTransactionResponse.movements) {
+            const amountModifiedByMovement =
+              movementBalanceDirection(
+                input.oldTransactionData.fromEntityId,
+                input.oldTransactionData.toEntityId,
+                mv.direction,
+              ) * input.oldTransactionData.amount;
+
+            await ctx.db.balances.update({
+              where: {
+                id: mv.balanceId,
+              },
+              data: {
+                balance: {
+                  decrement: amountModifiedByMovement,
+                },
+              },
+            });
+
+            // Creo los movimientos y balances con los nuevos datos
+            await generateMovements(
+              ctx.db,
+              updateTransactionResponse,
+              mv.account,
+              mv.direction,
+              mv.type,
+            );
+          }
 
           console.log(`Transaction ${input.txId} edited`);
           return updateTransactionResponse;
@@ -108,7 +151,7 @@ export const editingOperationsRouter = createTRPCRouter({
             },
           },
           data: {
-            status: true,
+            status: "confirmed",
           },
         });
 
@@ -120,35 +163,28 @@ export const editingOperationsRouter = createTRPCRouter({
           },
           data: {
             confirmedBy: ctx.session.user.id,
+            confirmedDate: new Date(),
           },
         });
 
-        const movements = input.transactionIds.flatMap((transactionId) => {
-          return [
-            {
-              transactionId,
-              direction: 1,
-              type: "confirmation",
-              account: false,
+        const transactionsData = ctx.db.transactions.findMany({
+          where: {
+            id: {
+              in: input.transactionIds,
             },
-            {
-              transactionId,
-              direction: 1,
-              type: "confirmation",
-              account: true,
-            },
-          ];
-        });
-
-        const updateMovements = ctx.db.movements.createMany({
-          data: movements,
+          },
         });
 
         const responses = await ctx.db.$transaction([
           updateTransactions,
           updateMetadata,
-          updateMovements,
+          transactionsData,
         ]);
+
+        for (const tx of responses[2]) {
+          await generateMovements(ctx.db, tx, false, 1, "confirmation");
+          await generateMovements(ctx.db, tx, true, 1, "confirmation");
+        }
 
         console.log(`${responses[0].count} transactions confirmed`);
         return responses;
@@ -158,6 +194,242 @@ export const editingOperationsRouter = createTRPCRouter({
           error,
         );
         throw error;
+      }
+    }),
+  cancelTransaction: protectedProcedure
+    .input(
+      z.object({
+        transactionId: z.number().int().optional(),
+        operationId: z.number().int().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.transactionId) {
+        const cancelledTransaction = await ctx.db.transactions.update({
+          where: {
+            id: input.transactionId,
+          },
+          data: {
+            status: "cancelled",
+          },
+          select: {
+            movements: true,
+            fromEntityId: true,
+            toEntityId: true,
+            amount: true,
+            id: true,
+            date: true,
+            currency: true,
+            operation: true,
+          },
+        });
+
+        await ctx.db.transactionsMetadata.update({
+          where: {
+            transactionId: input.transactionId,
+          },
+          data: {
+            cancelledBy: ctx.session.user.id,
+            cancelledDate: new Date(),
+          },
+        });
+
+        let modifiedBalancesCounter = 0;
+        let createdMovementsCounter = 0;
+        if (cancelledTransaction) {
+          for (const mv of cancelledTransaction.movements) {
+            const amountModifiedByMovement =
+              movementBalanceDirection(
+                cancelledTransaction.fromEntityId,
+                cancelledTransaction.toEntityId,
+                mv.direction,
+              ) * cancelledTransaction.amount;
+
+            await ctx.db.movements.create({
+              data: {
+                transactionId: mv.transactionId,
+                direction: mv.direction * -1,
+                type: "cancellation",
+                account: mv.account,
+                balance: mv.balance - amountModifiedByMovement,
+                balanceId: mv.balanceId,
+              },
+            });
+
+            createdMovementsCounter += 1;
+
+            if (
+              cancelledTransaction.date
+                ? moment().isSame(cancelledTransaction.date, "day")
+                : moment().isSame(cancelledTransaction.operation.date, "day")
+            ) {
+              await ctx.db.balances.update({
+                where: {
+                  id: mv.balanceId,
+                },
+                data: {
+                  balance: {
+                    decrement: amountModifiedByMovement,
+                  },
+                },
+              });
+
+              modifiedBalancesCounter += 1;
+            } else {
+              // En teoria esto funciona tambien para cancelar el pasado ya que mueve todo lo del futuro
+              const balances = await ctx.db.balances.updateMany({
+                where: {
+                  OR: [
+                    {
+                      currency: cancelledTransaction.currency,
+                      selectedEntityId:
+                        cancelledTransaction.fromEntityId <
+                        cancelledTransaction.toEntityId
+                          ? cancelledTransaction.fromEntityId
+                          : cancelledTransaction.toEntityId,
+                      otherEntityId:
+                        cancelledTransaction.fromEntityId <
+                        cancelledTransaction.toEntityId
+                          ? cancelledTransaction.toEntityId
+                          : cancelledTransaction.fromEntityId,
+                      account: mv.account,
+                      date: {
+                        gt: cancelledTransaction.date
+                          ? cancelledTransaction.date
+                          : cancelledTransaction.operation.date,
+                      },
+                    },
+                    { id: mv.balanceId },
+                  ],
+                },
+                data: {
+                  balance: {
+                    decrement: amountModifiedByMovement,
+                  },
+                },
+              });
+              modifiedBalancesCounter += balances.count;
+            }
+          }
+        }
+        return { modifiedBalancesCounter, createdMovementsCounter };
+      } else if (input.operationId) {
+        const transactionsToCancel = await ctx.db.transactions.findMany({
+          where: {
+            operationId: input.operationId,
+          },
+          select: {
+            movements: true,
+            fromEntityId: true,
+            toEntityId: true,
+            amount: true,
+            id: true,
+            date: true,
+            currency: true,
+            operation: true,
+          },
+        });
+
+        await ctx.db.transactions.updateMany({
+          where: {
+            operationId: input.operationId,
+          },
+          data: {
+            status: "cancelled",
+          },
+        });
+
+        await ctx.db.transactionsMetadata.updateMany({
+          where: {
+            transactionId: { in: transactionsToCancel.flatMap((tx) => tx.id) },
+          },
+          data: {
+            cancelledBy: ctx.session.user.id,
+            cancelledDate: new Date(),
+          },
+        });
+
+        let modifiedBalancesCounter = 0;
+        let createdMovementsCounter = 0;
+        if (transactionsToCancel) {
+          for (const cancelledTransaction of transactionsToCancel) {
+            for (const mv of cancelledTransaction.movements) {
+              const amountModifiedByMovement =
+                movementBalanceDirection(
+                  cancelledTransaction.fromEntityId,
+                  cancelledTransaction.toEntityId,
+                  mv.direction,
+                ) * cancelledTransaction.amount;
+
+              await ctx.db.movements.create({
+                data: {
+                  transactionId: mv.transactionId,
+                  direction: mv.direction * -1,
+                  type: "cancellation",
+                  account: mv.account,
+                  balance: mv.balance - amountModifiedByMovement,
+                  balanceId: mv.balanceId,
+                },
+              });
+
+              createdMovementsCounter += 1;
+
+              if (
+                cancelledTransaction.date
+                  ? moment().isSame(cancelledTransaction.date, "day")
+                  : moment().isSame(cancelledTransaction.operation.date, "day")
+              ) {
+                await ctx.db.balances.update({
+                  where: {
+                    id: mv.balanceId,
+                  },
+                  data: {
+                    balance: {
+                      decrement: amountModifiedByMovement,
+                    },
+                  },
+                });
+
+                modifiedBalancesCounter += 1;
+              } else {
+                // En teoria esto funciona tambien para cancelar el pasado ya que mueve todo lo del futuro
+                const balances = await ctx.db.balances.updateMany({
+                  where: {
+                    OR: [
+                      {
+                        currency: cancelledTransaction.currency,
+                        selectedEntityId:
+                          cancelledTransaction.fromEntityId <
+                          cancelledTransaction.toEntityId
+                            ? cancelledTransaction.fromEntityId
+                            : cancelledTransaction.toEntityId,
+                        otherEntityId:
+                          cancelledTransaction.fromEntityId <
+                          cancelledTransaction.toEntityId
+                            ? cancelledTransaction.toEntityId
+                            : cancelledTransaction.fromEntityId,
+                        account: mv.account,
+                        date: {
+                          gt: cancelledTransaction.date
+                            ? cancelledTransaction.date
+                            : cancelledTransaction.operation.date,
+                        },
+                      },
+                      { id: mv.balanceId },
+                    ],
+                  },
+                  data: {
+                    balance: {
+                      decrement: amountModifiedByMovement,
+                    },
+                  },
+                });
+                modifiedBalancesCounter += balances.count;
+              }
+            }
+          }
+        }
+        return { modifiedBalancesCounter, createdMovementsCounter };
       }
     }),
 });

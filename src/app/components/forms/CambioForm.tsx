@@ -65,7 +65,7 @@ interface OperationFormProps {
 const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
-    : null;
+    : undefined;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -432,14 +432,22 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                 <div className="flex flex-row items-center space-x-2">
                   <Icons.arrowLeft className="h-8" />
                   {!isNaN(parseFloat(watchAmountA)) && (
-                    <h3 className="text-sm">{watchAmountA}</h3>
+                    <h3 className="text-sm">
+                      {new Intl.NumberFormat("es-AR").format(
+                        parseFloat(watchAmountA),
+                      )}
+                    </h3>
                   )}
                   <h3 className="text-sm">{watchCurrencyA?.toUpperCase()}</h3>
                 </div>
                 <div className="flex flex-row items-center space-x-2">
                   <h3 className="text-sm">{watchCurrencyB?.toUpperCase()}</h3>
                   {!isNaN(parseFloat(watchAmountB)) && (
-                    <h3 className="text-sm">{watchAmountB}</h3>
+                    <h3 className="text-sm">
+                      {new Intl.NumberFormat("es-AR").format(
+                        parseFloat(watchAmountB),
+                      )}
+                    </h3>
                   )}
                   <Icons.arrowRight className="h-8" />
                 </div>

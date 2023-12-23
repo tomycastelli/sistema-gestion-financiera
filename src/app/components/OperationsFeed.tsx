@@ -70,7 +70,6 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
           <p className="text-2xl">No se encontraron operaciones</p>
         )}
       </div>
-      <div className="flex w-full flex-row items-end justify-end space-x-2"></div>
     </div>
   );
 };

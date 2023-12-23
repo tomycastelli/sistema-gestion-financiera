@@ -25,6 +25,12 @@ const TransactionStatusButton = ({
   const { txIdsStore, changeTxIds, resetTxIds } = useOperationsPageStore();
   const utils = api.useContext();
 
+  enum Status {
+    pending = "pending",
+    confirmed = "confirmed",
+    cancelled = "cancelled",
+  }
+
   const { mutate } = api.editingOperations.updateTransactionStatus.useMutation({
     async onMutate(newOperation) {
       toast({
@@ -49,7 +55,7 @@ const TransactionStatusButton = ({
               ) {
                 return {
                   ...transaction,
-                  status: true,
+                  status: Status.confirmed,
                   transactionMetadata: {
                     ...transaction.transactionMetadata,
                     confirmedBy: user.id,
@@ -89,7 +95,7 @@ const TransactionStatusButton = ({
 
   return (
     <Button
-      disabled={tx.status}
+      disabled={tx.status === Status.confirmed}
       onClick={() => {
         const txIdAdded = changeTxIds(tx.id, txIdsStore);
         const updatedTxIdsStore = txIdAdded
@@ -120,14 +126,16 @@ const TransactionStatusButton = ({
         });
       }}
       className={cn(
-        "rounded-full border-2 border-transparent bg-transparent p-2 hover:bg-muted",
-        txIdsStore.includes(tx.id) ? "bg-slate-200" : "bg-transparent",
+        "rounded-full border-2 border-transparent bg-transparent p-2",
+        txIdsStore.includes(tx.id) ? "bg-primary" : "bg-transparent",
       )}
     >
-      {tx.status ? (
+      {tx.status === Status.confirmed ? (
         <Icons.check className="h-8 text-green" />
+      ) : tx.status === Status.cancelled ? (
+        <Icons.valueNone className="h-8 text-green" />
       ) : (
-        <Icons.valueNone className="h-7 text-black" />
+        <Icons.clock className="h-7 text-black" />
       )}
     </Button>
   );
