@@ -225,7 +225,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
 
   return (
     <div className="grid grid-cols-4 gap-8">
-      <div className="col-span-4 grid grid-cols-3 gap-8">
+      <div className="col-span-4 grid grid-cols-2 gap-8 lg:grid-cols-3">
         {balancesForCard &&
           balancesForCard.map((item) => (
             <Card
@@ -254,7 +254,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             </Card>
           ))}
       </div>
-      <div className="col-span-4 grid grid-cols-2 gap-8">
+      <div className="col-span-4 grid grid-cols-1 gap-8 lg:grid-cols-2">
         {selectedCurrency ? (
           <Card>
             <CardHeader>

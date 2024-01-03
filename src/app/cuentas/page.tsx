@@ -127,7 +127,7 @@ const Page = async ({
         <>
           <div className="flex w-full flex-row justify-between space-x-4 border-b border-muted pb-4">
             {session && (
-              <div className="flex flex-row space-x-4">
+              <div className="grid w-1/3 grid-cols-1 gap-4 xl:grid-cols-2">
                 <EntitySwitcher
                   entities={filteredEntities}
                   tags={filteredTags}

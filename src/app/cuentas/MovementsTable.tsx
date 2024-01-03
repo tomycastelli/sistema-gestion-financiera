@@ -35,6 +35,12 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Label } from "../components/ui/label";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "../components/ui/pagination";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -75,6 +81,8 @@ const MovementsTable = ({
   linkId,
   linkToken,
 }: CuentasTableProps) => {
+  const utils = api.useContext();
+
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
 
@@ -285,6 +293,8 @@ const MovementsTable = ({
     },
   ];
 
+  const lastPage = Math.ceil(data.totalRows / pageSize);
+
   return (
     <div>
       <div>
@@ -423,7 +433,13 @@ const MovementsTable = ({
           {session && selectedEntityString && !accountType && (
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
-          <Button variant="outline" onClick={() => refetch()}>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await utils.movements.getBalancesByEntities.refetch();
+              void refetch();
+            }}
+          >
             <Icons.reload className="h-5" />
           </Button>
         </div>
@@ -433,33 +449,76 @@ const MovementsTable = ({
           <LoadingAnimation text="Cargando movimientos" />
         )}
       </div>
-      <div className="mt-2 flex flex-row items-center justify-between text-lg text-muted-foreground">
-        <div className="flex flex-row items-center space-x-3">
-          {movementsTablePage > 1 && (
-            <Button
-              variant="outline"
-              className="flex flex-row items-center space-x-1"
-              onClick={() => setMovementsTablePage(movementsTablePage - 1)}
-            >
-              <Icons.chevronLeft className="h-6" />
-              <p>Anterior</p>
-            </Button>
-          )}
-          <p>
-            <span className="text-black">{movementsTablePage}</span>
-            {" / " + Math.ceil(data.totalRows / pageSize)}
-          </p>
-          {movementsTablePage < Math.ceil(data.totalRows / pageSize) && (
-            <Button
-              variant="outline"
-              className="flex flex-row items-center space-x-1"
-              onClick={() => setMovementsTablePage(movementsTablePage + 1)}
-            >
-              <p>Siguiente</p>
-              <Icons.chevronRight className="h-6" />
-            </Button>
-          )}
-        </div>
+      <div className="mt-4 flex flex-col items-center justify-center space-y-2">
+        <Pagination>
+          <PaginationContent>
+            {movementsTablePage > 2 && (
+              <PaginationItem>
+                <Button
+                  onClick={() => setMovementsTablePage(1)}
+                  variant="outline"
+                  className={cn(
+                    movementsTablePage === 1 && "border-muted-foreground",
+                  )}
+                >
+                  1
+                </Button>
+              </PaginationItem>
+            )}
+            {movementsTablePage > 3 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+            {movementsTablePage > 1 && (
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  onClick={() => setMovementsTablePage(movementsTablePage - 1)}
+                >
+                  {movementsTablePage - 1}
+                </Button>
+              </PaginationItem>
+            )}
+            <PaginationItem>
+              <Button
+                variant="outline"
+                onClick={() => setMovementsTablePage(movementsTablePage)}
+                className="border-muted-foreground"
+              >
+                {movementsTablePage}
+              </Button>
+            </PaginationItem>
+            {movementsTablePage < lastPage && (
+              <PaginationItem>
+                <Button
+                  onClick={() => setMovementsTablePage(movementsTablePage + 1)}
+                  variant="outline"
+                >
+                  {movementsTablePage + 1}
+                </Button>
+              </PaginationItem>
+            )}
+            {movementsTablePage < lastPage - 2 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+            {movementsTablePage < lastPage - 1 && (
+              <PaginationItem>
+                <Button
+                  onClick={() => setMovementsTablePage(lastPage)}
+                  variant="outline"
+                >
+                  {lastPage}
+                </Button>
+              </PaginationItem>
+            )}
+          </PaginationContent>
+        </Pagination>
+        <p className="text-sm font-light text-muted-foreground">
+          {data.totalRows + " " + "movimientos"}
+        </p>
       </div>
     </div>
   );

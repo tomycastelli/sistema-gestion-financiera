@@ -54,6 +54,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   uploadedMetadata  TransactionsMetadata[] @relation("UploadedByUser")
+  uploadedRequests  Requests[] @relation("UploadedByUserRequest")
   confirmedMetadata TransactionsMetadata[] @relation("ConfirmedByUser")
   cancelledMetadata TransactionsMetadata[] @relation("CancelledByUser")
 
@@ -200,4 +201,20 @@ model Links {
   sharedEntityId Int
   password String
   expiration DateTime?
+}
+
+model Requests {
+  id Int @id @default(autoincrement())
+  uploadedBy String
+  uploadedByUser  User      @relation("UploadedByUserRequest", fields: [uploadedBy], references: [id])
+  title String
+  content String
+  status RequestStatus @default(pending)
+  developerMessage String?
+}
+
+enum RequestStatus {
+  pending
+  working
+  finished
 }

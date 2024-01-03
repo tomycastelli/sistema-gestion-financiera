@@ -62,17 +62,20 @@ const Balances: FC<BalancesProps> = ({
     destinationEntityId,
   } = useCuentasStore();
 
-  const { data: balances, isLoading: isBalanceLoading } =
-    api.movements.getBalancesByEntities.useQuery(
-      {
-        entityId: selectedEntityId,
-        entityTag: selectedTag,
-        account: accountType,
-        linkId: linkId,
-        linkToken: linkToken,
-      },
-      { initialData: initialBalances, refetchOnWindowFocus: false },
-    );
+  const {
+    data: balances,
+    isLoading: isBalanceLoading,
+    isRefetching,
+  } = api.movements.getBalancesByEntities.useQuery(
+    {
+      entityId: selectedEntityId,
+      entityTag: selectedTag,
+      account: accountType,
+      linkId: linkId,
+      linkToken: linkToken,
+    },
+    { initialData: initialBalances, refetchOnWindowFocus: false },
+  );
 
   const transformedBalancesSchema = z.object({
     entity: z.object({
@@ -296,7 +299,7 @@ const Balances: FC<BalancesProps> = ({
   return (
     <div className="flex flex-col space-y-4">
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
-      <div className="grid-cols grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid-cols grid grid-cols-2 gap-4 lg:grid-cols-3">
         {!isBalanceLoading ? (
           transformedBalances.map((item) => (
             <Card key={item.entity.id} className="min-w-[300px]">
@@ -309,16 +312,20 @@ const Balances: FC<BalancesProps> = ({
               <CardContent>
                 <div className="flex flex-col space-y-2">
                   {item.data.map((balances) => (
-                    <div key={balances.currency} className="grid grid-cols-4">
+                    <div key={balances.currency} className="grid grid-cols-2">
                       <p className="col-span-1">
                         {balances.currency.toUpperCase()}
                       </p>
-                      <p className="text-xl font-bold">
-                        ${" "}
-                        {new Intl.NumberFormat("es-AR").format(
-                          balances.balance,
-                        )}
-                      </p>
+                      {!isRefetching ? (
+                        <p className="text-xl font-bold">
+                          ${" "}
+                          {new Intl.NumberFormat("es-AR").format(
+                            balances.balance,
+                          )}
+                        </p>
+                      ) : (
+                        <p>Cargando...</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -408,31 +415,35 @@ const Balances: FC<BalancesProps> = ({
                 );
 
                 return matchingBalance ? (
-                  <p
-                    onClick={() => {
-                      if (
-                        selectedCurrency !== currency &&
-                        destinationEntityId !== item.entity.id
-                      ) {
-                        setSelectedCurrency(currency);
-                        setDestinationEntityId(item.entity.id);
-                      } else {
-                        setSelectedCurrency(undefined);
-                        setDestinationEntityId(undefined);
-                      }
-                    }}
-                    key={currency}
-                    className={cn(
-                      "rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                      selectedCurrency === currency &&
-                        destinationEntityId === item.entity.id &&
-                        "bg-primary text-white shadow-md",
-                    )}
-                  >
-                    {new Intl.NumberFormat("es-AR").format(
-                      matchingBalance.balance,
-                    )}
-                  </p>
+                  !isRefetching ? (
+                    <p
+                      onClick={() => {
+                        if (
+                          selectedCurrency !== currency &&
+                          destinationEntityId !== item.entity.id
+                        ) {
+                          setSelectedCurrency(currency);
+                          setDestinationEntityId(item.entity.id);
+                        } else {
+                          setSelectedCurrency(undefined);
+                          setDestinationEntityId(undefined);
+                        }
+                      }}
+                      key={currency}
+                      className={cn(
+                        "rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                        selectedCurrency === currency &&
+                          destinationEntityId === item.entity.id &&
+                          "bg-primary text-white shadow-md",
+                      )}
+                    >
+                      {new Intl.NumberFormat("es-AR").format(
+                        matchingBalance.balance,
+                      )}
+                    </p>
+                  ) : (
+                    <p>Cargando...</p>
+                  )
                 ) : (
                   <p></p>
                 );

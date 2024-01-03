@@ -291,17 +291,17 @@ export const editingOperationsRouter = createTRPCRouter({
           cashAccountOnlyTypes.includes(tx.type) ||
           tx.type === "pago por cta cte"
         ) {
-          await generateMovements(ctx.db, tx, true, 1, "upload");
+          await generateMovements(ctx.db, tx, true, 1, "cancellation");
         }
         if (
           !cashAccountOnlyTypes.includes(tx.type) ||
           tx.type === "pago por cta cte"
         ) {
-          await generateMovements(ctx.db, tx, false, -1, "upload");
+          await generateMovements(ctx.db, tx, false, -1, "cancellation");
         }
         if (tx.status === "confirmed") {
-          await generateMovements(ctx.db, tx, false, 1, "confirmation");
-          await generateMovements(ctx.db, tx, true, 1, "confirmation");
+          await generateMovements(ctx.db, tx, false, 1, "cancellation");
+          await generateMovements(ctx.db, tx, true, 1, "cancellation");
         }
       }
 

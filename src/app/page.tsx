@@ -37,6 +37,12 @@ export default async function Home() {
                 <Icons.currentAccount className="h-4" />
               </Button>
             </Link>
+            <Link href={"/peticiones"}>
+              <Button variant="outline" className="flex flex-row space-x-2 p-6">
+                <p>Peticiones</p>
+                <Icons.editing className="h-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       ) : (
