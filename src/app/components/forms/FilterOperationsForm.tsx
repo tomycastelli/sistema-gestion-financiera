@@ -290,12 +290,12 @@ const FilterOperationsForm = ({
   return (
     <Form {...form}>
       <form className="flex flex-col space-y-4">
-        <div className="flex flex-row items-start justify-start space-x-4">
+        <div className="flex flex-row flex-wrap items-start justify-start space-x-4 space-y-6">
           <FormField
             control={control}
             name="fromEntityId"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="mt-6 flex flex-col">
                 <FormLabel>Origen</FormLabel>
                 {entities && (
                   <CustomSelector
@@ -541,7 +541,7 @@ const FilterOperationsForm = ({
             }}
           >
             <Button variant="outline">
-              Resetear <Icons.undo className="ml-2 h-5" />
+              Resetear filtros <Icons.undo className="ml-2 h-5" />
             </Button>
           </Link>
         </div>

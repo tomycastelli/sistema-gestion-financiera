@@ -400,8 +400,8 @@ const Operation: FC<OperationProps> = ({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Se anularán completamente {op.transactions.length}{" "}
-                    transacciones y sus movimientos relacionados
+                    Se crearán {op.transactions.length} transacciones y sus
+                    movimientos para anular las transacciones actuales
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

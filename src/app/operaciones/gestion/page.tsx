@@ -4,6 +4,7 @@ import CustomPagination from "~/app/components/CustomPagination";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import OperationsFeed from "~/app/components/OperationsFeed";
 import FilterOperationsForm from "~/app/components/forms/FilterOperationsForm";
+import { Separator } from "~/app/components/ui/separator";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
@@ -88,10 +89,11 @@ const Page = async ({
   return (
     <div className="flex w-full flex-col">
       <h1 className="mb-4 text-4xl font-bold tracking-tighter">Operaciones</h1>
-      <Suspense fallback={<LoadingAnimation text={"Cargando operaciones"} />}>
-        {session && (
-          <>
+      {session && (
+        <>
+          <div className="flex flex-col justify-start">
             <FilterOperationsForm entities={initialEntities} users={users} />
+            <Separator className="my-4" />
             <CustomPagination
               itemName="operaciones"
               page={operationsQueryInput.page}
@@ -99,6 +101,10 @@ const Page = async ({
               totalCount={initialOperations.count}
               pathname="/operaciones/gestion"
             />
+          </div>
+          <Suspense
+            fallback={<LoadingAnimation text={"Cargando operaciones"} />}
+          >
             <OperationsFeed
               users={users}
               initialEntities={initialEntities}
@@ -106,16 +112,16 @@ const Page = async ({
               operationsQueryInput={operationsQueryInput}
               user={session.user}
             />
-            <CustomPagination
-              page={operationsQueryInput.page}
-              pageSize={operationsQueryInput.limit}
-              totalCount={initialOperations.count}
-              pathname="/operaciones/gestion"
-              itemName="operaciones"
-            />
-          </>
-        )}
-      </Suspense>
+          </Suspense>
+          <CustomPagination
+            page={operationsQueryInput.page}
+            pageSize={operationsQueryInput.limit}
+            totalCount={initialOperations.count}
+            pathname="/operaciones/gestion"
+            itemName="operaciones"
+          />
+        </>
+      )}
     </div>
   );
 };

@@ -18,6 +18,7 @@ import { Button } from "../ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -225,12 +226,16 @@ const AddOperation = ({
             <>
               <CardHeader>
                 <div className="flex flex-row justify-between">
-                  <CardTitle>
-                    {initialOperationStore.opDate.toLocaleDateString("es-AR")}{" "}
-                    <span className="ml-2 text-muted-foreground">
+                  <div className="flex flex-col">
+                    <CardTitle>
+                      {moment(initialOperationStore.opDate).format(
+                        "DD-MM-YYYY",
+                      )}{" "}
+                    </CardTitle>
+                    <CardDescription className="text-2xl font-semibold text-muted-foreground">
                       {initialOperationStore.opTime}
-                    </span>
-                  </CardTitle>
+                    </CardDescription>
+                  </div>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>

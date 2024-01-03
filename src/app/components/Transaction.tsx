@@ -79,9 +79,17 @@ const Transaction: FC<TransactionProps> = ({
                 if (item.id === tx.operationId) {
                   return {
                     ...item,
-                    transactions: item.transactions.map((tx) => {
+                    transactions: item.transactions.flatMap((tx) => {
                       if (tx.id === newOperation.transactionId) {
-                        return { ...tx, status: "cancelled" };
+                        return [
+                          { ...tx, status: "cancelled" },
+                          {
+                            ...tx,
+                            fromEntityId: tx.toEntityId,
+                            toEntityId: tx.fromEntityId,
+                            status: "cancelled",
+                          },
+                        ];
                       } else {
                         return tx;
                       }
@@ -197,8 +205,8 @@ const Transaction: FC<TransactionProps> = ({
     });
 
   return (
-    <div className="mb-8 grid grid-cols-9 gap-8">
-      <div className="col-span-3 flex flex-row items-center space-x-2 self-start justify-self-end">
+    <div className="mb-8 grid grid-rows-2 md:grid-cols-9 md:grid-rows-1 md:gap-24 lg:gap-12">
+      <div className="flex flex-row items-center space-x-2 self-start md:col-span-3 md:justify-self-end">
         <EntityCard entity={tx.operatorEntity} />
         <div>
           <HoverCard>
@@ -355,7 +363,7 @@ const Transaction: FC<TransactionProps> = ({
           </HoverCard>
         </div>
       </div>
-      <div className="col-span-3 grid grid-cols-3 justify-self-start">
+      <div className="grid grid-cols-3 justify-self-start md:col-span-3">
         <div className="justify-self-end">
           <EntityCard entity={tx.fromEntity} />
         </div>
@@ -447,8 +455,8 @@ const Transaction: FC<TransactionProps> = ({
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Se anularán completamente la transacción y los movimientos
-                  relacionados
+                  Se creará una transacción y movimientos para anular la
+                  transacción actual
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

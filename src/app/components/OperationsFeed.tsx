@@ -2,11 +2,14 @@
 
 import Lottie from "lottie-react";
 import type { User } from "next-auth";
-import { type FC } from "react";
+import { Suspense, type FC } from "react";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
+import LoadingAnimation from "./LoadingAnimation";
 import Operation from "./Operation";
+import { Icons } from "./ui/Icons";
+import { Button } from "./ui/button";
 
 interface OperationsFeedProps {
   initialOperations: RouterOutputs["operations"]["getOperations"];
@@ -23,7 +26,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   initialEntities,
   operationsQueryInput,
 }) => {
-  const { data, isFetching } = api.operations.getOperations.useQuery(
+  const { data, isRefetching, refetch } = api.operations.getOperations.useQuery(
     operationsQueryInput,
     {
       initialData: initialOperations,
@@ -39,9 +42,15 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
 
   return (
     <div className="flex flex-col">
-      <div className="mb-4 w-full"></div>
+      <Button
+        className="flex w-min"
+        variant="outline"
+        onClick={() => refetch()}
+      >
+        Recargar operaciones <Icons.reload className="ml-2 h-5" />
+      </Button>
       <div className="grid grid-cols-1">
-        {isFetching ? (
+        {isRefetching ? (
           <Lottie
             animationData={loadingJson}
             className="absolute z-10 ml-auto flex h-36 w-full"
