@@ -1,6 +1,7 @@
 import { Status } from "@prisma/client";
+import moment from "moment";
 import type { User } from "next-auth";
-import type { FC } from "react";
+import { memo, type FC } from "react";
 import { z } from "zod";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
@@ -27,11 +28,12 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { toast } from "./ui/use-toast";
 
 interface TransactionProps {
-  transaction: RouterOutputs["operations"]["getOperations"][number]["transactions"][number];
+  transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
   users: RouterOutputs["users"]["getAll"];
+  isInFeed: boolean;
 }
 
 const ChangeData = z.object({
@@ -52,6 +54,7 @@ const Transaction: FC<TransactionProps> = ({
   user,
   entities,
   users,
+  isInFeed,
 }) => {
   const utils = api.useContext();
 
@@ -63,49 +66,53 @@ const Transaction: FC<TransactionProps> = ({
           variant: "success",
         });
         // Doing the Optimistic update
-        await utils.operations.getOperations.cancel();
+        if (isInFeed) {
+          await utils.operations.getOperations.cancel();
 
-        await utils.operations.getOperationDetails.cancel();
+          const prevData = utils.operations.getOperations.getData();
 
-        utils.operations.getOperationDetails.setData(
-          { operationId: tx.operationId },
-          // @ts-ignore
-          (old) => ({
-            ...old,
-            transactions: old?.transactions.map((tx) => {
-              if (tx.id === newOperation.transactionId) {
-                return { ...tx, status: "cancelled" };
-              } else {
-                return tx;
-              }
+          utils.operations.getOperations.setData(
+            operationsQueryInput,
+            (old) => ({
+              ...old!,
+              operations: old!.operations.map((item) => {
+                if (item.id === tx.operationId) {
+                  return {
+                    ...item,
+                    transactions: item.transactions.map((tx) => {
+                      if (tx.id === newOperation.transactionId) {
+                        return { ...tx, status: "cancelled" };
+                      } else {
+                        return tx;
+                      }
+                    }),
+                  };
+                } else {
+                  return item;
+                }
+              }),
             }),
-          }),
-        );
+          );
 
-        const prevData = utils.operations.getOperations.getData();
+          return { prevData };
+        } else {
+          await utils.operations.getOperationDetails.cancel();
 
-        utils.operations.getOperations.setData(
-          operationsQueryInput,
-          (old) =>
-            old?.map((item) => {
-              if (item.id === tx.operationId) {
-                return {
-                  ...item,
-                  transactions: item.transactions.map((tx) => {
-                    if (tx.id === newOperation.transactionId) {
-                      return { ...tx, status: "cancelled" };
-                    } else {
-                      return tx;
-                    }
-                  }),
-                };
-              } else {
-                return item;
-              }
+          utils.operations.getOperationDetails.setData(
+            { operationId: tx.operationId },
+            // @ts-ignore
+            (old) => ({
+              ...old,
+              transactions: old?.transactions.map((tx) => {
+                if (tx.id === newOperation.transactionId) {
+                  return { ...tx, status: "cancelled" };
+                } else {
+                  return tx;
+                }
+              }),
             }),
-        );
-
-        return { prevData };
+          );
+        }
       },
       onError(err, newOperation, ctx) {
         utils.operations.getOperations.setData(
@@ -151,23 +158,22 @@ const Transaction: FC<TransactionProps> = ({
 
         const prevData = utils.operations.getOperations.getData();
 
-        utils.operations.getOperations.setData(
-          operationsQueryInput,
-          (old) =>
-            old?.map((item) => {
-              if (item.id === tx.operationId) {
-                return {
-                  ...item,
-                  transactions: item.transactions.filter(
-                    (transaction) =>
-                      transaction.id !== newOperation.transactionId,
-                  ),
-                };
-              } else {
-                return item;
-              }
-            }),
-        );
+        utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
+          ...old!,
+          operations: old!.operations.map((item) => {
+            if (item.id === tx.operationId) {
+              return {
+                ...item,
+                transactions: item.transactions.filter(
+                  (transaction) =>
+                    transaction.id !== newOperation.transactionId,
+                ),
+              };
+            } else {
+              return item;
+            }
+          }),
+        }));
 
         return { prevData };
       },
@@ -218,7 +224,9 @@ const Transaction: FC<TransactionProps> = ({
               }
               <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
                 <p className="font-semibold">
-                  {tx.transactionMetadata?.uploadedDate.toLocaleString("es-AR")}
+                  {moment(tx.transactionMetadata?.uploadedDate).format(
+                    "DD-MM-YYYY HH:mm:ss",
+                  )}
                 </p>
                 <p>
                   Cargado por:{" "}
@@ -230,8 +238,8 @@ const Transaction: FC<TransactionProps> = ({
               {tx.transactionMetadata?.confirmedByUser && (
                 <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
                   <p className="font-semibold">
-                    {tx.transactionMetadata?.confirmedDate?.toLocaleString(
-                      "es-AR",
+                    {moment(tx.transactionMetadata.confirmedDate).format(
+                      "DD-MM-YYYY HH:mm:ss",
                     )}
                   </p>
                   <p>
@@ -245,8 +253,8 @@ const Transaction: FC<TransactionProps> = ({
               {tx.transactionMetadata?.cancelledByUser?.name && (
                 <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
                   <p className="font-semibold">
-                    {tx.transactionMetadata?.cancelledDate?.toLocaleString(
-                      "es-AR",
+                    {moment(tx.transactionMetadata.cancelledDate).format(
+                      "DD-MM-YYYY HH:mm:ss",
                     )}
                   </p>
                   <p>
@@ -352,12 +360,14 @@ const Transaction: FC<TransactionProps> = ({
           <EntityCard entity={tx.fromEntity} />
         </div>
         <div className="flex flex-col items-center space-y-2 justify-self-center">
-          <p className="text-muted-foreground">
-            {tx.currency.toUpperCase()}{" "}
-            <span className="text-black">
+          <div className="flex flex-col items-center space-y-0.5">
+            <p className="text-muted-foreground">
+              {tx.currency.toUpperCase()}{" "}
+            </p>
+            <p className="text-black">
               {new Intl.NumberFormat("es-AR").format(tx.amount)}
-            </span>{" "}
-          </p>
+            </p>
+          </div>
           <Icons.arrowRight
             className={cn(
               "h-16",
@@ -372,8 +382,7 @@ const Transaction: FC<TransactionProps> = ({
           />
           <div className="flex w-3/4 flex-row items-center justify-center space-x-2">
             {!currentAccountOnlyTypes.includes(tx.type) &&
-              tx.isValidateAllowed &&
-              tx.status === Status.pending && (
+              tx.isValidateAllowed && (
                 <TransactionStatusButton
                   transaction={tx}
                   operationsQueryInput={operationsQueryInput}
@@ -388,77 +397,77 @@ const Transaction: FC<TransactionProps> = ({
               />
             )}
           </div>
-          <p className="text-md mx-3 font-light text-muted-foreground">
-            Tx <span className="text-black">{tx.id}</span> /{" "}
-            {capitalizeFirstLetter(tx.type)}
-          </p>
+          <div className="5 flex flex-col items-center space-y-0">
+            <p className="text-md mx-3 font-light text-muted-foreground">
+              Tx <span className="text-black">{tx.id}</span>
+            </p>
+            <p>{capitalizeFirstLetter(tx.type)}</p>
+          </div>
         </div>
         <div className="justify-self-start">
           <EntityCard entity={tx.toEntity} />
         </div>
       </div>
       <div className="col-span-1 flex flex-col items-center space-y-2 place-self-center justify-self-start">
-        {tx.isDeleteAllowed &&
-          tx.status !== Status.cancelled &&
-          tx.status !== Status.confirmed && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="border-transparent p-1">
-                  <Icons.cross className="h-6 text-red" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se borrará completamente la transacción y los movimientos
-                    relacionados
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red"
-                    onClick={() => deleteTransaction({ transactionId: tx.id })}
-                  >
-                    Eliminar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        {tx.isCancelAllowed &&
-          tx.status !== Status.cancelled &&
-          tx.status !== Status.confirmed && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="border-transparent p-1">
-                  <Icons.valueNone className="h-6 text-red" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se anularán completamente la transacción y los movimientos
-                    relacionados
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-red"
-                    onClick={() => cancelTransaction({ transactionId: tx.id })}
-                  >
-                    Anular
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+        {tx.isDeleteAllowed && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="border-transparent p-1">
+                <Icons.cross className="h-6 text-red" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se borrará completamente la transacción y los movimientos
+                  relacionados
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red"
+                  onClick={() => deleteTransaction({ transactionId: tx.id })}
+                >
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        {tx.isCancelAllowed && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="border-transparent p-1">
+                <Icons.valueNone className="h-6 text-red" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se anularán completamente la transacción y los movimientos
+                  relacionados
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red"
+                  onClick={() => cancelTransaction({ transactionId: tx.id })}
+                >
+                  Anular
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );
 };
 
-export default Transaction;
+export default memo(Transaction);
+
+Transaction.displayName = "Transaction";

@@ -244,7 +244,9 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                       className="flex flex-col space-y-2"
                     >
                       <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                      <p className="text-xl font-semibold">{balance.amount}</p>
+                      <p className="text-xl font-semibold">
+                        {new Intl.NumberFormat("es-AR").format(balance.amount)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -275,7 +277,13 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             <CardContent className="flex h-full w-full items-center justify-center">
               {balancesHistory && (
                 <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={balancesHistory}>
+                  <BarChart
+                    data={balancesHistory.map((b) => ({
+                      ...b,
+                      cash: parseFloat(b.cash.toFixed(2)),
+                      current_account: parseFloat(b.current_account.toFixed(2)),
+                    }))}
+                  >
                     <XAxis
                       dataKey="datestring"
                       stroke="#888888"

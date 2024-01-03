@@ -144,7 +144,7 @@ export const movementsRouter = createTRPCRouter({
           },
         },
         orderBy: {
-          id: "desc",
+          transaction: { operation: { date: "desc" } },
         },
         take: input.pageSize,
         skip: (input.pageNumber - 1) * input.pageSize,
@@ -742,6 +742,29 @@ export const movementsRouter = createTRPCRouter({
           id: "desc",
         },
         take: input.limit,
+      });
+
+      return movements;
+    }),
+  getMovementsByOpId: protectedProcedure
+    .input(z.object({ operationId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const movements = await ctx.db.movements.findMany({
+        where: {
+          transaction: {
+            operation: {
+              id: input.operationId,
+            },
+          },
+        },
+        include: {
+          transaction: {
+            include: {
+              fromEntity: true,
+              toEntity: true,
+            },
+          },
+        },
       });
 
       return movements;

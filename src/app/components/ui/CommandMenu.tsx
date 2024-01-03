@@ -72,6 +72,8 @@ const CommandMenu: FC<CommandMenuProps> = ({
         handleSelect("/operaciones/carga");
       } else if (e.key === "g") {
         handleSelect("/operaciones/gestion");
+      } else if (e.key === "j") {
+        handleSelect("/logs");
       } else if (e.key === "e") {
         handleSelect("/entidades");
       }
@@ -202,6 +204,18 @@ const CommandMenu: FC<CommandMenuProps> = ({
                 <CommandShortcut>⌘R</CommandShortcut>
               </CommandItem>
             )}
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Logs">
+            <CommandItem
+              key="logs"
+              value="logs"
+              onSelect={() => handleSelect("/logs")}
+            >
+              <Icons.documentPlus className="mr-2 h-4 w-4" />
+              <span>Logs</span>
+              <CommandShortcut>⌘J</CommandShortcut>
+            </CommandItem>
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Cuentas">

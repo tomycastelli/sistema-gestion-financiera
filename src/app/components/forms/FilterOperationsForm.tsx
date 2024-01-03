@@ -536,7 +536,7 @@ const FilterOperationsForm = ({
           <Link
             onClick={() => reset({ amount: "", amountFilterType: "equal" })}
             href={{
-              pathname: pathname,
+              pathname: "/operaciones/gestion",
               query: { pagina: "1" },
             }}
           >

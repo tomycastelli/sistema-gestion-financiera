@@ -24,12 +24,20 @@ export default async function Home() {
             <EntitiesMenuCard />
             <UsersMenuCard />
           </div>
-          <Link href={"/docs"}>
-            <Button variant="outline" className="flex flex-row space-x-2 p-6">
-              <p>Documentación</p>
-              <Icons.info className="h-4" />
-            </Button>
-          </Link>
+          <div className="flex flex-row items-center justify-center space-x-4">
+            <Link href={"/docs"}>
+              <Button variant="outline" className="flex flex-row space-x-2 p-6">
+                <p>Documentación</p>
+                <Icons.info className="h-4" />
+              </Button>
+            </Link>
+            <Link href={"/logs"}>
+              <Button variant="outline" className="flex flex-row space-x-2 p-6">
+                <p>Logs</p>
+                <Icons.currentAccount className="h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center">

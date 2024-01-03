@@ -16,6 +16,7 @@ import { currencies } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
+import LoadingAnimation from "../components/LoadingAnimation";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -88,25 +89,26 @@ const MovementsTable = ({
     setSelectedCurrency,
   } = useCuentasStore();
 
-  const { data } = api.movements.getCurrentAccounts.useQuery(
-    {
-      linkId: linkId,
-      linkToken: linkToken,
-      account: accountType,
-      entityId: selectedFromEntity ? parseInt(selectedFromEntity) : entityId,
-      entityTag: selectedFromEntity ? undefined : entityTag,
-      toEntityId: destinationEntityId,
-      currency: selectedCurrency,
-      pageNumber: movementsTablePage,
-      pageSize: pageSize,
-    },
-    {
-      initialData: initialMovements,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-      refetchOnWindowFocus: false,
-    },
-  );
+  const { data, refetch, isFetching } =
+    api.movements.getCurrentAccounts.useQuery(
+      {
+        linkId: linkId,
+        linkToken: linkToken,
+        account: accountType,
+        entityId: selectedFromEntity ? parseInt(selectedFromEntity) : entityId,
+        entityTag: selectedFromEntity ? undefined : entityTag,
+        toEntityId: destinationEntityId,
+        currency: selectedCurrency,
+        pageNumber: movementsTablePage,
+        pageSize: pageSize,
+      },
+      {
+        initialData: initialMovements,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+        refetchOnWindowFocus: false,
+      },
+    );
 
   const tableData = generateTableData(
     data.movements,
@@ -144,35 +146,46 @@ const MovementsTable = ({
     },
     {
       accessorKey: "type",
-      header: "Tipo",
+      header: "Detalle",
       cell: ({ row }) => {
         let type = "";
         if (row.getValue("type") === "upload") {
           type = "Carga";
-        }
-        if (row.getValue("type") === "confirmation") {
+        } else if (row.getValue("type") === "confirmation") {
           type = "Confirmación";
+        } else if (row.getValue("type") === "cancellation") {
+          type = "Cancelación";
         } else {
           type = row.getValue("type");
         }
         const metadata: JSON = row.getValue("metadata");
         const mvId: number = row.getValue("id");
         const txType: string = row.getValue("txType");
+        const observations: string = row.getValue("observations");
 
         return (
-          <p className="font-medium">{`${type} de ${txType} - Mto ${mvId} ${
-            // @ts-ignore
-            metadata && isNumeric(metadata.exchangeRate)
-              ? // @ts-ignore
-                `- $${metadata.exchangeRate}`
-              : ""
-          }`}</p>
+          <>
+            <p className="font-medium">{`${type} de ${txType} - Mto ${mvId} ${
+              // @ts-ignore
+              metadata && isNumeric(metadata.exchangeRate)
+                ? // @ts-ignore
+                  `- $${metadata.exchangeRate}`
+                : ""
+            }`}</p>
+            <p className="text-sm font-light text-muted-foreground">
+              {observations}
+            </p>
+          </>
         );
       },
     },
     {
       accessorKey: "txType",
       header: "Transaction type",
+    },
+    {
+      accessorKey: "observations",
+      header: "Observaciones",
     },
     {
       accessorKey: "metadata",
@@ -278,7 +291,7 @@ const MovementsTable = ({
         <div className="flex flex-row items-end justify-start space-x-4 py-4">
           {entityTag && (
             <div className="flex flex-col">
-              <Label className="mb-2">Entidad</Label>
+              <Label className="mb-2">Origen</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -410,8 +423,15 @@ const MovementsTable = ({
           {session && selectedEntityString && !accountType && (
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
+          <Button variant="outline" onClick={() => refetch()}>
+            <Icons.reload className="h-5" />
+          </Button>
         </div>
-        <DataTable columns={columns} data={tableData} />
+        {!isFetching ? (
+          <DataTable columns={columns} data={tableData} />
+        ) : (
+          <LoadingAnimation text="Cargando movimientos" />
+        )}
       </div>
       <div className="mt-2 flex flex-row items-center justify-between text-lg text-muted-foreground">
         <div className="flex flex-row items-center space-x-3">
@@ -426,7 +446,8 @@ const MovementsTable = ({
             </Button>
           )}
           <p>
-            {movementsTablePage + " / " + Math.ceil(data.totalRows / pageSize)}
+            <span className="text-black">{movementsTablePage}</span>
+            {" / " + Math.ceil(data.totalRows / pageSize)}
           </p>
           {movementsTablePage < Math.ceil(data.totalRows / pageSize) && (
             <Button

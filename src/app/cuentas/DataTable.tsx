@@ -54,6 +54,7 @@ export function DataTable<TData, TValue>({
         txType: false,
         metadata: false,
         id: false,
+        observations: false,
       },
     },
   });

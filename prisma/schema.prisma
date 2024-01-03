@@ -53,7 +53,6 @@ model User {
   roleId        Int?
   accounts      Account[]
   sessions      Session[]
-  logs          Logs[] @relation("LoggedUser")
   uploadedMetadata  TransactionsMetadata[] @relation("UploadedByUser")
   confirmedMetadata TransactionsMetadata[] @relation("ConfirmedByUser")
   cancelledMetadata TransactionsMetadata[] @relation("CancelledByUser")
@@ -201,14 +200,4 @@ model Links {
   sharedEntityId Int
   password String
   expiration DateTime?
-}
-
-model Logs {
-  id  Int @id @default(autoincrement())
-  time DateTime
-  name String
-  userId String?
-  user  User?  @relation("LoggedUser", fields: [userId], references: [id])
-  input Json
-  response Json
 }

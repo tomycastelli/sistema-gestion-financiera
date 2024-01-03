@@ -15,6 +15,7 @@ import { ZodError } from "zod";
 import { getServerAuthSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { redis } from "~/server/redis";
+import { logs } from "../mongodb";
 
 /**
  * 1. CONTEXT
@@ -46,6 +47,7 @@ export const createInnerTRPCContext = async (opts: CreateContextOptions) => {
     headers: opts.headers,
     db,
     redis,
+    logs,
   };
 };
 

@@ -9,8 +9,10 @@ export default async function Page({
 }) {
   const operationId = params.operationId;
 
-  const operation = await api.operations.getOperationDetails.query({
+  const operation = await api.operations.getOperations.query({
     operationId: parseInt(operationId),
+    limit: 1,
+    page: 1,
   });
 
   const entities = await api.entities.getAll.query();
@@ -21,15 +23,20 @@ export default async function Page({
 
   const userPermissions = await api.users.getAllPermissions.query({});
 
+  const movements = await api.movements.getMovementsByOpId.query({
+    operationId: parseInt(operationId),
+  });
+
   return (
     <div>
       {session && (
         <OperationDetails
+          movements={movements}
           users={users}
           userPermissions={userPermissions}
-          initialOperations={operation}
+          initialOperation={operation}
           operationId={operationId}
-          initialEntities={entities}
+          entities={entities}
           session={session}
         />
       )}

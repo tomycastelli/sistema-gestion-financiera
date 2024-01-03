@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { getAllChildrenTags } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import LoadingAnimation from "../components/LoadingAnimation";
 import AccountsTab from "./AccountsTab";
 import EntitySwitcher from "./EntitySwitcher";
 import SummarizedBalances from "./SummarizedBalances";
@@ -135,45 +137,47 @@ const Page = async ({
             )}
             <TimeRangeSelector />
           </div>
-          {selectedEntityId || selectedTag ? (
-            <div className="mt-4 w-full">
-              {(selectedTab === "cuenta_corriente" ||
-                selectedTab === "caja") && (
-                <AccountsTab
-                  entityId={selectedEntityId}
-                  entityTag={selectedTag}
-                  accountType={selectedTab === "caja" ? true : false}
-                  searchParams={searchParams}
-                  initialBalances={initialBalances}
-                  initialTags={initialTags}
-                  linkId={linkId}
-                  linkToken={linkToken}
-                />
-              )}
-              {selectedTab === "resumen" && (
-                <div>
-                  <SummarizedBalances
-                    tags={initialTags}
-                    initialMovements={initialMovements}
-                    movementsAmount={movementsAmount}
-                    selectedTag={selectedTag}
-                    selectedEntityId={selectedEntityId}
-                    initialBalancesForCard={initialBalancesForCard}
-                    initialBalancesForCardInput={{
-                      linkId: initialBalancesInput.linkId,
-                      linkToken: initialBalancesInput.linkToken,
-                      entityId: initialBalancesInput.entityId,
-                      entityTag: initialBalancesInput.entityTag,
-                    }}
+          <Suspense fallback={<LoadingAnimation text={"Cargando cuentas"} />}>
+            {selectedEntityId || selectedTag ? (
+              <div className="mt-4 w-full">
+                {(selectedTab === "cuenta_corriente" ||
+                  selectedTab === "caja") && (
+                  <AccountsTab
+                    entityId={selectedEntityId}
+                    entityTag={selectedTag}
+                    accountType={selectedTab === "caja" ? true : false}
+                    searchParams={searchParams}
+                    initialBalances={initialBalances}
+                    initialTags={initialTags}
+                    linkId={linkId}
+                    linkToken={linkToken}
                   />
-                </div>
-              )}
-            </div>
-          ) : (
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Elegí una entidad o un tag
-            </h1>
-          )}
+                )}
+                {selectedTab === "resumen" && (
+                  <div>
+                    <SummarizedBalances
+                      tags={initialTags}
+                      initialMovements={initialMovements}
+                      movementsAmount={movementsAmount}
+                      selectedTag={selectedTag}
+                      selectedEntityId={selectedEntityId}
+                      initialBalancesForCard={initialBalancesForCard}
+                      initialBalancesForCardInput={{
+                        linkId: initialBalancesInput.linkId,
+                        linkToken: initialBalancesInput.linkToken,
+                        entityId: initialBalancesInput.entityId,
+                        entityTag: initialBalancesInput.entityTag,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Elegí una entidad o un tag
+              </h1>
+            )}
+          </Suspense>
         </>
       ) : session?.user ? (
         <p className="text-3xl font-semibold">No se encontraron balances</p>

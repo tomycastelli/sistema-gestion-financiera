@@ -40,7 +40,18 @@ export const operationsRouter = createTRPCRouter({
         const response: Transactions[] = [];
         for (const transactionToInsert of input.transactions) {
           const tx = await ctx.db.transactions.create({
-            data: { ...transactionToInsert, operationId: input.opId },
+            data: {
+              ...transactionToInsert,
+              operationId: input.opId,
+              transactionMetadata: {
+                create: {
+                  uploadedBy: ctx.session.user.id,
+                  uploadedDate: new Date(),
+                  metadata: transactionToInsert.metadata,
+                },
+              },
+            },
+            include: { operation: true },
           });
           response.push(tx);
           if (
@@ -97,10 +108,14 @@ export const operationsRouter = createTRPCRouter({
             transactions: {
               include: {
                 transactionMetadata: true,
+                operation: { select: { date: true } },
               },
             },
           },
         });
+
+        console.time("balancesCreation"); // Start timer
+
         for (const tx of response.transactions) {
           if (
             cashAccountOnlyTypes.includes(tx.type) ||
@@ -116,9 +131,28 @@ export const operationsRouter = createTRPCRouter({
           }
         }
 
+        console.timeEnd("balancesCreation"); // End timer and log the time
+
         if (response) {
+          console.time("cacheDeletion"); // End timer and log the time
           await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
+          console.timeEnd("cacheDeletion"); // End timer and log the time
         }
+
+        console.time("insertionTime"); // Start timer
+
+        const newLog = new ctx.logs({
+          name: "insertOperation",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
+
+        console.timeEnd("insertionTime"); // End timer and log the time
+
         return response;
       }
     }),
@@ -154,6 +188,16 @@ export const operationsRouter = createTRPCRouter({
       if (response) {
         await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
+
+      const newLog = new ctx.logs({
+        name: "insertTransactions",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: response,
+      });
+
+      await newLog.save();
 
       return response;
     }),
@@ -191,7 +235,7 @@ export const operationsRouter = createTRPCRouter({
       z.object({
         limit: z.number(),
         page: z.number(),
-        operationId: z.string().optional(),
+        operationId: z.number().optional(),
         opDay: z.date().optional(),
         opDateIsGreater: z.date().optional(),
         opDateIsLesser: z.date().optional(),
@@ -235,6 +279,7 @@ export const operationsRouter = createTRPCRouter({
               ? { date: { gte: input.opDateIsGreater } }
               : {},
             input.opDateIsLesser ? { date: { lte: input.opDateIsLesser } } : {},
+            input.operationId ? { id: input.operationId } : {},
           ],
           transactions: {
             some: {
@@ -397,32 +442,38 @@ export const operationsRouter = createTRPCRouter({
           isVisualizeAllowed,
           isCreateAllowed,
           transactions: op.transactions.map((tx) => {
-            const isCancelAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_CANCEL_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isCancelAllowed =
+              tx.status !== "cancelled" &&
+              (tx.status !== "confirmed" ||
+                cashAccountOnlyTypes.includes(tx.type) ||
+                tx.type === "pago por cta cte") &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_CANCEL_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
             const isDeleteAllowed =
-              (tx.date
-                ? moment().isSame(tx.date, "day")
-                : moment().isSame(op.date, "day")) &&
+              tx.status !== "cancelled" &&
+              (tx.status !== "confirmed" ||
+                cashAccountOnlyTypes.includes(tx.type) ||
+                tx.type === "pago por cta cte") &&
               userPermissions?.find(
                 (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
               )
@@ -471,27 +522,29 @@ export const operationsRouter = createTRPCRouter({
                 ? true
                 : false;
 
-            const isValidateAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_VALIDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isValidateAllowed =
+              tx.status === "pending" &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_VALIDATE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
             return {
               ...tx,
               isDeleteAllowed,
@@ -503,7 +556,95 @@ export const operationsRouter = createTRPCRouter({
         };
       });
 
-      return operationsWithPermissions;
+      const count = await ctx.db.operations.count({
+        where: {
+          AND: [
+            input.opDay
+              ? {
+                  date: {
+                    gte: new Date(
+                      input.opDay.getFullYear(),
+                      input.opDay.getMonth(),
+                      input.opDay.getDate(),
+                    ),
+                    lt: new Date(
+                      input.opDay.getFullYear(),
+                      input.opDay.getMonth(),
+                      input.opDay.getDate() + 1,
+                    ),
+                  },
+                }
+              : {},
+            input.opDateIsGreater
+              ? { date: { gte: input.opDateIsGreater } }
+              : {},
+            input.opDateIsLesser ? { date: { lte: input.opDateIsLesser } } : {},
+          ],
+          transactions: {
+            some: {
+              AND: [
+                input.transactionId ? { id: input.transactionId } : {},
+                input.transactionType ? { type: input.transactionType } : {},
+                input.transactionDate ? { date: input.transactionDate } : {},
+                input.operatorEntityId
+                  ? { operatorEntityId: input.operatorEntityId }
+                  : {},
+                input.fromEntityId ? { fromEntityId: input.fromEntityId } : {},
+                input.toEntityId ? { toEntityId: input.toEntityId } : {},
+                input.currency ? { currency: input.currency } : {},
+                input.method ? { method: input.method } : {},
+                input.status ? { status: input.status } : {},
+                input.amount && input.currency
+                  ? {
+                      amount: input.amount,
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: input.amount }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
+                input.amountIsGreater && input.currency
+                  ? {
+                      amount: { gte: input.amountIsGreater },
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: { gte: input.amount } }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
+                input.amountIsLesser && input.currency
+                  ? {
+                      amount: { lte: input.amountIsLesser },
+                      currency: input.currency,
+                    }
+                  : input.amount
+                  ? { amount: { lte: input.amountIsLesser } }
+                  : input.currency
+                  ? { currency: input.currency }
+                  : {},
+                input.uploadedById
+                  ? {
+                      transactionMetadata: {
+                        uploadedBy: input.uploadedById,
+                      },
+                    }
+                  : {},
+                input.confirmedById
+                  ? {
+                      transactionMetadata: {
+                        confirmedBy: input.confirmedById,
+                      },
+                    }
+                  : {},
+              ],
+            },
+          },
+        },
+      });
+
+      return { operations: operationsWithPermissions, count };
     }),
   getOperationDetails: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
@@ -607,49 +748,59 @@ export const operationsRouter = createTRPCRouter({
           isVisualizeAllowed,
           isCreateAllowed,
           transactions: operationDetails?.transactions.map((tx) => {
-            const isCancelAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_CANCEL_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isCancelAllowed =
+              tx.status !== "cancelled" &&
+              (tx.status !== "confirmed" ||
+                cashAccountOnlyTypes.includes(tx.type) ||
+                tx.type === "pago por cta cte") &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_CANCEL_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
-            const isDeleteAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_DELETE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isDeleteAllowed =
+              tx.status !== "cancelled" &&
+              (tx.status !== "confirmed" ||
+                cashAccountOnlyTypes.includes(tx.type) ||
+                tx.type === "pago por cta cte") &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_DELETE",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_DELETE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
             const isUpdateAllowed = userPermissions?.find(
               (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
@@ -673,27 +824,29 @@ export const operationsRouter = createTRPCRouter({
               ? true
               : false;
 
-            const isValidateAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_VALIDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
+            const isValidateAllowed =
+              tx.status === "pending" &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
+              )
+                ? true
+                : userPermissions?.find((p) => {
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_VALIDATE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
             return {
               ...tx,
               isDeleteAllowed,
@@ -730,6 +883,16 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
+      const newLog = new ctx.logs({
+        name: "deleteOperation",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: { deletedOperation, deletedBalances },
+      });
+
+      await newLog.save();
+
       return { deletedOperation, deletedBalances };
     }),
 
@@ -753,6 +916,16 @@ export const operationsRouter = createTRPCRouter({
           amount: true,
         },
       });
+
+      const newLog = new ctx.logs({
+        name: "deleteTransaction",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: deletedTransaction,
+      });
+
+      await newLog.save();
 
       return { deletedTransaction, deletedBalances };
     }),
@@ -803,5 +976,27 @@ export const operationsRouter = createTRPCRouter({
         uploads: userUploadsCount,
         confirmations: userConfirmationsCount,
       };
+    }),
+  findOperationId: protectedProcedure
+    .input(
+      z.object({
+        txId: z.number().int().optional().nullable(),
+        mvId: z.number().int().optional().nullable(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const response = await ctx.db.operations.findFirst({
+        where: input.txId
+          ? { transactions: { some: { id: input.txId } } }
+          : input.mvId
+          ? {
+              transactions: {
+                some: { movements: { some: { id: input.mvId } } },
+              },
+            }
+          : { id: 0 },
+      });
+
+      return response;
     }),
 });

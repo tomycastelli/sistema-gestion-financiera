@@ -11,7 +11,7 @@ import { ToastAction } from "./ui/toast";
 import { useToast } from "./ui/use-toast";
 
 interface TransactionStatusButtonProps {
-  transaction: RouterOutputs["operations"]["getOperations"][number]["transactions"][number];
+  transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
   user: User;
 }
@@ -45,8 +45,9 @@ const TransactionStatusButton = ({
       const prevData =
         utils.operations.getOperations.getData(operationsQueryInput);
 
-      utils.operations.getOperations.setData(operationsQueryInput, (old) => {
-        const updatedOperations = old?.map((operation) => {
+      utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
+        ...old!,
+        operations: old!.operations.map((operation) => {
           const updatedTransactions = operation.transactions.map(
             (transaction) => {
               if (
@@ -70,10 +71,8 @@ const TransactionStatusButton = ({
             ...operation,
             transactions: updatedTransactions,
           };
-        });
-
-        return updatedOperations;
-      });
+        }),
+      }));
 
       return { prevData };
     },
@@ -114,7 +113,6 @@ const TransactionStatusButton = ({
               onClick={() => {
                 mutate({
                   transactionIds: updatedTxIdsStore,
-                  operationId: tx.operationId,
                 });
               }}
             >

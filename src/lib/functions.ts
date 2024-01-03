@@ -389,89 +389,107 @@ export const generateTableData = (
   entityTag: string | undefined | null,
   allTags: RouterOutputs["tags"]["getAll"],
 ) => {
-  const tableData = movements.map((movement) => {
-    if (entityId) {
-      // Esto indica, si es 1, que gano, si es -1, que pierdo
-      const direction =
-        entityId === movement.transaction.fromEntityId
+  const tableData = movements
+    .map((movement) => {
+      if (entityId) {
+        // Esto indica, si es 1, que gano, si es -1, que pierdo
+        const direction =
+          entityId === movement.transaction.fromEntityId
+            ? -movement.direction
+            : movement.direction;
+        const selectedEntity =
+          entityId === movement.transaction.fromEntityId
+            ? movement.transaction.fromEntity
+            : movement.transaction.toEntity;
+        const otherEntity =
+          entityId === movement.transaction.fromEntityId
+            ? movement.transaction.toEntity
+            : movement.transaction.fromEntity;
+
+        return {
+          id: movement.id,
+          date: movement.transaction.date
+            ? moment(movement.transaction.date).format("DD/MM/YYYY HH:mm")
+            : moment(movement.transaction.operation.date).format(
+                "DD/MM/YYYY HH:mm",
+              ),
+          operationId: movement.transaction.operationId,
+          observations: movement.transaction.operation.observations,
+          type: movement.type,
+          otherEntityId: otherEntity.id,
+          otherEntity: otherEntity.name,
+          selectedEntityId: selectedEntity.id,
+          selectedEntity: selectedEntity.name,
+          currency: movement.transaction.currency,
+          ingress: direction === 1 ? movement.transaction.amount : 0,
+          egress: direction === -1 ? movement.transaction.amount : 0,
+          method: movement.transaction.method,
+          status: movement.transaction.status,
+          txType: movement.transaction.type,
+          metadata: movement.transaction.transactionMetadata?.metadata,
+          balance:
+            selectedEntity.id < otherEntity.id
+              ? movement.balance
+              : -movement.balance,
+        };
+      } else {
+        const allChildrenTags = getAllChildrenTags(entityTag, allTags);
+        // Esto indica, si es 1, que gano, si es -1, que pierdo
+        const direction = allChildrenTags.includes(
+          movement.transaction.fromEntity.tagName,
+        )
           ? -movement.direction
           : movement.direction;
-      const selectedEntity =
-        entityId === movement.transaction.fromEntityId
+        const selectedEntity = allChildrenTags.includes(
+          movement.transaction.fromEntity.tagName,
+        )
           ? movement.transaction.fromEntity
           : movement.transaction.toEntity;
-      const otherEntity =
-        entityId === movement.transaction.fromEntityId
+        const otherEntity = allChildrenTags.includes(
+          movement.transaction.fromEntity.tagName,
+        )
           ? movement.transaction.toEntity
           : movement.transaction.fromEntity;
 
-      return {
-        id: movement.id,
-        date: movement.transaction.date
-          ? moment(movement.transaction.date).format("DD/MM/YYYY")
-          : moment(movement.transaction.operation.date).format("DD/MM/YYYY"),
-        operationId: movement.transaction.operationId,
-        type: movement.type,
-        otherEntityId: otherEntity.id,
-        otherEntity: otherEntity.name,
-        selectedEntityId: selectedEntity.id,
-        selectedEntity: selectedEntity.name,
-        currency: movement.transaction.currency,
-        ingress: direction === 1 ? movement.transaction.amount : 0,
-        egress: direction === -1 ? movement.transaction.amount : 0,
-        method: movement.transaction.method,
-        status: movement.transaction.status,
-        txType: movement.transaction.type,
-        metadata: movement.transaction.transactionMetadata?.metadata,
-        balance:
-          selectedEntity.id < otherEntity.id
-            ? movement.balance
-            : -movement.balance,
-      };
-    } else {
-      const allChildrenTags = getAllChildrenTags(entityTag, allTags);
-      // Esto indica, si es 1, que gano, si es -1, que pierdo
-      const direction = allChildrenTags.includes(
-        movement.transaction.fromEntity.tagName,
-      )
-        ? -movement.direction
-        : movement.direction;
-      const selectedEntity = allChildrenTags.includes(
-        movement.transaction.fromEntity.tagName,
-      )
-        ? movement.transaction.fromEntity
-        : movement.transaction.toEntity;
-      const otherEntity = allChildrenTags.includes(
-        movement.transaction.fromEntity.tagName,
-      )
-        ? movement.transaction.toEntity
-        : movement.transaction.fromEntity;
+        return {
+          id: movement.id,
+          date: movement.transaction.date
+            ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
+            : moment(movement.transaction.operation.date).format(
+                "DD-MM-YYYY HH:mm",
+              ),
+          operationId: movement.transaction.operationId,
+          observations: movement.transaction.operation.observations,
+          type: movement.type,
+          otherEntityId: otherEntity.id,
+          otherEntity: otherEntity.name,
+          selectedEntityId: selectedEntity.id,
+          selectedEntity: selectedEntity.name,
+          currency: movement.transaction.currency,
+          ingress: direction === 1 ? movement.transaction.amount : 0,
+          egress: direction === -1 ? movement.transaction.amount : 0,
+          method: movement.transaction.method,
+          status: movement.transaction.status,
+          txType: movement.transaction.type,
+          metadata: movement.transaction.transactionMetadata?.metadata,
+          balance:
+            selectedEntity.id < otherEntity.id
+              ? movement.balance
+              : -movement.balance,
+        };
+      }
+    })
+    .sort((a, b) => {
+      const dateA = moment(a.date, "DD-MM-YYYY HH:mm").valueOf();
+      const dateB = moment(b.date, "DD-MM-YYYY HH:mm").valueOf();
 
-      return {
-        id: movement.id,
-        date: movement.transaction.date
-          ? moment(movement.transaction.date).format("DD/MM/YYYY")
-          : moment(movement.transaction.operation.date).format("DD/MM/YYYY"),
-        operationId: movement.transaction.operationId,
-        type: movement.type,
-        otherEntityId: otherEntity.id,
-        otherEntity: otherEntity.name,
-        selectedEntityId: selectedEntity.id,
-        selectedEntity: selectedEntity.name,
-        currency: movement.transaction.currency,
-        ingress: direction === 1 ? movement.transaction.amount : 0,
-        egress: direction === -1 ? movement.transaction.amount : 0,
-        method: movement.transaction.method,
-        status: movement.transaction.status,
-        txType: movement.transaction.type,
-        metadata: movement.transaction.transactionMetadata?.metadata,
-        balance:
-          selectedEntity.id < otherEntity.id
-            ? movement.balance
-            : -movement.balance,
-      };
-    }
-  });
+      if (dateA === dateB) {
+        return b.id - a.id;
+      }
+
+      // Ascending order
+      return dateB - dateA;
+    });
 
   return tableData;
 };

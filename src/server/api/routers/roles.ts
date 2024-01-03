@@ -108,6 +108,16 @@ export const rolesRouter = createTRPCRouter({
           },
         });
 
+        const newLog = new ctx.logs({
+          name: "addOneRole",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
+
         return response;
       } else {
         return null;
@@ -145,6 +155,16 @@ export const rolesRouter = createTRPCRouter({
         });
 
         await pipeline.exec();
+
+        const newLog = new ctx.logs({
+          name: "deleteOneRole",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
 
         return response;
       } else {
@@ -195,6 +215,16 @@ export const rolesRouter = createTRPCRouter({
         });
 
         await pipeline.exec();
+
+        const newLog = new ctx.logs({
+          name: "updateOneRole",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
 
         return response;
       } else {

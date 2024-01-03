@@ -7,7 +7,6 @@ import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import Operation from "./Operation";
-import FilterOperationsForm from "./forms/FilterOperationsForm";
 
 interface OperationsFeedProps {
   initialOperations: RouterOutputs["operations"]["getOperations"];
@@ -24,11 +23,13 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   initialEntities,
   operationsQueryInput,
 }) => {
-  const { data: operations, isFetching } =
-    api.operations.getOperations.useQuery(operationsQueryInput, {
+  const { data, isFetching } = api.operations.getOperations.useQuery(
+    operationsQueryInput,
+    {
       initialData: initialOperations,
       refetchOnWindowFocus: false,
-    });
+    },
+  );
 
   const { data: entities } = api.entities.getAll.useQuery(undefined, {
     initialData: initialEntities,
@@ -38,20 +39,16 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
 
   return (
     <div className="flex flex-col">
-      <div className="mb-4 w-full">
-        <FilterOperationsForm entities={entities} users={users} />
-      </div>
-      <h3 className="text-xl font-bold">Página {operationsQueryInput.page}</h3>
+      <div className="mb-4 w-full"></div>
       <div className="grid grid-cols-1">
-        {isFetching && (
+        {isFetching ? (
           <Lottie
             animationData={loadingJson}
             className="absolute z-10 ml-auto flex h-36 w-full"
             loop={true}
           />
-        )}
-        {operations.length > 0 ? (
-          operations
+        ) : data.operations.length > 0 ? (
+          data.operations
             .filter((op) => op.isVisualizeAllowed)
             .map((op) => {
               return (
@@ -62,6 +59,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
                     operation={op}
                     operationsQueryInput={operationsQueryInput}
                     user={user}
+                    isInFeed={true}
                   />
                 </div>
               );

@@ -38,7 +38,7 @@ import { useToast } from "../ui/use-toast";
 import CustomSelector from "./CustomSelector";
 
 interface UpdateTransactionProps {
-  transaction: RouterOutputs["operations"]["getOperations"][number]["transactions"][number];
+  transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
   entities: RouterOutputs["entities"]["getAll"];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
 }
@@ -82,8 +82,9 @@ const UpdateTransaction = ({
       const prevData =
         utils.operations.getOperations.getData(operationsQueryInput);
 
-      utils.operations.getOperations.setData(operationsQueryInput, (old) => {
-        const updatedOperations = old?.map((operation) => {
+      utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
+        ...old!,
+        operations: old!.operations.map((operation) => {
           const updatedTransactions = operation.transactions.map(
             (transaction) => {
               if (newOperation.txId === transaction.id) {
@@ -107,9 +108,8 @@ const UpdateTransaction = ({
             ...operation,
             transactions: updatedTransactions,
           };
-        });
-        return updatedOperations;
-      });
+        }),
+      }));
 
       return { prevData };
     },

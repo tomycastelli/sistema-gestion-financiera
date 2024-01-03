@@ -5,33 +5,33 @@ import { DataTable } from "~/app/cuentas/DataTable";
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface DetailMovementsTableProps {
-  operation: RouterOutputs["operations"]["getOperationDetails"];
+  operationDate: RouterOutputs["operations"]["getOperations"]["operations"][number]["date"];
+  movements: RouterOutputs["movements"]["getMovementsByOpId"];
 }
 
-const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ operation }) => {
-  const tableData = operation!.transactions
-    .map((transaction) =>
-      transaction.movements.map((movement) => ({
-        id: movement.id,
-        date: transaction.date
-          ? moment(transaction.date).format("DD/MM/YYYY")
-          : moment(operation!.date).format("DD/MM/YYYY"),
-        transactionId: movement.transactionId,
-        cuenta: movement.account ? "Caja" : "Cuenta corriente",
-        type: movement.type,
-        fromEntityName:
-          movement.direction === 1
-            ? transaction.fromEntity.name
-            : transaction.toEntity.name,
-        toEntityName:
-          movement.direction === 1
-            ? transaction.toEntity.name
-            : transaction.fromEntity.name,
-        currency: transaction.currency,
-        amount: transaction.amount,
-      })),
-    )
-    .flat();
+const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
+  movements,
+  operationDate,
+}) => {
+  const tableData = movements.flatMap((movement) => ({
+    id: movement.id,
+    date: movement.transaction.date
+      ? moment(movement.transaction.date).format("DD/MM/YYYY HH:mm:ss")
+      : moment(operationDate).format("DD/MM/YYYY HH:mm:ss"),
+    transactionId: movement.transactionId,
+    cuenta: movement.account ? "Caja" : "Cuenta corriente",
+    type: movement.type,
+    fromEntityName:
+      movement.direction === 1
+        ? movement.transaction.fromEntity.name
+        : movement.transaction.toEntity.name,
+    toEntityName:
+      movement.direction === 1
+        ? movement.transaction.toEntity.name
+        : movement.transaction.fromEntity.name,
+    currency: movement.transaction.currency,
+    amount: movement.transaction.amount,
+  }));
 
   const columns: ColumnDef<(typeof tableData)[number]>[] = [
     {
@@ -96,7 +96,21 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ operation }) => {
     },
   ];
 
-  return <DataTable columns={columns} data={tableData} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={tableData.sort((a, b) => {
+        const dateA = moment(a.date, "DD-MM-YYYY HH:mm:ss").valueOf();
+        const dateB = moment(b.date, "DD-MM-YYYY HH:mm:ss").valueOf();
+
+        if (dateA === dateB) {
+          return b.transactionId - a.transactionId;
+        }
+
+        return dateB - dateA;
+      })}
+    />
+  );
 };
 
 export default DetailMovementsTable;

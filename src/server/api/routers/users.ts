@@ -41,6 +41,16 @@ export const usersRouter = createTRPCRouter({
         await ctx.redis.del("cached_entities");
       }
 
+      const newLog = new ctx.logs({
+        name: "changeNameUser",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: response[0],
+      });
+
+      await newLog.save();
+
       return response[0];
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -188,6 +198,16 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
+        const newLog = new ctx.logs({
+          name: "updatePermissionsUser",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
+
         return response;
       } else {
         return null;
@@ -236,6 +256,16 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
+        const newLog = new ctx.logs({
+          name: "removePermissionsUser",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
+
         return response;
       } else {
         return null;
@@ -269,6 +299,16 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.userId}`);
 
+        const newLog = new ctx.logs({
+          name: "addToRoleUser",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
+
         return response;
       } else {
         return null;
@@ -301,6 +341,16 @@ export const usersRouter = createTRPCRouter({
         });
 
         await ctx.redis.del(`user_permissions:${input.id}`);
+
+        const newLog = new ctx.logs({
+          name: "removeFromRoleUser",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
 
         return response;
       } else {

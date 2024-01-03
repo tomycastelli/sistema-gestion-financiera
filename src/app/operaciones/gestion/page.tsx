@@ -1,9 +1,9 @@
 import moment from "moment";
-import Link from "next/link";
 import { Suspense } from "react";
+import CustomPagination from "~/app/components/CustomPagination";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import OperationsFeed from "~/app/components/OperationsFeed";
-import { Icons } from "~/app/components/ui/Icons";
+import FilterOperationsForm from "~/app/components/forms/FilterOperationsForm";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
@@ -90,40 +90,32 @@ const Page = async ({
       <h1 className="mb-4 text-4xl font-bold tracking-tighter">Operaciones</h1>
       <Suspense fallback={<LoadingAnimation text={"Cargando operaciones"} />}>
         {session && (
-          <OperationsFeed
-            users={users}
-            initialEntities={initialEntities}
-            initialOperations={initialOperations}
-            operationsQueryInput={operationsQueryInput}
-            user={session.user}
-          />
+          <>
+            <FilterOperationsForm entities={initialEntities} users={users} />
+            <CustomPagination
+              itemName="operaciones"
+              page={operationsQueryInput.page}
+              pageSize={operationsQueryInput.limit}
+              totalCount={initialOperations.count}
+              pathname="/operaciones/gestion"
+            />
+            <OperationsFeed
+              users={users}
+              initialEntities={initialEntities}
+              initialOperations={initialOperations}
+              operationsQueryInput={operationsQueryInput}
+              user={session.user}
+            />
+            <CustomPagination
+              page={operationsQueryInput.page}
+              pageSize={operationsQueryInput.limit}
+              totalCount={initialOperations.count}
+              pathname="/operaciones/gestion"
+              itemName="operaciones"
+            />
+          </>
         )}
       </Suspense>
-      <div className="flex flex-row justify-end space-x-2">
-        {operationsQueryInput.page > 1 && (
-          <Link
-            className="flex flex-row items-center space-x-1 rounded-xl border-2 border-foreground p-2 transition-all hover:scale-110 hover:bg-slate-100"
-            href={{
-              pathname: "/operaciones/gestion",
-              query: { pagina: parseInt(selectedPage) - 1 },
-            }}
-          >
-            <Icons.chevronLeft className="h-5" />
-            Anterior
-          </Link>
-        )}
-        {initialOperations.length === operationsQueryInput.limit && (
-          <Link
-            className="flex flex-row items-center space-x-1 rounded-xl border-2 border-foreground p-2 transition-all hover:scale-110 hover:bg-slate-100"
-            href={{
-              pathname: "/operaciones/gestion",
-              query: { pagina: parseInt(selectedPage) + 1 },
-            }}
-          >
-            Siguiente <Icons.chevronRight className="h-5" />
-          </Link>
-        )}
-      </div>
     </div>
   );
 };

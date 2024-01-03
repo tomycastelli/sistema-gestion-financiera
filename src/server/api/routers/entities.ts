@@ -54,7 +54,7 @@ export const entitiesRouter = createTRPCRouter({
     return filteredEntities;
   }),
 
-  addOne: publicProcedure
+  addOne: protectedProcedure
     .input(
       z.object({
         name: z.string(),
@@ -81,6 +81,16 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
 
+      const newLog = new ctx.logs({
+        name: "addOneEntity",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: insertResponse,
+      });
+
+      await newLog.save();
+
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
     }),
@@ -104,6 +114,16 @@ export const entitiesRouter = createTRPCRouter({
         });
 
         await ctx.redis.del("cached_entities");
+
+        const newLog = new ctx.logs({
+          name: "deleteOneEntity",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: deleteResponse,
+        });
+
+        await newLog.save();
 
         return deleteResponse;
       } else {
@@ -133,6 +153,16 @@ export const entitiesRouter = createTRPCRouter({
       });
 
       await ctx.redis.del("cached_entities");
+
+      const newLog = new ctx.logs({
+        name: "updateOneEntity",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: updatedEntity,
+      });
+
+      await newLog.save();
 
       return updatedEntity;
     }),

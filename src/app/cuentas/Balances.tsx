@@ -288,6 +288,11 @@ const Balances: FC<BalancesProps> = ({
     keys: ["entity.name"],
   });
 
+  const balancesToRender = filteredBalances.slice(
+    pageSize * (detailedBalancesPage - 1),
+    pageSize * detailedBalancesPage,
+  );
+
   return (
     <div className="flex flex-col space-y-4">
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
@@ -388,7 +393,7 @@ const Balances: FC<BalancesProps> = ({
           ))}
         </div>
         {!isBalanceLoading ? (
-          filteredBalances.map((item, index) => (
+          balancesToRender.map((item, index) => (
             <div
               key={item.entity.id}
               className={cn(

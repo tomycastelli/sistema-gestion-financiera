@@ -1,12 +1,10 @@
 "use client";
 
 import Lottie from "lottie-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
 import {
   capitalizeFirstLetter,
-  createQueryString,
   getAllChildrenTags,
   translateWord,
 } from "~/lib/functions";
@@ -50,12 +48,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
   const [tagFilterMode, setTagFilterMode] = useState("children");
-
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const selectedPage = searchParams.get("pagina");
-  const page = selectedPage ? parseInt(selectedPage) : 1;
+  const [page, setPage] = useState<number>(1);
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
@@ -112,7 +105,10 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             className="w-36"
             placeholder="Nombre"
             value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setSearchValue(e.target.value);
+            }}
           />
           <div className="flex flex-row items-center space-x-2">
             <Select onValueChange={setTagFilter} value={tagFilter}>
@@ -211,18 +207,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                     : Math.round(twiceFilteredEntities.length / 30)
                 }
                 min={1}
-                onValueChange={(e) =>
-                  router.push(
-                    "/entidades" +
-                      "?" +
-                      createQueryString(
-                        searchParams,
-                        "pagina",
-                        e[0]!.toString(),
-                      ),
-                    { scroll: false },
-                  )
-                }
+                onValueChange={(e) => setPage(e[0]!)}
                 step={1}
               />
             </div>
