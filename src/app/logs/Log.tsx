@@ -23,7 +23,7 @@ import {
 } from "../components/ui/hover-card";
 
 interface LogProps {
-  log: RouterOutputs["logs"]["getLogs"][number];
+  log: RouterOutputs["logs"]["getLogs"]["logs"][number];
   users: RouterOutputs["users"]["getAll"];
 }
 
