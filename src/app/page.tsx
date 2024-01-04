@@ -25,7 +25,7 @@ export default async function Home() {
             <UsersMenuCard />
           </div>
           <div className="flex flex-row items-center justify-center space-x-4">
-            <Link href={"/docs"} prefetch={false}>
+            <Link href={"/documentacion"} prefetch={false}>
               <Button variant="outline" className="flex flex-row space-x-2 p-6">
                 <p>Documentación</p>
                 <Icons.info className="h-4" />

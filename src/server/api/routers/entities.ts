@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
+import { PermissionsNames } from "~/lib/permissionsTypes";
 import {
   getAllEntities,
   getAllPermissions,
@@ -20,39 +21,43 @@ export const entitiesRouter = createTRPCRouter({
     return entities;
   }),
 
-  getFiltered: protectedProcedure.query(async ({ ctx }) => {
-    const userPermissions = await getAllPermissions(
-      ctx.redis,
-      ctx.session,
-      ctx.db,
-      { userId: undefined },
-    );
-    const tags = await getAllTags(ctx.redis, ctx.db);
-    const entities = await getAllEntities(ctx.redis, ctx.db);
+  getFiltered: protectedProcedure
+    .input(z.object({ permissionName: z.enum(PermissionsNames) }))
+    .query(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(
+        ctx.redis,
+        ctx.session,
+        ctx.db,
+        { userId: undefined },
+      );
+      const tags = await getAllTags(ctx.redis, ctx.db);
+      const entities = await getAllEntities(ctx.redis, ctx.db);
 
-    const filteredEntities = entities.filter((entity) => {
-      if (
-        userPermissions?.find(
-          (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-        )
-      ) {
-        return true;
-      } else if (
-        userPermissions?.find(
-          (p) =>
-            p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-            (p.entitiesIds?.includes(entity.id) ||
-              getAllChildrenTags(p.entitiesTags, tags).includes(
-                entity.tag.name,
-              )),
-        )
-      ) {
-        return true;
-      }
-    });
+      const filteredEntities = entities.filter((entity) => {
+        if (
+          userPermissions?.find(
+            (p) => p.name === "ADMIN" || p.name === input.permissionName,
+          )
+        ) {
+          return true;
+        } else if (
+          userPermissions?.find(
+            (p) =>
+              p.name === `${input.permissionName}_SOME` &&
+              (p.entitiesIds?.includes(entity.id) ||
+                getAllChildrenTags(p.entitiesTags, tags).includes(
+                  entity.tag.name,
+                )),
+          )
+        ) {
+          return true;
+        } else if (entity.name === ctx.session.user.name) {
+          return true;
+        }
+      });
 
-    return filteredEntities;
-  }),
+      return filteredEntities;
+    }),
 
   addOne: protectedProcedure
     .input(

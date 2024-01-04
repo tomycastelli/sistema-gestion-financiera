@@ -28,6 +28,7 @@ export const PermissionsNames = [
   "USERS_ROLES_VISUALIZE",
   "USERS_ROLES_MANAGE",
   "USERS_ROLES_MANAGE_SOME",
+  "LOGS_VISUALIZE",
 ] as const;
 
 export const PermissionSchema = z.array(
@@ -228,5 +229,10 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     name: "USERS_ROLES_MANAGE_SOME",
     label: "Manejar algunos roles",
     description: "Manejar algunos roles",
+  },
+  {
+    name: "LOGS_VISUALIZE",
+    label: "Visualizar los logs",
+    description: "Visualizar los logs",
   },
 ];

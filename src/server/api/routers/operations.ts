@@ -8,7 +8,7 @@ import {
   getAllTags,
   undoBalances,
 } from "~/lib/trpcFunctions";
-import { cashAccountOnlyTypes } from "~/lib/variables";
+import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const operationsRouter = createTRPCRouter({
@@ -523,6 +523,7 @@ export const operationsRouter = createTRPCRouter({
                 : false;
 
             const isValidateAllowed =
+              currentAccountOnlyTypes.includes(tx.type) &&
               tx.status === "pending" &&
               userPermissions?.find(
                 (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",

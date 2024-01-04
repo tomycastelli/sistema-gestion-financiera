@@ -5,7 +5,7 @@ import moment from "moment";
 import type { User } from "next-auth";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
+import { capitalizeFirstLetter } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
@@ -51,8 +51,6 @@ const AddOperation = ({
   initialEntities,
   user,
   initialOperations,
-  userPermissions,
-  tags,
 }: AddOperationProps) => {
   const { toast } = useToast();
   const [parent] = useAutoAnimate();
@@ -187,34 +185,15 @@ const AddOperation = ({
     }
   };
 
-  const { isLoading: isEntitiesLoading, data: allEntities } =
-    api.entities.getAll.useQuery(undefined, {
-      initialData: initialEntities,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-    });
-
-  const filteredEntities = allEntities.filter((entity) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "OPERATIONS_CREATE_SOME" &&
-          (p.entitiesIds?.includes(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, tags).includes(
-              entity.tag.name,
-            ) ||
-            entity.name === user.name),
-      )
-    ) {
-      return true;
-    }
-  });
+  const { isLoading: isEntitiesLoading, data: entities } =
+    api.entities.getFiltered.useQuery(
+      { permissionName: "OPERATIONS_CREATE" },
+      {
+        initialData: initialEntities,
+        refetchOnMount: false,
+        refetchOnReconnect: false,
+      },
+    );
 
   const tabs = ["flexible", "cambio", "cable"];
 
@@ -283,7 +262,7 @@ const AddOperation = ({
                             variant="outline"
                           >
                             {
-                              filteredEntities.find(
+                              entities.find(
                                 (obj) => obj.id === transaction.fromEntityId,
                               )?.name
                             }
@@ -308,7 +287,7 @@ const AddOperation = ({
                             variant="outline"
                           >
                             {
-                              filteredEntities.find(
+                              entities.find(
                                 (obj) => obj.id === transaction.toEntityId,
                               )?.name
                             }
@@ -338,7 +317,7 @@ const AddOperation = ({
                             <p className="text-sm font-medium">Operador</p>
                             <Badge variant="outline">
                               {
-                                filteredEntities.find(
+                                entities.find(
                                   (obj) => obj.id === transaction.operatorId,
                                 )?.name
                               }
@@ -389,7 +368,7 @@ const AddOperation = ({
       </div>
       <div className="lg:col-span-2">
         {isInitialOperationSubmitted ? (
-          filteredEntities &&
+          entities &&
           user && (
             <div>
               <Tabs value={tabName} className="w-full">
@@ -417,25 +396,25 @@ const AddOperation = ({
                 >
                   <FlexibleTransactionsForm
                     isLoading={isEntitiesLoading}
-                    entities={filteredEntities}
+                    entities={entities}
                     user={user}
                   />
                 </TabsContent>
                 <TabsContent value="cambio">
                   <CambioForm
-                    entities={filteredEntities}
+                    entities={entities}
                     user={user}
                     isLoading={isEntitiesLoading}
                   />
                 </TabsContent>
                 <TabsContent value="cable">
                   <CableForm
-                    entities={filteredEntities}
+                    entities={entities}
                     userEntityId={
-                      allEntities
+                      entities
                         .find((entity) => entity.name === user.name)!
                         .id.toString()
-                        ? allEntities
+                        ? entities
                             .find((entity) => entity.name === user.name)!
                             .id.toString()
                         : ""

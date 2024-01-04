@@ -1,4 +1,5 @@
 import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
+import Image, { type ImageProps } from "next/image";
 import Link from "next/link";
 import { Icons } from "./ui/Icons";
 
@@ -43,9 +44,27 @@ const components = {
     </div>
   ),
   p: (props: React.HTMLProps<HTMLParagraphElement>) => (
-    <p {...props} className="text-md my-1 text-justify">
+    <p {...props} className="my-1 text-justify text-lg">
       {props.children}
     </p>
+  ),
+  img: (props: React.HTMLProps<HTMLImageElement>) => (
+    <Image
+      width={1724}
+      height={1242}
+      style={{ height: "auto", objectFit: "contain", position: "relative" }}
+      {...(props as ImageProps)}
+    />
+  ),
+  ul: (props: React.HTMLProps<HTMLUListElement>) => (
+    <ul {...props} className="flex flex-col space-y-2 text-lg">
+      {props.children}
+    </ul>
+  ),
+  li: (props: React.HTMLProps<HTMLLIElement>) => (
+    <li {...props} className="ml-2 text-lg">
+      {props.children}
+    </li>
   ),
 };
 

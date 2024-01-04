@@ -33,7 +33,9 @@ const Page = async ({
     ? parseInt(selectedEntityIdString)
     : null;
 
-  const entities = await api.entities.getAll.query();
+  const initialEntities = await api.entities.getFiltered.query({
+    permissionName: "ACCOUNTS_VISUALIZE",
+  });
   const initialTags = await api.tags.getAll.query();
 
   const filteredTags = initialTags.filter((tag) => {
@@ -48,27 +50,6 @@ const Page = async ({
         (p) =>
           p.name === "ACCOUNTS_VISUALIZE_SOME" &&
           getAllChildrenTags(p.entitiesTags, initialTags).includes(tag.name),
-      )
-    ) {
-      return true;
-    }
-  });
-
-  const filteredEntities = entities.filter((entity) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          (p.entitiesIds?.includes(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, initialTags).includes(
-              entity.tag.name,
-            )),
       )
     ) {
       return true;
@@ -129,7 +110,7 @@ const Page = async ({
             {session && (
               <div className="grid w-1/3 grid-cols-1 gap-4 xl:grid-cols-2">
                 <EntitySwitcher
-                  entities={filteredEntities}
+                  entities={initialEntities}
                   tags={filteredTags}
                 />
                 {(selectedEntityId || selectedTag) && <TabSwitcher />}

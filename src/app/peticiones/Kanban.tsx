@@ -1,5 +1,6 @@
 "use client";
 
+import { type Session } from "next-auth";
 import { type FC } from "react";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -20,9 +21,14 @@ import UpdateRequest from "./UpdateRequest";
 interface KanbanProps {
   initialRequests: RouterOutputs["requests"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
+  session: Session;
 }
 
-const Kanban: FC<KanbanProps> = ({ initialRequests, userPermissions }) => {
+const Kanban: FC<KanbanProps> = ({
+  initialRequests,
+  userPermissions,
+  session,
+}) => {
   const utils = api.useContext();
 
   const { data: requests, isLoading } = api.requests.getAll.useQuery(
@@ -88,7 +94,9 @@ const Kanban: FC<KanbanProps> = ({ initialRequests, userPermissions }) => {
                             <Icons.cross className="h-5 text-red" />
                           </Button>
                         )}
-                      <UpdateRequest request={r} />
+                      {r.uploadedBy === session.user.id && (
+                        <UpdateRequest request={r} />
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="flex flex-col space-y-2">

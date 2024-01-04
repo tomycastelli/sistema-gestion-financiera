@@ -26,6 +26,7 @@ const config = {
     "@typescript-eslint/prefer-optional-chain": "off",
     "@typescript-eslint/no-redundant-type-constituents": "off",
     "@typescript-eslint/ban-ts-comment": "off",
+    "jsx-a11y/alt-text": "off",
 
     "@typescript-eslint/consistent-type-imports": [
       "warn",

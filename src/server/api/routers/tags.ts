@@ -47,6 +47,16 @@ export const tagsRouter = createTRPCRouter({
         await ctx.redis.del("tags");
       }
 
+      const newLog = new ctx.logs({
+        name: "removeOneTag",
+        timestamp: new Date(),
+        createdBy: ctx.session.user.id,
+        input: input,
+        output: response,
+      });
+
+      await newLog.save();
+
       return response;
     }),
   getFiltered: protectedProcedure.query(async ({ ctx }) => {

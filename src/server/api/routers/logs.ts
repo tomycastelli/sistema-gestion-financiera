@@ -11,7 +11,7 @@ export const logsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const allLogs = await ctx.logs
+      const allLogs: LogsDocument[] | undefined = await ctx.logs
         // @ts-ignore
         .find({})
         .sort({ timestamp: -1 })
@@ -20,6 +20,6 @@ export const logsRouter = createTRPCRouter({
 
       const count = await ctx.logs.countDocuments();
 
-      return { logs: allLogs as LogsDocument[], count: count };
+      return { logs: allLogs, count: count };
     }),
 });

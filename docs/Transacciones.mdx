@@ -1,17 +1,58 @@
-# Operaciones
+# Transacciones, operaciones y movimientos
 
-Todo sobre las operaciones
+Las transacciones representan el flujo de dinero de una entidad a otra, y están relacionadas entre sí mediante una operación. El siguiente ejemplo representa una operación de cambio entre la entidad 7 y la entidad 12:
 
-## Las transacciones
+![Transacciones y operaciones](/images/transacciones_1.png)
 
-Todo sobr elas transacciones
+Las propiedades de una transacción son:
 
-Esse officia reprehenderit deserunt minim tempor aliqua culpa cupidatat commodo occaecat sint labore ullamco excepteur proident. Nostrud in dolore incididunt tempor in mollit excepteur eu esse sint exercitation excepteur id consequat occaecat. Dolore ex ipsum labore. Eiusmod in anim qui cillum aliquip. Fugiat cillum velit nulla consequat nulla deserunt magna ea reprehenderit irure sunt sint ad. Sunt est nisi reprehenderit fugiat amet aliqua sint sit laboris culpa adipisicing aliqua. Ad laborum et culpa non nisi eiusmod ut nisi sint reprehenderit sit nostrud aliquip in. Dolor voluptate reprehenderit aute duis cillum excepteur est occaecat dolore.
+- **id**: Idenficador único de la transacción
+- **operation_od**: Identificador único de la operación relacionada
+- **type**: El tipo de transacción, lo que indica como se crean los movimientos relacionados y el estado de la transacción
+- **date**: Fecha de la transacción, es un dato que se puede cargar opcionalmente y en caso de no especificarse, se toma la fecha de la operación relacionada
+- **operatorEntityId**: Idenficador único de la entidad que funciona como operador
+- **fromEntityId**: Identificador único de la entidad emisora
+- **toEntityId**: Idenficador único de la entidad receptora
+- **currency**: Divisa
+- **amount**: Monto
+- **method**: Método con el cual se realiza la transacción, puede ser efectivo o transferencia bancaria
+- **status**: Estado de la transacción, puede ser pendiente, confirmada o cancelada
 
-Nostrud qui elit occaecat consequat. Elit fugiat ullamco do sit incididunt deserunt in. Culpa occaecat dolor aliqua occaecat minim culpa nostrud ipsum pariatur pariatur anim. Id sint excepteur cillum culpa proident duis cillum adipisicing cillum nostrud sunt duis officia nulla. Amet aliquip sit incididunt sint quis incididunt ex sunt. Amet adipisicing pariatur minim velit nisi qui cillum incididunt minim reprehenderit ullamco culpa. Consequat id cillum dolore dolor quis est occaecat elit. Qui consequat eu culpa deserunt esse nostrud dolor eu est.
+## Tipos de transacción
 
-Dolor voluptate nisi enim ullamco nulla reprehenderit ea aute magna cillum exercitation reprehenderit consectetur. Dolor anim amet nisi adipisicing sint laboris tempor labore ullamco eiusmod esse. Lorem dolore duis ipsum nisi commodo aliquip minim adipisicing duis veniam nostrud consectetur dolor proident. Culpa ut excepteur dolor elit. Amet nulla Lorem excepteur enim laboris cupidatat. Ea excepteur dolore excepteur dolore nulla ex commodo commodo mollit proident ipsum et. Aliqua irure id ullamco ad enim duis ad cupidatat officia dolore elit.
+Una transacción está relacionada a varios movimientos que modifican las cuentas (cuenta corriente y caja) de las entidades involucradas. El comportamiento de cada transacción con respecto a los movimientos que realiza depende del “tipo” de la misma. A continuación se detallará cada uno.
 
-Excepteur incididunt sit mollit quis ea culpa ad sint culpa aute est eu consequat fugiat. Do in duis tempor amet ea adipisicing ea pariatur exercitation veniam tempor magna est in. Mollit nostrud magna dolore aliqua. Commodo sit incididunt ullamco esse aliqua aute ad. Commodo irure commodo amet sit. Do excepteur deserunt nisi mollit commodo sint ea cillum non officia labore labore. Quis excepteur deserunt labore ex tempor dolore fugiat non ad.
+### Cambio, Cable, Pago por cuenta corriente
 
-Aute elit ullamco eiusmod aliqua consequat nisi Lorem aute officia ea magna ex pariatur deserunt. Laboris aute sit ut minim excepteur fugiat nisi cillum ut laborum culpa nisi sint deserunt. Et consectetur labore enim amet consequat reprehenderit cillum occaecat. Eiusmod eiusmod sint dolor qui et sint ex laborum excepteur et laborum id excepteur qui. In amet nisi occaecat ipsum eu enim commodo sunt. Sunt aliqua laboris esse duis ea officia Lorem exercitation consectetur. Nostrud qui deserunt consequat minim Lorem commodo labore eiusmod adipisicing occaecat irure amet non exercitation ipsum. Aute amet elit reprehenderit quis sit officia.
+Al momento de cargar se crea un movimiento en cuenta corriente de dirección contraria a la transacción.
+
+![Movimiento de carga en cambio](/images/transacciones_2.png)
+
+La transacción queda como pendiente para luego ser confirmada, creándose en esa confirmación un movimiento en cuenta corriente en la misma dirección que la transacción y por ende anulando la cuenta corriente. A su vez en la confirmación se crea un movimiento en caja con la misma dirección que la transacción, indicando que el “flujo de dinero” fue realizado efectivamente.
+
+![Movimientos de confirmación en cambio](/images/transacciones_3.png)
+
+Las propiedades de un movimiento son:
+
+- **id**: Identificador único del movimiento
+- **transaction_id**: Identificador único de la transacción relacionada
+- **direction**: Dirección del movimiento, si es 1 es solidario a la dirección de la transacción (definida por el fromEntityId y el toEntityId), si es -1 es contrario a la dirección de la transacción
+- **type**: Tipo de movimiento, puede ser de carga, de confirmación y de cancelación
+- **account**: La cuenta a la que pertence, puede ser cuenta corriente o caja
+
+### Fee, Cuenta corriente
+
+Al momento de cargar se crea un movimiento en cuenta corriente de dirección contraria a la transacción. La transacción no podrá ser confirmada ya que solo afecta a la cuenta corriente de las entidades al momento de cargarla.
+
+### Ingreso, Gasto
+
+Al momento de cargar se crea un movimiento en caja en la misma dirección que la transacción y la misma queda en el momento confirmada.
+
+## Cancelación
+
+Una transacción pueden ser cancelada, lo que cambia el estado de la misma y genera una transacción opuesta a la cancelada, para que las cuentas queden en 0, tanto caja como cuenta corriente. \
+Las transacciones creadas por cancelación van a tener la fecha del momento en el que se realiza la acción, por ende, los movimientos que anulan van a tener esa fecha.
+
+## Confirmación
+
+Algunas transacciones pueden ser confirmadas para terminar de cerrar el flujo de dinero entre las entidades. Dependiendo del tipo de transacción (como se detalla mas arriba) la confirmación sucede al momento de cargarlos, y otros tipos no pueden ni necesitan ser confirmados.

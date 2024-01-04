@@ -24,7 +24,9 @@ const Navbar = async () => {
             <CommandMenu
               userPermissons={userPermissions}
               tags={await api.tags.getFiltered.query()}
-              entities={await api.entities.getFiltered.query()}
+              entities={await api.entities.getFiltered.query({
+                permissionName: "ACCOUNTS_VISUALIZE",
+              })}
             />
           </div>
         )}

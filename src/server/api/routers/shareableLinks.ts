@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const shareableLinksRouter = createTRPCRouter({
-  createLink: publicProcedure
+  createLink: protectedProcedure
     .input(
       z.object({
         sharedEntityId: z.number().int(),
@@ -20,6 +20,16 @@ export const shareableLinksRouter = createTRPCRouter({
             expiration: input.expiration,
           },
         });
+
+        const newLog = new ctx.logs({
+          name: "createLink",
+          timestamp: new Date(),
+          createdBy: ctx.session.user.id,
+          input: input,
+          output: response,
+        });
+
+        await newLog.save();
 
         return response;
       } catch (error) {
