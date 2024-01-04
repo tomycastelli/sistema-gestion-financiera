@@ -270,6 +270,7 @@ const Balances: FC<BalancesProps> = ({
             <Card key={item.entity.id} className="min-w-[300px]">
               <CardHeader>
                 <Link
+                  prefetch={false}
                   href={{
                     pathname: "/cuentas",
                     query: {

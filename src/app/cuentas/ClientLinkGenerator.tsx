@@ -145,6 +145,7 @@ const ClientLinkGenerator = ({
                   className="flex flex-row space-x-2"
                 >
                   <Link
+                    prefetch={false}
                     target="_blank"
                     href={
                       pathname +

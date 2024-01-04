@@ -240,6 +240,7 @@ const Operation: FC<OperationProps> = ({
         <CardHeader>
           <CardTitle className="flex">
             <Link
+              prefetch={false}
               href={`/operaciones/gestion/${op.id}`}
               className="flex flex-row space-x-1 text-black transition-all hover:scale-125"
             >

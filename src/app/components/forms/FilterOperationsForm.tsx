@@ -87,17 +87,17 @@ const FilterOperationsForm = ({
       opDay: selectedDate
         ? moment(selectedDate, "DD-MM-YYYY").toDate()
         : selectedDateGreater
-        ? moment(selectedDateGreater, "DD-MM-YYYY").toDate()
-        : selectedDateLesser
-        ? moment(selectedDateLesser, "DD-MM-YYYY").toDate()
-        : undefined,
+          ? moment(selectedDateGreater, "DD-MM-YYYY").toDate()
+          : selectedDateLesser
+            ? moment(selectedDateLesser, "DD-MM-YYYY").toDate()
+            : undefined,
       opDayFilterType: selectedDate
         ? "equal"
         : selectedDateGreater
-        ? "gte"
-        : selectedDateLesser
-        ? "lte"
-        : "equal",
+          ? "gte"
+          : selectedDateLesser
+            ? "lte"
+            : "equal",
       transactionType: selectedTransactionType
         ? selectedTransactionType
         : undefined,
@@ -108,17 +108,17 @@ const FilterOperationsForm = ({
       amount: selectedAmount
         ? selectedAmount
         : selectedMaxAmount
-        ? selectedMaxAmount
-        : selectedMinAmount
-        ? selectedMinAmount
-        : undefined,
+          ? selectedMaxAmount
+          : selectedMinAmount
+            ? selectedMinAmount
+            : undefined,
       amountFilterType: selectedAmount
         ? "equal"
         : selectedMaxAmount
-        ? "lte"
-        : selectedMinAmount
-        ? "gte"
-        : "equal",
+          ? "lte"
+          : selectedMinAmount
+            ? "gte"
+            : "equal",
       uploadedById: selectedUploadUserId ? selectedUploadUserId : undefined,
       confirmedById: selectedConfirmationUserId
         ? selectedConfirmationUserId
@@ -144,60 +144,60 @@ const FilterOperationsForm = ({
     if (watchFromEntityId !== undefined) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(searchParams, "origen", watchFromEntityId),
+        "?" +
+        createQueryString(searchParams, "origen", watchFromEntityId),
       );
     }
     if (watchToEntityId !== undefined) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(searchParams, "destino", watchToEntityId),
+        "?" +
+        createQueryString(searchParams, "destino", watchToEntityId),
       );
     }
     if (watchCurrency !== undefined) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(searchParams, "divisa", watchCurrency),
+        "?" +
+        createQueryString(searchParams, "divisa", watchCurrency),
       );
     }
     if (watchOpDay) {
       if (watchOpDayFilterType === "equal") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["diaMax", "diaMin"]),
-              ),
-              "dia",
-              moment(watchOpDay).format("DD-MM-YYYY"),
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["diaMax", "diaMin"]),
             ),
+            "dia",
+            moment(watchOpDay).format("DD-MM-YYYY"),
+          ),
         );
       } else if (watchOpDayFilterType === "gte") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["diaMax", "dia"]),
-              ),
-              "diaMin",
-              moment(watchOpDay).format("DD-MM-YYYY"),
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["diaMax", "dia"]),
             ),
+            "diaMin",
+            moment(watchOpDay).format("DD-MM-YYYY"),
+          ),
         );
       } else if (watchOpDayFilterType === "lte") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["diaMin", "dia"]),
-              ),
-              "diaMax",
-              moment(watchOpDay).format("DD-MM-YYYY"),
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["diaMin", "dia"]),
             ),
+            "diaMax",
+            moment(watchOpDay).format("DD-MM-YYYY"),
+          ),
         );
       }
     }
@@ -209,65 +209,65 @@ const FilterOperationsForm = ({
     if (watchOperator) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(searchParams, "operador", watchOperator),
+        "?" +
+        createQueryString(searchParams, "operador", watchOperator),
       );
     }
     if (watchAmount && isNumeric(watchAmount)) {
       if (watchAmountFilterType === "equal") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["montoMin", "montoMax"]),
-              ),
-              "monto",
-              watchAmount,
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["montoMin", "montoMax"]),
             ),
+            "monto",
+            watchAmount,
+          ),
         );
       } else if (watchAmountFilterType === "gte") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["monto", "montoMax"]),
-              ),
-              "montoMin",
-              watchAmount,
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["monto", "montoMax"]),
             ),
+            "montoMin",
+            watchAmount,
+          ),
         );
       } else if (watchAmountFilterType === "lte") {
         router.push(
           pathname +
-            "?" +
-            createQueryString(
-              new URLSearchParams(
-                removeQueryString(searchParams, ["montoMin", "monto"]),
-              ),
-              "montoMax",
-              watchAmount,
+          "?" +
+          createQueryString(
+            new URLSearchParams(
+              removeQueryString(searchParams, ["montoMin", "monto"]),
             ),
+            "montoMax",
+            watchAmount,
+          ),
         );
       }
     }
     if (watchUploadUserId) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(searchParams, "cargadoPor", watchUploadUserId),
+        "?" +
+        createQueryString(searchParams, "cargadoPor", watchUploadUserId),
       );
     }
     if (watchConfirmedUserId) {
       router.push(
         pathname +
-          "?" +
-          createQueryString(
-            searchParams,
-            "confirmadoPor",
-            watchConfirmedUserId,
-          ),
+        "?" +
+        createQueryString(
+          searchParams,
+          "confirmadoPor",
+          watchConfirmedUserId,
+        ),
       );
     }
   }, [
@@ -534,6 +534,7 @@ const FilterOperationsForm = ({
         </div>
         <div className="flex flex-row justify-start">
           <Link
+            prefetch={false}
             onClick={() => reset({ amount: "", amountFilterType: "equal" })}
             href={{
               pathname: "/operaciones/gestion",

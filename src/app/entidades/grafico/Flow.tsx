@@ -9,7 +9,6 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { findColor } from "~/lib/functions";
-import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import EntityNode from "./EntityNode";
 import TagNode from "./TagNode";
@@ -44,39 +43,34 @@ const getLayoutedElements = (nodes, edges) => {
 };
 
 const Flow: FC<FlowProps> = ({ initialTags, initialEntities }) => {
-  const { data: tags } = api.tags.getAll.useQuery(undefined, {
-    initialData: initialTags,
-  });
-  const { data: entities } = api.entities.getAll.useQuery(undefined, {
-    initialData: initialEntities,
-  });
+  const nodeTags: Node<(typeof initialTags)[number], "tag">[] = initialTags.map(
+    (tag) => {
+      return {
+        id: tag.name,
+        position: { x: 0, y: 0 },
+        data: {
+          ...tag,
+          color: findColor(tag, initialTags),
+        },
+        type: "tag",
+      };
+    },
+  );
 
-  const nodeTags: Node<(typeof tags)[number], "tag">[] = tags.map((tag) => {
-    return {
-      id: tag.name,
-      position: { x: 0, y: 0 },
-      data: {
-        ...tag,
-        color: findColor(tag, tags),
-      },
-      type: "tag",
-    };
-  });
-
-  const nodeEntities: Node<(typeof entities)[number], "entity">[] =
-    entities.map((entity) => {
+  const nodeEntities: Node<(typeof initialEntities)[number], "entity">[] =
+    initialEntities.map((entity) => {
       return {
         id: entity.name,
         position: { x: 0, y: 0 },
         data: {
           ...entity,
-          tag: { ...entity.tag, color: findColor(entity.tag, tags) },
+          tag: { ...entity.tag, color: findColor(entity.tag, initialTags) },
         },
         type: "entity",
       };
     });
 
-  const transformTagsToEdges = (tagsData: typeof tags): Edge[] => {
+  const transformTagsToEdges = (tagsData: typeof initialTags): Edge[] => {
     const edges: Edge[] = [];
 
     for (const tag of tagsData) {
@@ -93,7 +87,9 @@ const Flow: FC<FlowProps> = ({ initialTags, initialEntities }) => {
     return edges;
   };
 
-  const transformEntitiesToEdges = (entitiesData: typeof entities): Edge[] => {
+  const transformEntitiesToEdges = (
+    entitiesData: typeof initialEntities,
+  ): Edge[] => {
     const edges: Edge[] = [];
 
     for (const entity of entitiesData) {
@@ -108,8 +104,8 @@ const Flow: FC<FlowProps> = ({ initialTags, initialEntities }) => {
     return edges;
   };
 
-  const edgeTags = transformTagsToEdges(tags);
-  const edgeEntities = transformEntitiesToEdges(entities);
+  const edgeTags = transformTagsToEdges(initialTags);
+  const edgeEntities = transformEntitiesToEdges(initialEntities);
 
   const layouted = getLayoutedElements(
     [...nodeTags, ...nodeEntities],

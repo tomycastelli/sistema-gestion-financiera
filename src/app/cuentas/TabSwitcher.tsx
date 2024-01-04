@@ -40,6 +40,7 @@ const TabSwitcher = () => {
   return (
     <div className="grid w-[400px] grid-cols-3 rounded-xl bg-primary-foreground p-1 text-sm">
       <Link
+        prefetch={false}
         href={{ pathname: "/cuentas", query: resumenQuery }}
         className={cn(
           !selectedTab && "bg-primary font-semibold text-white",
@@ -49,6 +50,7 @@ const TabSwitcher = () => {
         Resumen
       </Link>
       <Link
+        prefetch={false}
         href={{
           pathname: "/cuentas",
           query: cashQuery,
@@ -61,13 +63,14 @@ const TabSwitcher = () => {
         Caja
       </Link>
       <Link
+        prefetch={false}
         href={{
           pathname: "/cuentas",
           query: currentAcountQuery,
         }}
         className={cn(
           selectedTab === "cuenta_corriente" &&
-            "bg-primary font-semibold text-white",
+          "bg-primary font-semibold text-white",
           "flex items-center justify-center rounded-xl p-2",
         )}
       >

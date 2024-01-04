@@ -17,7 +17,7 @@ const ManageOperationsCard = () => {
         <CardDescription>Visualizá y modifica operaciones</CardDescription>
       </CardHeader>
       <CardFooter className="w-full">
-        <Link href={"/operaciones/gestion"} className="w-full">
+        <Link prefetch={false} href={"/operaciones/gestion"} className="w-full">
           <Button className="w-full">Gestionar</Button>
         </Link>
       </CardFooter>

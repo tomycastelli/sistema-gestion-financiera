@@ -13,6 +13,7 @@ const OperationsMenuCard = async () => {
       <CardContent>
         <div className="flex flex-col space-y-4">
           <Link
+            prefetch={false}
             href={"/usuarios"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
           >
@@ -26,28 +27,30 @@ const OperationsMenuCard = async () => {
               p.name.startsWith("USERS_PERMISSIONS_MANAGE") ||
               p.name === "USERS_PERMISSIONS_VISUALIZE",
           ) && (
-            <Link
-              href={"/usuarios/permisos"}
-              className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
-            >
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Permisos
-              </h1>
-            </Link>
-          )}
+              <Link
+                prefetch={false}
+                href={"/usuarios/permisos"}
+                className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+              >
+                <h1 className="text-3xl font-semibold tracking-tight">
+                  Permisos
+                </h1>
+              </Link>
+            )}
           {userPermissions?.find(
             (p) =>
               p.name === "ADMIN" ||
               p.name === "USERS_ROLES_MANAGE" ||
               p.name === "USERS_ROLES_VISUALIZE",
           ) && (
-            <Link
-              href={"/usuarios/roles"}
-              className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
-            >
-              <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>
-            </Link>
-          )}
+              <Link
+                prefetch={false}
+                href={"/usuarios/roles"}
+                className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+              >
+                <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>
+              </Link>
+            )}
         </div>
       </CardContent>
     </Card>

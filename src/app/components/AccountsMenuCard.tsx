@@ -19,6 +19,7 @@ const OperationsMenuCard = async () => {
               key={tag.name}
               className={`mb-2 flex flex-row space-x-2 pl-2 text-xl hover:border-l-8 hover:border-primary hover:transition-all`}
               href={{ pathname: "/cuentas", query: { tag: tag.name } }}
+              prefetch={false}
             >
               <p>{tag.name}</p>
               <p className="text-muted-foreground">{tag.parent}</p>
@@ -32,6 +33,7 @@ const OperationsMenuCard = async () => {
               key={entity.name}
               className={`mb-2 flex flex-row space-x-2 pl-2 text-xl hover:border-l-8 hover:border-primary hover:transition-all`}
               href={{ pathname: "/cuentas", query: { entidad: entity.id } }}
+              prefetch={false}
             >
               <p>{entity.name}</p>
               <p className="text-muted-foreground">{entity.tag.name}</p>

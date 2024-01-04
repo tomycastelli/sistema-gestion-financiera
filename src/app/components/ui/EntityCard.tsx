@@ -42,10 +42,10 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
             entity.tag.color === "primary"
               ? "border-primary"
               : entity.tag.color === "green"
-              ? "border-green"
-              : entity.tag.color === "orange"
-              ? "border-orange"
-              : "",
+                ? "border-green"
+                : entity.tag.color === "orange"
+                  ? "border-orange"
+                  : "",
           )}
         >
           <CardHeader>
@@ -53,6 +53,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
               <HoverCardTrigger asChild>
                 <CardTitle>
                   <Link
+                    prefetch={false}
                     className={cn(
                       "flex transition-all hover:scale-110",
                       entity.name.length <= 15 ? "text-2xl" : "text-[20px]",
@@ -86,6 +87,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
               <HoverCardTrigger asChild>
                 <CardDescription className="text-md">
                   <Link
+                    prefetch={false}
                     className="flex transition-all hover:scale-110"
                     href={{
                       pathname: "/cuentas",

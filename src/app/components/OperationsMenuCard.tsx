@@ -16,12 +16,14 @@ const OperationsMenuCard = async ({ userId }: { userId: string }) => {
           <Link
             href={"/operaciones/carga"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+            prefetch={false}
           >
             <h1 className="text-3xl font-semibold tracking-tight">Carga</h1>
           </Link>
           <Link
             href={"/operaciones/gestion"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+            prefetch={false}
           >
             <h1 className="text-3xl font-semibold tracking-tight">Gestión</h1>
           </Link>

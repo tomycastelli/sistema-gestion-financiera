@@ -11,7 +11,9 @@ const LinkTree = () => {
 
   return (
     <div className="text-md flex flex-row space-x-1 lg:text-lg">
-      <Link href="/">Inicio / </Link>
+      <Link href="/" prefetch={false}>
+        Inicio /{" "}
+      </Link>
       {paths.map((path, index) => {
         currentPath += `/${path}`;
         return (
@@ -20,6 +22,7 @@ const LinkTree = () => {
               <p className="font-bold">{capitalizeFirstLetter(path)}</p>
             ) : (
               <Link
+                prefetch={false}
                 href={currentPath}
                 className="rounded-xl p-2 text-black transition-all hover:text-primary hover:shadow-md"
               >

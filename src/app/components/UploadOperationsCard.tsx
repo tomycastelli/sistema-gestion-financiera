@@ -20,7 +20,7 @@ export function UploadOperationsCard({ className, ...props }: CardProps) {
         <CardDescription>Cargá operaciones</CardDescription>
       </CardHeader>
       <CardFooter className="w-full">
-        <Link href={"/operaciones/carga"} className="w-full">
+        <Link prefetch={false} href={"/operaciones/carga"} className="w-full">
           <Button className="w-full">Cargar nueva operación</Button>
         </Link>
       </CardFooter>

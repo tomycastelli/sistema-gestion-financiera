@@ -47,6 +47,7 @@ const PaginationLink = ({
 }: PaginationLinkProps) => (
   <PaginationItem>
     <Link
+      prefetch={false}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         buttonVariants({

@@ -12,6 +12,7 @@ const Page = async () => {
     <div>
       <h1 className="text-4xl font-semibold tracking-tighter">Entidades</h1>
       <Link
+        prefetch={false}
         href="/entidades/grafico"
         className="mt-1 flex w-28 flex-row items-center justify-center space-x-2 rounded-xl bg-muted p-1 transition-all hover:scale-110"
       >

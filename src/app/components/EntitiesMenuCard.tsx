@@ -12,12 +12,14 @@ const OperationsMenuCard = () => {
           <Link
             href={"/entidades"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+            prefetch={false}
           >
             <h1 className="text-3xl font-semibold tracking-tight">Gestión</h1>
           </Link>
           <Link
             href={"/entidades/grafico"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+            prefetch={false}
           >
             <h1 className="text-3xl font-semibold tracking-tight">Gráfico</h1>
           </Link>

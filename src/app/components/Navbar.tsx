@@ -12,6 +12,7 @@ const Navbar = async () => {
     <header className="h-fit w-full py-4 text-foreground">
       <div className="flex flex-row items-center justify-between">
         <Link
+          prefetch={false}
           href="/"
           className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
         >

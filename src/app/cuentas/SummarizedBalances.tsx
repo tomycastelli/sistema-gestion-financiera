@@ -202,6 +202,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
               <DropdownMenuItem>
                 <Link
+                  prefetch={false}
                   href={{
                     pathname: `/operaciones/gestion/${movement.operationId}`,
                     query: { row: row.getValue("id") },
@@ -263,12 +264,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                 {selectedTimeframe === "day"
                   ? "Diario"
                   : selectedTimeframe === "week"
-                  ? "Semanal"
-                  : selectedTimeframe === "month"
-                  ? "Mensual"
-                  : selectedTimeframe === "year"
-                  ? "Anual"
-                  : ""}
+                    ? "Semanal"
+                    : selectedTimeframe === "month"
+                      ? "Mensual"
+                      : selectedTimeframe === "year"
+                        ? "Anual"
+                        : ""}
               </CardTitle>
               <CardDescription>
                 {selectedCurrency.toUpperCase()}
