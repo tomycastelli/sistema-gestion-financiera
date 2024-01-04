@@ -449,7 +449,7 @@ const MovementsTable = ({
           <LoadingAnimation text="Cargando movimientos" />
         )}
       </div>
-      <div className="mt-4 flex flex-col items-center justify-center space-y-2">
+      <div className="mt-4 flex w-fit flex-col items-center justify-start space-y-2">
         <Pagination>
           <PaginationContent>
             {movementsTablePage > 2 && (

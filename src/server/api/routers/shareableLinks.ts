@@ -1,7 +1,7 @@
 import { Str } from "@supercharge/strings";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const shareableLinksRouter = createTRPCRouter({
   createLink: publicProcedure
@@ -87,5 +87,16 @@ export const shareableLinksRouter = createTRPCRouter({
       } catch (error) {
         console.error(error);
       }
+    }),
+  removeLink: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const removedLink = await ctx.db.links.delete({
+        where: {
+          id: input.id,
+        },
+      });
+
+      return removedLink;
     }),
 });

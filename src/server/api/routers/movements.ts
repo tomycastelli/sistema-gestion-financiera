@@ -39,6 +39,9 @@ export const movementsRouter = createTRPCRouter({
             id: input.linkId,
             sharedEntityId: input.sharedEntityId,
             password: input.linkToken,
+            expiration: {
+              gte: new Date(),
+            },
           },
         });
 
@@ -206,6 +209,9 @@ export const movementsRouter = createTRPCRouter({
             id: input.linkId,
             sharedEntityId: input.entityId,
             password: input.linkToken,
+            expiration: {
+              gte: new Date(),
+            },
           },
         });
 
@@ -320,6 +326,9 @@ export const movementsRouter = createTRPCRouter({
             id: input.linkId,
             sharedEntityId: input.entityId,
             password: input.linkToken,
+            expiration: {
+              gte: new Date(),
+            },
           },
         });
 

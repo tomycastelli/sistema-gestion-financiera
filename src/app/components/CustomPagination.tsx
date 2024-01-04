@@ -25,7 +25,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
   const lastPage = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="my-4 flex w-min flex-col items-center space-y-2">
+    <div className="my-4 flex w-fit flex-col items-center space-y-2">
       <Pagination>
         <PaginationContent>
           {page > 2 && (

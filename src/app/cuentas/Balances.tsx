@@ -1,6 +1,7 @@
 "use client";
 
 import Lottie from "lottie-react";
+import Link from "next/link";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
@@ -20,14 +21,6 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -50,8 +43,6 @@ const Balances: FC<BalancesProps> = ({
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 10;
-
-  const [filteredEntity, setFilteredEntity] = useState<string>();
 
   const allChildrenTags = getAllChildrenTags(selectedTag, tags);
 
@@ -166,32 +157,6 @@ const Balances: FC<BalancesProps> = ({
       [] as z.infer<typeof transformedBalancesSchema>[],
     );
 
-  const uniqueEntities: { id: number; name: string; tagName: string }[] =
-    balances?.reduce(
-      (acc, balance) => {
-        const { selectedEntity, otherEntity } = balance;
-
-        // Check conditions for selectedEntity
-        if (
-          selectedEntity.id !== selectedEntityId &&
-          selectedEntity.tagName !== selectedTag
-        ) {
-          acc.push(selectedEntity);
-        }
-
-        // Check conditions for otherEntity
-        if (
-          otherEntity.id !== selectedEntityId &&
-          otherEntity.tagName !== selectedTag
-        ) {
-          acc.push(otherEntity);
-        }
-
-        return acc;
-      },
-      [] as { id: number; name: string; tagName: string }[],
-    ) || [];
-
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
@@ -304,7 +269,17 @@ const Balances: FC<BalancesProps> = ({
           transformedBalances.map((item) => (
             <Card key={item.entity.id} className="min-w-[300px]">
               <CardHeader>
-                <CardTitle>{item.entity.name}</CardTitle>
+                <Link
+                  href={{
+                    pathname: "/cuentas",
+                    query: {
+                      cuenta: "cuenta_corriente",
+                      entidad: item.entity.id,
+                    },
+                  }}
+                >
+                  <CardTitle>{item.entity.name}</CardTitle>
+                </Link>
                 <CardDescription>
                   {capitalizeFirstLetter(item.entity.tagName)}
                 </CardDescription>
@@ -345,28 +320,6 @@ const Balances: FC<BalancesProps> = ({
             placeholder="Buscar"
             className="w-32"
           />
-          <Select
-            onValueChange={(value) =>
-              value === "todos"
-                ? setFilteredEntity(undefined)
-                : setFilteredEntity(value)
-            }
-            defaultValue={filteredEntity}
-          >
-            <SelectTrigger className="w-24">
-              <SelectValue placeholder="Elegir" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="todos">Todos</SelectItem>
-                {uniqueEntities.map((entity) => (
-                  <SelectItem key={entity.id} value={entity.name}>
-                    {entity.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
         </div>
         <div className="flex flex-row items-center justify-end space-x-2">
           {detailedBalancesPage > 1 && (
@@ -419,7 +372,7 @@ const Balances: FC<BalancesProps> = ({
                     <p
                       onClick={() => {
                         if (
-                          selectedCurrency !== currency &&
+                          selectedCurrency !== currency ||
                           destinationEntityId !== item.entity.id
                         ) {
                           setSelectedCurrency(currency);

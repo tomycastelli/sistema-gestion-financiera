@@ -21,12 +21,10 @@ const TabSwitcher = () => {
 
   const currentAcountQuery: QueryParams = {
     cuenta: "cuenta_corriente",
-    pagina: "1",
   };
 
   const cashQuery: QueryParams = {
     cuenta: "caja",
-    pagina: "1",
   };
 
   if (selectedEntityId) {

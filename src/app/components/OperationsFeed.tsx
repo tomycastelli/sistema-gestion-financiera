@@ -2,11 +2,10 @@
 
 import Lottie from "lottie-react";
 import type { User } from "next-auth";
-import { Suspense, type FC } from "react";
+import { type FC } from "react";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
-import LoadingAnimation from "./LoadingAnimation";
 import Operation from "./Operation";
 import { Icons } from "./ui/Icons";
 import { Button } from "./ui/button";
@@ -74,7 +73,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
               );
             })
         ) : (
-          <p className="text-2xl">No se encontraron operaciones</p>
+          <p className="my-8 text-4xl">No se encontraron operaciones</p>
         )}
       </div>
     </div>

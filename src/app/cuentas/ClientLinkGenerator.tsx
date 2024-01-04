@@ -37,6 +37,18 @@ const ClientLinkGenerator = ({
       await utils.shareableLinks.getLinksByEntityId.refetch();
     },
   });
+
+  const { mutateAsync: deleteAsync } =
+    api.shareableLinks.removeLink.useMutation({
+      async onSuccess(newOperation) {
+        toast({
+          title: `Link ${newOperation.id} borrado`,
+          variant: "destructive",
+        });
+        await utils.shareableLinks.getLinksByEntityId.refetch();
+      },
+    });
+
   const { data: sharedLinks, isLoading } =
     api.shareableLinks.getLinksByEntityId.useQuery({
       sharedEntityId: parseInt(selectedEntityString),
@@ -61,7 +73,6 @@ const ClientLinkGenerator = ({
       sharedEntityId: parseInt(selectedEntityString),
       expiration: expiryTimeDate,
     });
-    setIsOpen(false);
 
     if (data?.id !== undefined) {
       const link = generateLink({
@@ -71,7 +82,7 @@ const ClientLinkGenerator = ({
       });
       toast({
         title: "Link generado exitosamente",
-        description: `${pathname}?${link}`,
+        description: `Id: ${data.id}, Token: ${data.password}`,
         variant: "success",
       });
 
@@ -129,7 +140,10 @@ const ClientLinkGenerator = ({
               <p>Cargando links...</p>
             ) : (
               sharedLinks?.map((link) => (
-                <DropdownMenuItem key={link.id}>
+                <DropdownMenuItem
+                  key={link.id}
+                  className="flex flex-row space-x-2"
+                >
                   <Link
                     target="_blank"
                     href={
@@ -145,10 +159,17 @@ const ClientLinkGenerator = ({
                     <p className="text-slate-300">
                       {link.id}{" "}
                       <span className="ml-2 font-semibold text-black">
-                        {link.expiration?.toLocaleDateString("es-AR")}
+                        {moment(link.expiration).format("DD-MM-YY HH:mm")}
                       </span>{" "}
                     </p>
                   </Link>
+                  <Button
+                    variant="outline"
+                    className="p-1"
+                    onClick={() => deleteAsync({ id: link.id })}
+                  >
+                    <Icons.cross className="h-4 text-red" />
+                  </Button>
                 </DropdownMenuItem>
               ))
             )}
