@@ -4,7 +4,7 @@ import path from "path";
 import { capitalizeFirstLetter } from "~/lib/functions";
 
 const page = () => {
-  const fileNamesWithExtensions = readdirSync(path.join("docs"));
+  const fileNamesWithExtensions = readdirSync(path.join("public", "docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );

@@ -5,14 +5,14 @@ import DocsTree from "./DocsTree";
 import TableOfContents from "./TableOfContents";
 
 const DocsLayout = ({ children }: { children: React.ReactNode }) => {
-  const fileNamesWithExtensions = readdirSync(path.join("docs"));
+  const fileNamesWithExtensions = readdirSync(path.join("public", "docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );
 
   const headingsData = fileNames.map((fileName) => {
     const markdown = readFileSync(
-      path.join("docs", `${fileName}.mdx`),
+      path.join("public", "docs", `${fileName}.mdx`),
       "utf-8",
     );
     const headings = getHeadingsTree(markdown);

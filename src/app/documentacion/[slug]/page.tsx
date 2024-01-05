@@ -6,7 +6,7 @@ import rehypeSlug from "rehype-slug";
 import DocsTemplate from "~/app/components/DocsTemplate";
 
 const Page = ({ params }: { params: { slug: string } }) => {
-  const filepath = path.join("docs", `${params.slug}.mdx`);
+  const filepath = path.join("public", "docs", `${params.slug}.mdx`);
   const markdown = readFileSync(filepath, "utf-8");
 
   return (
