@@ -10,7 +10,7 @@ const Page = ({ params }: { params: { slug: string } }) => {
   const filepath =
     env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
       ? path.join("public", "docs", `${params.slug}.mdx`)
-      : path.join("docs", `${params.slug}.mdx`);
+      : path.join(process.cwd(), "docs", `${params.slug}.mdx`);
   const markdown = readFileSync(filepath, "utf-8");
 
   return (

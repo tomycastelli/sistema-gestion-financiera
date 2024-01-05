@@ -8,7 +8,7 @@ const page = () => {
   const fileNamesWithExtensions =
     env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
       ? readdirSync(path.join("public", "docs"))
-      : readdirSync(path.join("docs"));
+      : readdirSync(path.join(process.cwd(), "docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );

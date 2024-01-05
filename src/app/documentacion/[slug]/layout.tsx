@@ -9,7 +9,7 @@ const DocsLayout = ({ children }: { children: React.ReactNode }) => {
   const fileNamesWithExtensions =
     env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
       ? readdirSync(path.join("public", "docs"))
-      : readdirSync(path.join("docs"));
+      : readdirSync(path.join(process.cwd(), "docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );
@@ -18,7 +18,10 @@ const DocsLayout = ({ children }: { children: React.ReactNode }) => {
     const markdown =
       env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
         ? readFileSync(path.join("public", "docs", `${fileName}.mdx`), "utf-8")
-        : readFileSync(path.join("docs", `${fileName}.mdx`), "utf-8");
+        : readFileSync(
+            path.join(process.cwd(), "docs", `${fileName}.mdx`),
+            "utf-8",
+          );
     const headings = getHeadingsTree(markdown);
     return { name: fileName, headings };
   });
