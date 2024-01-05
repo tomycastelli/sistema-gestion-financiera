@@ -8,7 +8,8 @@ export const transformer = superjson;
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;
+  if (process.env.AWS_ACCESS_KEY_ID)
+    return "https://d30zt9jpiei5fi.cloudfront.net";
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
