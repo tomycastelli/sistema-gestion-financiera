@@ -1,20 +1,24 @@
 import { readFileSync, readdirSync } from "fs";
 import path from "path";
+import { env } from "~/env.mjs";
 import { getHeadingsTree } from "~/lib/functions";
 import DocsTree from "./DocsTree";
 import TableOfContents from "./TableOfContents";
 
 const DocsLayout = ({ children }: { children: React.ReactNode }) => {
-  const fileNamesWithExtensions = readdirSync(path.join("public", "docs"));
+  const fileNamesWithExtensions =
+    env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
+      ? readdirSync(path.join("public", "docs"))
+      : readdirSync(path.join("docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );
 
   const headingsData = fileNames.map((fileName) => {
-    const markdown = readFileSync(
-      path.join("public", "docs", `${fileName}.mdx`),
-      "utf-8",
-    );
+    const markdown =
+      env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
+        ? readFileSync(path.join("public", "docs", `${fileName}.mdx`), "utf-8")
+        : readFileSync(path.join("docs", `${fileName}.mdx`), "utf-8");
     const headings = getHeadingsTree(markdown);
     return { name: fileName, headings };
   });

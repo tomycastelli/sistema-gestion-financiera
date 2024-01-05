@@ -1,10 +1,14 @@
 import { readdirSync } from "fs";
 import Link from "next/link";
 import path from "path";
+import { env } from "~/env.mjs";
 import { capitalizeFirstLetter } from "~/lib/functions";
 
 const page = () => {
-  const fileNamesWithExtensions = readdirSync(path.join("public", "docs"));
+  const fileNamesWithExtensions =
+    env.NEXTAUTH_URL && env.NEXTAUTH_URL.startsWith("http://localhost")
+      ? readdirSync(path.join("public", "docs"))
+      : readdirSync(path.join("docs"));
   const fileNames = fileNamesWithExtensions.map(
     (fileName) => path.parse(fileName).name,
   );
