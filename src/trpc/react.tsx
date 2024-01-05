@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loggerLink, unstable_httpBatchStreamLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
+import fetchPonyfill from "fetch-ponyfill";
 import { useState } from "react";
 
 import { type AppRouter } from "~/server/api/root";
@@ -27,6 +28,7 @@ export function TRPCReactProvider(props: {
         }),
         unstable_httpBatchStreamLink({
           url: getUrl(),
+          fetch: fetchPonyfill().fetch,
           headers() {
             const heads = new Map(props.headers);
             heads.set("x-trpc-source", "react");

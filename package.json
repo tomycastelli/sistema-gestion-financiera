@@ -57,6 +57,7 @@
     "cmdk": "0.2.0",
     "date-fns": "2.30.0",
     "esbuild": "0.18.9",
+    "fetch-ponyfill": "^7.1.0",
     "fuse.js": "7.0.0",
     "ioredis": "5.3.2",
     "lottie-react": "^2.4.0",
@@ -92,6 +93,8 @@
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
     "autoprefixer": "10.4.14",
+    "aws-cdk-lib": "2.110.1",
+    "constructs": "10.3.0",
     "eslint": "8.47.0",
     "eslint-config-next": "14.0.1",
     "eslint-plugin-react": "^7.33.2",
@@ -99,11 +102,9 @@
     "prettier": "3.0.0",
     "prettier-plugin-tailwindcss": "0.5.1",
     "prisma": "5.7.1",
-    "tailwindcss": "3.3.3",
-    "typescript": "5.1.6",
     "sst": "^2.39.2",
-    "aws-cdk-lib": "2.110.1",
-    "constructs": "10.3.0"
+    "tailwindcss": "3.3.3",
+    "typescript": "5.1.6"
   },
   "ct3aMetadata": {
     "initVersion": "7.22.0"
