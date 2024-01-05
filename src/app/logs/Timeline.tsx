@@ -27,10 +27,9 @@ const Timeline: FC<TimelineProps> = ({ initialLogs, users }) => {
     <div className="mx-36 flex flex-col space-y-8">
       {!isLoading ? (
         <div className="grid grid-cols-2 gap-4">
-          {data.logs &&
-            data.logs.map((log) => (
-              <Log log={log} users={users} key={log.id} />
-            ))}
+          {data.logs.map((log) => (
+            <Log log={log} users={users} key={log.id} />
+          ))}
         </div>
       ) : (
         <LoadingAnimation text={"Cargando logs"} />

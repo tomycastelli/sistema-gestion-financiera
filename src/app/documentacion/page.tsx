@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { readdirSync } from "fs";
 import Link from "next/link";
 import path from "path";

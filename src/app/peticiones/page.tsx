@@ -9,24 +9,30 @@ const Page = async () => {
   const session = await getServerAuthSession();
 
   const userPermissions = await api.users.getAllPermissions.query({});
-
-  return (
-    <div className="flex flex-col items-center justify-center space-y-8">
-      <h1 className="text-4xl font-semibold">Peticiones</h1>
-      {session && (
+  if (session) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-8">
+        <h1 className="text-4xl font-semibold">Peticiones</h1>
         <div className="flex flex-row items-center space-x-2">
           <p>Añadir petición</p>
           <AddRequest session={session} />
         </div>
-      )}
-      <div className="h-screen w-full">
-        <Kanban
-          initialRequests={initialRequests}
-          userPermissions={userPermissions}
-        />
+        <div className="h-screen w-full">
+          <Kanban
+            session={session}
+            initialRequests={initialRequests}
+            userPermissions={userPermissions}
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    return (
+      <p className="text-3xl font-semibold">
+        No se pueden ver las peticiones si el usuario no esta logueado
+      </p>
+    );
+  }
 };
 
 export default Page;
