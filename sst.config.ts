@@ -15,7 +15,7 @@ export default {
         environment: {
           DATABASE_URL: env.DATABASE_URL,
           NEXTAUTH_SECRET: env.NEXTAUTH_SECRET,
-          NEXTAUTH_URL: "https://sistema.maika.com.ar",
+          NEXTAUTH_URL: "https://d30zt9jpiei5fi.cloudfront.net",
           MONGODB_URL: env.MONGODB_URL,
           MONGODB_PASS: env.MONGODB_PASS,
           AZURE_AD_CLIENT_ID: env.AZURE_AD_CLIENT_ID,
