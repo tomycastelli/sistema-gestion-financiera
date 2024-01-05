@@ -1,5 +1,6 @@
 import type { Balances } from "@prisma/client";
 import moment from "moment";
+import { type ReadonlyURLSearchParams } from "next/navigation";
 import type { RouterOutputs } from "~/trpc/shared";
 import { translations } from "./variables";
 
@@ -116,7 +117,7 @@ export const dateReviver = (keys: string[]) => (key: string, value: string) => {
 };
 
 export const createQueryString = (
-  searchParams: URLSearchParams | undefined,
+  searchParams: URLSearchParams | ReadonlyURLSearchParams | undefined,
   name: string,
   value: string,
   deleteParam?: string,
@@ -135,18 +136,16 @@ export const createQueryString = (
 };
 
 export const removeQueryString = (
-  searchParams: URLSearchParams,
+  searchParams: URLSearchParams | ReadonlyURLSearchParams,
   names: string[] | string,
 ): string => {
-  const params = new URLSearchParams(searchParams);
-
   if (typeof names === "string") {
-    params.delete(names);
+    searchParams.delete(names);
   } else {
-    names.forEach((name) => params.delete(name));
+    names.forEach((name) => searchParams.delete(name));
   }
 
-  return params.toString();
+  return searchParams.toString();
 };
 
 type GenerateLinkParams = {
