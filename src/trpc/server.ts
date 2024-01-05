@@ -3,7 +3,6 @@ import {
   loggerLink,
   unstable_httpBatchStreamLink,
 } from "@trpc/client";
-import fetchPonyfill from "fetch-ponyfill";
 import { headers } from "next/headers";
 
 import { type AppRouter } from "~/server/api/root";
@@ -19,7 +18,6 @@ export const api = createTRPCProxyClient<AppRouter>({
     }),
     unstable_httpBatchStreamLink({
       url: getUrl(),
-      fetch: fetchPonyfill().fetch,
       headers() {
         const heads = new Map(headers());
         heads.set("x-trpc-source", "rsc");
