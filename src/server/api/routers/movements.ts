@@ -146,9 +146,11 @@ export const movementsRouter = createTRPCRouter({
             },
           },
         },
-        orderBy: {
-          transaction: { operation: { date: "desc" } },
-        },
+        orderBy: [
+          { transaction: { date: "desc" } },
+          { transaction: { operation: { date: "desc" } } },
+          { id: "desc" },
+        ],
         take: input.pageSize,
         skip: (input.pageNumber - 1) * input.pageSize,
       });
