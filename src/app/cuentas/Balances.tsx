@@ -42,7 +42,7 @@ const Balances: FC<BalancesProps> = ({
   tags,
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
-  const pageSize = 10;
+  const pageSize = 8;
 
   const allChildrenTags = getAllChildrenTags(selectedTag, tags);
 
@@ -358,8 +358,8 @@ const Balances: FC<BalancesProps> = ({
             <div
               key={item.entity.id}
               className={cn(
-                "grid grid-cols-6 justify-items-center rounded-xl font-semibold",
-                index % 2 === 0 ? "bg-muted p-3" : "bg-white",
+                "grid grid-cols-6 justify-items-center rounded-xl p-3 text-lg font-semibold",
+                index % 2 === 0 ? "bg-muted" : "bg-muted-foreground",
               )}
             >
               <p className="p-2">{item.entity.name}</p>

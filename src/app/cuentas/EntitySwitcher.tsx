@@ -64,7 +64,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
         <Button
           variant="outline"
           role="combobox"
-          className="w-[200px] justify-between"
+          className="h-11 w-[200px] justify-between"
         >
           <Avatar className="mr-2 h-8 w-8">
             <AvatarFallback className="bg-primary text-white">
@@ -80,7 +80,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                 : ""}
             </AvatarFallback>
           </Avatar>
-          <p>
+          <p className="text-xl">
             {" "}
             {selectedTag
               ? capitalizeFirstLetter(selectedTag)

@@ -211,7 +211,7 @@ const Transaction: FC<TransactionProps> = ({
         <div>
           <HoverCard>
             <HoverCardTrigger asChild>
-              <Button variant="link" className="text-black">
+              <Button variant="link">
                 <Icons.info className="h-8" />
               </Button>
             </HoverCardTrigger>
@@ -301,7 +301,7 @@ const Transaction: FC<TransactionProps> = ({
                             <div key={change.key}>
                               {change.key === "amount" && (
                                 <div className="flex flex-row items-center space-x-2">
-                                  <Icons.money className="h-6 text-black" />
+                                  <Icons.money className="h-6" />
                                   <p className="font-light">
                                     {new Intl.NumberFormat("es-AR").format(
                                       // @ts-ignore
@@ -319,7 +319,7 @@ const Transaction: FC<TransactionProps> = ({
                               )}
                               {change.key === "currency" && (
                                 <div className="flex flex-row items-center space-x-2">
-                                  <Icons.currencyExchange className="h-6 text-black" />
+                                  <Icons.currencyExchange className="h-6" />
                                   <p className="font-light">
                                     {change.before.toString().toUpperCase()}
                                   </p>
@@ -335,7 +335,7 @@ const Transaction: FC<TransactionProps> = ({
                                 "toEntityId",
                               ].includes(change.key) && (
                                 <div className="flex flex-row items-center space-x-2">
-                                  <Icons.person className="h-6 text-black" />
+                                  <Icons.person className="h-6" />
                                   <p className="font-light">
                                     {
                                       entities.find(
@@ -372,7 +372,7 @@ const Transaction: FC<TransactionProps> = ({
             <p className="text-muted-foreground">
               {tx.currency.toUpperCase()}{" "}
             </p>
-            <p className="text-black">
+            <p className="text-lg">
               {new Intl.NumberFormat("es-AR").format(tx.amount)}
             </p>
           </div>
@@ -383,8 +383,6 @@ const Transaction: FC<TransactionProps> = ({
                 ? "text-red"
                 : tx.status === Status.confirmed
                 ? "text-green"
-                : tx.status === Status.pending
-                ? "text-black"
                 : "",
             )}
           />
@@ -406,8 +404,8 @@ const Transaction: FC<TransactionProps> = ({
             )}
           </div>
           <div className="5 flex flex-col items-center space-y-0">
-            <p className="text-md mx-3 font-light text-muted-foreground">
-              Tx <span className="text-black">{tx.id}</span>
+            <p className="text-md mx-3 font-light">
+              <span className="text-muted-foreground">Tx</span> {tx.id}
             </p>
             <p>{capitalizeFirstLetter(tx.type)}</p>
           </div>

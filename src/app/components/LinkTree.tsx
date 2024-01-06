@@ -24,7 +24,7 @@ const LinkTree = () => {
               <Link
                 prefetch={false}
                 href={currentPath}
-                className="rounded-xl p-2 text-black transition-all hover:text-primary hover:shadow-md"
+                className="rounded-xl transition-all hover:text-primary hover:shadow-md"
               >
                 {capitalizeFirstLetter(path)}
               </Link>

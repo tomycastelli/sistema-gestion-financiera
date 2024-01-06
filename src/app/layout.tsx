@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { cn } from "~/lib/utils";
 import { TRPCReactProvider } from "~/trpc/react";
 import Navbar from "./components/Navbar";
+import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";
 
 const inter = Inter({
@@ -29,21 +30,28 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div
-          className={cn(
-            `font-sans ${inter.variable}`,
-            "mx-4 mb-12 bg-background text-foreground lg:mx-8",
-          )}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
         >
-          <TRPCReactProvider headers={headers()}>
-            <Navbar />
-            <main className="my-2 min-h-full">
-              {children}
-              <Analytics />
-              <Toaster />
-            </main>
-          </TRPCReactProvider>
-        </div>
+          <div
+            className={cn(
+              `font-sans ${inter.variable}`,
+              "bg-background px-4 lg:px-8",
+            )}
+          >
+            <TRPCReactProvider headers={headers()}>
+              <Navbar />
+              <main className="min-h-screen py-8">
+                {children}
+                <Analytics />
+                <Toaster />
+              </main>
+            </TRPCReactProvider>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

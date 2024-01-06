@@ -232,7 +232,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             <Card
               key={item.currency}
               onClick={() => setSelectedCurrency(item.currency)}
-              className="transition-all hover:shadow-lg"
+              className="transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary"
             >
               <CardHeader>
                 <CardTitle>{item.currency.toUpperCase()}</CardTitle>
@@ -264,12 +264,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                 {selectedTimeframe === "day"
                   ? "Diario"
                   : selectedTimeframe === "week"
-                    ? "Semanal"
-                    : selectedTimeframe === "month"
-                      ? "Mensual"
-                      : selectedTimeframe === "year"
-                        ? "Anual"
-                        : ""}
+                  ? "Semanal"
+                  : selectedTimeframe === "month"
+                  ? "Mensual"
+                  : selectedTimeframe === "year"
+                  ? "Anual"
+                  : ""}
               </CardTitle>
               <CardDescription>
                 {selectedCurrency.toUpperCase()}

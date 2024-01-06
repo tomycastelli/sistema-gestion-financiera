@@ -84,11 +84,11 @@ const CommandMenu: FC<CommandMenuProps> = ({
   return (
     <>
       <div
-        className="flex flex-row items-center space-x-2 text-muted-foreground hover:cursor-pointer"
+        className="flex flex-row items-center space-x-2 rounded-xl border p-2 text-muted-foreground hover:cursor-pointer hover:bg-muted"
         onClick={() => setOpen(true)}
       >
-        <p>Comandos</p>
-        <kbd className="pointer-events-none inline-flex h-7 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xl font-light text-muted-foreground opacity-100">
+        <p className="text-sm">Comandos</p>
+        <kbd className="text-md pointer-events-none inline-flex h-7 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-light text-muted-foreground opacity-100">
           <span>{isMac ? "⌘" : "CTRL"}</span>K
         </kbd>
       </div>
@@ -119,7 +119,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
               <Icons.addPackage className="h-5" />
               <p>
                 {searchValue.split("op:")[1] &&
-                  searchValue.split("op:")[1]!.length >= 1
+                searchValue.split("op:")[1]!.length >= 1
                   ? searchValue.split("op:")[1]
                   : "Elegi un numero de operacion"}
               </p>
@@ -133,30 +133,30 @@ const CommandMenu: FC<CommandMenuProps> = ({
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_CREATE"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/operaciones/carga")}
-                  value="Cargar operaciones"
-                >
-                  <Icons.addPackage className="mr-2 h-4 w-4" />
-                  <span>Cargar operaciones</span>
-                  <CommandShortcut>⌘C</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/operaciones/carga")}
+                value="Cargar operaciones"
+              >
+                <Icons.addPackage className="mr-2 h-4 w-4" />
+                <span>Cargar operaciones</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+            )}
             {userPermissons?.find(
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_VISUALIZE"),
             ) && (
-                <>
-                  <CommandItem
-                    onSelect={() => handleSelect("/operaciones/gestion")}
-                    value="Gestionar operaciones"
-                  >
-                    <Icons.editing className="mr-2 h-4 w-4" />
-                    <span>Gestionar operaciones</span>
-                    <CommandShortcut>⌘G</CommandShortcut>
-                  </CommandItem>
-                </>
-              )}
+              <>
+                <CommandItem
+                  onSelect={() => handleSelect("/operaciones/gestion")}
+                  value="Gestionar operaciones"
+                >
+                  <Icons.editing className="mr-2 h-4 w-4" />
+                  <span>Gestionar operaciones</span>
+                  <CommandShortcut>⌘G</CommandShortcut>
+                </CommandItem>
+              </>
+            )}
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Entidades">
@@ -189,27 +189,27 @@ const CommandMenu: FC<CommandMenuProps> = ({
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/usuarios/permisos")}
-                  value="Permisos"
-                >
-                  <Icons.settings className="mr-2 h-4 w-4" />
-                  <span>Permisos</span>
-                  <CommandShortcut>⌘P</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/usuarios/permisos")}
+                value="Permisos"
+              >
+                <Icons.settings className="mr-2 h-4 w-4" />
+                <span>Permisos</span>
+                <CommandShortcut>⌘P</CommandShortcut>
+              </CommandItem>
+            )}
             {userPermissons?.find(
               (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/usuarios/roles")}
-                  value="Roles"
-                >
-                  <Icons.roles className="mr-2 h-4 w-4" />
-                  <span>Roles</span>
-                  <CommandShortcut>⌘R</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/usuarios/roles")}
+                value="Roles"
+              >
+                <Icons.roles className="mr-2 h-4 w-4" />
+                <span>Roles</span>
+                <CommandShortcut>⌘R</CommandShortcut>
+              </CommandItem>
+            )}
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Logs">
@@ -233,12 +233,12 @@ const CommandMenu: FC<CommandMenuProps> = ({
                 onSelect={() =>
                   handleSelect(
                     "/cuentas" +
-                    "?" +
-                    createQueryString(
-                      undefined,
-                      "entidad",
-                      entity.id.toString(),
-                    ),
+                      "?" +
+                      createQueryString(
+                        undefined,
+                        "entidad",
+                        entity.id.toString(),
+                      ),
                   )
                 }
               >
@@ -254,8 +254,8 @@ const CommandMenu: FC<CommandMenuProps> = ({
                 onSelect={() =>
                   handleSelect(
                     "/cuentas" +
-                    "?" +
-                    createQueryString(undefined, "tag", tag.name),
+                      "?" +
+                      createQueryString(undefined, "tag", tag.name),
                   )
                 }
               >

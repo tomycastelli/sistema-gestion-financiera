@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import LinkTree from "./LinkTree";
+import { ThemeToggler } from "./ThemeToggler";
 import CommandMenu from "./ui/CommandMenu";
 
 const Navbar = async () => {
@@ -20,7 +21,7 @@ const Navbar = async () => {
         </Link>
         {session?.user && <LinkTree />}
         {session?.user && (
-          <div className="flex flex-row space-x-4">
+          <div className="flex flex-row items-center space-x-4">
             <CommandMenu
               userPermissons={userPermissions}
               tags={await api.tags.getFiltered.query()}
@@ -28,6 +29,7 @@ const Navbar = async () => {
                 permissionName: "ACCOUNTS_VISUALIZE",
               })}
             />
+            <ThemeToggler />
           </div>
         )}
       </div>

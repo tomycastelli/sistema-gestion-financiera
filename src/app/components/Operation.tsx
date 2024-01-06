@@ -242,7 +242,7 @@ const Operation: FC<OperationProps> = ({
             <Link
               prefetch={false}
               href={`/operaciones/gestion/${op.id}`}
-              className="flex flex-row space-x-1 text-black transition-all hover:scale-125"
+              className="flex flex-row space-x-1 transition-all hover:scale-125"
             >
               <p className="text-muted-foreground">Op</p>
               <p>{op.id}</p>
@@ -265,7 +265,7 @@ const Operation: FC<OperationProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mx-8 mb-4 grid grid-cols-3 gap-12 text-xl font-semibold text-black">
+          <div className="mx-8 mb-4 grid grid-cols-3 gap-12 text-xl font-semibold">
             <h1 className="col-span-1 justify-self-center font-semibold tracking-tighter">
               Operador
             </h1>
