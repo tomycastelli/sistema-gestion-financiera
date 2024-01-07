@@ -37,6 +37,8 @@ export const env = createEnv({
 
     MONGODB_URL: z.string().url(),
     MONGODB_PASS: z.string(),
+    S3_PUBLIC_KEY: z.string(),
+    S3_SECRET_KEY: z.string(),
   },
 
   /**
@@ -65,6 +67,8 @@ export const env = createEnv({
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
     MONGODB_URL: process.env.MONGODB_URL,
     MONGODB_PASS: process.env.MONGODB_PASS,
+    S3_PUBLIC_KEY: process.env.S3_PUBLIC_KEY,
+    S3_SECRET_KEY: process.env.S3_SECRET_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

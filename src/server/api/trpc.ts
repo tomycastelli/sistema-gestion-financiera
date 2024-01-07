@@ -16,6 +16,7 @@ import { getServerAuthSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { redis } from "~/server/redis";
 import { logs } from "../mongodb";
+import { s3 } from "../s3";
 
 /**
  * 1. CONTEXT
@@ -48,6 +49,7 @@ export const createInnerTRPCContext = async (opts: CreateContextOptions) => {
     db,
     redis,
     logs,
+    s3,
   };
 };
 

@@ -53,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { toast } from "../components/ui/use-toast";
 import ClientLinkGenerator from "./ClientLinkGenerator";
 import { DataTable } from "./DataTable";
 
@@ -117,6 +118,9 @@ const MovementsTable = ({
         refetchOnWindowFocus: false,
       },
     );
+
+  const { mutateAsync: getUrlAsync, isLoading } =
+    api.files.getCurrentAccount.useMutation();
 
   const tableData = generateTableData(
     data.movements,
@@ -441,6 +445,40 @@ const MovementsTable = ({
             }}
           >
             <Icons.reload className="h-5" />
+          </Button>
+          <Button
+            className="w-[150px]"
+            variant="outline"
+            onClick={async () => {
+              const url = await getUrlAsync({
+                account: accountType,
+                entityId: selectedFromEntity
+                  ? parseInt(selectedFromEntity)
+                  : entityId,
+                entityTag: selectedFromEntity ? undefined : entityTag,
+                toEntityId: destinationEntityId,
+                currency: selectedCurrency,
+                fileType: "csv",
+              });
+              if (url) {
+                toast({
+                  title: "Archivo generado exitosamente",
+                  description: url,
+                  variant: "success",
+                });
+
+                if (typeof window !== "undefined") {
+                  window.location.href = url;
+                }
+              } else {
+                toast({
+                  title: "No se pudo conseguir un link",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            {!isLoading ? <p>Generar CSV</p> : <LoadingAnimation text={null} />}
           </Button>
         </div>
         {!isFetching ? (

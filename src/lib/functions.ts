@@ -386,7 +386,7 @@ export const generateTableData = (
   movements: RouterOutputs["movements"]["getCurrentAccounts"]["movements"],
   entityId: number | undefined | null,
   entityTag: string | undefined | null,
-  allTags: RouterOutputs["tags"]["getAll"],
+  allTags: RouterOutputs["tags"]["getAll"] | undefined | null,
 ) => {
   const tableData = movements
     .map((movement) => {
@@ -432,7 +432,7 @@ export const generateTableData = (
               : -movement.balance,
         };
       } else {
-        const allChildrenTags = getAllChildrenTags(entityTag, allTags);
+        const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
         // Esto indica, si es 1, que gano, si es -1, que pierdo
         const direction = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
