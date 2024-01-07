@@ -7,13 +7,7 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z
-      .string()
-      .url()
-      .refine(
-        (str) => !str.includes("YOUR_MYSQL_URL_HERE"),
-        "You forgot to change the default URL",
-      ),
+    DATABASE_URL: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -35,7 +29,7 @@ export const env = createEnv({
     AZURE_AD_CLIENT_SECRET: z.string(),
     AZURE_AD_TENANT_ID: z.string(),
 
-    MONGODB_URL: z.string().url(),
+    MONGODB_URL: z.string(),
     MONGODB_PASS: z.string(),
     S3_PUBLIC_KEY: z.string(),
     S3_SECRET_KEY: z.string(),

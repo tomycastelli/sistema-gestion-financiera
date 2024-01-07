@@ -13,10 +13,12 @@ RUN yarn global add pnpm && pnpm i
 FROM --platform=linux/amd64 node:20-alpine AS builder
 
 ENV DATABASE_URL=default
+ENV REDIS_URL=default
 ENV NEXTAUTH_SECRET=default
 ENV NEXTAUTH_URL=default
 ENV GOOGLE_CLIENT_ID=default
 ENV GOOGLE_CLIENT_SECRET=default
+ENV AZURE_AD_TENTANT_ID=default
 ENV AZURE_AD_CLIENT_ID=default
 ENV AZURE_AD_CLIENT_SECRET=default
 ENV MONGODB_URL=default
