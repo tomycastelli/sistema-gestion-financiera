@@ -42,7 +42,7 @@ jobs:
           ECR_REPOSITORY: sistema-maika-repository
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |
-          docker build \ 
+          docker build \
             --build-arg MONGODB_PASS=${MONGODB_PASS} \
             --build-arg MONGODB_URL=${MONGODB_URL} \
             --build-arg REDIS_URL=${REDIS_URL} \
