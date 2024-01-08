@@ -10,8 +10,8 @@ jobs:
 
     env:
       MONGODB_URL: ${{ secrets.MONGODB_URL }}
-      MONGODB_PASS: ${{ secret.MONGODB_PASS }}
-      REDIS_URL: ${{ secret.REDIS_URL }}
+      MONGODB_PASS: ${{ secrets.MONGODB_PASS }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
 
     steps:
       - name: Checkout
