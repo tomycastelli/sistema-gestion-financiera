@@ -16,7 +16,6 @@
 /.next/
 /out/
 next-env.d.ts
-next.config.mjs
 
 # production
 /build
