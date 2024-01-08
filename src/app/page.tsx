@@ -1,12 +1,15 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getServerAuthSession } from "~/server/auth";
-import AccountsMenuCard from "./components/AccountsMenuCard";
-import AuthForm from "./components/AuthForm";
-import EntitiesMenuCard from "./components/EntitiesMenuCard";
-import OperationsMenuCard from "./components/OperationsMenuCard";
-import UsersMenuCard from "./components/UsersMenuCard";
 import { Icons } from "./components/ui/Icons";
 import { Button } from "./components/ui/button";
+const AuthForm = dynamic(() => import("./components/AuthForm"));
+const EntitiesMenuCard = dynamic(() => import("./components/EntitiesMenuCard"));
+const OperationsMenuCard = dynamic(
+  () => import("./components/OperationsMenuCard"),
+);
+const UsersMenuCard = dynamic(() => import("./components/UsersMenuCard"));
+const AccountsMenuCard = dynamic(() => import("./components/AccountsMenuCard"));
 
 export default async function Home() {
   const session = await getServerAuthSession();

@@ -3,6 +3,7 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import moment from "moment";
 import type { User } from "next-auth";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { capitalizeFirstLetter } from "~/lib/functions";
@@ -32,10 +33,12 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { useToast } from "../ui/use-toast";
-import CableForm from "./CableForm";
-import CambioForm from "./CambioForm";
-import FlexibleTransactionsForm from "./FlexibleTransactionsForm";
 import InitialDataOperationForm from "./InitialDataOperationForm";
+const CambioForm = dynamic(() => import("./CambioForm"));
+const CableForm = dynamic(() => import("./CableForm"));
+const FlexibleTransactionsForm = dynamic(
+  () => import("./FlexibleTransactionsForm"),
+);
 
 interface AddOperationProps {
   initialEntities: RouterOutputs["entities"]["getAll"];

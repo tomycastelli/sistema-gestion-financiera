@@ -1,14 +1,15 @@
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { getAllChildrenTags } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import LoadingAnimation from "../components/LoadingAnimation";
-import AccountsTab from "./AccountsTab";
 import EntitySwitcher from "./EntitySwitcher";
-import SummarizedBalances from "./SummarizedBalances";
 import TabSwitcher from "./TabSwitcher";
-import TimeRangeSelector from "./TimeRangeSelector";
+const AccountsTab = dynamic(() => import("./AccountsTab"));
+const SummarizedBalances = dynamic(() => import("./SummarizedBalances"));
+const TimeRangeSelector = dynamic(() => import("./TimeRangeSelector"));
 
 const Page = async ({
   searchParams,
