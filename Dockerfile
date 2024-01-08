@@ -12,8 +12,8 @@ RUN yarn global add pnpm && pnpm i
 # Rebuild the source code only when needed
 FROM --platform=linux/amd64 node:20-alpine AS builder
 
+# These variables are passed on run time
 ENV DATABASE_URL=default
-ENV REDIS_URL=default
 ENV NEXTAUTH_SECRET=default
 ENV NEXTAUTH_URL=default
 ENV GOOGLE_CLIENT_ID=default
@@ -21,10 +21,13 @@ ENV GOOGLE_CLIENT_SECRET=default
 ENV AZURE_AD_TENANT_ID=default
 ENV AZURE_AD_CLIENT_ID=default
 ENV AZURE_AD_CLIENT_SECRET=default
-ENV MONGODB_URL=mongodb://54.232.65.88:27017/maika
-ENV MONGODB_PASS=default
 ENV S3_PUBLIC_KEY=default
 ENV S3_SECRET_KEY=default
+
+# These variables are passed on build time
+ARG MONGODB_URL
+ARG MONGODB_PASS
+ARG REDIS_URL
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
