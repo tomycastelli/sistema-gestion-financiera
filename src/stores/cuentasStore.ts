@@ -11,21 +11,31 @@ interface TimeframeStore {
   setMovementsTablePage: (page: number) => void;
   destinationEntityId: number | undefined;
   setDestinationEntityId: (id: number | undefined) => void;
+  fromDate: Date | undefined;
+  setFromDate: (date: Date | undefined) => void;
+  toDate: Date | undefined;
+  setToDate: (date: Date | undefined) => void;
 }
 
 export const useCuentasStore = create<TimeframeStore>((set) => ({
   selectedCurrency: undefined,
-  setSelectedCurrency: (newCurrency: string | undefined) =>
-    set({ selectedCurrency: newCurrency }),
+  setSelectedCurrency: (newCurrency) => set({ selectedCurrency: newCurrency }),
   selectedTimeframe: "day",
-  setTimeframe: (newTimeframe: Timeframe) =>
-    set({ selectedTimeframe: newTimeframe }),
+  setTimeframe: (newTimeframe) => set({ selectedTimeframe: newTimeframe }),
   movementsTablePage: 1,
-  setMovementsTablePage(page: number) {
+  setMovementsTablePage(page) {
     set({ movementsTablePage: page });
   },
   destinationEntityId: undefined,
-  setDestinationEntityId(id: number | undefined) {
+  setDestinationEntityId(id) {
     set({ destinationEntityId: id });
+  },
+  fromDate: undefined,
+  setFromDate(date) {
+    set({ fromDate: date });
+  },
+  toDate: undefined,
+  setToDate(date) {
+    set({ toDate: date });
   },
 }));

@@ -24,6 +24,8 @@ export const movementsRouter = createTRPCRouter({
         toEntityId: z.number().int().optional().nullish(),
         currency: z.string().optional().nullish(),
         account: z.boolean().optional(),
+        fromDate: z.date().optional().nullish(),
+        toDate: z.date().optional().nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -117,6 +119,34 @@ export const movementsRouter = createTRPCRouter({
               },
             ],
           },
+        });
+      }
+      if (input.fromDate) {
+        whereConditions.push({
+          OR: [
+            { transaction: { date: { gte: input.fromDate } } },
+            {
+              AND: [
+                { transaction: { date: null } },
+                {
+                  transaction: { operation: { date: { gte: input.fromDate } } },
+                },
+              ],
+            },
+          ],
+        });
+      }
+      if (input.toDate) {
+        whereConditions.push({
+          OR: [
+            { transaction: { date: { lte: input.toDate } } },
+            {
+              AND: [
+                { transaction: { date: null } },
+                { transaction: { operation: { date: { lte: input.toDate } } } },
+              ],
+            },
+          ],
         });
       }
 

@@ -408,9 +408,9 @@ export const generateTableData = (
         return {
           id: movement.id,
           date: movement.transaction.date
-            ? moment(movement.transaction.date).format("DD/MM/YYYY HH:mm")
+            ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
             : moment(movement.transaction.operation.date).format(
-                "DD/MM/YYYY HH:mm",
+                "DD-MM-YYYY HH:mm",
               ),
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,

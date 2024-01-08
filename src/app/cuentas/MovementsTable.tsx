@@ -1,7 +1,8 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
+import { CalendarIcon, MoreHorizontal } from "lucide-react";
+import moment from "moment";
 import { type Session } from "next-auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -19,6 +20,7 @@ import type { RouterOutputs } from "~/trpc/shared";
 import LoadingAnimation from "../components/LoadingAnimation";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
+import { Calendar } from "../components/ui/calendar";
 import {
   Command,
   CommandEmpty,
@@ -99,6 +101,10 @@ const MovementsTable = ({
     setDestinationEntityId,
     selectedCurrency,
     setSelectedCurrency,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
   } = useCuentasStore();
 
   const { data, refetch, isFetching } =
@@ -111,6 +117,8 @@ const MovementsTable = ({
         entityTag: selectedFromEntity ? undefined : entityTag,
         toEntityId: destinationEntityId,
         currency: selectedCurrency,
+        fromDate: fromDate,
+        toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
       },
@@ -126,7 +134,15 @@ const MovementsTable = ({
     mutateAsync: getUrlAsync,
     isLoading,
     isSuccess,
-  } = api.files.getCurrentAccount.useMutation();
+  } = api.files.getCurrentAccount.useMutation({
+    onError(error) {
+      toast({
+        title: error.data ? error.data.code : "",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const tableData = generateTableData(
     data.movements,
@@ -364,7 +380,7 @@ const MovementsTable = ({
               </Popover>
             </div>
           )}
-          <div className="flex flex-col space-y-1">
+          <div className="flex flex-col">
             <Label className="mb-1">Divisa</Label>
             <Select
               value={selectedCurrency ? selectedCurrency : "todas"}
@@ -440,6 +456,70 @@ const MovementsTable = ({
               </PopoverContent>
             </Popover>
           </div>
+          <div className="flex flex-col">
+            <Label className="mb-2">Desde</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
+                    !fromDate && "text-muted-foreground",
+                  )}
+                >
+                  {fromDate ? (
+                    moment(fromDate).format("DD-MM-YYYY")
+                  ) : (
+                    <span>Elegir</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={fromDate}
+                  onSelect={(date) => setFromDate(date)}
+                  disabled={(date) =>
+                    date > new Date() || date < new Date("2023-01-01")
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="flex flex-col">
+            <Label className="mb-2">Hasta</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
+                    !toDate && "text-muted-foreground",
+                  )}
+                >
+                  {toDate ? (
+                    moment(toDate).format("DD-MM-YYYY")
+                  ) : (
+                    <span>Elegir</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={toDate}
+                  onSelect={(date) => setToDate(date)}
+                  disabled={(date) =>
+                    date > new Date() || date < new Date("2023-01-01")
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           {session && selectedEntityString && !accountType && (
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
@@ -473,6 +553,8 @@ const MovementsTable = ({
                       entityTag: selectedFromEntity ? undefined : entityTag,
                       toEntityId: destinationEntityId,
                       currency: selectedCurrency,
+                      fromDate: fromDate,
+                      toDate: toDate,
                       fileType: "pdf",
                     });
                     if (fileData?.downloadUrl) {
@@ -484,7 +566,7 @@ const MovementsTable = ({
                       setDownloadUrl(fileData.downloadUrl);
                     } else {
                       toast({
-                        title: "No se pudo conseguir un link",
+                        title: "No se pudo generar el archivo",
                         variant: "destructive",
                       });
                     }
@@ -503,6 +585,8 @@ const MovementsTable = ({
                       entityTag: selectedFromEntity ? undefined : entityTag,
                       toEntityId: destinationEntityId,
                       currency: selectedCurrency,
+                      fromDate: fromDate,
+                      toDate: toDate,
                       fileType: "csv",
                     });
                     if (fileData?.downloadUrl) {

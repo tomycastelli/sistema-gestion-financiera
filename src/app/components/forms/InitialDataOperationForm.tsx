@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarIcon } from "lucide-react";
+import moment from "moment";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { getCurrentTime } from "~/lib/functions";
@@ -83,7 +84,7 @@ const InitialDataOperationForm = () => {
                         )}
                       >
                         {field.value ? (
-                          field.value.toLocaleDateString("es-AR")
+                          moment(field.value).format("DD-MM-YYYY")
                         ) : (
                           <span>Elegir</span>
                         )}
@@ -97,7 +98,8 @@ const InitialDataOperationForm = () => {
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date > new Date() || date < new Date("2023-01-01")
+                        date > new Date() ||
+                        date < new Date(new Date().setDate(0))
                       }
                       initialFocus
                     />

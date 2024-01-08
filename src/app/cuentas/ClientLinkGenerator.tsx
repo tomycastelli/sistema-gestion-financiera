@@ -94,10 +94,7 @@ const ClientLinkGenerator = ({
     <div>
       <DropdownMenu open={isOpen}>
         <DropdownMenuTrigger asChild>
-          <Button
-            className="rounded-xl border-transparent bg-transparent p-1 text-black hover:text-white"
-            onClick={() => setIsOpen(true)}
-          >
+          <Button variant="outline" onClick={() => setIsOpen(true)}>
             <Icons.shareLink className="h-6" />
           </Button>
         </DropdownMenuTrigger>

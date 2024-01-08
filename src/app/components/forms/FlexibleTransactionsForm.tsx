@@ -4,6 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@radix-ui/react-dropdown-menu";
 import { CalendarIcon } from "lucide-react";
+import moment from "moment";
 import type { User } from "next-auth";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -204,7 +205,7 @@ const FlexibleTransactionsForm = ({
                                 )}
                               >
                                 {field.value ? (
-                                  field.value.toLocaleDateString("es-AR")
+                                  moment(field.value).format("DD-MM-YYYY")
                                 ) : (
                                   <span>Elegir</span>
                                 )}
@@ -219,7 +220,7 @@ const FlexibleTransactionsForm = ({
                               onSelect={field.onChange}
                               disabled={(date) =>
                                 date > new Date() ||
-                                date < new Date("2023-01-01")
+                                date < new Date(new Date().setDate(0))
                               }
                               initialFocus
                             />

@@ -20,7 +20,16 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
+import { toast } from "../components/ui/use-toast";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -45,6 +54,8 @@ const Balances: FC<BalancesProps> = ({
   const pageSize = 8;
 
   const allChildrenTags = getAllChildrenTags(selectedTag, tags);
+
+  const [downloadUrl, setDownloadUrl] = useState<string | undefined>(undefined);
 
   const {
     selectedCurrency,
@@ -248,6 +259,12 @@ const Balances: FC<BalancesProps> = ({
   }
 
   const {
+    mutateAsync: getUrlAsync,
+    isLoading: isUrlLoading,
+    isSuccess: isUrlSuccess,
+  } = api.files.detailedBalancesFile.useMutation();
+
+  const {
     results: filteredBalances,
     searchValue,
     setSearchValue,
@@ -321,6 +338,79 @@ const Balances: FC<BalancesProps> = ({
             placeholder="Buscar"
             className="w-32"
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {!isUrlLoading ? (
+                <Button variant="outline">Generar</Button>
+              ) : (
+                <p>Cargando...</p>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const fileData = await getUrlAsync({
+                      entityId: selectedEntityId,
+                      entityTag: selectedTag,
+                      detailedBalances: detailedBalances,
+                      fileType: "pdf",
+                    });
+                    if (fileData?.downloadUrl) {
+                      toast({
+                        title: "Archivo generado exitosamente",
+                        description: fileData.filename,
+                        variant: "success",
+                      });
+                      setDownloadUrl(fileData.downloadUrl);
+                    } else {
+                      toast({
+                        title: "No se pudo generar el archivo",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Icons.pdf className="h-4" />
+                  <span>PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const fileData = await getUrlAsync({
+                      entityId: selectedEntityId,
+                      entityTag: selectedTag,
+                      detailedBalances: detailedBalances,
+                      fileType: "csv",
+                    });
+                    if (fileData?.downloadUrl) {
+                      toast({
+                        title: "Archivo generado exitosamente",
+                        description: fileData.filename,
+                        variant: "success",
+                      });
+                      setDownloadUrl(fileData.downloadUrl);
+                    } else {
+                      toast({
+                        title: "No se pudo conseguir un link",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Icons.excel className="h-4" />
+                  <span>Excel</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isUrlSuccess && (
+            <Button variant="outline">
+              <Link href={downloadUrl ? downloadUrl : "#"} target="_blank">
+                Descargar
+              </Link>
+            </Button>
+          )}
         </div>
         <div className="flex flex-row items-center justify-end space-x-2">
           {detailedBalancesPage > 1 && (
