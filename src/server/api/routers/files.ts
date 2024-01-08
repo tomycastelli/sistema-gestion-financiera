@@ -1,6 +1,8 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { compressPDF } from "ghostscript-node";
 import moment from "moment";
 import { unparse } from "papaparse";
+import { launch } from "puppeteer";
 import { z } from "zod";
 import { generateTableData, getAllChildrenTags } from "~/lib/functions";
 import { getAllTags } from "~/lib/trpcFunctions";
@@ -180,21 +182,68 @@ export const filesRouter = createTRPCRouter({
           Bucket: ctx.s3.bucketNames.reports,
           Key: filename,
         });
-        const csv = unparse(data, { delimiter: "," });
-        const putCommand = new PutObjectCommand({
-          Bucket: ctx.s3.bucketNames.reports,
-          Key: filename,
-          Body: Buffer.from(csv, "utf-8"),
-        });
+        if (input.fileType === "csv") {
+          const csv = unparse(data, { delimiter: "," });
+          const putCommand = new PutObjectCommand({
+            Bucket: ctx.s3.bucketNames.reports,
+            Key: filename,
+            Body: Buffer.from(csv, "utf-8"),
+          });
 
-        await ctx.s3.client.send(putCommand);
+          await ctx.s3.client.send(putCommand);
+        } else if (input.fileType === "pdf") {
+          const htmlString = `<div class="table">${data
+            .map(
+              (mv) => `<div key="${mv.saldo}" class="row">${mv.detalle}</div>`,
+            )
+            .join("")}</div>`;
+
+          const browser = await launch({
+            headless: "new",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          });
+
+          const page = await browser.newPage();
+          await page.setContent(htmlString);
+          await page.addStyleTag({
+            content:
+              ".row{font-size: 1.125rem;} .table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.75rem;}",
+          });
+          const pdfBuffer = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            margin: {
+              left: "0.5cm",
+              top: "2cm",
+              right: "0.5cm",
+              bottom: "2cm",
+            },
+            displayHeaderFooter: true,
+            headerTemplate: `<div><h1>Cuenta corriente de ${
+              input.entityId ? input.entityId : input.entityTag
+            }</h1></div>`,
+            footerTemplate: ``,
+          });
+          await browser.close();
+
+          const compressedPdfBuffer = await compressPDF(pdfBuffer);
+
+          const putCommand = new PutObjectCommand({
+            Bucket: ctx.s3.bucketNames.reports,
+            Key: filename,
+            Body: compressedPdfBuffer,
+            ContentType: "application/pdf",
+          });
+
+          await ctx.s3.client.send(putCommand);
+        }
 
         const downloadUrl = await ctx.s3.getSignedUrl(
           ctx.s3.client,
           getCommand,
           { expiresIn: 300 },
         );
-        return downloadUrl;
+        return { downloadUrl, filename };
       }
     }),
 });

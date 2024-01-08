@@ -29,6 +29,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -84,6 +85,8 @@ const MovementsTable = ({
 }: CuentasTableProps) => {
   const utils = api.useContext();
 
+  const [downloadUrl, setDownloadUrl] = useState<string | undefined>(undefined);
+
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
 
@@ -119,8 +122,11 @@ const MovementsTable = ({
       },
     );
 
-  const { mutateAsync: getUrlAsync, isLoading } =
-    api.files.getCurrentAccount.useMutation();
+  const {
+    mutateAsync: getUrlAsync,
+    isLoading,
+    isSuccess,
+  } = api.files.getCurrentAccount.useMutation();
 
   const tableData = generateTableData(
     data.movements,
@@ -446,40 +452,87 @@ const MovementsTable = ({
           >
             <Icons.reload className="h-5" />
           </Button>
-          <Button
-            className="w-[150px]"
-            variant="outline"
-            onClick={async () => {
-              const url = await getUrlAsync({
-                account: accountType,
-                entityId: selectedFromEntity
-                  ? parseInt(selectedFromEntity)
-                  : entityId,
-                entityTag: selectedFromEntity ? undefined : entityTag,
-                toEntityId: destinationEntityId,
-                currency: selectedCurrency,
-                fileType: "csv",
-              });
-              if (url) {
-                toast({
-                  title: "Archivo generado exitosamente",
-                  description: url,
-                  variant: "success",
-                });
-
-                if (typeof window !== "undefined") {
-                  window.location.href = url;
-                }
-              } else {
-                toast({
-                  title: "No se pudo conseguir un link",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            {!isLoading ? <p>Generar CSV</p> : <LoadingAnimation text={null} />}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {!isLoading ? (
+                <Button variant="outline">Generar</Button>
+              ) : (
+                <p>Cargando...</p>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const fileData = await getUrlAsync({
+                      account: accountType,
+                      entityId: selectedFromEntity
+                        ? parseInt(selectedFromEntity)
+                        : entityId,
+                      entityTag: selectedFromEntity ? undefined : entityTag,
+                      toEntityId: destinationEntityId,
+                      currency: selectedCurrency,
+                      fileType: "pdf",
+                    });
+                    if (fileData?.downloadUrl) {
+                      toast({
+                        title: "Archivo generado exitosamente",
+                        description: fileData.filename,
+                        variant: "success",
+                      });
+                      setDownloadUrl(fileData.downloadUrl);
+                    } else {
+                      toast({
+                        title: "No se pudo conseguir un link",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Icons.pdf className="h-4" />
+                  <span>PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const fileData = await getUrlAsync({
+                      account: accountType,
+                      entityId: selectedFromEntity
+                        ? parseInt(selectedFromEntity)
+                        : entityId,
+                      entityTag: selectedFromEntity ? undefined : entityTag,
+                      toEntityId: destinationEntityId,
+                      currency: selectedCurrency,
+                      fileType: "csv",
+                    });
+                    if (fileData?.downloadUrl) {
+                      toast({
+                        title: "Archivo generado exitosamente",
+                        description: fileData.filename,
+                        variant: "success",
+                      });
+                      setDownloadUrl(fileData.downloadUrl);
+                    } else {
+                      toast({
+                        title: "No se pudo conseguir un link",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Icons.excel className="h-4" />
+                  <span>Excel</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isSuccess && (
+            <Button variant="outline">
+              <Link href={downloadUrl ? downloadUrl : "#"} target="_blank">
+                Descargar
+              </Link>
+            </Button>
+          )}
         </div>
         {!isFetching ? (
           <DataTable columns={columns} data={tableData} />
