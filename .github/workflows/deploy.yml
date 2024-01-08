@@ -38,7 +38,7 @@ jobs:
       - name: Build and tag the image
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REGISTRY: 331756077753.dkr.ecr.sa-east-1.amazonaws.com
           ECR_REPOSITORY: sistema-maika-repository
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |
