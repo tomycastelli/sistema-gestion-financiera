@@ -170,6 +170,8 @@ export const filesRouter = createTRPCRouter({
       if (formattedMovements) {
         const data = formattedMovements.flatMap((mv) => ({
           fecha: mv.date,
+          origen: mv.selectedEntity,
+          cliente: mv.otherEntity,
           detalle: `${
             mv.type === "upload"
               ? "Carga"
@@ -219,6 +221,8 @@ export const filesRouter = createTRPCRouter({
           <div class="table-header">
             <p>Fecha</p>
             <p>Detalle</p>
+            <p>Origen</p>
+            <p>Cliente</p>
             <p>Observaciones</p>
             <p>Entrada</p>
             <p>Salida</p>
@@ -230,6 +234,8 @@ export const filesRouter = createTRPCRouter({
                   `<div key="${index}" class="table-row">
                   <p>${mv.fecha}</p>
                   <p>${mv.detalle}</p>
+                  <p>${mv.origen}</p>
+                  <p>${mv.cliente}</p>
                   <p>${mv.observaciones}</p>
                   <p>${mv.entrada}</p>
                   <p>${mv.salida}</p>
@@ -248,7 +254,7 @@ export const filesRouter = createTRPCRouter({
           await page.setContent(htmlString);
           await page.addStyleTag({
             content:
-              ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}",
+              ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}",
           });
           const pdfBuffer = await page.pdf({
             format: "A4",
@@ -357,11 +363,11 @@ export const filesRouter = createTRPCRouter({
                 (b, index) =>
                   `<div key="${index}" class="table-row">
                   <p>${b.entidad}</p>
-                  <p>${b.ars}</p>
-                  <p>${b.usd}</p>
-                  <p>${b.usdt}</p>
-                  <p>${b.eur}</p>
-                  <p>${b.brl}</p>
+                  <p>${new Intl.NumberFormat("es-AR").format(b.ars)}</p>
+                  <p>${new Intl.NumberFormat("es-AR").format(b.usd)}</p>
+                  <p>${new Intl.NumberFormat("es-AR").format(b.usdt)}</p>
+                  <p>${new Intl.NumberFormat("es-AR").format(b.eur)}</p>
+                  <p>${new Intl.NumberFormat("es-AR").format(b.brl)}</p>
                   </div>`,
               )
               .join("")}
