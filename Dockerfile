@@ -7,7 +7,9 @@ WORKDIR /app
 # Install dependencies based on the preferred package manager
 COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./
-RUN yarn global add pnpm && pnpm i && pnpm dlx puppeteer browsers install chrome
+RUN yarn global add pnpm && pnpm i
+
+COPY .cache ./.cache
 
 # Rebuild the source code only when needed
 FROM --platform=linux/amd64 node:20-alpine AS builder
