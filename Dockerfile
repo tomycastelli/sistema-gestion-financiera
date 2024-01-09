@@ -34,9 +34,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN yarn global add pnpm && SKIN_ENV_VALIDATION=1 pnpm run build
-RUN node node_modules/puppeteer/install.mjs
 
-FROM --platform=linux/amd64 gcr.io/distroless/nodejs20-debian12 AS runner
+FROM node:20-alpine AS runner
+
+# Puppeteer downloaded chromium will not work on Alpine
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Install chromium and support packages, add "puppeteer" user
+RUN apk add --no-cache chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 ENV NODE_ENV production
 
@@ -48,7 +59,6 @@ COPY --from=builder /app/package.json ./package.json
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/.cache /root/.cache
 
 EXPOSE 3000
 
