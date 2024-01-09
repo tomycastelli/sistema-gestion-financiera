@@ -26,7 +26,7 @@ export const operationsRouter = createTRPCRouter({
             fromEntityId: z.number().int(),
             toEntityId: z.number().int(),
             currency: z.string(),
-            amount: z.number(),
+            amount: z.number().positive(),
             method: z.string().optional(),
             metadata: z
               .object({ exchangeRate: z.number().optional() })

@@ -114,8 +114,9 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
             ? parseInt(values.emittingEntity)
             : parseInt(values.middleEntity),
         currency: values.currency,
-        amount:
+        amount: Math.abs(
           (parseFloat(values.amount) * parseFloat(values.emittingFee)) / 100,
+        ),
         operatorId: parseInt(values.operatorEntity),
       });
     }
@@ -136,8 +137,9 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
             ? parseInt(values.receivingEntity)
             : parseInt(values.middleEntity),
         currency: values.currency,
-        amount:
+        amount: Math.abs(
           (parseFloat(values.amount) * parseFloat(values.receivingFee)) / 100,
+        ),
         operatorId: parseInt(values.operatorEntity),
       });
     }
