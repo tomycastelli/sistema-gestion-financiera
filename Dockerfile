@@ -9,9 +9,6 @@ COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./
 RUN yarn global add pnpm && pnpm i && node node_modules/puppeteer/install.mjs
 
-# Explicitly copy .cache to /app
-COPY .cache /app/.cache
-
 # Rebuild the source code only when needed
 FROM --platform=linux/amd64 node:20-alpine AS builder
 
