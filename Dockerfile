@@ -9,8 +9,6 @@ COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./
 RUN yarn global add pnpm && pnpm i
 
-RUN node node_modules/puppeteer/install.mjs
-
 # Rebuild the source code only when needed
 FROM --platform=linux/amd64 node:20-alpine AS builder
 
@@ -49,6 +47,8 @@ COPY --from=builder /app/package.json ./package.json
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+RUN node node_modules/puppeteer/install.mjs
 
 
 EXPOSE 3000
