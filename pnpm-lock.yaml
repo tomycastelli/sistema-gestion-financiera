@@ -144,7 +144,7 @@ dependencies:
     specifier: 7.0.0
     version: 7.0.0
   ghostscript-node:
-    specifier: ^1.5.0
+    specifier: 1.5.0
     version: 1.5.0
   ioredis:
     specifier: 5.3.2
@@ -177,10 +177,10 @@ dependencies:
     specifier: ^0.2.1
     version: 0.2.1(next@13.4.7)(react-dom@18.2.0)(react@18.2.0)
   papaparse:
-    specifier: ^5.4.1
+    specifier: 5.4.1
     version: 5.4.1
   puppeteer:
-    specifier: ^21.7.0
+    specifier: 21.7.0
     version: 21.7.0(typescript@5.1.6)
   react:
     specifier: 18.2.0

@@ -7,7 +7,7 @@ WORKDIR /app
 # Install dependencies based on the preferred package manager
 COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./
-RUN yarn global add pnpm && pnpm i && node node_modules/puppeteer/install.mjs
+RUN yarn global add pnpm && pnpm i
 
 # Rebuild the source code only when needed
 FROM --platform=linux/amd64 node:20-alpine AS builder
@@ -34,6 +34,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN yarn global add pnpm && SKIN_ENV_VALIDATION=1 pnpm run build
+RUN node node_modules/puppeteer/install.mjs
 
 FROM --platform=linux/amd64 gcr.io/distroless/nodejs20-debian12 AS runner
 
@@ -47,7 +48,6 @@ COPY --from=builder /app/package.json ./package.json
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
 COPY --from=builder /app/.cache ./.cache
 
 EXPOSE 3000
