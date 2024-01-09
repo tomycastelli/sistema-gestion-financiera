@@ -47,7 +47,8 @@ RUN apk add --no-cache chromium \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    ghostscript
 
 ENV NODE_ENV production
 
