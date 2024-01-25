@@ -19,7 +19,11 @@ const Navbar = async () => {
         >
           Maika.
         </Link>
-        {session?.user && <LinkTree />}
+        {session?.user && (
+          <div className="hidden sm:block">
+            <LinkTree />
+          </div>
+        )}
         {session?.user && (
           <div className="flex flex-row items-center space-x-4">
             <CommandMenu

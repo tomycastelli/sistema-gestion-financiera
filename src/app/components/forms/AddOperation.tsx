@@ -204,7 +204,7 @@ const AddOperation = ({
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
       <div className="lg:col-span-1">
         <Card>
-          {isInitialOperationSubmitted ? (
+          {isInitialOperationSubmitted || selectedOpId ? (
             <>
               <CardHeader>
                 <div className="flex flex-row justify-between">
@@ -238,9 +238,9 @@ const AddOperation = ({
                   <span className="mr-2 text-primary">
                     {transactionsStore.length}
                   </span>
-                  {transactionsStore.length > 1
-                    ? "transacciones"
-                    : "transacción"}
+                  {transactionsStore.length === 1
+                    ? "transacción"
+                    : "transacciones"}
                 </CardTitle>
                 {initialOperationStore.opObservations && (
                   <h1 className="text-sm text-muted-foreground">
@@ -370,7 +370,7 @@ const AddOperation = ({
         </Card>
       </div>
       <div className="lg:col-span-2">
-        {isInitialOperationSubmitted ? (
+        {isInitialOperationSubmitted || selectedOpId ? (
           entities &&
           user && (
             <div>

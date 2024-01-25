@@ -12,6 +12,7 @@ import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
+import CustomPagination from "../components/CustomPagination";
 import EntityCard from "../components/ui/EntityCard";
 import { Button } from "../components/ui/button";
 import {
@@ -29,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Slider } from "../components/ui/slider";
 import { Switch } from "../components/ui/switch";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
@@ -49,6 +49,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   const [tagFilter, setTagFilter] = useState("todos");
   const [tagFilterMode, setTagFilterMode] = useState("children");
   const [page, setPage] = useState<number>(1);
+  const pageSize = 20;
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
@@ -99,7 +100,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 
   return (
     <div className="mx-auto my-4 flex max-w-4xl flex-col space-y-8">
-      <div className="flex flex-row justify-between space-x-4 rounded-xl border border-muted p-4">
+      <div className="flex flex-row flex-wrap justify-between space-x-4 space-y-6 rounded-xl border border-muted p-4">
         <div className="flex flex-row justify-start space-x-4">
           <Input
             className="w-36"
@@ -182,9 +183,9 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
           <div className="flex flex-col space-y-6">
-            <div className="mx-auto grid grid-cols-5 gap-11">
+            <div className="mx-auto grid grid-cols-2 gap-11 md:grid-cols-4 xl:grid-cols-6">
               {twiceFilteredEntities
-                .slice((page - 1) * 30, page * 30)
+                .slice((page - 1) * pageSize, page * pageSize)
                 .map((entity) => (
                   <div
                     key={entity.id}
@@ -198,19 +199,13 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                   </div>
                 ))}
             </div>
-            <div className="mx-12 flex flex-row items-center justify-center space-x-2">
-              <Slider
-                defaultValue={[page]}
-                max={
-                  Math.round(twiceFilteredEntities.length / 30) < 1
-                    ? 1
-                    : Math.round(twiceFilteredEntities.length / 30)
-                }
-                min={1}
-                onValueChange={(e) => setPage(e[0]!)}
-                step={1}
-              />
-            </div>
+            <CustomPagination
+              page={page}
+              totalCount={twiceFilteredEntities.length}
+              pageSize={pageSize}
+              itemName="entidades"
+              changePageState={setPage}
+            />
           </div>
         ) : (
           <h1 className="text-xl font-semibold tracking-tight">

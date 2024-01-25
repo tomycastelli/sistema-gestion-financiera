@@ -426,8 +426,9 @@ const Transaction: FC<TransactionProps> = ({
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Se borrará completamente la transacción y los movimientos
-                  relacionados
+                  Se borrará completamente la transacción{" "}
+                  <span className="font-semibold">{tx.id}</span> y los
+                  movimientos relacionados
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

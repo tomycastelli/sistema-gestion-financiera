@@ -24,9 +24,9 @@ const Timeline: FC<TimelineProps> = ({ initialLogs, users }) => {
   );
 
   return (
-    <div className="mx-36 flex flex-col space-y-8">
+    <div className="flex flex-col space-y-8">
       {!isLoading ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {data.logs.map((log) => (
             <Log log={log} users={users} key={log.id} />
           ))}

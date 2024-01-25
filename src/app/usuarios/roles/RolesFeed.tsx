@@ -106,14 +106,15 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
                     <Link href={`/usuarios/roles/${role.id}`}>{role.name}</Link>
                   </CardTitle>
                   <CardDescription>
-                    {role.users ? role.users.length : 0} usuarios
-                  </CardDescription>
-                  <CardDescription>
                     {
                       // @ts-ignore
                       role.permissions.length
                     }{" "}
                     permisos
+                  </CardDescription>
+                  <CardDescription>
+                    {role.users ? role.users.length : 0}{" "}
+                    {role.users.length === 1 ? "usuario" : "usuarios"}
                   </CardDescription>
                 </CardHeader>
                 <AlertDialog>
