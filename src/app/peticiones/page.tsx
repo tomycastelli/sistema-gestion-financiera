@@ -12,7 +12,7 @@ const Page = async () => {
   if (session) {
     return (
       <div className="flex flex-col items-center justify-center space-y-8">
-        <h1 className="text-4xl font-semibold">Peticiones</h1>
+        <h1 className="text-5xl font-semibold">Peticiones</h1>
         <div className="flex flex-row items-center space-x-2">
           <p>Añadir petición</p>
           <AddRequest session={session} />

@@ -17,7 +17,7 @@ export default async function Home() {
   return (
     <div className="mt-12 flex h-full w-full flex-col items-center justify-center">
       <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight">
-        Bienvenido al portal de Maika!
+        Bienvenido al portal de Maika
       </h1>
       {session ? (
         <div className="flex flex-col items-center justify-center space-y-8">
