@@ -1,0 +1,8 @@
+# Permisos
+
+Los permisos son asignados a los usuarios y abarcan distintas funcionalidades del sistema, como puede ser la carga, la confirmación o la cancelación de transacciones, la visualización de cuentas o la creación de nuevas entidades y tags. \
+Cada permiso puede ser dado parcialmente, limitandolo a ciertas entidades y tags.
+
+## Roles
+
+Se pueden crear roles para agilizar la asignación de permisos a un grupo de usuarios, los usuarios entonces tendran los permisos de su rol mas los permisos personales. Siempre que se compartan permisos parciales (aquellos permisos que son limitados por tags y entidades) entre el rol del usuario y sus permisos particulares, los permisos resultantes serán la suma de ambos. Por ejemplo, el usuario A tiene un rol con el permiso: "Confirmar transacciones de las entidades 1, 2 y 5". Y también tiene ese permiso particularmente pero con otras entidades incluidas: "Confirmar transacciones de las entidades 1, 3 y 6". El permiso resultante será: "Confirmar transacciones de las entidades 1, 2, 3, 5 y 6".
