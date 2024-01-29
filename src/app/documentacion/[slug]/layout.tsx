@@ -1,21 +1,26 @@
-import { readFileSync, readdirSync } from "fs";
-import path from "path";
 import { getHeadingsTree } from "~/lib/functions";
 import DocsTree from "./DocsTree";
 import TableOfContents from "./TableOfContents";
 
-const DocsLayout = ({ children }: { children: React.ReactNode }) => {
-  const fileNamesWithExtensions = readdirSync("../docs");
+const DocsLayout = async ({ children }: { children: React.ReactNode }) => {
+  const fileNames = [
+    "entidades",
+    "logs",
+    "permisos",
+    "peticiones",
+    "transacciones",
+  ];
 
-  const fileNames = fileNamesWithExtensions.map(
-    (fileName) => path.parse(fileName).name,
+  const headingsData = await Promise.all(
+    fileNames.map(async (fileName) => {
+      const res = await fetch(
+        `https://du502cbk6jn66.cloudfront.net/content/docs/${fileName}.mdx`,
+      );
+      const mdxText = await res.text();
+      const headings = getHeadingsTree(mdxText);
+      return { name: fileName, headings };
+    }),
   );
-
-  const headingsData = fileNames.map((fileName) => {
-    const markdown = readFileSync(`../docs/${fileName}.mdx`, "utf-8");
-    const headings = getHeadingsTree(markdown);
-    return { name: fileName, headings };
-  });
 
   return (
     <div className="grid grid-cols-7 gap-2 lg:gap-8">

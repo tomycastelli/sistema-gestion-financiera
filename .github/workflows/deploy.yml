@@ -24,6 +24,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: sa-east-1
 
+      - name: Upload changes to S3 and issue Cloudfront invalidations
+        uses: vladcosorg/action-s3-cloudfront-smart-deploy@v1
+        with:
+          source: public/content
+          target: s3://maika-assets/content/
+          distribution: EXCKAK1JLK0UE
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1

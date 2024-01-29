@@ -1,13 +1,14 @@
-import { readdirSync } from "fs";
 import Link from "next/link";
-import path from "path";
 import { capitalizeFirstLetter } from "~/lib/functions";
 
 const page = () => {
-  const fileNamesWithExtensions = readdirSync("./docs");
-  const fileNames = fileNamesWithExtensions.map(
-    (fileName) => path.parse(fileName).name,
-  );
+  const fileNames = [
+    "entidades",
+    "logs",
+    "permisos",
+    "peticiones",
+    "transacciones",
+  ];
   return (
     <div className="flex flex-col space-y-6">
       <h1 className="mx-auto flex text-4xl font-semibold">Documentación</h1>
