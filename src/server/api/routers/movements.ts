@@ -611,15 +611,15 @@ export const movementsRouter = createTRPCRouter({
 
               if (existingEntry) {
                 if (entry.account) {
-                  existingEntry.current_account = entry.balance;
-                } else {
                   existingEntry.cash = entry.balance;
+                } else {
+                  existingEntry.current_account = entry.balance;
                 }
               } else {
                 acc.push({
                   datestring: entry.datestring,
-                  cash: entry.account ? 0 : entry.balance,
-                  current_account: entry.account ? entry.balance : 0,
+                  cash: entry.account ? entry.balance : 0,
+                  current_account: entry.account ? 0 : entry.balance,
                 });
               }
 

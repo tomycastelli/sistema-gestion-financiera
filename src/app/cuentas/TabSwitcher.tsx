@@ -44,7 +44,7 @@ const TabSwitcher = () => {
         href={{ pathname: "/cuentas", query: resumenQuery }}
         className={cn(
           !selectedTab && "bg-primary font-semibold text-white",
-          "flex items-center justify-center rounded-xl p-2",
+          "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
         Resumen
@@ -57,7 +57,7 @@ const TabSwitcher = () => {
         }}
         className={cn(
           selectedTab === "caja" && "bg-primary font-semibold text-white",
-          "flex items-center justify-center rounded-xl p-2",
+          "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
         Caja
@@ -70,8 +70,8 @@ const TabSwitcher = () => {
         }}
         className={cn(
           selectedTab === "cuenta_corriente" &&
-          "bg-primary font-semibold text-white",
-          "flex items-center justify-center rounded-xl p-2",
+            "bg-primary font-semibold text-white",
+          "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
         Cuenta corriente

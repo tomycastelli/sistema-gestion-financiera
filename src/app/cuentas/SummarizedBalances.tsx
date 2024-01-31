@@ -7,6 +7,7 @@ import { type FC } from "react";
 import {
   Bar,
   BarChart,
+  Legend,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -14,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { generateTableData } from "~/lib/functions";
+import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -224,15 +226,29 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     },
   ];
 
+  // @ts-ignore
+  const renderCleanerText = (value: string) => {
+    return <span>{value.replace(/_/g, " ")}</span>;
+  };
+
+  const renderCleanerTextAndNumber = (value: number, name: string) => {
+    const valueString = new Intl.NumberFormat("es-AR").format(value);
+    const nameString = name.replace(/_/g, " ");
+    return [valueString, nameString];
+  };
+
   return (
-    <div className="grid grid-cols-4 gap-8">
-      <div className="col-span-4 grid grid-cols-2 gap-8 lg:grid-cols-3">
+    <div className="flex flex-col space-y-8">
+      <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
         {balancesForCard &&
           balancesForCard.map((item) => (
             <Card
               key={item.currency}
               onClick={() => setSelectedCurrency(item.currency)}
-              className="transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary"
+              className={cn(
+                "transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
+                item.currency === selectedCurrency && "border-2 border-primary",
+              )}
             >
               <CardHeader>
                 <CardTitle>{item.currency.toUpperCase()}</CardTitle>
@@ -255,7 +271,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             </Card>
           ))}
       </div>
-      <div className="col-span-4 grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
         {selectedCurrency ? (
           <Card>
             <CardHeader>
@@ -281,8 +297,10 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                   <BarChart
                     data={balancesHistory.map((b) => ({
                       ...b,
-                      cash: parseFloat(b.cash.toFixed(2)),
-                      current_account: parseFloat(b.current_account.toFixed(2)),
+                      Caja: parseFloat(b.cash.toFixed(2)),
+                      Cuenta_Corriente: parseFloat(
+                        b.current_account.toFixed(2),
+                      ),
                     }))}
                   >
                     <XAxis
@@ -301,16 +319,25 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                       axisLine={false}
                       tickFormatter={(value) => `$${value}`}
                     />
-                    <Tooltip isAnimationActive={true} />
+                    <Tooltip
+                      isAnimationActive={true}
+                      formatter={renderCleanerTextAndNumber}
+                      labelStyle={{ fontWeight: 600 }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={72}
+                      formatter={renderCleanerText}
+                    />
                     <Bar
-                      dataKey="cash"
-                      fill="#3662E3"
+                      dataKey="Caja"
+                      fill="#16A149"
                       radius={[4, 4, 0, 0]}
                       legendType="circle"
                       label="Caja"
                     />
                     <Bar
-                      dataKey="current_account"
+                      dataKey="Cuenta_Corriente"
                       legendType="circle"
                       label="Cuenta corriente"
                       fill="#E87B35"

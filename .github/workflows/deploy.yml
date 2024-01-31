@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*.*.*"
 jobs:
   Build:
     name: Build
@@ -16,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Set tag env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -40,11 +44,26 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: sistema-maika-repository
-          IMAGE_TAG: ${{github.ref_name}}
+          TAG_NAME: ${{ env.RELEASE_VERSION }}
         run: |
           docker build \
             --build-arg MONGODB_PASS=${MONGODB_PASS} \
             --build-arg MONGODB_URL=${MONGODB_URL} \
             --build-arg REDIS_URL=${REDIS_URL} \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME
+
+      - name: Render Amazon ECS task definition
+        id: render-web-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: web-app
+          container-name: web-app
+          image: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
+
+      - name: Deploy to Amazon ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-web-container.outputs.task-definition }}
+          service: web-app
+          cluster: sistema-maika-cluster
