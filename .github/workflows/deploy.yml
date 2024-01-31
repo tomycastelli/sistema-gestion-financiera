@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Set tag env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -57,7 +57,7 @@ jobs:
         id: render-web-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: web-app
+          task-definition: task-definition.json
           container-name: web-app
           image: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
 
