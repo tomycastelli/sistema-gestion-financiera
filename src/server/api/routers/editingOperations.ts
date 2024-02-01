@@ -2,7 +2,11 @@ import { z } from "zod";
 import { findDifferences, movementBalanceDirection } from "~/lib/functions";
 import { generateMovements } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes } from "~/lib/variables";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  protectedLoggedProcedure,
+  protectedProcedure,
+} from "../trpc";
 
 export const editingOperationsRouter = createTRPCRouter({
   updateTransactionValues: protectedProcedure
@@ -145,7 +149,7 @@ export const editingOperationsRouter = createTRPCRouter({
       }
     }),
 
-  updateTransactionStatus: protectedProcedure
+  updateTransactionStatus: protectedLoggedProcedure
     .input(
       z.object({
         transactionIds: z.array(z.number().int()),
@@ -217,7 +221,7 @@ export const editingOperationsRouter = createTRPCRouter({
         throw error;
       }
     }),
-  cancelTransaction: protectedProcedure
+  cancelTransaction: protectedLoggedProcedure
     .input(
       z.object({
         transactionId: z.number().int().optional(),
@@ -246,8 +250,8 @@ export const editingOperationsRouter = createTRPCRouter({
       await ctx.db.transactionsMetadata.updateMany({
         where: input.transactionId
           ? {
-            transactionId: input.transactionId,
-          }
+              transactionId: input.transactionId,
+            }
           : { transaction: { operationId: input.operationId } },
         data: {
           cancelledBy: ctx.session.user.id,

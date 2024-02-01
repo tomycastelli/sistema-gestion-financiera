@@ -10,6 +10,7 @@ import {
 
 import {
   createTRPCRouter,
+  protectedLoggedProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
@@ -59,7 +60,7 @@ export const entitiesRouter = createTRPCRouter({
       return filteredEntities;
     }),
 
-  addOne: protectedProcedure
+  addOne: protectedLoggedProcedure
     .input(
       z.object({
         name: z.string(),
@@ -99,7 +100,7 @@ export const entitiesRouter = createTRPCRouter({
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
     }),
-  deleteOne: protectedProcedure
+  deleteOne: protectedLoggedProcedure
     .input(z.object({ entityId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
       const transaction = await ctx.db.transactions.findFirst({
@@ -138,7 +139,7 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
     }),
-  updateOne: protectedProcedure
+  updateOne: protectedLoggedProcedure
     .input(
       z.object({
         id: z.number().int(),

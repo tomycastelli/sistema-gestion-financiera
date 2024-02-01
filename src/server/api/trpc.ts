@@ -121,7 +121,8 @@ const loggingMiddleware = t.middleware(async ({ path, type, next }) => {
     : console.log("Non-OK request timing", { path, type, durationMs });
   return result;
 });
-export const publicProcedure = t.procedure.use(loggingMiddleware);
+export const publicProcedure = t.procedure;
+export const publicLoggedProcedure = t.procedure.use(loggingMiddleware);
 
 /** Reusable middleware that enforces users are logged in before running the procedure. */
 const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
@@ -144,6 +145,7 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure
+export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
+export const protectedLoggedProcedure = t.procedure
   .use(loggingMiddleware)
   .use(enforceUserIsAuthed);

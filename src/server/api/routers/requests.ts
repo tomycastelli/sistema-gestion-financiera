@@ -1,8 +1,12 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  protectedLoggedProcedure,
+  protectedProcedure,
+} from "../trpc";
 
 export const requestsRouter = createTRPCRouter({
-  addOne: protectedProcedure
+  addOne: protectedLoggedProcedure
     .input(z.object({ title: z.string(), content: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const newRequest = await ctx.db.requests.create({
@@ -16,7 +20,7 @@ export const requestsRouter = createTRPCRouter({
 
       return newRequest;
     }),
-  updateOne: protectedProcedure
+  updateOne: protectedLoggedProcedure
     .input(
       z.object({
         id: z.number().int(),
@@ -37,7 +41,7 @@ export const requestsRouter = createTRPCRouter({
 
       return updatedRequest;
     }),
-  deleteOne: protectedProcedure
+  deleteOne: protectedLoggedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
       const deletedRequest = await ctx.db.requests.delete({

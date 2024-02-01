@@ -6,7 +6,11 @@ import { launch } from "puppeteer";
 import { z } from "zod";
 import { generateTableData, getAllChildrenTags } from "~/lib/functions";
 import { getAllEntities, getAllTags } from "~/lib/trpcFunctions";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  protectedLoggedProcedure,
+  protectedProcedure,
+} from "../trpc";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -293,7 +297,7 @@ export const filesRouter = createTRPCRouter({
         return { downloadUrl, filename };
       }
     }),
-  detailedBalancesFile: protectedProcedure
+  detailedBalancesFile: protectedLoggedProcedure
     .input(
       z.object({
         entityId: z.number().int().optional().nullish(),

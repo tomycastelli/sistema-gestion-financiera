@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { PermissionSchema } from "~/lib/permissionsTypes";
 import { getAllPermissions } from "~/lib/trpcFunctions";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  protectedLoggedProcedure,
+  protectedProcedure,
+} from "../trpc";
 
 export const rolesRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -77,7 +81,7 @@ export const rolesRouter = createTRPCRouter({
         return null;
       }
     }),
-  addOne: protectedProcedure
+  addOne: protectedLoggedProcedure
     .input(
       z.object({
         name: z.string(),
@@ -123,7 +127,7 @@ export const rolesRouter = createTRPCRouter({
         return null;
       }
     }),
-  deleteOne: protectedProcedure
+  deleteOne: protectedLoggedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
       const permissions = await getAllPermissions(
@@ -171,7 +175,7 @@ export const rolesRouter = createTRPCRouter({
         return null;
       }
     }),
-  updateOne: protectedProcedure
+  updateOne: protectedLoggedProcedure
     .input(
       z.object({
         id: z.number().int(),
