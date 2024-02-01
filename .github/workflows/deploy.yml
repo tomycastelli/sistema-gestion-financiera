@@ -1,8 +1,6 @@
-name: Push the Docker image to AWS ECR Repo
+name: Pushes NextJS image to ECR and deploys to ECS
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*.*.*"
 jobs:
@@ -14,12 +12,22 @@ jobs:
       MONGODB_URL: ${{ secrets.MONGODB_URL }}
       MONGODB_PASS: ${{ secrets.MONGODB_PASS }}
       REDIS_URL: ${{ secrets.REDIS_URL }}
+      AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+      AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+      AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      S3_PUBLIC_KEY: ${{ secrets.S3_PUBLIC_KEY }}
+      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Set tag env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -57,9 +65,23 @@ jobs:
         id: render-web-container
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: .github/workflows/task-definition.json
           container-name: web-app
           image: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
+          environment-variables: |
+            REDIS_URL=${REDIS_URL}
+            MONGODB_URL=${MONGODB_URL}
+            MONGODB_PASS=${MONGODB_PASS}
+            AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID}
+            AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET}
+            AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+            NEXTAUTH_URL=${NEXTAUTH_URL}
+            DATABASE_URL=${DATABASE_URL}
+            S3_PUBLIC_KEY=${S3_PUBLIC_KEY}
+            S3_SECRET_KEY=${S3_SECRET_KEY}
 
       - name: Deploy to Amazon ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1

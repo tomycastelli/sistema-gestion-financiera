@@ -1,0 +1,62 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "web-app",
+      "image": "331756077753.dkr.ecr.sa-east-1.amazonaws.com/sistema-maika-repository:main",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "name": "web-app-3000-tcp",
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp",
+          "appProtocol": "http"
+        }
+      ],
+      "essential": true,
+      "mountPoints": [],
+      "volumesFrom": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-create-group": "true",
+          "awslogs-group": "/ecs/web-app",
+          "awslogs-region": "sa-east-1",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      }
+    },
+    {
+      "name": "aws-otel-collector",
+      "image": "public.ecr.aws/aws-observability/aws-otel-collector:v0.37.0",
+      "cpu": 0,
+      "portMappings": [],
+      "essential": true,
+      "command": ["--config=/etc/ecs/ecs-cloudwatch.yaml"],
+      "environment": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-create-group": "true",
+          "awslogs-group": "/ecs/ecs-aws-otel-sidecar-collector",
+          "awslogs-region": "sa-east-1",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      }
+    }
+  ],
+  "family": "web-app",
+  "taskRoleArn": "arn:aws:iam::331756077753:role/role-name-task",
+  "executionRoleArn": "arn:aws:iam::331756077753:role/role-name",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "tags": []
+}
