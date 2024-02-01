@@ -23,7 +23,6 @@ const AccountsTable = async ({
   entityTag: string | null;
 }) => {
   const session = await getServerAuthSession();
-  console.log(session);
 
   const entities = await api.entities.getAll.query();
 

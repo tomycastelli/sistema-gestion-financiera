@@ -218,7 +218,6 @@ const UpdateTransaction = ({
       },
     });
 
-    console.log(values);
     toast({
       title: `Transacción ${tx.id} editada`,
       description: `${differingKeysCount} atributos modificados`,

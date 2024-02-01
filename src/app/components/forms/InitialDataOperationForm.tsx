@@ -51,12 +51,6 @@ const InitialDataOperationForm = () => {
       opObservations: values.opObservations,
     });
     setIsInitialOperationSubmitted(true);
-
-    console.log(
-      `Single operation submited to state: ${JSON.stringify(
-        initialOperationStore,
-      )}`,
-    );
   };
 
   return (

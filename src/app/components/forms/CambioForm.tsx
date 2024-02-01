@@ -242,7 +242,6 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
 
     transactions.forEach((transaction) => {
       addTransactionToStore(transaction);
-      console.log(`Added transaction to store: ${JSON.stringify(transaction)}`);
     });
 
     reset({

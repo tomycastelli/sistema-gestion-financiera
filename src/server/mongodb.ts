@@ -2,9 +2,7 @@ import { connect, connection, model, models, type Document } from "mongoose";
 import { env } from "~/env.mjs";
 
 const mongodb = await connect(env.MONGODB_URL, {
-  authSource: "admin",
-  user: "admin",
-  pass: env.MONGODB_PASS,
+  serverApi: { version: "1", strict: true, deprecationErrors: true },
 });
 
 export interface LogsDocument extends Document {

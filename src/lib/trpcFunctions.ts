@@ -113,7 +113,6 @@ export const getAllEntities = async (
   const cachedEntities: string | null = await redis.get("cached_entities");
 
   if (cachedEntities) {
-    console.log("Entities queried from cache");
     const parsedEntities: typeof entities = JSON.parse(cachedEntities);
 
     return parsedEntities;
@@ -126,8 +125,6 @@ export const getAllEntities = async (
       tag: true,
     },
   });
-
-  console.log("Entities queried from database");
 
   if (!entities)
     throw new TRPCError({

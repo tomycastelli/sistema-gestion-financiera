@@ -121,7 +121,6 @@ export const editingOperationsRouter = createTRPCRouter({
             );
           }
 
-          console.log(`Transaction ${input.txId} edited`);
           return updateTransactionResponse;
         });
 
@@ -247,8 +246,8 @@ export const editingOperationsRouter = createTRPCRouter({
       await ctx.db.transactionsMetadata.updateMany({
         where: input.transactionId
           ? {
-              transactionId: input.transactionId,
-            }
+            transactionId: input.transactionId,
+          }
           : { transaction: { operationId: input.operationId } },
         data: {
           cancelledBy: ctx.session.user.id,
