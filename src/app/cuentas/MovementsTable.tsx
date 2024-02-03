@@ -87,8 +87,6 @@ const MovementsTable = ({
 }: CuentasTableProps) => {
   const utils = api.useContext();
 
-  const [downloadUrl, setDownloadUrl] = useState<string | undefined>(undefined);
-
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
 
@@ -105,6 +103,7 @@ const MovementsTable = ({
     setFromDate,
     toDate,
     setToDate,
+    isInverted,
   } = useCuentasStore();
 
   const { data, refetch, isFetching } =
@@ -130,19 +129,32 @@ const MovementsTable = ({
       },
     );
 
-  const {
-    mutateAsync: getUrlAsync,
-    isLoading,
-    isSuccess,
-  } = api.files.getCurrentAccount.useMutation({
-    onError(error) {
-      toast({
-        title: error.data ? error.data.code : "",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const { mutateAsync: getUrlAsync, isLoading } =
+    api.files.getCurrentAccount.useMutation({
+      onSuccess(newOperation) {
+        if (newOperation) {
+          toast({
+            title: "Archivo generado exitosamente",
+            description: newOperation.filename,
+            variant: "success",
+          });
+          const link = document.createElement("a");
+          link.href = newOperation.downloadUrl;
+          link.download = newOperation.filename;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      },
+      onError(error) {
+        toast({
+          title: error.data ? error.data.code : "",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
 
   const tableData = generateTableData(
     data.movements,
@@ -545,7 +557,7 @@ const MovementsTable = ({
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onClick={async () => {
-                    const fileData = await getUrlAsync({
+                    await getUrlAsync({
                       account: accountType,
                       entityId: selectedFromEntity
                         ? parseInt(selectedFromEntity)
@@ -557,19 +569,6 @@ const MovementsTable = ({
                       toDate: toDate,
                       fileType: "pdf",
                     });
-                    if (fileData?.downloadUrl) {
-                      toast({
-                        title: "Archivo generado exitosamente",
-                        description: fileData.filename,
-                        variant: "success",
-                      });
-                      setDownloadUrl(fileData.downloadUrl);
-                    } else {
-                      toast({
-                        title: "No se pudo generar el archivo",
-                        variant: "destructive",
-                      });
-                    }
                   }}
                 >
                   <Icons.pdf className="h-4" />
@@ -577,7 +576,7 @@ const MovementsTable = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={async () => {
-                    const fileData = await getUrlAsync({
+                    await getUrlAsync({
                       account: accountType,
                       entityId: selectedFromEntity
                         ? parseInt(selectedFromEntity)
@@ -589,19 +588,6 @@ const MovementsTable = ({
                       toDate: toDate,
                       fileType: "csv",
                     });
-                    if (fileData?.downloadUrl) {
-                      toast({
-                        title: "Archivo generado exitosamente",
-                        description: fileData.filename,
-                        variant: "success",
-                      });
-                      setDownloadUrl(fileData.downloadUrl);
-                    } else {
-                      toast({
-                        title: "No se pudo conseguir un link",
-                        variant: "destructive",
-                      });
-                    }
                   }}
                 >
                   <Icons.excel className="h-4" />
@@ -610,16 +596,27 @@ const MovementsTable = ({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          {isSuccess && (
-            <Button variant="outline">
-              <Link href={downloadUrl ? downloadUrl : "#"} target="_blank">
-                Descargar
-              </Link>
-            </Button>
-          )}
         </div>
         {!isFetching ? (
-          <DataTable columns={columns} data={tableData} />
+          <DataTable
+            columns={columns}
+            data={tableData.map((row) => {
+              if (!isInverted) {
+                return row;
+              } else {
+                return {
+                  ...row,
+                  selectedEntity: row.otherEntity,
+                  selectedEntityId: row.otherEntityId,
+                  otherEntity: row.selectedEntity,
+                  otherEntityId: row.selectedEntityId,
+                  ingress: row.egress,
+                  egress: row.ingress,
+                  balance: -row.balance,
+                };
+              }
+            })}
+          />
         ) : (
           <LoadingAnimation text="Cargando movimientos" />
         )}

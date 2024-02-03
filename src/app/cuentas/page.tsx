@@ -6,6 +6,7 @@ import { api } from "~/trpc/server";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import LoadingAnimation from "../components/LoadingAnimation";
 import EntitySwitcher from "./EntitySwitcher";
+import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
 const AccountsTab = dynamic(() => import("./AccountsTab"));
 const SummarizedBalances = dynamic(() => import("./SummarizedBalances"));
@@ -109,12 +110,13 @@ const Page = async ({
         <>
           <div className="flex w-full flex-row justify-between space-x-4 border-b border-muted pb-4">
             {session && (
-              <div className="grid w-1/3 grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="flex flex-row flex-wrap items-center space-x-8">
                 <EntitySwitcher
                   entities={initialEntities}
                   tags={filteredTags}
                 />
                 {(selectedEntityId || selectedTag) && <TabSwitcher />}
+                <InvertSwitch entities={initialEntities} />
               </div>
             )}
             <TimeRangeSelector />

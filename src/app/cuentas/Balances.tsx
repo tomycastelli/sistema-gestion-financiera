@@ -55,13 +55,12 @@ const Balances: FC<BalancesProps> = ({
 
   const allChildrenTags = getAllChildrenTags(selectedTag, tags);
 
-  const [downloadUrl, setDownloadUrl] = useState<string | undefined>(undefined);
-
   const {
     selectedCurrency,
     setSelectedCurrency,
     setDestinationEntityId,
     destinationEntityId,
+    isInverted,
   } = useCuentasStore();
 
   const {
@@ -258,11 +257,32 @@ const Balances: FC<BalancesProps> = ({
     );
   }
 
-  const {
-    mutateAsync: getUrlAsync,
-    isLoading: isUrlLoading,
-    isSuccess: isUrlSuccess,
-  } = api.files.detailedBalancesFile.useMutation();
+  const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
+    api.files.detailedBalancesFile.useMutation({
+      onSuccess(newOperation) {
+        if (newOperation) {
+          toast({
+            title: "Archivo generado exitosamente",
+            description: newOperation.filename,
+            variant: "success",
+          });
+          const link = document.createElement("a");
+          link.href = newOperation.downloadUrl;
+          link.download = newOperation.filename;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      },
+      onError(error) {
+        toast({
+          title: error.data ? error.data.code : "",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
 
   const {
     results: filteredBalances,
@@ -313,7 +333,7 @@ const Balances: FC<BalancesProps> = ({
                         <p className="text-xl font-bold">
                           ${" "}
                           {new Intl.NumberFormat("es-AR").format(
-                            balances.balance,
+                            !isInverted ? balances.balance : -balances.balance,
                           )}
                         </p>
                       ) : (
@@ -351,25 +371,12 @@ const Balances: FC<BalancesProps> = ({
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   onClick={async () => {
-                    const fileData = await getUrlAsync({
+                    await getUrlAsync({
                       entityId: selectedEntityId,
                       entityTag: selectedTag,
                       detailedBalances: detailedBalances,
                       fileType: "pdf",
                     });
-                    if (fileData?.downloadUrl) {
-                      toast({
-                        title: "Archivo generado exitosamente",
-                        description: fileData.filename,
-                        variant: "success",
-                      });
-                      setDownloadUrl(fileData.downloadUrl);
-                    } else {
-                      toast({
-                        title: "No se pudo generar el archivo",
-                        variant: "destructive",
-                      });
-                    }
                   }}
                 >
                   <Icons.pdf className="h-4" />
@@ -377,25 +384,12 @@ const Balances: FC<BalancesProps> = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={async () => {
-                    const fileData = await getUrlAsync({
+                    await getUrlAsync({
                       entityId: selectedEntityId,
                       entityTag: selectedTag,
                       detailedBalances: detailedBalances,
                       fileType: "csv",
                     });
-                    if (fileData?.downloadUrl) {
-                      toast({
-                        title: "Archivo generado exitosamente",
-                        description: fileData.filename,
-                        variant: "success",
-                      });
-                      setDownloadUrl(fileData.downloadUrl);
-                    } else {
-                      toast({
-                        title: "No se pudo conseguir un link",
-                        variant: "destructive",
-                      });
-                    }
                   }}
                 >
                   <Icons.excel className="h-4" />
@@ -404,13 +398,6 @@ const Balances: FC<BalancesProps> = ({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          {isUrlSuccess && (
-            <Button variant="outline">
-              <Link href={downloadUrl ? downloadUrl : "#"} target="_blank">
-                Descargar
-              </Link>
-            </Button>
-          )}
         </div>
         <div className="flex flex-row items-center justify-end space-x-2">
           {detailedBalancesPage > 1 && (
@@ -482,7 +469,9 @@ const Balances: FC<BalancesProps> = ({
                       )}
                     >
                       {new Intl.NumberFormat("es-AR").format(
-                        matchingBalance.balance,
+                        !isInverted
+                          ? matchingBalance.balance
+                          : -matchingBalance.balance,
                       )}
                     </p>
                   ) : (

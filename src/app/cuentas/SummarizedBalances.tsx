@@ -65,8 +65,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       },
     );
 
-  const { selectedTimeframe, selectedCurrency, setSelectedCurrency } =
-    useCuentasStore();
+  const {
+    selectedTimeframe,
+    selectedCurrency,
+    setSelectedCurrency,
+    isInverted,
+  } = useCuentasStore();
 
   const { data: balancesHistory } = api.movements.getBalancesHistory.useQuery({
     currency: selectedCurrency,
@@ -196,7 +200,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Abrir menú</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -262,7 +266,9 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                     >
                       <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
                       <p className="text-xl font-semibold">
-                        {new Intl.NumberFormat("es-AR").format(balance.amount)}
+                        {new Intl.NumberFormat("es-AR").format(
+                          !isInverted ? balance.amount : -balance.amount,
+                        )}
                       </p>
                     </div>
                   ))}
@@ -297,9 +303,13 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                   <BarChart
                     data={balancesHistory.map((b) => ({
                       ...b,
-                      Caja: parseFloat(b.cash.toFixed(2)),
+                      Caja: parseFloat(
+                        !isInverted ? b.cash.toFixed(2) : (-b.cash).toFixed(2),
+                      ),
                       Cuenta_Corriente: parseFloat(
-                        b.current_account.toFixed(2),
+                        !isInverted
+                          ? b.current_account.toFixed(2)
+                          : (-b.current_account).toFixed(2),
                       ),
                     }))}
                   >
@@ -367,7 +377,25 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               {isLoading ? (
                 <p>Cargando...</p>
               ) : movements.length > 0 ? (
-                <DataTable columns={columns} data={tableData} />
+                <DataTable
+                  columns={columns}
+                  data={tableData.map((row) => {
+                    if (!isInverted) {
+                      return row;
+                    } else {
+                      return {
+                        ...row,
+                        selectedEntity: row.otherEntity,
+                        selectedEntityId: row.otherEntityId,
+                        otherEntity: row.selectedEntity,
+                        otherEntityId: row.otherEntityId,
+                        ingress: row.egress,
+                        egress: row.ingress,
+                        balance: -row.balance,
+                      };
+                    }
+                  })}
+                />
               ) : (
                 <p>Seleccioná una divisa</p>
               )}
