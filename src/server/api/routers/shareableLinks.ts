@@ -21,15 +21,21 @@ export const shareableLinksRouter = createTRPCRouter({
           },
         });
 
-        const newLog = new ctx.logs({
-          name: "createLink",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Añadir link de cuenta",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } catch (error) {
@@ -101,12 +107,28 @@ export const shareableLinksRouter = createTRPCRouter({
   removeLink: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const removedLink = await ctx.db.links.delete({
+      const response = await ctx.db.links.delete({
         where: {
           id: input.id,
         },
       });
 
-      return removedLink;
+      const { client, PutCommand, tableName } = ctx.dynamodb;
+
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Eliminar link de cuenta",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: response,
+          },
+        }),
+      );
+
+      return response;
     }),
 });

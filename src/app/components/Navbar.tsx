@@ -12,13 +12,18 @@ const Navbar = async () => {
   return (
     <header className="h-fit w-full py-4 text-foreground">
       <div className="flex flex-row items-center justify-between">
-        <Link
-          prefetch={false}
-          href="/"
-          className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
-        >
-          Maika.
-        </Link>
+        <div className="flex flex-row items-end justify-start space-x-2">
+          <Link
+            prefetch={false}
+            href="/"
+            className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
+          >
+            Maika.
+          </Link>
+          <p className="text-sm text-muted-foreground dark:text-white">
+            v0.1.4
+          </p>
+        </div>
         {session?.user && (
           <div className="hidden sm:block">
             <LinkTree />

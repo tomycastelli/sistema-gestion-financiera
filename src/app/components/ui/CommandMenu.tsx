@@ -225,6 +225,23 @@ const CommandMenu: FC<CommandMenuProps> = ({
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Cuentas">
+            <p className="ml-2 mt-1 text-xs text-muted-foreground">Tags</p>
+            {tags.map((tag) => (
+              <CommandItem
+                key={tag.name}
+                value={tag.name}
+                onSelect={() =>
+                  handleSelect(
+                    "/cuentas" +
+                      "?" +
+                      createQueryString(undefined, "tag", tag.name),
+                  )
+                }
+              >
+                <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
+                <span>{tag.name}</span>
+              </CommandItem>
+            ))}
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Entidades</p>
             {entities.map((entity) => (
               <CommandItem
@@ -244,23 +261,6 @@ const CommandMenu: FC<CommandMenuProps> = ({
               >
                 <Icons.currentAccount className="mr-2 h-4 w-4" />
                 <span>{entity.name}</span>
-              </CommandItem>
-            ))}
-            <p className="ml-2 mt-1 text-xs text-muted-foreground">Tags</p>
-            {tags.map((tag) => (
-              <CommandItem
-                key={tag.name}
-                value={tag.name}
-                onSelect={() =>
-                  handleSelect(
-                    "/cuentas" +
-                      "?" +
-                      createQueryString(undefined, "tag", tag.name),
-                  )
-                }
-              >
-                <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
-                <span>{tag.name}</span>
               </CommandItem>
             ))}
           </CommandGroup>

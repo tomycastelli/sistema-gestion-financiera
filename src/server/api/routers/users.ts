@@ -41,15 +41,21 @@ export const usersRouter = createTRPCRouter({
         await ctx.redis.del("cached_entities");
       }
 
-      const newLog = new ctx.logs({
-        name: "changeNameUser",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: response[0],
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Cambiar nombre de usuario",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: response[0],
+          },
+        }),
+      );
 
       return response[0];
     }),
@@ -198,15 +204,21 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
-        const newLog = new ctx.logs({
-          name: "updatePermissionsUser",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Actualizar permisos de usuario",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {
@@ -256,15 +268,21 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
-        const newLog = new ctx.logs({
-          name: "removePermissionsUser",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Eliminar permisos de usuario",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {
@@ -299,15 +317,21 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.userId}`);
 
-        const newLog = new ctx.logs({
-          name: "addToRoleUser",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Añadir usuario al rol",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {
@@ -342,15 +366,21 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
-        const newLog = new ctx.logs({
-          name: "removeFromRoleUser",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Eliminar usuario del rol",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {

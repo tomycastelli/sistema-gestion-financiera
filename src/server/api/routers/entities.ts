@@ -87,15 +87,21 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
 
-      const newLog = new ctx.logs({
-        name: "addOneEntity",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: insertResponse,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Añadir una entidad",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: insertResponse,
+          },
+        }),
+      );
 
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
@@ -121,15 +127,21 @@ export const entitiesRouter = createTRPCRouter({
 
         await ctx.redis.del("cached_entities");
 
-        const newLog = new ctx.logs({
-          name: "deleteOneEntity",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: deleteResponse,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Eliminar una entidad",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: deleteResponse,
+            },
+          }),
+        );
 
         return deleteResponse;
       } else {
@@ -160,15 +172,21 @@ export const entitiesRouter = createTRPCRouter({
 
       await ctx.redis.del("cached_entities");
 
-      const newLog = new ctx.logs({
-        name: "updateOneEntity",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: updatedEntity,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Actualizar una entidad",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: updatedEntity,
+          },
+        }),
+      );
 
       return updatedEntity;
     }),

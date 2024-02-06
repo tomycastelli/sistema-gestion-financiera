@@ -9,6 +9,7 @@ import { requestsRouter } from "./routers/requests";
 import { rolesRouter } from "./routers/roles";
 import { shareableLinksRouter } from "./routers/shareableLinks";
 import { tagsRouter } from "./routers/tags";
+import { userPreferencesRouter } from "./routers/userPreferences";
 import { usersRouter } from "./routers/users";
 
 /**
@@ -28,6 +29,7 @@ export const appRouter = createTRPCRouter({
   logs: logsRouter,
   requests: requestsRouter,
   files: filesRouter,
+  userPreferences: userPreferencesRouter,
 });
 
 // export type definition of API

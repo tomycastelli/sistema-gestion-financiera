@@ -15,7 +15,7 @@ import { ZodError } from "zod";
 import { getServerAuthSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { redis } from "~/server/redis";
-import { logs } from "../mongodb";
+import { dynamodb } from "../dynamodb";
 import { s3 } from "../s3";
 
 /**
@@ -48,8 +48,8 @@ export const createInnerTRPCContext = async (opts: CreateContextOptions) => {
     headers: opts.headers,
     db,
     redis,
-    logs,
     s3,
+    dynamodb,
   };
 };
 

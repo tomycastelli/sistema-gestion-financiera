@@ -137,15 +137,21 @@ export const operationsRouter = createTRPCRouter({
           await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
         }
 
-        const newLog = new ctx.logs({
-          name: "insertOperation",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Añadir operación",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       }
@@ -183,15 +189,21 @@ export const operationsRouter = createTRPCRouter({
         await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
 
-      const newLog = new ctx.logs({
-        name: "insertTransactions",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: response,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Añadir transacciones a operación",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: response,
+          },
+        }),
+      );
 
       return response;
     }),
@@ -438,30 +450,29 @@ export const operationsRouter = createTRPCRouter({
           transactions: op.transactions.map((tx) => {
             const isCancelAllowed =
               tx.status !== "cancelled" &&
-              (tx.status !== "confirmed" ||
-                cashAccountOnlyTypes.includes(tx.type) ||
-                tx.type === "pago por cta cte") &&
-              userPermissions?.find(
-                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
-              )
-                ? true
-                : userPermissions?.find((p) => {
+              (cashAccountOnlyTypes.includes(tx.type) ||
+                tx.type === "pago por cta cte" ||
+                Boolean(
+                  userPermissions?.find(
+                    (p) =>
+                      p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
+                  ),
+                ) ||
+                Boolean(
+                  userPermissions?.some((p) => {
                     const allAllowedTags = getAllChildrenTags(
                       p.entitiesTags,
                       tags,
                     );
-                    if (
+                    return (
                       p.name === "TRANSACTIONS_CANCEL_SOME" &&
                       (p.entitiesIds?.includes(tx.fromEntityId) ||
                         allAllowedTags.includes(tx.fromEntity.tagName)) &&
                       (p.entitiesIds?.includes(tx.toEntityId) ||
                         allAllowedTags.includes(tx.toEntity.tagName))
-                    ) {
-                      return true;
-                    }
-                  })
-                ? true
-                : false;
+                    );
+                  }),
+                ));
 
             const isDeleteAllowed =
               tx.status !== "cancelled" &&
@@ -517,29 +528,25 @@ export const operationsRouter = createTRPCRouter({
                 : false;
 
             const isValidateAllowed =
-              currentAccountOnlyTypes.includes(tx.type) &&
-              tx.status === "pending" &&
-              userPermissions?.find(
-                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
-              )
-                ? true
-                : userPermissions?.find((p) => {
-                    const allAllowedTags = getAllChildrenTags(
-                      p.entitiesTags,
-                      tags,
-                    );
-                    if (
-                      p.name === "TRANSACTIONS_VALIDATE_SOME" &&
+              (tx.status !== "cancelled" &&
+                !currentAccountOnlyTypes.includes(tx.type)) ||
+              (tx.status === "pending" &&
+                (userPermissions?.some(
+                  (p) =>
+                    p.name === "ADMIN" ||
+                    p.name === "TRANSACTIONS_VALIDATE" ||
+                    (p.name === "TRANSACTIONS_VALIDATE_SOME" &&
                       (p.entitiesIds?.includes(tx.fromEntityId) ||
-                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                        getAllChildrenTags(p.entitiesTags, tags).includes(
+                          tx.fromEntity.tagName,
+                        )) &&
                       (p.entitiesIds?.includes(tx.toEntityId) ||
-                        allAllowedTags.includes(tx.toEntity.tagName))
-                    ) {
-                      return true;
-                    }
-                  })
-                ? true
-                : false;
+                        getAllChildrenTags(p.entitiesTags, tags).includes(
+                          tx.toEntity.tagName,
+                        ))),
+                ) ??
+                  false));
+
             return {
               ...tx,
               isDeleteAllowed,
@@ -859,11 +866,7 @@ export const operationsRouter = createTRPCRouter({
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const deletedBalances = await undoBalances(
-        ctx.db,
-        undefined,
-        input.operationId,
-      );
+      await undoBalances(ctx.db, undefined, input.operationId);
 
       const deletedOperation = await ctx.db.operations.delete({
         where: {
@@ -878,27 +881,29 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      const newLog = new ctx.logs({
-        name: "deleteOperation",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: { deletedOperation, deletedBalances },
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Eliminar una operación",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: deletedOperation,
+          },
+        }),
+      );
 
-      return { deletedOperation, deletedBalances };
+      return { deletedOperation };
     }),
 
   deleteTransaction: protectedProcedure
     .input(z.object({ transactionId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const deletedBalances = await undoBalances(
-        ctx.db,
-        input.transactionId,
-        undefined,
-      );
+      await undoBalances(ctx.db, input.transactionId, undefined);
 
       const deletedTransaction = await ctx.db.transactions.delete({
         where: {
@@ -912,17 +917,23 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      const newLog = new ctx.logs({
-        name: "deleteTransaction",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: deletedTransaction,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Eliminar una transacción",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: deletedTransaction,
+          },
+        }),
+      );
 
-      return { deletedTransaction, deletedBalances };
+      return { deletedTransaction };
     }),
 
   insights: protectedProcedure

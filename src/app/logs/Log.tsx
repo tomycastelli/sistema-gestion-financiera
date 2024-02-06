@@ -33,8 +33,8 @@ const Log: FC<LogProps> = ({ log, users }) => {
   const [textToRender, setTextToRender] = useState<string | undefined>(
     undefined,
   );
-  const time = moment(log.timestamp).format("HH:mm:ss");
-  const date = moment(log.timestamp).format("DD-MM-YYYY");
+  const time = moment(parseInt(log.sk)).format("HH:mm:ss");
+  const date = moment(parseInt(log.sk)).format("DD-MM-YYYY");
 
   return (
     <Card ref={parent}>

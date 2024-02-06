@@ -1,11 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type Session } from "next-auth";
 import { type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
 import { Button } from "../components/ui/button";
 import {
   Form,
@@ -19,30 +19,48 @@ import { Input } from "../components/ui/input";
 import { toast } from "../components/ui/use-toast";
 
 interface MyUserFormProps {
-  session: Session;
+  initialUser: RouterOutputs["users"]["getById"];
 }
 
-const MyUserForm: FC<MyUserFormProps> = ({ session }) => {
+const MyUserForm: FC<MyUserFormProps> = ({ initialUser }) => {
   const FormSchema = z.object({ name: z.string().max(25) });
+
+  const { data: user } = api.users.getById.useQuery(
+    { id: initialUser?.id ?? "" },
+    { initialData: initialUser },
+  );
+
+  const name = user?.name;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      name: session.user.name ? session.user.name : "",
+      name: name ?? "",
     },
   });
 
-  const { handleSubmit, control, setValue } = form;
+  const { handleSubmit, control } = form;
+
+  const utils = api.useContext();
 
   const { mutateAsync } = api.users.changeName.useMutation({
-    onMutate(newOperation) {
+    async onMutate(newOperation) {
       toast({
         title: "Nombre de usuario modificado",
         description: `De ${newOperation.oldName} a ${newOperation.name}`,
         variant: "success",
       });
 
-      setValue("name", newOperation.name);
+      await utils.users.getById.cancel();
+
+      const prevData = utils.users.getById.getData();
+
+      utils.users.getById.setData({ id: initialUser?.id ?? "" }, (old) => ({
+        ...old!,
+        name: newOperation.name,
+      }));
+
+      return { prevData };
     },
     onError(err) {
       toast({
@@ -51,16 +69,17 @@ const MyUserForm: FC<MyUserFormProps> = ({ session }) => {
         variant: "destructive",
       });
     },
+    onSettled() {
+      void utils.users.getById.invalidate();
+    },
   });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    if (session.user.name) {
-      await mutateAsync({
-        oldName: session.user.name,
-        name: values.name,
-        userId: session.user.id,
-      });
-    }
+    await mutateAsync({
+      oldName: name ?? "",
+      name: values.name,
+      userId: initialUser?.id ?? "",
+    });
   };
 
   return (
@@ -73,11 +92,7 @@ const MyUserForm: FC<MyUserFormProps> = ({ session }) => {
             <FormItem>
               <FormLabel>Nombre de usuario</FormLabel>
               <FormControl>
-                <Input
-                  className="w-32"
-                  placeholder={session.user.name ? session.user.name : ""}
-                  {...field}
-                />
+                <Input className="w-32" placeholder={name ?? ""} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -112,15 +112,21 @@ export const rolesRouter = createTRPCRouter({
           },
         });
 
-        const newLog = new ctx.logs({
-          name: "addOneRole",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Añadir un rol",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {
@@ -160,15 +166,21 @@ export const rolesRouter = createTRPCRouter({
 
         await pipeline.exec();
 
-        const newLog = new ctx.logs({
-          name: "deleteOneRole",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Eliminar un rol",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {
@@ -220,15 +232,21 @@ export const rolesRouter = createTRPCRouter({
 
         await pipeline.exec();
 
-        const newLog = new ctx.logs({
-          name: "updateOneRole",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Actualizar un rol",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } else {

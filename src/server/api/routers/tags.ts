@@ -22,15 +22,21 @@ export const tagsRouter = createTRPCRouter({
         await ctx.redis.del("tags");
       }
 
-      const newLog = new ctx.logs({
-        name: "addOneTag",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: response,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Añadir un tag",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: response,
+          },
+        }),
+      );
 
       return response;
     }),
@@ -47,15 +53,21 @@ export const tagsRouter = createTRPCRouter({
         await ctx.redis.del("tags");
       }
 
-      const newLog = new ctx.logs({
-        name: "removeOneTag",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: response,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Eliminar un tag",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: response,
+          },
+        }),
+      );
 
       return response;
     }),

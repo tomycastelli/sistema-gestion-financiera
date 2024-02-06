@@ -29,7 +29,6 @@ export const env = createEnv({
     AZURE_AD_CLIENT_SECRET: z.string(),
     AZURE_AD_TENANT_ID: z.string(),
 
-    MONGODB_URL: z.string(),
     S3_PUBLIC_KEY: z.string(),
     S3_SECRET_KEY: z.string(),
   },
@@ -58,7 +57,6 @@ export const env = createEnv({
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
-    MONGODB_URL: process.env.MONGODB_URL,
     S3_PUBLIC_KEY: process.env.S3_PUBLIC_KEY,
     S3_SECRET_KEY: process.env.S3_SECRET_KEY,
   },

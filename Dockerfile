@@ -25,8 +25,6 @@ ENV S3_PUBLIC_KEY=default
 ENV S3_SECRET_KEY=default
 
 # These variables are passed on build time
-ARG MONGODB_URL
-ARG MONGODB_PASS
 ARG REDIS_URL
 
 WORKDIR /app

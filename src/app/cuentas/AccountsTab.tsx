@@ -49,6 +49,8 @@ const AccountsTable = async ({
         linkToken={linkToken}
         selectedEntityId={entityId}
         selectedTag={entityTag}
+        session={session}
+        entities={entities}
       />
       {initialMovements.movements.length > 0 && (
         <div className="flex flex-col space-y-4">

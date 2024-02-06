@@ -1,6 +1,7 @@
 "use client";
 
 import Lottie from "lottie-react";
+import { type Session } from "next-auth";
 import Link from "next/link";
 import { useState, type FC } from "react";
 import { z } from "zod";
@@ -26,6 +27,10 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
@@ -39,6 +44,8 @@ interface BalancesProps {
   selectedEntityId: number | null;
   selectedTag: string | null;
   tags: RouterOutputs["tags"]["getAll"];
+  session: Session | null;
+  entities: RouterOutputs["entities"]["getAll"];
 }
 
 const Balances: FC<BalancesProps> = ({
@@ -49,11 +56,16 @@ const Balances: FC<BalancesProps> = ({
   selectedEntityId,
   selectedTag,
   tags,
+  session,
+  entities,
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
 
   const allChildrenTags = getAllChildrenTags(selectedTag, tags);
+
+  const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
+  const [isListSelection, setIsListSelection] = useState<boolean>(false);
 
   const {
     selectedCurrency,
@@ -293,10 +305,63 @@ const Balances: FC<BalancesProps> = ({
     keys: ["entity.name"],
   });
 
-  const balancesToRender = filteredBalances.slice(
-    pageSize * (detailedBalancesPage - 1),
-    pageSize * detailedBalancesPage,
+  const {
+    data: accountsLists,
+    refetch: refetchAccountsLists,
+    isLoading: isAccountsListsLoading,
+  } = api.userPreferences.getPreference.useQuery(
+    { userId: session!.user.id, preferenceKey: "accountsLists" },
+    { enabled: !!session },
   );
+
+  const { mutateAsync: addPreference } =
+    api.userPreferences.addPreference.useMutation();
+
+  const addIdToAccountList = (id: number) => {
+    let title = "";
+    if (accountListToAdd.indexOf(id) !== -1) {
+      setAccountListToAdd(accountListToAdd.filter((n) => n !== id));
+      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
+        ?.entity.name} fue removida de la lista`;
+    } else {
+      setAccountListToAdd([...accountListToAdd, id]);
+      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
+        ?.entity.name} fue añadida a la lista`;
+    }
+    toast({
+      title,
+      variant: "success",
+    });
+  };
+
+  const addList = async () => {
+    if (session) {
+      const newList = {
+        id: accountsLists ? accountsLists.length + 1 : 1,
+        idList: accountListToAdd,
+        isDefault: true,
+      };
+      const undefaultedList = accountsLists?.map((list) => ({
+        ...list,
+        isDefault: false,
+      }));
+      await addPreference({
+        userId: session.user.id,
+        preference: {
+          key: "accountsLists",
+          value: accountsLists ? [...undefaultedList!, newList] : [newList],
+        },
+      });
+
+      setIsListSelection(false);
+
+      setAccountListToAdd([]);
+
+      setDetailedBalancesPage(1);
+
+      await refetchAccountsLists();
+    }
+  };
 
   return (
     <div className="flex flex-col space-y-4">
@@ -304,45 +369,50 @@ const Balances: FC<BalancesProps> = ({
       <div className="grid-cols grid grid-cols-2 gap-4 lg:grid-cols-3">
         {!isBalanceLoading ? (
           transformedBalances.map((item) => (
-            <Card key={item.entity.id} className="min-w-[300px]">
-              <CardHeader>
-                <Link
-                  prefetch={false}
-                  href={{
-                    pathname: "/cuentas",
-                    query: {
-                      cuenta: "cuenta_corriente",
-                      entidad: item.entity.id,
-                    },
-                  }}
-                >
+            <Card
+              key={item.entity.id}
+              className="min-w-[300px] transition-all hover:scale-105 hover:shadow-md hover:shadow-primary"
+            >
+              <Link
+                prefetch={false}
+                href={{
+                  pathname: "/cuentas",
+                  query: {
+                    cuenta: "cuenta_corriente",
+                    entidad: item.entity.id,
+                  },
+                }}
+              >
+                <CardHeader>
                   <CardTitle>{item.entity.name}</CardTitle>
-                </Link>
-                <CardDescription>
-                  {capitalizeFirstLetter(item.entity.tagName)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-2">
-                  {item.data.map((balances) => (
-                    <div key={balances.currency} className="grid grid-cols-2">
-                      <p className="col-span-1">
-                        {balances.currency.toUpperCase()}
-                      </p>
-                      {!isRefetching ? (
-                        <p className="text-xl font-bold">
-                          ${" "}
-                          {new Intl.NumberFormat("es-AR").format(
-                            !isInverted ? balances.balance : -balances.balance,
-                          )}
+                  <CardDescription>
+                    {capitalizeFirstLetter(item.entity.tagName)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col space-y-2">
+                    {item.data.map((balances) => (
+                      <div key={balances.currency} className="grid grid-cols-2">
+                        <p className="col-span-1">
+                          {balances.currency.toUpperCase()}
                         </p>
-                      ) : (
-                        <p>Cargando...</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+                        {!isRefetching ? (
+                          <p className="text-xl font-bold">
+                            ${" "}
+                            {new Intl.NumberFormat("es-AR").format(
+                              !isInverted
+                                ? balances.balance
+                                : -balances.balance,
+                            )}
+                          </p>
+                        ) : (
+                          <p>Cargando...</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Link>
             </Card>
           ))
         ) : (
@@ -358,6 +428,155 @@ const Balances: FC<BalancesProps> = ({
             placeholder="Buscar"
             className="w-32"
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex flex-row space-x-1">
+                <Icons.currentAccount className="h-4 w-4 text-black" />
+                {accountsLists &&
+                  (accountsLists.find((list) => list.isDefault) ? (
+                    <p>
+                      Lista {accountsLists.find((list) => list.isDefault)?.id}
+                    </p>
+                  ) : (
+                    <p>Listas</p>
+                  ))}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80">
+              <DropdownMenuLabel>Listas</DropdownMenuLabel>
+              {!isAccountsListsLoading ? (
+                <DropdownMenuGroup>
+                  {accountsLists &&
+                    accountsLists.map((list, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        className="flex flex-row space-x-2"
+                      >
+                        <span
+                          className={cn(
+                            "rounded-full p-2",
+                            list.isDefault ? "bg-green" : "bg-muted-foreground",
+                          )}
+                        ></span>
+                        <div className="flex flex-col space-y-1">
+                          <p className="font-semibold">Lista {list.id}</p>
+                          <p className="text-sm">
+                            {list.idList.slice(0, 3).flatMap((id, index) => {
+                              const name = entities.find((e) => e.id === id)
+                                ?.name;
+                              if (index + 1 === list.idList.length) {
+                                return name;
+                              } else {
+                                return name + ", ";
+                              }
+                            })}
+                          </p>
+                        </div>
+                        <Button
+                          className="flex flex-row space-x-1"
+                          variant="outline"
+                          onClick={async () => {
+                            if (session) {
+                              await addPreference({
+                                userId: session.user.id,
+                                preference: {
+                                  key: "accountsLists",
+                                  value: accountsLists.map((obj) => {
+                                    if (obj.id === list.id) {
+                                      return { ...obj, isDefault: true };
+                                    } else {
+                                      return { ...obj, isDefault: false };
+                                    }
+                                  }),
+                                },
+                              });
+                              await refetchAccountsLists();
+                            }
+                          }}
+                        >
+                          <Icons.documentPlus className="h-4 w-4 text-green" />
+                        </Button>
+                        {list.isDefault && (
+                          <Button
+                            className="flex flex-row space-x-1"
+                            variant="outline"
+                            onClick={async () => {
+                              if (session) {
+                                await addPreference({
+                                  userId: session.user.id,
+                                  preference: {
+                                    key: "accountsLists",
+                                    value: accountsLists.map((obj) => {
+                                      if (obj.id === list.id) {
+                                        return { ...obj, isDefault: false };
+                                      } else {
+                                        return { ...obj };
+                                      }
+                                    }),
+                                  },
+                                });
+                                await refetchAccountsLists();
+                              }
+                            }}
+                          >
+                            <Icons.documentMinus className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                        <Button
+                          className="flex flex-row space-x-1"
+                          variant="outline"
+                          onClick={async () => {
+                            if (session) {
+                              await addPreference({
+                                userId: session.user.id,
+                                preference: {
+                                  key: "accountsLists",
+                                  value: accountsLists.filter(
+                                    (obj) => obj.id !== list.id,
+                                  ),
+                                },
+                              });
+                              await refetchAccountsLists();
+                            }
+                          }}
+                        >
+                          <Icons.cross className="h-4 w-4 text-red" />
+                        </Button>
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuGroup>
+              ) : (
+                <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+              )}
+              {!isListSelection ? (
+                <DropdownMenuItem onClick={() => setIsListSelection(true)}>
+                  <Icons.plus className="h-5 w-5 text-black" />
+                  <p>Añadir lista</p>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+                    <p className="animate-pulse">Seleccionando</p>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => addList()}>
+                        <Icons.check className="h-4 w-4 text-black" />
+                        <span>Confirmar selección</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setIsListSelection(false)}
+                      >
+                        <Icons.cross className="h-4 w-4 text-black" />
+                        <span>Cancelar selección</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {!isUrlLoading ? (
@@ -424,65 +643,132 @@ const Balances: FC<BalancesProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3">
-        <div className="grid grid-cols-6 justify-items-center rounded-xl border border-muted-foreground p-2">
-          <p>Entidad</p>
+        <div className="grid-cols-13 grid justify-items-center rounded-xl border border-muted-foreground p-2">
+          <p className="col-span-1"></p>
+          <p className="col-span-2">Entidad</p>
           {currencyOrder.map((currency) => (
-            <p key={currency}>{currency.toUpperCase()}</p>
+            <p key={currency} className="col-span-2">
+              {currency.toUpperCase()}
+            </p>
           ))}
         </div>
         {!isBalanceLoading ? (
-          balancesToRender.map((item, index) => (
-            <div
-              key={item.entity.id}
-              className={cn(
-                "grid grid-cols-6 justify-items-center rounded-xl p-3 text-lg font-semibold",
-                index % 2 === 0 ? "bg-muted" : "bg-muted-foreground",
-              )}
-            >
-              <p className="p-2">{item.entity.name}</p>
-              {currencyOrder.map((currency) => {
-                const matchingBalance = item.data.find(
-                  (balance) => balance.currency === currency,
-                );
+          filteredBalances
+            .sort((a, b) => {
+              const defaultList = accountsLists?.find((list) => list.isDefault);
+              if (defaultList) {
+                const aIndex = defaultList.idList.indexOf(a.entity.id);
+                const bIndex = defaultList.idList.indexOf(b.entity.id);
+                // Check if both objects have valid indices in the orderList
+                if (aIndex !== -1 && bIndex !== -1) {
+                  return aIndex - bIndex;
+                }
 
-                return matchingBalance ? (
-                  !isRefetching ? (
-                    <p
-                      onClick={() => {
-                        if (
-                          selectedCurrency !== currency ||
-                          destinationEntityId !== item.entity.id
-                        ) {
-                          setSelectedCurrency(currency);
-                          setDestinationEntityId(item.entity.id);
-                        } else {
-                          setSelectedCurrency(undefined);
-                          setDestinationEntityId(undefined);
-                        }
-                      }}
-                      key={currency}
-                      className={cn(
-                        "rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                        selectedCurrency === currency &&
-                          destinationEntityId === item.entity.id &&
-                          "bg-primary text-white shadow-md",
-                      )}
-                    >
-                      {new Intl.NumberFormat("es-AR").format(
-                        !isInverted
-                          ? matchingBalance.balance
-                          : -matchingBalance.balance,
-                      )}
-                    </p>
+                // If only a has a valid index, place it before b
+                if (aIndex !== -1) {
+                  return -1;
+                }
+
+                // If only b has a valid index, place it before a
+                if (bIndex !== -1) {
+                  return 1;
+                }
+
+                // If neither has a valid index, maintain the current order
+                return 0;
+              } else {
+                return 0;
+              }
+            })
+            .slice(
+              pageSize * (detailedBalancesPage - 1),
+              pageSize * detailedBalancesPage,
+            )
+            .map((item, index) => (
+              <div
+                key={item.entity.id}
+                className={cn(
+                  "grid-cols-13 grid justify-items-center rounded-xl p-3 text-lg font-semibold",
+                  index % 2 === 0 ? "bg-muted" : "bg-muted-foreground",
+                )}
+              >
+                {isListSelection ? (
+                  <Button
+                    variant="outline"
+                    className="col-span-1 border-transparent bg-transparent p-2 transition-all hover:bg-transparent"
+                    onClick={() => addIdToAccountList(item.entity.id)}
+                  >
+                    {accountListToAdd.indexOf(item.entity.id) === -1 ? (
+                      <span className="animate-pulse rounded-full bg-yellow p-3"></span>
+                    ) : (
+                      <p className="animate-pulse text-3xl font-semibold text-yellow">
+                        {accountListToAdd.indexOf(item.entity.id) + 1}
+                      </p>
+                    )}
+                  </Button>
+                ) : accountsLists ? (
+                  accountsLists.find((list) => list.isDefault) ? (
+                    accountsLists
+                      .find((list) => list.isDefault)!
+                      .idList.indexOf(item.entity.id) !== -1 ? (
+                      <p className="text-3xl font-semibold text-yellow">
+                        {accountsLists
+                          .find((list) => list.isDefault)!
+                          .idList.indexOf(item.entity.id) + 1}
+                      </p>
+                    ) : (
+                      <p></p>
+                    )
                   ) : (
-                    <p>Cargando...</p>
+                    <p></p>
                   )
                 ) : (
                   <p></p>
-                );
-              })}
-            </div>
-          ))
+                )}
+                <p className="col-span-2 p-2">{item.entity.name}</p>
+                {currencyOrder.map((currency) => {
+                  const matchingBalance = item.data.find(
+                    (balance) => balance.currency === currency,
+                  );
+
+                  return matchingBalance ? (
+                    !isRefetching ? (
+                      <p
+                        onClick={() => {
+                          if (
+                            selectedCurrency !== currency ||
+                            destinationEntityId !== item.entity.id
+                          ) {
+                            setSelectedCurrency(currency);
+                            setDestinationEntityId(item.entity.id);
+                          } else {
+                            setSelectedCurrency(undefined);
+                            setDestinationEntityId(undefined);
+                          }
+                        }}
+                        key={currency}
+                        className={cn(
+                          "col-span-2 rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                          selectedCurrency === currency &&
+                            destinationEntityId === item.entity.id &&
+                            "bg-primary text-white shadow-md",
+                        )}
+                      >
+                        {new Intl.NumberFormat("es-AR").format(
+                          !isInverted
+                            ? matchingBalance.balance
+                            : -matchingBalance.balance,
+                        )}
+                      </p>
+                    ) : (
+                      <p className="col-span-2">Cargando...</p>
+                    )
+                  ) : (
+                    <p className="col-span-2"></p>
+                  );
+                })}
+              </div>
+            ))
         ) : (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}

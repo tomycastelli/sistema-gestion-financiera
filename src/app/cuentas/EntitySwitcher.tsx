@@ -58,13 +58,25 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
   const selectedEntity = searchParams.get("entidad");
   const parsedEntity = selectedEntity ? parseInt(selectedEntity) : null;
 
+  const truncateString = (input: string | undefined, N: number) => {
+    if (input === undefined) {
+      return undefined;
+    }
+    if (input.length <= N) {
+      return input;
+    } else {
+      const truncatedString = input.substring(0, N);
+      return `${truncatedString}...`;
+    }
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
-          className="h-11 w-[200px] justify-between"
+          className="flex h-11 flex-shrink justify-between"
         >
           <Avatar className="mr-2 h-8 w-8">
             <AvatarFallback className="bg-primary text-white">
@@ -85,7 +97,10 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
             {selectedTag
               ? capitalizeFirstLetter(selectedTag)
               : selectedEntity
-              ? entities.find((entity) => entity.id === parsedEntity)?.name
+              ? truncateString(
+                  entities.find((entity) => entity.id === parsedEntity)?.name,
+                  14,
+                )
               : "Elegir"}{" "}
           </p>
           <Icons.caretSort className="ml-auto h-4 w-4 shrink-0 opacity-50" />

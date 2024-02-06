@@ -128,15 +128,21 @@ export const editingOperationsRouter = createTRPCRouter({
           return updateTransactionResponse;
         });
 
-        const newLog = new ctx.logs({
-          name: "updateTransactionValues",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: response,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Actualizar transacciones",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: response,
+            },
+          }),
+        );
 
         return response;
       } catch (error) {
@@ -202,15 +208,21 @@ export const editingOperationsRouter = createTRPCRouter({
           await generateMovements(ctx.db, tx, true, 1, "confirmation");
         }
 
-        const newLog = new ctx.logs({
-          name: "updateTransactionStatus",
-          timestamp: new Date(),
-          createdBy: ctx.session.user.id,
-          input: input,
-          output: responses,
-        });
+        const { client, PutCommand, tableName } = ctx.dynamodb;
 
-        await newLog.save();
+        await client.send(
+          new PutCommand({
+            TableName: tableName,
+            Item: {
+              pk: `log`,
+              sk: new Date().getTime().toString(),
+              name: "Confirmar transacciones",
+              createdBy: ctx.session.user.id,
+              input: input,
+              output: responses,
+            },
+          }),
+        );
 
         return responses;
       } catch (error) {
@@ -308,15 +320,21 @@ export const editingOperationsRouter = createTRPCRouter({
         }
       }
 
-      const newLog = new ctx.logs({
-        name: "cancelTransaction",
-        timestamp: new Date(),
-        createdBy: ctx.session.user.id,
-        input: input,
-        output: invertedTransactions,
-      });
+      const { client, PutCommand, tableName } = ctx.dynamodb;
 
-      await newLog.save();
+      await client.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            pk: `log`,
+            sk: new Date().getTime().toString(),
+            name: "Cancelar transacciones",
+            createdBy: ctx.session.user.id,
+            input: input,
+            output: invertedTransactions,
+          },
+        }),
+      );
 
       return invertedTransactions;
     }),
