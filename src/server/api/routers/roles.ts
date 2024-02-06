@@ -112,22 +112,6 @@ export const rolesRouter = createTRPCRouter({
           },
         });
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Añadir un rol",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } else {
         return null;
@@ -165,22 +149,6 @@ export const rolesRouter = createTRPCRouter({
         });
 
         await pipeline.exec();
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Eliminar un rol",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
 
         return response;
       } else {
@@ -231,22 +199,6 @@ export const rolesRouter = createTRPCRouter({
         });
 
         await pipeline.exec();
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Actualizar un rol",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
 
         return response;
       } else {

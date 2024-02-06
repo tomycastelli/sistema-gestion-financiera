@@ -40,23 +40,6 @@ export const usersRouter = createTRPCRouter({
       if (response) {
         await ctx.redis.del("cached_entities");
       }
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Cambiar nombre de usuario",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: response[0],
-          },
-        }),
-      );
-
       return response[0];
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -203,23 +186,6 @@ export const usersRouter = createTRPCRouter({
         });
 
         await ctx.redis.del(`user_permissions:${input.id}`);
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Actualizar permisos de usuario",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } else {
         return null;
@@ -268,22 +234,6 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Eliminar permisos de usuario",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } else {
         return null;
@@ -317,22 +267,6 @@ export const usersRouter = createTRPCRouter({
 
         await ctx.redis.del(`user_permissions:${input.userId}`);
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Añadir usuario al rol",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } else {
         return null;
@@ -365,22 +299,6 @@ export const usersRouter = createTRPCRouter({
         });
 
         await ctx.redis.del(`user_permissions:${input.id}`);
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Eliminar usuario del rol",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
 
         return response;
       } else {

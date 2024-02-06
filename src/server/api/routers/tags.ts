@@ -22,22 +22,6 @@ export const tagsRouter = createTRPCRouter({
         await ctx.redis.del("tags");
       }
 
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Añadir un tag",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: response,
-          },
-        }),
-      );
-
       return response;
     }),
   removeOne: protectedProcedure
@@ -52,22 +36,6 @@ export const tagsRouter = createTRPCRouter({
       if (response) {
         await ctx.redis.del("tags");
       }
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Eliminar un tag",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: response,
-          },
-        }),
-      );
 
       return response;
     }),

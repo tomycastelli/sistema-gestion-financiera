@@ -21,22 +21,6 @@ export const shareableLinksRouter = createTRPCRouter({
           },
         });
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Añadir link de cuenta",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } catch (error) {
         console.error(error);
@@ -112,22 +96,6 @@ export const shareableLinksRouter = createTRPCRouter({
           id: input.id,
         },
       });
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Eliminar link de cuenta",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: response,
-          },
-        }),
-      );
 
       return response;
     }),

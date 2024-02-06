@@ -128,22 +128,6 @@ export const editingOperationsRouter = createTRPCRouter({
           return updateTransactionResponse;
         });
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Actualizar transacciones",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       } catch (error) {
         // Handle the error here
@@ -207,22 +191,6 @@ export const editingOperationsRouter = createTRPCRouter({
           await generateMovements(ctx.db, tx, false, 1, "confirmation");
           await generateMovements(ctx.db, tx, true, 1, "confirmation");
         }
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Confirmar transacciones",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: responses,
-            },
-          }),
-        );
 
         return responses;
       } catch (error) {
@@ -319,22 +287,6 @@ export const editingOperationsRouter = createTRPCRouter({
           await generateMovements(ctx.db, tx, true, 1, "cancellation");
         }
       }
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Cancelar transacciones",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: invertedTransactions,
-          },
-        }),
-      );
 
       return invertedTransactions;
     }),

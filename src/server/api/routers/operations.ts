@@ -137,22 +137,6 @@ export const operationsRouter = createTRPCRouter({
           await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
         }
 
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Añadir operación",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: response,
-            },
-          }),
-        );
-
         return response;
       }
     }),
@@ -188,22 +172,6 @@ export const operationsRouter = createTRPCRouter({
       if (response) {
         await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Añadir transacciones a operación",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: response,
-          },
-        }),
-      );
 
       return response;
     }),
@@ -881,22 +849,6 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Eliminar una operación",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: deletedOperation,
-          },
-        }),
-      );
-
       return { deletedOperation };
     }),
 
@@ -916,22 +868,6 @@ export const operationsRouter = createTRPCRouter({
           amount: true,
         },
       });
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Eliminar una transacción",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: deletedTransaction,
-          },
-        }),
-      );
 
       return { deletedTransaction };
     }),

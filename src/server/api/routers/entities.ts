@@ -87,22 +87,6 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
 
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Añadir una entidad",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: insertResponse,
-          },
-        }),
-      );
-
       await ctx.redis.del("cached_entities");
       return { message: "Entity added to database", data: insertResponse };
     }),
@@ -126,22 +110,6 @@ export const entitiesRouter = createTRPCRouter({
         });
 
         await ctx.redis.del("cached_entities");
-
-        const { client, PutCommand, tableName } = ctx.dynamodb;
-
-        await client.send(
-          new PutCommand({
-            TableName: tableName,
-            Item: {
-              pk: `log`,
-              sk: new Date().getTime().toString(),
-              name: "Eliminar una entidad",
-              createdBy: ctx.session.user.id,
-              input: input,
-              output: deleteResponse,
-            },
-          }),
-        );
 
         return deleteResponse;
       } else {
@@ -171,22 +139,6 @@ export const entitiesRouter = createTRPCRouter({
       });
 
       await ctx.redis.del("cached_entities");
-
-      const { client, PutCommand, tableName } = ctx.dynamodb;
-
-      await client.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            pk: `log`,
-            sk: new Date().getTime().toString(),
-            name: "Actualizar una entidad",
-            createdBy: ctx.session.user.id,
-            input: input,
-            output: updatedEntity,
-          },
-        }),
-      );
 
       return updatedEntity;
     }),
