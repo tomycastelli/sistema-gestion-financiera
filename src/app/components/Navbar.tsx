@@ -21,7 +21,7 @@ const Navbar = async () => {
             Maika.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.1.4
+            v0.1.4-2
           </p>
         </div>
         {session?.user && (
