@@ -336,7 +336,7 @@ const MovementsTable = ({
   return (
     <div>
       <div>
-        <div className="flex flex-row items-end justify-start space-x-4 py-4">
+        <div className="flex flex-row flex-wrap items-end justify-start gap-4 py-4">
           {entityTag && (
             <div className="flex flex-col">
               <Label className="mb-2">Origen</Label>
@@ -395,7 +395,7 @@ const MovementsTable = ({
           <div className="flex flex-col">
             <Label className="mb-1">Divisa</Label>
             <Select
-              value={selectedCurrency ? selectedCurrency : "todas"}
+              value={selectedCurrency ?? "todas"}
               onValueChange={(value) =>
                 value === "todas"
                   ? setSelectedCurrency(undefined)

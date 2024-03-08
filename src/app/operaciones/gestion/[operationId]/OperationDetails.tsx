@@ -67,10 +67,12 @@ const OperationDetails: FC<OperationDetailsProps> = ({
             </div>
           </div>
         ) : (
-          <p>El usuario no tiene los permisos para ver esta operación</p>
+          <p className="text-3xl font-semibold">
+            El usuario no tiene los permisos para ver esta operación
+          </p>
         )
       ) : (
-        <p>No se encontro la operacion</p>
+        <p className="text-3xl font-semibold">No se encontró la operacion</p>
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
+import CustomPagination from "../components/CustomPagination";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -78,7 +79,7 @@ const Balances: FC<BalancesProps> = ({
   const {
     data: balances,
     isLoading: isBalanceLoading,
-    isRefetching,
+    isFetching,
   } = api.movements.getBalancesByEntities.useQuery(
     {
       entityId: selectedEntityId,
@@ -366,7 +367,7 @@ const Balances: FC<BalancesProps> = ({
   return (
     <div className="flex flex-col space-y-4">
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
-      <div className="grid-cols grid grid-cols-2 gap-4 lg:grid-cols-3">
+      <div className="grid-cols grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {!isBalanceLoading ? (
           transformedBalances.map((item) => (
             <Card
@@ -392,12 +393,12 @@ const Balances: FC<BalancesProps> = ({
                 <CardContent>
                   <div className="flex flex-col space-y-2">
                     {item.data.map((balances) => (
-                      <div key={balances.currency} className="grid grid-cols-2">
+                      <div key={balances.currency} className="grid grid-cols-3">
                         <p className="col-span-1">
                           {balances.currency.toUpperCase()}
                         </p>
-                        {!isRefetching ? (
-                          <p className="text-xl font-bold">
+                        {!isFetching ? (
+                          <p className="col-span-2 text-xl font-bold">
                             ${" "}
                             {new Intl.NumberFormat("es-AR").format(
                               !isInverted
@@ -419,230 +420,218 @@ const Balances: FC<BalancesProps> = ({
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}
       </div>
-      <div className="flex flex-row items-center justify-between">
-        <div className="flex flex-row items-center space-x-4">
+      <div className="flex flex-row items-end justify-between">
+        <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
-          <Input
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Buscar"
-            className="w-32"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex flex-row space-x-1">
-                <Icons.currentAccount className="h-4 w-4 text-black" />
-                {accountsLists &&
-                  (accountsLists.find((list) => list.isDefault) ? (
-                    <p>
-                      Lista {accountsLists.find((list) => list.isDefault)?.id}
-                    </p>
-                  ) : (
-                    <p>Listas</p>
-                  ))}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80">
-              <DropdownMenuLabel>Listas</DropdownMenuLabel>
-              {!isAccountsListsLoading ? (
-                <DropdownMenuGroup>
+          <div className="flex flex-row flex-wrap gap-4">
+            <Input
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="Buscar"
+              className="w-32"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex flex-row space-x-1">
+                  <Icons.currentAccount className="h-4 w-4 text-black" />
                   {accountsLists &&
-                    accountsLists.map((list, index) => (
-                      <DropdownMenuItem
-                        key={index}
-                        className="flex flex-row space-x-2"
-                      >
-                        <span
-                          className={cn(
-                            "rounded-full p-2",
-                            list.isDefault ? "bg-green" : "bg-muted-foreground",
-                          )}
-                        ></span>
-                        <div className="flex flex-col space-y-1">
-                          <p className="font-semibold">Lista {list.id}</p>
-                          <p className="text-sm">
-                            {list.idList.slice(0, 3).flatMap((id, index) => {
-                              const name = entities.find((e) => e.id === id)
-                                ?.name;
-                              if (index + 1 === list.idList.length) {
-                                return name;
-                              } else {
-                                return name + ", ";
-                              }
-                            })}
-                          </p>
-                        </div>
-                        {!list.isDefault && (
-                          <Button
-                            className="flex flex-row space-x-1"
-                            variant="outline"
-                            onClick={async () => {
-                              if (session) {
-                                await addPreference({
-                                  userId: session.user.id,
-                                  preference: {
-                                    key: "accountsLists",
-                                    value: accountsLists.map((obj) => {
-                                      if (obj.id === list.id) {
-                                        return { ...obj, isDefault: true };
-                                      } else {
-                                        return { ...obj, isDefault: false };
-                                      }
-                                    }),
-                                  },
-                                });
-                                await refetchAccountsLists();
-                              }
-                            }}
-                          >
-                            <Icons.documentPlus className="h-4 w-4 text-green" />
-                          </Button>
-                        )}
-                        {list.isDefault && (
-                          <Button
-                            className="flex flex-row space-x-1"
-                            variant="outline"
-                            onClick={async () => {
-                              if (session) {
-                                await addPreference({
-                                  userId: session.user.id,
-                                  preference: {
-                                    key: "accountsLists",
-                                    value: accountsLists.map((obj) => {
-                                      if (obj.id === list.id) {
-                                        return { ...obj, isDefault: false };
-                                      } else {
-                                        return { ...obj };
-                                      }
-                                    }),
-                                  },
-                                });
-                                await refetchAccountsLists();
-                              }
-                            }}
-                          >
-                            <Icons.documentMinus className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        )}
-                        <Button
-                          className="flex flex-row space-x-1"
-                          variant="outline"
-                          onClick={async () => {
-                            if (session) {
-                              await addPreference({
-                                userId: session.user.id,
-                                preference: {
-                                  key: "accountsLists",
-                                  value: accountsLists.filter(
-                                    (obj) => obj.id !== list.id,
-                                  ),
-                                },
-                              });
-                              await refetchAccountsLists();
-                            }
-                          }}
-                        >
-                          <Icons.cross className="h-4 w-4 text-red" />
-                        </Button>
-                      </DropdownMenuItem>
+                    (accountsLists.find((list) => list.isDefault) ? (
+                      <p>
+                        Lista {accountsLists.find((list) => list.isDefault)?.id}
+                      </p>
+                    ) : (
+                      <p>Listas</p>
                     ))}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-80">
+                <DropdownMenuLabel>Listas</DropdownMenuLabel>
+                {!isAccountsListsLoading ? (
+                  <DropdownMenuGroup>
+                    {accountsLists &&
+                      accountsLists.map((list, index) => (
+                        <DropdownMenuItem
+                          key={index}
+                          className="flex flex-row space-x-2"
+                        >
+                          <span
+                            className={cn(
+                              "rounded-full p-2",
+                              list.isDefault
+                                ? "bg-green"
+                                : "bg-muted-foreground",
+                            )}
+                          ></span>
+                          <div className="flex flex-col space-y-1">
+                            <p className="font-semibold">Lista {list.id}</p>
+                            <p className="text-sm">
+                              {list.idList.slice(0, 3).flatMap((id, index) => {
+                                const name = entities.find((e) => e.id === id)
+                                  ?.name;
+                                if (index + 1 === list.idList.length) {
+                                  return name;
+                                } else {
+                                  return name + ", ";
+                                }
+                              })}
+                            </p>
+                          </div>
+                          {!list.isDefault && (
+                            <Button
+                              className="flex flex-row space-x-1"
+                              variant="outline"
+                              onClick={async () => {
+                                if (session) {
+                                  await addPreference({
+                                    userId: session.user.id,
+                                    preference: {
+                                      key: "accountsLists",
+                                      value: accountsLists.map((obj) => {
+                                        if (obj.id === list.id) {
+                                          return { ...obj, isDefault: true };
+                                        } else {
+                                          return { ...obj, isDefault: false };
+                                        }
+                                      }),
+                                    },
+                                  });
+                                  await refetchAccountsLists();
+                                }
+                              }}
+                            >
+                              <Icons.documentPlus className="h-4 w-4 text-green" />
+                            </Button>
+                          )}
+                          {list.isDefault && (
+                            <Button
+                              className="flex flex-row space-x-1"
+                              variant="outline"
+                              onClick={async () => {
+                                if (session) {
+                                  await addPreference({
+                                    userId: session.user.id,
+                                    preference: {
+                                      key: "accountsLists",
+                                      value: accountsLists.map((obj) => {
+                                        if (obj.id === list.id) {
+                                          return { ...obj, isDefault: false };
+                                        } else {
+                                          return { ...obj };
+                                        }
+                                      }),
+                                    },
+                                  });
+                                  await refetchAccountsLists();
+                                }
+                              }}
+                            >
+                              <Icons.documentMinus className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          <Button
+                            className="flex flex-row space-x-1"
+                            variant="outline"
+                            onClick={async () => {
+                              if (session) {
+                                await addPreference({
+                                  userId: session.user.id,
+                                  preference: {
+                                    key: "accountsLists",
+                                    value: accountsLists.filter(
+                                      (obj) => obj.id !== list.id,
+                                    ),
+                                  },
+                                });
+                                await refetchAccountsLists();
+                              }
+                            }}
+                          >
+                            <Icons.cross className="h-4 w-4 text-red" />
+                          </Button>
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuGroup>
+                ) : (
+                  <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+                )}
+                {!isListSelection ? (
+                  <DropdownMenuItem onClick={() => setIsListSelection(true)}>
+                    <Icons.plus className="h-5 w-5 text-black" />
+                    <p>Añadir lista</p>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+                      <p className="animate-pulse">Seleccionando</p>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => addList()}>
+                          <Icons.check className="h-4 w-4 text-black" />
+                          <span>Confirmar selección</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setIsListSelection(false)}
+                        >
+                          <Icons.cross className="h-4 w-4 text-black" />
+                          <span>Cancelar selección</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                {!isUrlLoading ? (
+                  <Button variant="outline">Generar</Button>
+                ) : (
+                  <p>Cargando...</p>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await getUrlAsync({
+                        entityId: selectedEntityId,
+                        entityTag: selectedTag,
+                        detailedBalances: detailedBalances,
+                        fileType: "pdf",
+                      });
+                    }}
+                  >
+                    <Icons.pdf className="h-4" />
+                    <span>PDF</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await getUrlAsync({
+                        entityId: selectedEntityId,
+                        entityTag: selectedTag,
+                        detailedBalances: detailedBalances,
+                        fileType: "csv",
+                      });
+                    }}
+                  >
+                    <Icons.excel className="h-4" />
+                    <span>Excel</span>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
-              ) : (
-                <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
-              )}
-              {!isListSelection ? (
-                <DropdownMenuItem onClick={() => setIsListSelection(true)}>
-                  <Icons.plus className="h-5 w-5 text-black" />
-                  <p>Añadir lista</p>
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
-                    <p className="animate-pulse">Seleccionando</p>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => addList()}>
-                        <Icons.check className="h-4 w-4 text-black" />
-                        <span>Confirmar selección</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setIsListSelection(false)}
-                      >
-                        <Icons.cross className="h-4 w-4 text-black" />
-                        <span>Cancelar selección</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              {!isUrlLoading ? (
-                <Button variant="outline">Generar</Button>
-              ) : (
-                <p>Cargando...</p>
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Extensión</DropdownMenuLabel>
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    await getUrlAsync({
-                      entityId: selectedEntityId,
-                      entityTag: selectedTag,
-                      detailedBalances: detailedBalances,
-                      fileType: "pdf",
-                    });
-                  }}
-                >
-                  <Icons.pdf className="h-4" />
-                  <span>PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    await getUrlAsync({
-                      entityId: selectedEntityId,
-                      entityTag: selectedTag,
-                      detailedBalances: detailedBalances,
-                      fileType: "csv",
-                    });
-                  }}
-                >
-                  <Icons.excel className="h-4" />
-                  <span>Excel</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-        <div className="flex flex-row items-center justify-end space-x-2">
-          {detailedBalancesPage > 1 && (
-            <Button
-              variant="outline"
-              className="p-1"
-              onClick={() => setDetailedBalancesPage(detailedBalancesPage - 1)}
-            >
-              <Icons.chevronLeft className="h-5" />
-            </Button>
-          )}
-
-          <p className="text-lg">{detailedBalancesPage}</p>
-          {Math.round(filteredBalances.length / pageSize) >=
-            detailedBalancesPage && (
-            <Button
-              variant="outline"
-              className="p-1"
-              onClick={() => setDetailedBalancesPage(detailedBalancesPage + 1)}
-            >
-              <Icons.chevronRight className="h-5" />
-            </Button>
-          )}
-        </div>
+        <CustomPagination
+          page={detailedBalancesPage}
+          pageSize={pageSize}
+          itemName="entidades"
+          totalCount={filteredBalances.length}
+          changePageState={setDetailedBalancesPage}
+        />
       </div>
       <div className="grid grid-cols-1 gap-3">
         <div className="grid grid-cols-13 justify-items-center rounded-xl border border-muted-foreground p-2">
@@ -727,15 +716,28 @@ const Balances: FC<BalancesProps> = ({
                 ) : (
                   <p></p>
                 )}
-                <p className="col-span-2 p-2">{item.entity.name}</p>
+                <div
+                  onClick={() => {
+                    setSelectedCurrency(undefined);
+                    setDestinationEntityId(item.entity.id);
+                  }}
+                  className={cn(
+                    "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                    !selectedCurrency &&
+                      destinationEntityId === item.entity.id &&
+                      "bg-primary text-white shadow-md",
+                  )}
+                >
+                  <p>{item.entity.name}</p>
+                </div>
                 {currencyOrder.map((currency) => {
                   const matchingBalance = item.data.find(
                     (balance) => balance.currency === currency,
                   );
 
                   return matchingBalance ? (
-                    !isRefetching ? (
-                      <p
+                    !isFetching ? (
+                      <div
                         onClick={() => {
                           if (
                             selectedCurrency !== currency ||
@@ -750,18 +752,20 @@ const Balances: FC<BalancesProps> = ({
                         }}
                         key={currency}
                         className={cn(
-                          "col-span-2 rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                          "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                           selectedCurrency === currency &&
                             destinationEntityId === item.entity.id &&
                             "bg-primary text-white shadow-md",
                         )}
                       >
-                        {new Intl.NumberFormat("es-AR").format(
-                          !isInverted
-                            ? matchingBalance.balance
-                            : -matchingBalance.balance,
-                        )}
-                      </p>
+                        <p>
+                          {new Intl.NumberFormat("es-AR").format(
+                            !isInverted
+                              ? matchingBalance.balance
+                              : -matchingBalance.balance,
+                          )}
+                        </p>
+                      </div>
                     ) : (
                       <p className="col-span-2">Cargando...</p>
                     )

@@ -108,9 +108,9 @@ const Page = async ({
     <div>
       {initialBalances ? (
         <>
-          <div className="flex w-full flex-row justify-between space-x-4 border-b border-muted pb-4">
+          <div className="flex w-full flex-row justify-between space-x-8 border-b border-muted pb-4">
             {session && (
-              <div className="flex flex-row flex-wrap items-center space-x-8">
+              <div className="flex flex-wrap gap-4">
                 <EntitySwitcher
                   entities={initialEntities}
                   tags={filteredTags}
