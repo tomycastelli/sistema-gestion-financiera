@@ -1,5 +1,5 @@
 # Install dependencies only when needed
-FROM --platform=linux/amd64 node:20-alpine AS deps
+FROM --platform=linux/arm64 node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
@@ -10,7 +10,7 @@ COPY prisma ./
 RUN yarn global add pnpm && pnpm i
 
 # Rebuild the source code only when needed
-FROM --platform=linux/amd64 node:20-alpine AS builder
+FROM --platform=linux/arm64 node:20-alpine AS builder
 
 # These variables are passed on run time
 ENV DATABASE_URL=default
@@ -23,6 +23,8 @@ ENV AZURE_AD_CLIENT_ID=default
 ENV AZURE_AD_CLIENT_SECRET=default
 ENV S3_PUBLIC_KEY=default
 ENV S3_SECRET_KEY=default
+ENV LAMBDA_API_ENDPOINT=default
+ENV LAMBDA_API_KEY=default
 
 # These variables are passed on build time
 ARG REDIS_URL
@@ -33,20 +35,7 @@ COPY . .
 
 RUN yarn global add pnpm && SKIN_ENV_VALIDATION=1 pnpm run build
 
-FROM node:20-alpine AS runner
-
-# Puppeteer downloaded chromium will not work on Alpine
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Install chromium and support packages, add "puppeteer" user
-RUN apk add --no-cache chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    ghostscript
+FROM --platform=linux/arm64 node:20-alpine AS runner
 
 ENV NODE_ENV production
 

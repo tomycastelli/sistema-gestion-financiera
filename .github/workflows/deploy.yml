@@ -66,6 +66,8 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             S3_PUBLIC_KEY=${{ secrets.AWS_ACCESS_KEY }}
             S3_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
+            LAMBDA_API_ENDPOINT=${{ secrets.LAMBDA_API_ENDPOINT }}
+            LAMBDA_API_KEY=${{ secrets.LAMBDA_API_KEY }}
 
       - name: Deploy to Amazon ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1

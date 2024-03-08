@@ -472,30 +472,32 @@ const Balances: FC<BalancesProps> = ({
                             })}
                           </p>
                         </div>
-                        <Button
-                          className="flex flex-row space-x-1"
-                          variant="outline"
-                          onClick={async () => {
-                            if (session) {
-                              await addPreference({
-                                userId: session.user.id,
-                                preference: {
-                                  key: "accountsLists",
-                                  value: accountsLists.map((obj) => {
-                                    if (obj.id === list.id) {
-                                      return { ...obj, isDefault: true };
-                                    } else {
-                                      return { ...obj, isDefault: false };
-                                    }
-                                  }),
-                                },
-                              });
-                              await refetchAccountsLists();
-                            }
-                          }}
-                        >
-                          <Icons.documentPlus className="h-4 w-4 text-green" />
-                        </Button>
+                        {!list.isDefault && (
+                          <Button
+                            className="flex flex-row space-x-1"
+                            variant="outline"
+                            onClick={async () => {
+                              if (session) {
+                                await addPreference({
+                                  userId: session.user.id,
+                                  preference: {
+                                    key: "accountsLists",
+                                    value: accountsLists.map((obj) => {
+                                      if (obj.id === list.id) {
+                                        return { ...obj, isDefault: true };
+                                      } else {
+                                        return { ...obj, isDefault: false };
+                                      }
+                                    }),
+                                  },
+                                });
+                                await refetchAccountsLists();
+                              }
+                            }}
+                          >
+                            <Icons.documentPlus className="h-4 w-4 text-green" />
+                          </Button>
+                        )}
                         {list.isDefault && (
                           <Button
                             className="flex flex-row space-x-1"
@@ -643,7 +645,7 @@ const Balances: FC<BalancesProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3">
-        <div className="grid-cols-13 grid justify-items-center rounded-xl border border-muted-foreground p-2">
+        <div className="grid grid-cols-13 justify-items-center rounded-xl border border-muted-foreground p-2">
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
           {currencyOrder.map((currency) => (
@@ -688,7 +690,7 @@ const Balances: FC<BalancesProps> = ({
               <div
                 key={item.entity.id}
                 className={cn(
-                  "grid-cols-13 grid justify-items-center rounded-xl p-3 text-lg font-semibold",
+                  "grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold",
                   index % 2 === 0 ? "bg-muted" : "bg-muted-foreground",
                 )}
               >

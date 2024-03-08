@@ -1,9 +1,9 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { compressPDF } from "ghostscript-node";
+import { TRPCError } from "@trpc/server";
 import moment from "moment";
 import { unparse } from "papaparse";
-import { launch } from "puppeteer";
 import { z } from "zod";
+import { env } from "~/env.mjs";
 import { generateTableData, getAllChildrenTags } from "~/lib/functions";
 import { getAllEntities, getAllTags } from "~/lib/trpcFunctions";
 import {
@@ -249,39 +249,29 @@ export const filesRouter = createTRPCRouter({
               .join("")}
             </div>`;
 
-          const browser = await launch({
-            headless: "new",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-          });
+          const cssString =
+            ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
 
-          const page = await browser.newPage();
-          await page.setContent(htmlString);
-          await page.addStyleTag({
-            content:
-              ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}",
-          });
-          const pdfBuffer = await page.pdf({
-            format: "A4",
-            printBackground: true,
-            margin: {
-              left: "0.5cm",
-              top: "2cm",
-              right: "0.5cm",
-              bottom: "2cm",
-            },
-          });
-          await browser.close();
-
-          const compressedPdfBuffer = await compressPDF(pdfBuffer);
-
-          const putCommand = new PutObjectCommand({
-            Bucket: ctx.s3.bucketNames.reports,
-            Key: `cuentas/${filename}`,
-            Body: compressedPdfBuffer,
-            ContentType: "application/pdf",
-          });
-
-          await ctx.s3.client.send(putCommand);
+          try {
+            await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": env.LAMBDA_API_KEY,
+              },
+              body: JSON.stringify({
+                htmlString,
+                cssString,
+                bucketName: ctx.s3.bucketNames.reports,
+                fileKey: `cuentas/${filename}`,
+              }),
+            });
+          } catch (e) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: JSON.stringify(e),
+            });
+          }
         }
 
         const getCommand = new GetObjectCommand({
@@ -377,39 +367,29 @@ export const filesRouter = createTRPCRouter({
               .join("")}
             </div>`;
 
-        const browser = await launch({
-          headless: "new",
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
+        const cssString =
+          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
 
-        const page = await browser.newPage();
-        await page.setContent(htmlString);
-        await page.addStyleTag({
-          content:
-            ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}",
-        });
-        const pdfBuffer = await page.pdf({
-          format: "A4",
-          printBackground: true,
-          margin: {
-            left: "0.5cm",
-            top: "2cm",
-            right: "0.5cm",
-            bottom: "2cm",
-          },
-        });
-        await browser.close();
-
-        const compressedPdfBuffer = await compressPDF(pdfBuffer);
-
-        const putCommand = new PutObjectCommand({
-          Bucket: ctx.s3.bucketNames.reports,
-          Key: `saldos/${filename}`,
-          Body: compressedPdfBuffer,
-          ContentType: "application/pdf",
-        });
-
-        await ctx.s3.client.send(putCommand);
+        try {
+          await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": env.LAMBDA_API_KEY,
+            },
+            body: JSON.stringify({
+              htmlString,
+              cssString,
+              bucketName: ctx.s3.bucketNames.reports,
+              fileKey: `saldos/${filename}`,
+            }),
+          });
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: JSON.stringify(e),
+          });
+        }
       }
 
       const getCommand = new GetObjectCommand({
