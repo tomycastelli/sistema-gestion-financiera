@@ -17,6 +17,8 @@ interface TimeframeStore {
   setToDate: (date: Date | undefined) => void;
   isInverted: boolean;
   setIsInverted: (isInverted: boolean) => void;
+  timeMachineDate: Date | undefined;
+  setTimeMachineDate: (date: Date | undefined) => void;
 }
 
 export const useCuentasStore = create<TimeframeStore>((set) => ({
@@ -43,5 +45,9 @@ export const useCuentasStore = create<TimeframeStore>((set) => ({
   isInverted: false,
   setIsInverted(isInverted) {
     set({ isInverted });
+  },
+  timeMachineDate: undefined,
+  setTimeMachineDate(date) {
+    set({ timeMachineDate: date });
   },
 }));

@@ -2,6 +2,7 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+import moment from "moment";
 import Link from "next/link";
 import { type FC } from "react";
 import {
@@ -16,6 +17,7 @@ import {
 } from "recharts";
 import { generateTableData } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -56,27 +58,34 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   selectedEntityId,
   tags,
 }) => {
+  const {
+    selectedTimeframe,
+    selectedCurrency,
+    setSelectedCurrency,
+    isInverted,
+    timeMachineDate,
+  } = useCuentasStore();
+
+  const dayInPast = moment(timeMachineDate).format(dateFormatting.day);
+
   const { data: balancesForCard } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
-      initialBalancesForCardInput,
+      {
+        ...initialBalancesForCardInput,
+        dayInPast,
+      },
       {
         initialData: initialBalancesForCard,
         refetchOnWindowFocus: false,
       },
     );
 
-  const {
-    selectedTimeframe,
-    selectedCurrency,
-    setSelectedCurrency,
-    isInverted,
-  } = useCuentasStore();
-
   const { data: balancesHistory } = api.movements.getBalancesHistory.useQuery({
     currency: selectedCurrency,
     timeRange: selectedTimeframe,
     entityId: selectedEntityId,
     entityTag: selectedTag,
+    dayInPast,
   });
 
   const queryInput: RouterInputs["movements"]["getMovementsByCurrency"] = {
@@ -89,6 +98,8 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   } else if (selectedEntityId) {
     queryInput.entityId = selectedEntityId;
   }
+
+  queryInput.dayInPast = dayInPast;
 
   const { data: movements, isLoading } =
     api.movements.getMovementsByCurrency.useQuery(queryInput, {
@@ -245,37 +256,44 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
         {balancesForCard &&
-          balancesForCard.map((item) => (
-            <Card
-              key={item.currency}
-              onClick={() => setSelectedCurrency(item.currency)}
-              className={cn(
-                "transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
-                item.currency === selectedCurrency && "border-2 border-primary",
-              )}
-            >
-              <CardHeader>
-                <CardTitle>{item.currency.toUpperCase()}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-4">
-                  {item.balances.map((balance) => (
-                    <div
-                      key={balance.amount}
-                      className="flex flex-col space-y-2"
-                    >
-                      <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                      <p className="text-xl font-semibold">
-                        {new Intl.NumberFormat("es-AR").format(
-                          !isInverted ? balance.amount : -balance.amount,
-                        )}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          balancesForCard
+            .sort(
+              (a, b) =>
+                currenciesOrder.indexOf(a.currency) -
+                currenciesOrder.indexOf(b.currency),
+            )
+            .map((item) => (
+              <Card
+                key={item.currency}
+                onClick={() => setSelectedCurrency(item.currency)}
+                className={cn(
+                  "transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
+                  item.currency === selectedCurrency &&
+                    "border-2 border-primary",
+                )}
+              >
+                <CardHeader>
+                  <CardTitle>{item.currency.toUpperCase()}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col space-y-4">
+                    {item.balances.map((balance) => (
+                      <div
+                        key={balance.amount}
+                        className="flex flex-col space-y-2"
+                      >
+                        <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
+                        <p className="text-xl font-semibold">
+                          {new Intl.NumberFormat("es-AR").format(
+                            !isInverted ? balance.amount : -balance.amount,
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
       </div>
       <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
         {selectedCurrency ? (

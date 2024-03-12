@@ -70,6 +70,8 @@ export const currencies = [
   },
 ];
 
+export const currenciesOrder = ["ars", "usd", "usdt", "eur", "brl"];
+
 export const paymentMethods = [
   {
     value: "cash",

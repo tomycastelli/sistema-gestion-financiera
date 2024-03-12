@@ -210,14 +210,13 @@ export const operationsRouter = createTRPCRouter({
         limit: z.number(),
         page: z.number(),
         operationId: z.number().optional(),
-        opDay: z.date().optional(),
         opDateIsGreater: z.date().optional(),
         opDateIsLesser: z.date().optional(),
         transactionId: z.number().optional(),
         transactionType: z.string().optional(),
         transactionDate: z.date().optional(),
         operatorEntityId: z.number().optional(),
-        fromEntityId: z.number().optional(),
+        fromEntityId: z.union([z.number(), z.array(z.number())]).optional(),
         toEntityId: z.number().optional(),
         currency: z.string().optional(),
         method: z.string().optional(),
@@ -230,93 +229,102 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const queriedOperations = await ctx.db.operations.findMany({
-        where: {
-          AND: [
-            input.opDay
-              ? {
-                  date: {
-                    gte: new Date(
-                      input.opDay.getFullYear(),
-                      input.opDay.getMonth(),
-                      input.opDay.getDate(),
-                    ),
-                    lt: new Date(
-                      input.opDay.getFullYear(),
-                      input.opDay.getMonth(),
-                      input.opDay.getDate() + 1,
-                    ),
-                  },
-                }
-              : {},
-            input.opDateIsGreater
-              ? { date: { gte: input.opDateIsGreater } }
-              : {},
-            input.opDateIsLesser ? { date: { lte: input.opDateIsLesser } } : {},
-            input.operationId ? { id: input.operationId } : {},
-          ],
-          transactions: {
-            some: {
-              AND: [
-                input.transactionId ? { id: input.transactionId } : {},
-                input.transactionType ? { type: input.transactionType } : {},
-                input.transactionDate ? { date: input.transactionDate } : {},
-                input.operatorEntityId
-                  ? { operatorEntityId: input.operatorEntityId }
-                  : {},
-                input.fromEntityId ? { fromEntityId: input.fromEntityId } : {},
-                input.toEntityId ? { toEntityId: input.toEntityId } : {},
-                input.currency ? { currency: input.currency } : {},
-                input.method ? { method: input.method } : {},
-                input.status ? { status: input.status } : {},
-                input.amount && input.currency
-                  ? {
-                      amount: input.amount,
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: input.amount }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.amountIsGreater && input.currency
-                  ? {
-                      amount: { gte: input.amountIsGreater },
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: { gte: input.amount } }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.amountIsLesser && input.currency
-                  ? {
-                      amount: { lte: input.amountIsLesser },
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: { lte: input.amountIsLesser } }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.uploadedById
-                  ? {
-                      transactionMetadata: {
-                        uploadedBy: input.uploadedById,
-                      },
-                    }
-                  : {},
-                input.confirmedById
-                  ? {
-                      transactionMetadata: {
-                        confirmedBy: input.confirmedById,
-                      },
-                    }
-                  : {},
-              ],
-            },
+      const whereConditions = {
+        AND: [
+          input.opDateIsGreater && !input.opDateIsLesser
+            ? {
+                date: {
+                  gte: new Date(
+                    input.opDateIsGreater.getFullYear(),
+                    input.opDateIsGreater.getMonth(),
+                    input.opDateIsGreater.getDate(),
+                  ),
+                  lt: new Date(
+                    input.opDateIsGreater.getFullYear(),
+                    input.opDateIsGreater.getMonth(),
+                    input.opDateIsGreater.getDate() + 1,
+                  ),
+                },
+              }
+            : {},
+          input.opDateIsGreater && input.opDateIsLesser
+            ? {
+                AND: [
+                  { date: { gte: input.opDateIsGreater } },
+                  { date: { lte: input.opDateIsLesser } },
+                ],
+              }
+            : {},
+          input.operationId ? { id: input.operationId } : {},
+        ],
+        transactions: {
+          some: {
+            AND: [
+              input.transactionId ? { id: input.transactionId } : {},
+              input.transactionType ? { type: input.transactionType } : {},
+              input.transactionDate ? { date: input.transactionDate } : {},
+              input.operatorEntityId
+                ? { operatorEntityId: input.operatorEntityId }
+                : {},
+              input.fromEntityId
+                ? Array.isArray(input.fromEntityId)
+                  ? { fromEntityId: { in: input.fromEntityId } }
+                  : { fromEntityId: input.fromEntityId }
+                : {},
+              input.toEntityId ? { toEntityId: input.toEntityId } : {},
+              input.currency ? { currency: input.currency } : {},
+              input.method ? { method: input.method } : {},
+              input.status ? { status: input.status } : {},
+              input.amount && input.currency
+                ? {
+                    amount: input.amount,
+                    currency: input.currency,
+                  }
+                : input.amount
+                ? { amount: input.amount }
+                : input.currency
+                ? { currency: input.currency }
+                : {},
+              input.amountIsGreater && input.currency
+                ? {
+                    amount: { gte: input.amountIsGreater },
+                    currency: input.currency,
+                  }
+                : input.amountIsGreater
+                ? { amount: { gte: input.amountIsGreater } }
+                : input.currency
+                ? { currency: input.currency }
+                : {},
+              input.amountIsLesser && input.currency
+                ? {
+                    amount: { lte: input.amountIsLesser },
+                    currency: input.currency,
+                  }
+                : input.amountIsLesser
+                ? { amount: { lte: input.amountIsLesser } }
+                : input.currency
+                ? { currency: input.currency }
+                : {},
+              input.uploadedById
+                ? {
+                    transactionMetadata: {
+                      uploadedBy: input.uploadedById,
+                    },
+                  }
+                : {},
+              input.confirmedById
+                ? {
+                    transactionMetadata: {
+                      confirmedBy: input.confirmedById,
+                    },
+                  }
+                : {},
+            ],
           },
         },
+      };
+      const queriedOperations = await ctx.db.operations.findMany({
+        where: whereConditions,
         include: {
           transactions: {
             include: {
@@ -527,91 +535,7 @@ export const operationsRouter = createTRPCRouter({
       });
 
       const count = await ctx.db.operations.count({
-        where: {
-          AND: [
-            input.opDay
-              ? {
-                  date: {
-                    gte: new Date(
-                      input.opDay.getFullYear(),
-                      input.opDay.getMonth(),
-                      input.opDay.getDate(),
-                    ),
-                    lt: new Date(
-                      input.opDay.getFullYear(),
-                      input.opDay.getMonth(),
-                      input.opDay.getDate() + 1,
-                    ),
-                  },
-                }
-              : {},
-            input.opDateIsGreater
-              ? { date: { gte: input.opDateIsGreater } }
-              : {},
-            input.opDateIsLesser ? { date: { lte: input.opDateIsLesser } } : {},
-          ],
-          transactions: {
-            some: {
-              AND: [
-                input.transactionId ? { id: input.transactionId } : {},
-                input.transactionType ? { type: input.transactionType } : {},
-                input.transactionDate ? { date: input.transactionDate } : {},
-                input.operatorEntityId
-                  ? { operatorEntityId: input.operatorEntityId }
-                  : {},
-                input.fromEntityId ? { fromEntityId: input.fromEntityId } : {},
-                input.toEntityId ? { toEntityId: input.toEntityId } : {},
-                input.currency ? { currency: input.currency } : {},
-                input.method ? { method: input.method } : {},
-                input.status ? { status: input.status } : {},
-                input.amount && input.currency
-                  ? {
-                      amount: input.amount,
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: input.amount }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.amountIsGreater && input.currency
-                  ? {
-                      amount: { gte: input.amountIsGreater },
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: { gte: input.amount } }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.amountIsLesser && input.currency
-                  ? {
-                      amount: { lte: input.amountIsLesser },
-                      currency: input.currency,
-                    }
-                  : input.amount
-                  ? { amount: { lte: input.amountIsLesser } }
-                  : input.currency
-                  ? { currency: input.currency }
-                  : {},
-                input.uploadedById
-                  ? {
-                      transactionMetadata: {
-                        uploadedBy: input.uploadedById,
-                      },
-                    }
-                  : {},
-                input.confirmedById
-                  ? {
-                      transactionMetadata: {
-                        confirmedBy: input.confirmedById,
-                      },
-                    }
-                  : {},
-              ],
-            },
-          },
-        },
+        where: whereConditions,
       });
 
       return { operations: operationsWithPermissions, count };

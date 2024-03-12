@@ -4,10 +4,13 @@ import { getAllChildrenTags } from "~/lib/functions";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
-import LoadingAnimation from "../components/LoadingAnimation";
 import EntitySwitcher from "./EntitySwitcher";
 import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
+import { TimeMachine } from "./TimeMachine";
+const LoadingAnimation = dynamic(
+  () => import("../components/LoadingAnimation"),
+);
 const AccountsTab = dynamic(() => import("./AccountsTab"));
 const SummarizedBalances = dynamic(() => import("./SummarizedBalances"));
 const TimeRangeSelector = dynamic(() => import("./TimeRangeSelector"));
@@ -119,7 +122,10 @@ const Page = async ({
                 <InvertSwitch entities={initialEntities} />
               </div>
             )}
-            <TimeRangeSelector />
+            <div className="flex flex-wrap gap-4">
+              <TimeMachine />
+              <TimeRangeSelector />
+            </div>
           </div>
           <Suspense fallback={<LoadingAnimation text={"Cargando cuentas"} />}>
             {selectedEntityId || selectedTag ? (

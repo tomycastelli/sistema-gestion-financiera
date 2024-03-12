@@ -119,7 +119,7 @@ export const dateReviver = (keys: string[]) => (key: string, value: string) => {
 export const createQueryString = (
   searchParams: URLSearchParams | ReadonlyURLSearchParams | undefined,
   name: string,
-  value: string,
+  value: string | string[],
   deleteParam?: string,
 ): string => {
   const params = searchParams
@@ -131,7 +131,11 @@ export const createQueryString = (
     params.delete(deleteParam);
   }
 
-  params.set(name, value);
+  if (Array.isArray(value)) {
+    value.forEach((v) => params.append(name, v));
+  } else {
+    params.set(name, value);
+  }
   return params.toString();
 };
 
@@ -139,13 +143,16 @@ export const removeQueryString = (
   searchParams: URLSearchParams | ReadonlyURLSearchParams,
   names: string[] | string,
 ): string => {
+  const params = searchParams
+    ? new URLSearchParams(searchParams.toString())
+    : new URLSearchParams();
   if (typeof names === "string") {
-    searchParams.delete(names);
+    params.delete(names);
   } else {
-    names.forEach((name) => searchParams.delete(name));
+    names.forEach((name) => params.delete(name));
   }
 
-  return searchParams.toString();
+  return params.toString();
 };
 
 type GenerateLinkParams = {

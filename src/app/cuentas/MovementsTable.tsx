@@ -13,7 +13,7 @@ import {
   isNumeric,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currencies } from "~/lib/variables";
+import { currencies, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -104,6 +104,7 @@ const MovementsTable = ({
     toDate,
     setToDate,
     isInverted,
+    timeMachineDate,
   } = useCuentasStore();
 
   const { data, refetch, isFetching } =
@@ -120,6 +121,7 @@ const MovementsTable = ({
         toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
+        dayInPast: moment(timeMachineDate).format(dateFormatting.day),
       },
       {
         initialData: initialMovements,

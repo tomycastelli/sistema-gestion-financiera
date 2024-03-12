@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import moment from "moment";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -12,12 +12,11 @@ import {
   isNumeric,
   removeQueryString,
 } from "~/lib/functions";
-import { cn } from "~/lib/utils";
-import { currencies, operationTypes } from "~/lib/variables";
+import { currencies, dateFormatting, operationTypes } from "~/lib/variables";
 import type { RouterOutputs } from "~/trpc/shared";
+import { DateRangePicker } from "../DateRangePicker";
 import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
-import { Calendar } from "../ui/calendar";
 import {
   Form,
   FormControl,
@@ -27,14 +26,17 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import CustomSelector from "./CustomSelector";
 
 const FormSchema = z.object({
   operationId: z.string().optional(),
-  opDay: z.date().optional(),
-  opDayFilterType: z.enum(["equal", "gte", "lte"]).default("equal"),
+  opDateRange: z
+    .object({
+      from: z.date(),
+      to: z.date().optional(),
+    })
+    .optional(),
   transactionId: z.number().optional(),
   transactionType: z.string().optional(),
   transactionDate: z.date().optional(),
@@ -66,225 +68,139 @@ const FilterOperationsForm = ({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const selectedDate = searchParams.get("dia");
-  const selectedDateGreater = searchParams.get("diaMin");
-  const selectedDateLesser = searchParams.get("diaMax");
-  const selectedTransactionType = searchParams.get("tipo");
-  const selectedOperator = searchParams.get("operador");
-  const selectedFromEntity = searchParams.get("origen");
-  const selectedToEntity = searchParams.get("destino");
-  const selectedCurrency = searchParams.get("divisa");
+  const selectedDateGreater = searchParams.get("diaDesde");
+  const selectedDateLesser = searchParams.get("diaHasta");
+  const selectedTransactionType = searchParams.get("tipo") ?? undefined;
+  const selectedOperator = searchParams.get("operador") ?? undefined;
+  const selectedFromEntity = searchParams.get("origen") ?? undefined;
+  const selectedToEntity = searchParams.get("destino") ?? undefined;
+  const selectedCurrency = searchParams.get("divisa") ?? undefined;
   const selectedAmount = searchParams.get("monto");
   const selectedMinAmount = searchParams.get("montoMin");
   const selectedMaxAmount = searchParams.get("montoMax");
-  const selectedUploadUserId = searchParams.get("cargadoPor");
-  const selectedConfirmationUserId = searchParams.get("confirmadoPor");
+  const selectedUploadUserId = searchParams.get("cargadoPor") ?? undefined;
+  const selectedConfirmationUserId =
+    searchParams.get("confirmadoPor") ?? undefined;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     mode: "onChange",
     defaultValues: {
-      opDay: selectedDate
-        ? moment(selectedDate, "DD-MM-YYYY").toDate()
-        : selectedDateGreater
-          ? moment(selectedDateGreater, "DD-MM-YYYY").toDate()
-          : selectedDateLesser
-            ? moment(selectedDateLesser, "DD-MM-YYYY").toDate()
-            : undefined,
-      opDayFilterType: selectedDate
-        ? "equal"
-        : selectedDateGreater
-          ? "gte"
-          : selectedDateLesser
-            ? "lte"
-            : "equal",
-      transactionType: selectedTransactionType
-        ? selectedTransactionType
-        : undefined,
-      operatorEntityId: selectedOperator ? selectedOperator : undefined,
-      fromEntityId: selectedFromEntity ? selectedFromEntity : undefined,
-      toEntityId: selectedToEntity ? selectedToEntity : undefined,
-      currency: selectedCurrency ? selectedCurrency : undefined,
+      opDateRange: {
+        from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+        to: moment(selectedDateLesser, dateFormatting.day).toDate(),
+      },
+      transactionType: selectedTransactionType,
+      operatorEntityId: selectedOperator,
+      fromEntityId: selectedFromEntity,
+      toEntityId: selectedToEntity,
+      currency: selectedCurrency,
       amount: selectedAmount
         ? selectedAmount
         : selectedMaxAmount
-          ? selectedMaxAmount
-          : selectedMinAmount
-            ? selectedMinAmount
-            : undefined,
+        ? selectedMaxAmount
+        : selectedMinAmount
+        ? selectedMinAmount
+        : undefined,
       amountFilterType: selectedAmount
         ? "equal"
         : selectedMaxAmount
-          ? "lte"
-          : selectedMinAmount
-            ? "gte"
-            : "equal",
-      uploadedById: selectedUploadUserId ? selectedUploadUserId : undefined,
-      confirmedById: selectedConfirmationUserId
-        ? selectedConfirmationUserId
-        : undefined,
+        ? "lte"
+        : selectedMinAmount
+        ? "gte"
+        : "equal",
+      uploadedById: selectedUploadUserId,
+      confirmedById: selectedConfirmationUserId,
     },
   });
 
   const { control, reset, watch } = form;
 
-  const watchFromEntityId = watch("fromEntityId")!;
-  const watchToEntityId = watch("toEntityId")!;
+  const watchFromEntityId = watch("fromEntityId");
+  const watchToEntityId = watch("toEntityId");
   const watchCurrency = watch("currency");
-  const watchOpDay = watch("opDay");
+  const watchOpDateRange = watch("opDateRange");
   const watchTxType = watch("transactionType");
   const watchOperator = watch("operatorEntityId");
   const watchAmount = watch("amount");
   const watchAmountFilterType = watch("amountFilterType");
-  const watchOpDayFilterType = watch("opDayFilterType");
   const watchUploadUserId = watch("uploadedById");
   const watchConfirmedUserId = watch("confirmedById");
 
+  interface UrlParams {
+    origen?: typeof watchFromEntityId;
+    destino?: typeof watchToEntityId;
+    divisa?: typeof watchCurrency;
+    diaDesde?: string;
+    diaHasta?: string | undefined;
+    monto?: typeof watchAmount;
+    montoMin?: typeof watchAmount;
+    montoMax?: typeof watchAmount;
+    tipo?: typeof watchTxType;
+    operador?: typeof watchOperator;
+    cargadorPor?: typeof watchUploadUserId;
+    confirmadoPor?: typeof watchConfirmedUserId;
+  }
+
+  const updateUrl = useCallback(
+    (params: UrlParams) => {
+      let updatedSearchParams = new URLSearchParams(searchParams);
+      Object.entries(params).forEach(([paramName, paramValue]) => {
+        if (paramValue === undefined) {
+          updatedSearchParams = new URLSearchParams(
+            removeQueryString(updatedSearchParams, paramName),
+          );
+        } else {
+          updatedSearchParams = new URLSearchParams(
+            createQueryString(updatedSearchParams, paramName, paramValue),
+          );
+        }
+      });
+      router.push(pathname + "?" + updatedSearchParams.toString());
+    },
+    [pathname, searchParams, router],
+  );
+
   useEffect(() => {
-    if (watchFromEntityId !== undefined) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(searchParams, "origen", watchFromEntityId),
-      );
-    }
-    if (watchToEntityId !== undefined) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(searchParams, "destino", watchToEntityId),
-      );
-    }
-    if (watchCurrency !== undefined) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(searchParams, "divisa", watchCurrency),
-      );
-    }
-    if (watchOpDay) {
-      if (watchOpDayFilterType === "equal") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["diaMax", "diaMin"]),
-            ),
-            "dia",
-            moment(watchOpDay).format("DD-MM-YYYY"),
-          ),
-        );
-      } else if (watchOpDayFilterType === "gte") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["diaMax", "dia"]),
-            ),
-            "diaMin",
-            moment(watchOpDay).format("DD-MM-YYYY"),
-          ),
-        );
-      } else if (watchOpDayFilterType === "lte") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["diaMin", "dia"]),
-            ),
-            "diaMax",
-            moment(watchOpDay).format("DD-MM-YYYY"),
-          ),
-        );
-      }
-    }
-    if (watchTxType) {
-      router.push(
-        pathname + "?" + createQueryString(searchParams, "tipo", watchTxType),
-      );
-    }
-    if (watchOperator) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(searchParams, "operador", watchOperator),
-      );
-    }
-    if (watchAmount && isNumeric(watchAmount)) {
-      if (watchAmountFilterType === "equal") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["montoMin", "montoMax"]),
-            ),
-            "monto",
-            watchAmount,
-          ),
-        );
-      } else if (watchAmountFilterType === "gte") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["monto", "montoMax"]),
-            ),
-            "montoMin",
-            watchAmount,
-          ),
-        );
-      } else if (watchAmountFilterType === "lte") {
-        router.push(
-          pathname +
-          "?" +
-          createQueryString(
-            new URLSearchParams(
-              removeQueryString(searchParams, ["montoMin", "monto"]),
-            ),
-            "montoMax",
-            watchAmount,
-          ),
-        );
-      }
-    }
-    if (watchUploadUserId) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(searchParams, "cargadoPor", watchUploadUserId),
-      );
-    }
-    if (watchConfirmedUserId) {
-      router.push(
-        pathname +
-        "?" +
-        createQueryString(
-          searchParams,
-          "confirmadoPor",
-          watchConfirmedUserId,
-        ),
-      );
-    }
+    updateUrl({
+      origen: watchFromEntityId,
+      destino: watchToEntityId,
+      divisa: watchCurrency,
+      diaDesde: watchOpDateRange?.from
+        ? moment(watchOpDateRange.from).format(dateFormatting.day)
+        : undefined,
+      diaHasta: watchOpDateRange?.to
+        ? moment(watchOpDateRange.to).format(dateFormatting.day)
+        : undefined,
+      monto:
+        watchAmountFilterType === "equal" && watchAmount
+          ? watchAmount
+          : undefined,
+      montoMin:
+        watchAmountFilterType === "gte" && watchAmount
+          ? watchAmount
+          : undefined,
+      montoMax:
+        watchAmountFilterType === "lte" && watchAmount
+          ? watchAmount
+          : undefined,
+      tipo: watchTxType,
+      operador: watchOperator,
+      cargadorPor: watchUploadUserId,
+      confirmadoPor: watchConfirmedUserId,
+    });
   }, [
-    pathname,
-    searchParams,
-    router,
     watchFromEntityId,
     watchToEntityId,
     watchCurrency,
-    watchOpDay,
-    watchOpDayFilterType,
+    watchOpDateRange,
     watchTxType,
     watchOperator,
     watchAmount,
     watchAmountFilterType,
     watchConfirmedUserId,
     watchUploadUserId,
+    updateUrl,
   ]);
 
   return (
@@ -425,74 +341,17 @@ const FilterOperationsForm = ({
               </FormItem>
             )}
           />
-          <div className="flex flex-col justify-center space-y-2">
-            <FormField
-              control={form.control}
-              name="opDay"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Fecha</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-32 pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground",
-                          )}
-                        >
-                          {field.value ? (
-                            moment(field.value).format("DD-MM-YYYY")
-                          ) : (
-                            <span>Elegir</span>
-                          )}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name="opDayFilterType"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormControl>
-                    <ToggleGroup
-                      type="single"
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <ToggleGroupItem value="equal" aria-label="Toggle equal">
-                        <Icons.equal className="h-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="gte" aria-label="Toggle gte">
-                        <Icons.gte className="h-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="lte" aria-label="Toggle lte">
-                        <Icons.lte className="h-4" />
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-
+          <FormField
+            control={form.control}
+            name="opDateRange"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Fecha</FormLabel>
+                <DateRangePicker date={field.value} setDate={field.onChange} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={control}
             name="uploadedById"

@@ -1,14 +1,16 @@
 "use client";
 
-import Lottie from "lottie-react";
 import type { User } from "next-auth";
+import dynamic from "next/dynamic";
 import { type FC } from "react";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
-import loadingJson from "../../../public/animations/loading.json";
 import Operation from "./Operation";
 import { Icons } from "./ui/Icons";
 import { Button } from "./ui/button";
+const LoadingAnimation = dynamic(
+  () => import("../components/LoadingAnimation"),
+);
 
 interface OperationsFeedProps {
   initialOperations: RouterOutputs["operations"]["getOperations"];
@@ -50,11 +52,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       </Button>
       <div className="grid grid-cols-1">
         {isRefetching ? (
-          <Lottie
-            animationData={loadingJson}
-            className="absolute z-10 ml-auto flex h-36 w-full"
-            loop={true}
-          />
+          <LoadingAnimation text={"Cargando operaciones"} />
         ) : data.operations.length > 0 ? (
           data.operations
             .filter((op) => op.isVisualizeAllowed)

@@ -27,6 +27,7 @@ interface CustomSelectorProps {
   placeholder?: string;
   buttonClassName?: string;
   isLoading?: boolean;
+  isMultiSelect?: boolean;
 }
 
 const CustomSelector = ({
@@ -36,6 +37,7 @@ const CustomSelector = ({
   placeholder,
   buttonClassName,
   isLoading,
+  isMultiSelect,
 }: CustomSelectorProps) => {
   const [open, setOpen] = React.useState(false);
   const { setValue } = useFormContext();
@@ -57,7 +59,9 @@ const CustomSelector = ({
               {isLoading
                 ? "Cargando..."
                 : field.value
-                ? data.find((obj) => obj.value === field.value)?.label
+                ? Array.isArray(field.value) && field.value.length > 1
+                  ? field.value.length + " " + "elementos"
+                  : data.find((obj) => obj.value === field.value)?.label
                 : placeholder}
             </Button>
           </PopoverTrigger>
@@ -67,26 +71,66 @@ const CustomSelector = ({
               <CommandEmpty>...</CommandEmpty>
               <ScrollArea className="h-62 w-48 rounded-md">
                 <CommandGroup>
-                  {data.map((obj) => (
-                    <CommandItem
-                      key={obj.value}
-                      value={obj.label}
-                      onSelect={() => {
-                        setOpen(false);
-                        setValue(fieldName, obj.value);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          obj.value === field.value
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-                      {obj.label}
-                    </CommandItem>
-                  ))}
+                  {data
+                    .sort((a, b) => {
+                      if (!field.value) return 0;
+                      if (Array.isArray(field.value)) {
+                        const aIndex = field.value.indexOf(a.value);
+                        const bIndex = field.value.indexOf(b.value);
+                        if (aIndex !== -1 && bIndex !== -1)
+                          return aIndex - bIndex;
+                        if (aIndex !== -1) return -1;
+                        if (bIndex !== -1) return 1;
+                      } else {
+                        if (a.value === field.value) return -1;
+                        if (b.value === field.value) return 1;
+                      }
+                      return 0;
+                    })
+                    .map((obj) => (
+                      <CommandItem
+                        key={obj.value}
+                        value={obj.label}
+                        onSelect={() => {
+                          if (isMultiSelect) {
+                            if (field.value && Array.isArray(field.value)) {
+                              if (field.value.includes(obj.value)) {
+                                setValue(
+                                  fieldName,
+                                  field.value.filter(
+                                    (item) => item !== obj.value,
+                                  ),
+                                );
+                              } else {
+                                setValue(fieldName, [
+                                  ...field.value,
+                                  obj.value,
+                                ]);
+                              }
+                            } else {
+                              setValue(fieldName, [obj.value]);
+                            }
+                          } else {
+                            setOpen(false);
+                            if (field.value === obj.value) {
+                              setValue(fieldName, undefined);
+                            } else {
+                              setValue(fieldName, obj.value);
+                            }
+                          }
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            obj.value === field.value
+                              ? "opacity-100"
+                              : "opacity-0",
+                          )}
+                        />
+                        {obj.label}
+                      </CommandItem>
+                    ))}
                 </CommandGroup>
               </ScrollArea>
             </Command>

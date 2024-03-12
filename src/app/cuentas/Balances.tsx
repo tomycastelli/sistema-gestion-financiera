@@ -1,6 +1,7 @@
 "use client";
 
 import Lottie from "lottie-react";
+import moment from "moment";
 import { type Session } from "next-auth";
 import Link from "next/link";
 import { useState, type FC } from "react";
@@ -8,6 +9,7 @@ import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
 import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -74,6 +76,7 @@ const Balances: FC<BalancesProps> = ({
     setDestinationEntityId,
     destinationEntityId,
     isInverted,
+    timeMachineDate,
   } = useCuentasStore();
 
   const {
@@ -87,6 +90,7 @@ const Balances: FC<BalancesProps> = ({
       account: accountType,
       linkId: linkId,
       linkToken: linkToken,
+      dayInPast: moment(timeMachineDate).format(dateFormatting.day),
     },
     { initialData: initialBalances, refetchOnWindowFocus: false },
   );
@@ -369,53 +373,64 @@ const Balances: FC<BalancesProps> = ({
       <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
       <div className="grid-cols grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {!isBalanceLoading ? (
-          transformedBalances.map((item) => (
-            <Card
-              key={item.entity.id}
-              className="min-w-[300px] transition-all hover:scale-105 hover:shadow-md hover:shadow-primary"
-            >
-              <Link
-                prefetch={false}
-                href={{
-                  pathname: "/cuentas",
-                  query: {
-                    cuenta: "cuenta_corriente",
-                    entidad: item.entity.id,
-                  },
-                }}
+          transformedBalances
+            .sort((a, b) => a.entity.name.localeCompare(b.entity.name))
+            .map((item) => (
+              <Card
+                key={item.entity.id}
+                className="min-w-[300px] transition-all hover:scale-105 hover:shadow-md hover:shadow-primary"
               >
-                <CardHeader>
-                  <CardTitle>{item.entity.name}</CardTitle>
-                  <CardDescription>
-                    {capitalizeFirstLetter(item.entity.tagName)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col space-y-2">
-                    {item.data.map((balances) => (
-                      <div key={balances.currency} className="grid grid-cols-3">
-                        <p className="col-span-1">
-                          {balances.currency.toUpperCase()}
-                        </p>
-                        {!isFetching ? (
-                          <p className="col-span-2 text-xl font-bold">
-                            ${" "}
-                            {new Intl.NumberFormat("es-AR").format(
-                              !isInverted
-                                ? balances.balance
-                                : -balances.balance,
+                <Link
+                  prefetch={false}
+                  href={{
+                    pathname: "/cuentas",
+                    query: {
+                      cuenta: "cuenta_corriente",
+                      entidad: item.entity.id,
+                    },
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle>{item.entity.name}</CardTitle>
+                    <CardDescription>
+                      {capitalizeFirstLetter(item.entity.tagName)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col space-y-2">
+                      {item.data
+                        .sort(
+                          (a, b) =>
+                            currenciesOrder.indexOf(a.currency) -
+                            currenciesOrder.indexOf(b.currency),
+                        )
+                        .map((balances) => (
+                          <div
+                            key={balances.currency}
+                            className="grid grid-cols-3"
+                          >
+                            <p className="col-span-1">
+                              {balances.currency.toUpperCase()}
+                            </p>
+                            {!isFetching ? (
+                              <p className="col-span-2 text-xl font-bold">
+                                ${" "}
+                                {new Intl.NumberFormat("es-AR").format(
+                                  !isInverted
+                                    ? balances.balance
+                                    : -balances.balance,
+                                )}
+                              </p>
+                            ) : (
+                              <p>Cargando...</p>
                             )}
-                          </p>
-                        ) : (
-                          <p>Cargando...</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Link>
-            </Card>
-          ))
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
+            ))
         ) : (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         )}
@@ -433,7 +448,7 @@ const Balances: FC<BalancesProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex flex-row space-x-1">
-                  <Icons.currentAccount className="h-4 w-4 text-black" />
+                  <Icons.currentAccount className="h-4 w-4 text-black dark:text-white" />
                   {accountsLists &&
                     (accountsLists.find((list) => list.isDefault) ? (
                       <p>
@@ -552,29 +567,29 @@ const Balances: FC<BalancesProps> = ({
                       ))}
                   </DropdownMenuGroup>
                 ) : (
-                  <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+                  <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black dark:text-white" />
                 )}
                 {!isListSelection ? (
                   <DropdownMenuItem onClick={() => setIsListSelection(true)}>
-                    <Icons.plus className="h-5 w-5 text-black" />
+                    <Icons.plus className="h-5 w-5 text-black dark:text-white" />
                     <p>Añadir lista</p>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
-                      <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black" />
+                      <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black dark:text-white" />
                       <p className="animate-pulse">Seleccionando</p>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal>
                       <DropdownMenuSubContent>
                         <DropdownMenuItem onClick={() => addList()}>
-                          <Icons.check className="h-4 w-4 text-black" />
+                          <Icons.check className="mr-1 h-4 w-4 text-black dark:text-white" />
                           <span>Confirmar selección</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setIsListSelection(false)}
                         >
-                          <Icons.cross className="h-4 w-4 text-black" />
+                          <Icons.cross className="mr-1 h-4 w-4 text-black dark:text-white" />
                           <span>Cancelar selección</span>
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>

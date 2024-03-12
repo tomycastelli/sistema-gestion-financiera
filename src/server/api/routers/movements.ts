@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
+import moment from "moment";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
@@ -26,6 +27,7 @@ export const movementsRouter = createTRPCRouter({
         account: z.boolean().optional(),
         fromDate: z.date().optional().nullish(),
         toDate: z.date().optional().nullish(),
+        dayInPast: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -150,6 +152,43 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
+      if (input.dayInPast) {
+        whereConditions.push({
+          OR: [
+            {
+              transaction: {
+                date: {
+                  lte: moment(input.dayInPast, dateFormatting.day)
+                    .set({
+                      hour: 23,
+                      minute: 59,
+                      second: 59,
+                      millisecond: 999,
+                    })
+                    .toDate(),
+                },
+              },
+            },
+            {
+              transaction: {
+                operation: {
+                  date: {
+                    lte: moment(input.dayInPast, dateFormatting.day)
+                      .set({
+                        hour: 23,
+                        minute: 59,
+                        second: 59,
+                        millisecond: 999,
+                      })
+                      .toDate(),
+                  },
+                },
+              },
+            },
+          ],
+        });
+      }
+
       const totalRows = await ctx.db.movements.count({
         where: {
           AND: whereConditions,
@@ -196,6 +235,7 @@ export const movementsRouter = createTRPCRouter({
         linkId: z.number().optional().nullable(),
         linkToken: z.string().optional().nullable(),
         account: z.boolean().optional().nullable(),
+        dayInPast: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -289,6 +329,13 @@ export const movementsRouter = createTRPCRouter({
               typeof input.account === "boolean"
                 ? { account: input.account }
                 : {},
+              input.dayInPast
+                ? {
+                    date: {
+                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
+                    },
+                  }
+                : {},
             ],
           },
           orderBy: {
@@ -319,6 +366,13 @@ export const movementsRouter = createTRPCRouter({
               typeof input.account === "boolean"
                 ? { account: input.account }
                 : {},
+              input.dayInPast
+                ? {
+                    date: {
+                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
+                    },
+                  }
+                : {},
             ],
           },
           orderBy: {
@@ -345,6 +399,7 @@ export const movementsRouter = createTRPCRouter({
         entityTag: z.string().optional().nullable(),
         linkId: z.number().optional().nullable(),
         linkToken: z.string().optional().nullable(),
+        dayInPast: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -392,15 +447,26 @@ export const movementsRouter = createTRPCRouter({
 
         const balances = await ctx.db.balances.findMany({
           where: {
-            OR: [
+            AND: [
               {
-                selectedEntity: { tagName: { in: allChildrenTags } },
-                otherEntity: { tagName: { notIn: allChildrenTags } },
+                OR: [
+                  {
+                    selectedEntity: { tagName: { in: allChildrenTags } },
+                    otherEntity: { tagName: { notIn: allChildrenTags } },
+                  },
+                  {
+                    selectedEntity: { tagName: { notIn: allChildrenTags } },
+                    otherEntity: { tagName: { in: allChildrenTags } },
+                  },
+                ],
               },
-              {
-                selectedEntity: { tagName: { notIn: allChildrenTags } },
-                otherEntity: { tagName: { in: allChildrenTags } },
-              },
+              input.dayInPast
+                ? {
+                    date: {
+                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
+                    },
+                  }
+                : {},
             ],
           },
           orderBy: {
@@ -476,9 +542,20 @@ export const movementsRouter = createTRPCRouter({
       } else if (input.entityId) {
         const balances = await ctx.db.balances.findMany({
           where: {
-            OR: [
-              { selectedEntityId: input.entityId },
-              { otherEntityId: input.entityId },
+            AND: [
+              {
+                OR: [
+                  { selectedEntityId: input.entityId },
+                  { otherEntityId: input.entityId },
+                ],
+              },
+              input.dayInPast
+                ? {
+                    date: {
+                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
+                    },
+                  }
+                : {},
             ],
           },
           orderBy: {
@@ -559,6 +636,7 @@ export const movementsRouter = createTRPCRouter({
         entityTag: z.string().optional().nullable(),
         timeRange: z.enum(["day", "week", "month", "year"]),
         currency: z.string().nullish(),
+        dayInPast: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -596,6 +674,11 @@ export const movementsRouter = createTRPCRouter({
               input.entityId
             })
             AND "currency" = ${input.currency}
+            ${
+              input.dayInPast
+                ? Prisma.sql`AND date::date <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
+                : Prisma.sql``
+            }
             GROUP BY 
             account,
             currency,
@@ -663,6 +746,11 @@ export const movementsRouter = createTRPCRouter({
             )}) AND e."tagName" NOT IN (${Prisma.join(allChildrenTags, ",")}))
           )
           AND b."currency" = ${Prisma.raw(`'${input.currency}'`)}
+          ${
+            input.dayInPast
+              ? Prisma.sql`AND date::date <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
+              : Prisma.sql``
+          }
         GROUP BY 
           account,
           currency,
@@ -678,15 +766,15 @@ export const movementsRouter = createTRPCRouter({
 
               if (existingEntry) {
                 if (entry.account) {
-                  existingEntry.current_account = entry.balance;
-                } else {
                   existingEntry.cash = entry.balance;
+                } else {
+                  existingEntry.current_account = entry.balance;
                 }
               } else {
                 acc.push({
                   datestring: entry.datestring,
-                  cash: entry.account ? 0 : entry.balance,
-                  current_account: entry.account ? entry.balance : 0,
+                  cash: entry.account ? entry.balance : 0,
+                  current_account: entry.account ? 0 : entry.balance,
                 });
               }
 
@@ -705,6 +793,7 @@ export const movementsRouter = createTRPCRouter({
         entityId: z.number().int().optional(),
         entityTag: z.string().optional(),
         limit: z.number().int(),
+        dayInPast: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -756,6 +845,43 @@ export const movementsRouter = createTRPCRouter({
               },
             ],
           },
+        });
+      }
+
+      if (input.dayInPast) {
+        whereConditions.push({
+          OR: [
+            {
+              transaction: {
+                date: {
+                  lte: moment(input.dayInPast, dateFormatting.day)
+                    .set({
+                      hour: 23,
+                      minute: 59,
+                      second: 59,
+                      millisecond: 999,
+                    })
+                    .toDate(),
+                },
+              },
+            },
+            {
+              transaction: {
+                operation: {
+                  date: {
+                    lte: moment(input.dayInPast, dateFormatting.day)
+                      .set({
+                        hour: 23,
+                        minute: 59,
+                        second: 59,
+                        millisecond: 999,
+                      })
+                      .toDate(),
+                  },
+                },
+              },
+            },
+          ],
         });
       }
 

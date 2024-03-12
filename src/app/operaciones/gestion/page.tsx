@@ -1,13 +1,16 @@
 import moment from "moment";
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import CustomPagination from "~/app/components/CustomPagination";
-import LoadingAnimation from "~/app/components/LoadingAnimation";
 import OperationsFeed from "~/app/components/OperationsFeed";
 import FilterOperationsForm from "~/app/components/forms/FilterOperationsForm";
 import { Separator } from "~/app/components/ui/separator";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
+const LoadingAnimation = dynamic(
+  () => import("~/app/components/LoadingAnimation"),
+);
 
 const Page = async ({
   searchParams,
@@ -17,12 +20,11 @@ const Page = async ({
   const session = await getServerAuthSession();
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
-  const selectedFromEntity = searchParams.origen as string;
+  const selectedFromEntity = searchParams.origen;
   const selectedToEntity = searchParams.destino as string;
   const selectedCurrency = searchParams.divisa as string;
-  const selectedDate = searchParams.dia as string;
-  const selectedDateGreater = searchParams.diaMin as string;
-  const selectedDateLesser = searchParams.diaMax as string;
+  const selectedDateGreater = searchParams.diaDesde as string;
+  const selectedDateLesser = searchParams.diaHasta as string;
   const selectedType = searchParams.tipo as string;
   const selectedOperator = searchParams.operador as string;
   const selectedAmount = searchParams.monto as string;
@@ -37,7 +39,9 @@ const Page = async ({
   };
 
   if (selectedFromEntity) {
-    operationsQueryInput.fromEntityId = parseInt(selectedFromEntity);
+    operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity)
+      ? selectedFromEntity.flatMap((nString) => parseInt(nString))
+      : parseInt(selectedFromEntity);
   }
   if (selectedToEntity) {
     operationsQueryInput.toEntityId = parseInt(selectedToEntity);
@@ -45,14 +49,13 @@ const Page = async ({
   if (selectedCurrency) {
     operationsQueryInput.currency = selectedCurrency;
   }
-  if (selectedDate) {
-    operationsQueryInput.opDay = moment(selectedDate, "DD-MM-YYYY").toDate();
-  } else if (selectedDateGreater) {
+  if (selectedDateGreater) {
     operationsQueryInput.opDateIsGreater = moment(
       selectedDateGreater,
       "DD-MM-YYYY",
     ).toDate();
-  } else if (selectedDateLesser) {
+  }
+  if (selectedDateLesser) {
     operationsQueryInput.opDateIsLesser = moment(
       selectedDateLesser,
       "DD-MM-YYYY",
