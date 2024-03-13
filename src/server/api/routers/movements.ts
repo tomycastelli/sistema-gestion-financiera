@@ -85,13 +85,7 @@ export const movementsRouter = createTRPCRouter({
             ],
           },
         });
-      }
-
-      if (input.account !== null) {
-        whereConditions.push({ account: input.account });
-      }
-
-      if (input.entityTag) {
+      } else if (input.entityTag) {
         const tags = await getAllTags(ctx.redis, ctx.db);
         const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
 
@@ -123,33 +117,9 @@ export const movementsRouter = createTRPCRouter({
           },
         });
       }
-      if (input.fromDate) {
-        whereConditions.push({
-          OR: [
-            { transaction: { date: { gte: input.fromDate } } },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: { operation: { date: { gte: input.fromDate } } },
-                },
-              ],
-            },
-          ],
-        });
-      }
-      if (input.toDate) {
-        whereConditions.push({
-          OR: [
-            { transaction: { date: { lte: input.toDate } } },
-            {
-              AND: [
-                { transaction: { date: null } },
-                { transaction: { operation: { date: { lte: input.toDate } } } },
-              ],
-            },
-          ],
-        });
+
+      if (input.account !== null) {
+        whereConditions.push({ account: input.account });
       }
 
       if (input.dayInPast) {
@@ -170,20 +140,130 @@ export const movementsRouter = createTRPCRouter({
               },
             },
             {
-              transaction: {
-                operation: {
-                  date: {
-                    lte: moment(input.dayInPast, dateFormatting.day)
-                      .set({
-                        hour: 23,
-                        minute: 59,
-                        second: 59,
-                        millisecond: 999,
-                      })
-                      .toDate(),
+              AND: [
+                { transaction: { date: null } },
+                {
+                  transaction: {
+                    operation: {
+                      date: {
+                        lte: moment(input.dayInPast, dateFormatting.day)
+                          .set({
+                            hour: 23,
+                            minute: 59,
+                            second: 59,
+                            millisecond: 999,
+                          })
+                          .toDate(),
+                      },
+                    },
                   },
                 },
+              ],
+            },
+          ],
+        });
+      }
+      if (input.fromDate && input.toDate) {
+        whereConditions.push({
+          OR: [
+            {
+              transaction: {
+                date: {
+                  gte: moment(input.fromDate)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .toDate(),
+                  lte: moment(input.toDate)
+                    .set({
+                      hour: 23,
+                      minute: 59,
+                      second: 59,
+                      millisecond: 999,
+                    })
+                    .toDate(),
+                },
               },
+            },
+            {
+              AND: [
+                { transaction: { date: null } },
+                {
+                  transaction: {
+                    operation: {
+                      date: {
+                        gte: moment(input.fromDate)
+                          .set({
+                            hour: 0,
+                            minute: 0,
+                            second: 0,
+                            millisecond: 0,
+                          })
+                          .toDate(),
+                        lte: moment(input.toDate)
+                          .set({
+                            hour: 23,
+                            minute: 59,
+                            second: 59,
+                            millisecond: 999,
+                          })
+                          .toDate(),
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        });
+      } else if (input.fromDate && !input.toDate) {
+        whereConditions.push({
+          OR: [
+            {
+              transaction: {
+                date: {
+                  gte: moment(input.fromDate)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .toDate(),
+                  lte: moment(input.fromDate)
+                    .set({
+                      hour: 0,
+                      minute: 0,
+                      second: 0,
+                      millisecond: 0,
+                    })
+                    .add(1, "day")
+                    .toDate(),
+                },
+              },
+            },
+            {
+              AND: [
+                { transaction: { date: null } },
+                {
+                  transaction: {
+                    operation: {
+                      date: {
+                        gte: moment(input.fromDate)
+                          .set({
+                            hour: 0,
+                            minute: 0,
+                            second: 0,
+                            millisecond: 0,
+                          })
+                          .toDate(),
+                        lte: moment(input.fromDate)
+                          .set({
+                            hour: 0,
+                            minute: 0,
+                            second: 0,
+                            millisecond: 0,
+                          })
+                          .add(1, "day")
+                          .toDate(),
+                      },
+                    },
+                  },
+                },
+              ],
             },
           ],
         });
@@ -866,20 +946,25 @@ export const movementsRouter = createTRPCRouter({
               },
             },
             {
-              transaction: {
-                operation: {
-                  date: {
-                    lte: moment(input.dayInPast, dateFormatting.day)
-                      .set({
-                        hour: 23,
-                        minute: 59,
-                        second: 59,
-                        millisecond: 999,
-                      })
-                      .toDate(),
+              AND: [
+                { transaction: { date: null } },
+                {
+                  transaction: {
+                    operation: {
+                      date: {
+                        lte: moment(input.dayInPast, dateFormatting.day)
+                          .set({
+                            hour: 23,
+                            minute: 59,
+                            second: 59,
+                            millisecond: 999,
+                          })
+                          .toDate(),
+                      },
+                    },
                   },
                 },
-              },
+              ],
             },
           ],
         });

@@ -277,19 +277,23 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col space-y-4">
-                    {item.balances.map((balance) => (
-                      <div
-                        key={balance.amount}
-                        className="flex flex-col space-y-2"
-                      >
-                        <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                        <p className="text-xl font-semibold">
-                          {new Intl.NumberFormat("es-AR").format(
-                            !isInverted ? balance.amount : -balance.amount,
-                          )}
-                        </p>
-                      </div>
-                    ))}
+                    {item.balances
+                      .sort((a, b) =>
+                        a.account === b.account ? 0 : a.account ? 1 : -1,
+                      )
+                      .map((balance) => (
+                        <div
+                          key={balance.amount}
+                          className="flex flex-col space-y-2"
+                        >
+                          <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
+                          <p className="text-xl font-semibold">
+                            {new Intl.NumberFormat("es-AR").format(
+                              !isInverted ? balance.amount : -balance.amount,
+                            )}
+                          </p>
+                        </div>
+                      ))}
                   </div>
                 </CardContent>
               </Card>

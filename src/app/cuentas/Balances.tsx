@@ -385,7 +385,7 @@ const Balances: FC<BalancesProps> = ({
                   href={{
                     pathname: "/cuentas",
                     query: {
-                      cuenta: "cuenta_corriente",
+                      cuenta: accountType ? "caja" : "cuenta_corriente",
                       entidad: item.entity.id,
                     },
                   }}

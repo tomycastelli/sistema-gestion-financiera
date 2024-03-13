@@ -234,24 +234,38 @@ export const operationsRouter = createTRPCRouter({
           input.opDateIsGreater && !input.opDateIsLesser
             ? {
                 date: {
-                  gte: new Date(
-                    input.opDateIsGreater.getFullYear(),
-                    input.opDateIsGreater.getMonth(),
-                    input.opDateIsGreater.getDate(),
-                  ),
-                  lt: new Date(
-                    input.opDateIsGreater.getFullYear(),
-                    input.opDateIsGreater.getMonth(),
-                    input.opDateIsGreater.getDate() + 1,
-                  ),
+                  gte: moment(input.opDateIsGreater)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .toDate(),
+                  lt: moment(input.opDateIsGreater)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .add(1, "day")
+                    .toDate(),
                 },
               }
             : {},
           input.opDateIsGreater && input.opDateIsLesser
             ? {
                 AND: [
-                  { date: { gte: input.opDateIsGreater } },
-                  { date: { lte: input.opDateIsLesser } },
+                  {
+                    date: {
+                      gte: moment(input.opDateIsGreater)
+                        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                        .toDate(),
+                    },
+                  },
+                  {
+                    date: {
+                      lte: moment(input.opDateIsLesser)
+                        .set({
+                          hour: 23,
+                          minute: 59,
+                          second: 59,
+                          millisecond: 999,
+                        })
+                        .toDate(),
+                    },
+                  },
                 ],
               }
             : {},

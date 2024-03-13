@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { CalendarIcon, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import moment from "moment";
 import { type Session } from "next-auth";
 import Link from "next/link";
@@ -17,10 +17,10 @@ import { currencies, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
+import { DateRangePicker } from "../components/DateRangePicker";
 import LoadingAnimation from "../components/LoadingAnimation";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
 import {
   Command,
   CommandEmpty,
@@ -471,69 +471,16 @@ const MovementsTable = ({
             </Popover>
           </div>
           <div className="flex flex-col">
-            <Label className="mb-2">Desde</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
-                    !fromDate && "text-muted-foreground",
-                  )}
-                >
-                  {fromDate ? (
-                    moment(fromDate).format("DD-MM-YYYY")
-                  ) : (
-                    <span>Elegir</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fromDate}
-                  onSelect={(date) => setFromDate(date)}
-                  disabled={(date) =>
-                    date > new Date() || date < new Date("2023-01-01")
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Label className="mb-2">Fecha</Label>
+            <DateRangePicker
+              date={{ from: fromDate, to: toDate }}
+              setDate={(d) => {
+                setFromDate(d?.from);
+                setToDate(d?.to);
+              }}
+            />
           </div>
-          <div className="flex flex-col">
-            <Label className="mb-2">Hasta</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
-                    !toDate && "text-muted-foreground",
-                  )}
-                >
-                  {toDate ? (
-                    moment(toDate).format("DD-MM-YYYY")
-                  ) : (
-                    <span>Elegir</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={toDate}
-                  onSelect={(date) => setToDate(date)}
-                  disabled={(date) =>
-                    date > new Date() || date < new Date("2023-01-01")
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+
           {session && selectedEntityString && !accountType && (
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
