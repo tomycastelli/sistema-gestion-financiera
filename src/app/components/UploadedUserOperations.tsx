@@ -37,7 +37,7 @@ const UploadedUserOperations = forwardRef<
                   <Link
                     prefetch={false}
                     href={`/operaciones/gestion/${op.id}`}
-                    className="flex text-black transition-all hover:scale-105"
+                    className="flex text-black transition-all hover:scale-105 dark:text-white"
                   >
                     Operación {op.id !== 0 ? op.id : "..."}
                   </Link>

@@ -3,8 +3,9 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import moment from "moment";
 import { useState, type FC } from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import docco from "react-syntax-highlighter/dist/esm/styles/hljs/docco";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
@@ -26,6 +27,8 @@ interface LogProps {
   log: RouterOutputs["logs"]["getLogs"]["logs"][number];
   users: RouterOutputs["users"]["getAll"];
 }
+
+SyntaxHighlighter.registerLanguage("json", json);
 
 const Log: FC<LogProps> = ({ log, users }) => {
   const [parent] = useAutoAnimate();
@@ -63,7 +66,7 @@ const Log: FC<LogProps> = ({ log, users }) => {
       <CardFooter className="flex flex-row items-end justify-between">
         <div className="flex flex-row items-center justify-start space-x-2">
           <Icons.person className="h-5" />
-          <p>{users.find((u) => u.id === log.createdBy)?.name}</p>
+          <p>{users.find((u) => u.id === log.userId)?.name}</p>
         </div>
         <div className="flex flex-row items-center justify-end space-x-2">
           <HoverCard>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
-import { getAllPermissions, getAllTags } from "~/lib/trpcFunctions";
+import { getAllPermissions, getAllTags, logIO } from "~/lib/trpcFunctions";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const tagsRouter = createTRPCRouter({
@@ -18,9 +18,15 @@ export const tagsRouter = createTRPCRouter({
         },
       });
 
-      if (response) {
-        await ctx.redis.del("tags");
-      }
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Añadir tag",
+        input,
+        response,
+      );
+
+      await ctx.redis.del("tags");
 
       return response;
     }),
@@ -33,9 +39,15 @@ export const tagsRouter = createTRPCRouter({
         },
       });
 
-      if (response) {
-        await ctx.redis.del("tags");
-      }
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Eliminar tag",
+        input,
+        response,
+      );
+
+      await ctx.redis.del("tags");
 
       return response;
     }),

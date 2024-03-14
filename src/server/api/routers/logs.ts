@@ -1,3 +1,4 @@
+import { type QueryCommandInput } from "@aws-sdk/lib-dynamodb";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -6,8 +7,8 @@ export const logsRouter = createTRPCRouter({
     .input(
       z.object({
         limit: z.number().int(),
-        page: z.number().int(),
         cursor: z.string().nullish(),
+        userId: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -17,18 +18,24 @@ export const logsRouter = createTRPCRouter({
         ? JSON.parse(Buffer.from(input.cursor, "base64").toString("utf-8"))
         : undefined;
 
-      const response = await client.send(
-        new QueryCommand({
-          TableName: tableName,
-          KeyConditionExpression: "pk = :pkValue",
-          ExpressionAttributeValues: {
-            ":pkValue": "log",
-          },
-          ScanIndexForward: false,
-          Limit: input.limit,
-          ExclusiveStartKey: cursor,
-        }),
-      );
+      const queryParameters: QueryCommandInput = {
+        TableName: tableName,
+        KeyConditionExpression: "pk = :pkValue",
+        ExpressionAttributeValues: {
+          ":pkValue": "log",
+        },
+        ScanIndexForward: false,
+        Limit: input.limit,
+        ExclusiveStartKey: cursor,
+      };
+
+      if (input.userId) {
+        queryParameters.FilterExpression = "userId = :userIdValue";
+        queryParameters.ExpressionAttributeValues![":userIdValue"] =
+          input.userId;
+      }
+
+      const response = await client.send(new QueryCommand(queryParameters));
 
       let nextCursor = null;
 
@@ -43,14 +50,16 @@ export const logsRouter = createTRPCRouter({
           pk: z.string(),
           sk: z.string(),
           name: z.string(),
-          createdBy: z.string(),
-          input: z.record(z.any()),
-          output: z.record(z.any()),
+          userId: z.string(),
+          input: z.any(),
+          output: z.any(),
         }),
       );
 
+      const logs = logsSchema.parse(response.Items);
+
       return {
-        logs: response.Items as z.infer<typeof logsSchema>,
+        logs,
         nextCursor,
         count: response.Count ?? 0,
       };

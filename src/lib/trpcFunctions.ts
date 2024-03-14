@@ -11,6 +11,7 @@ import type Redis from "ioredis";
 import moment from "moment";
 import { type Session } from "next-auth";
 import { z } from "zod";
+import { type dynamodb } from "~/server/dynamodb";
 import { movementBalanceDirection } from "./functions";
 import { mergePermissions, type PermissionSchema } from "./permissionsTypes";
 
@@ -525,4 +526,28 @@ export const undoBalances = async (
     }
   }
   return balances;
+};
+
+export const logIO = async (
+  dynamodbClient: typeof dynamodb,
+  userId: string,
+  name: string,
+  input: object,
+  output: object,
+): Promise<void> => {
+  const { client, PutCommand, tableName } = dynamodbClient;
+
+  await client.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: {
+        pk: "log",
+        sk: Date.now().toString(),
+        userId,
+        name,
+        input,
+        output,
+      },
+    }),
+  );
 };

@@ -1,6 +1,7 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { findDifferences, movementBalanceDirection } from "~/lib/functions";
-import { generateMovements } from "~/lib/trpcFunctions";
+import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes } from "~/lib/variables";
 import {
   createTRPCRouter,
@@ -128,14 +129,19 @@ export const editingOperationsRouter = createTRPCRouter({
           return updateTransactionResponse;
         });
 
+        await logIO(
+          ctx.dynamodb,
+          ctx.session.user.id,
+          "Actualizar transacción",
+          input,
+          response,
+        );
+
         return response;
       } catch (error) {
-        // Handle the error here
-        console.error(
-          "An error occurred while executing the Prisma query:",
-          error,
-        );
-        throw error; // Rethrow the error to be caught by the caller
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+        });
       }
     }),
 
@@ -192,13 +198,19 @@ export const editingOperationsRouter = createTRPCRouter({
           await generateMovements(ctx.db, tx, true, 1, "confirmation");
         }
 
+        await logIO(
+          ctx.dynamodb,
+          ctx.session.user.id,
+          "Confirmar transacción",
+          input,
+          responses,
+        );
+
         return responses;
       } catch (error) {
-        console.error(
-          "An error occurred while executing the Prisma query:",
-          error,
-        );
-        throw error;
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+        });
       }
     }),
   cancelTransaction: protectedLoggedProcedure
@@ -287,6 +299,14 @@ export const editingOperationsRouter = createTRPCRouter({
           await generateMovements(ctx.db, tx, true, 1, "cancellation");
         }
       }
+
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Cancelar transacciones",
+        input,
+        invertedTransactions,
+      );
 
       return invertedTransactions;
     }),

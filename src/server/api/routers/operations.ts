@@ -6,6 +6,7 @@ import {
   generateMovements,
   getAllPermissions,
   getAllTags,
+  logIO,
   undoBalances,
 } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
@@ -137,6 +138,14 @@ export const operationsRouter = createTRPCRouter({
           await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
         }
 
+        await logIO(
+          ctx.dynamodb,
+          ctx.session.user.id,
+          "Insertar operación",
+          input,
+          response,
+        );
+
         return response;
       }
     }),
@@ -172,6 +181,14 @@ export const operationsRouter = createTRPCRouter({
       if (response) {
         await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
       }
+
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Insertar transacciones",
+        input,
+        response,
+      );
 
       return response;
     }),
@@ -774,7 +791,7 @@ export const operationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await undoBalances(ctx.db, undefined, input.operationId);
 
-      const deletedOperation = await ctx.db.operations.delete({
+      const response = await ctx.db.operations.delete({
         where: {
           id: input.operationId,
         },
@@ -787,7 +804,15 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      return { deletedOperation };
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Eliminar operación",
+        input,
+        response,
+      );
+
+      return response;
     }),
 
   deleteTransaction: protectedProcedure
@@ -795,7 +820,7 @@ export const operationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await undoBalances(ctx.db, input.transactionId, undefined);
 
-      const deletedTransaction = await ctx.db.transactions.delete({
+      const response = await ctx.db.transactions.delete({
         where: {
           id: input.transactionId,
         },
@@ -807,7 +832,15 @@ export const operationsRouter = createTRPCRouter({
         },
       });
 
-      return { deletedTransaction };
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Eliminar transacciones",
+        input,
+        response,
+      );
+
+      return response;
     }),
 
   insights: protectedProcedure

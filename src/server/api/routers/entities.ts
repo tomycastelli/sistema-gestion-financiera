@@ -6,6 +6,7 @@ import {
   getAllEntities,
   getAllPermissions,
   getAllTags,
+  logIO,
 } from "~/lib/trpcFunctions";
 
 import {
@@ -69,7 +70,7 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const insertResponse = await ctx.db.entities.create({
+      const response = await ctx.db.entities.create({
         data: {
           name: input.name,
           tagName: input.tag,
@@ -82,13 +83,21 @@ export const entitiesRouter = createTRPCRouter({
             id: input.userId,
           },
           data: {
-            entityId: insertResponse.id,
+            entityId: response.id,
           },
         });
       }
 
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Añadir entidad",
+        input,
+        response,
+      );
+
       await ctx.redis.del("cached_entities");
-      return { message: "Entity added to database", data: insertResponse };
+      return response;
     }),
   deleteOne: protectedLoggedProcedure
     .input(z.object({ entityId: z.number().int() }))
@@ -103,15 +112,23 @@ export const entitiesRouter = createTRPCRouter({
       });
 
       if (!transaction) {
-        const deleteResponse = await ctx.db.entities.delete({
+        const response = await ctx.db.entities.delete({
           where: {
             id: input.entityId,
           },
         });
 
+        await logIO(
+          ctx.dynamodb,
+          ctx.session.user.id,
+          "Eliminar entidad",
+          input,
+          response,
+        );
+
         await ctx.redis.del("cached_entities");
 
-        return deleteResponse;
+        return response;
       } else {
         throw new TRPCError({
           message: `La entidad tiene aunque sea una transacción (${transaction.id}) relacionada`,
@@ -128,7 +145,7 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const updatedEntity = await ctx.db.entities.update({
+      const response = await ctx.db.entities.update({
         where: {
           id: input.id,
         },
@@ -138,8 +155,16 @@ export const entitiesRouter = createTRPCRouter({
         },
       });
 
+      await logIO(
+        ctx.dynamodb,
+        ctx.session.user.id,
+        "Actualizar entidad",
+        input,
+        response,
+      );
+
       await ctx.redis.del("cached_entities");
 
-      return updatedEntity;
+      return response;
     }),
 });
