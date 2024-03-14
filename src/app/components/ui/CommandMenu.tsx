@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useState } from "react";
 
 import { signOut } from "next-auth/react";
 import Link from "next/link";
@@ -16,23 +16,25 @@ import {
   CommandShortcut,
 } from "~/app/components/ui/command";
 import { createQueryString } from "~/lib/functions";
-import { type RouterOutputs } from "~/trpc/shared";
+import { api } from "~/trpc/react";
 import { Icons } from "./Icons";
 import { Button } from "./button";
 
-interface CommandMenuProps {
-  tags: RouterOutputs["tags"]["getFiltered"];
-  entities: RouterOutputs["entities"]["getFiltered"];
-  userPermissons: RouterOutputs["users"]["getAllPermissions"];
-}
-
-const CommandMenu: FC<CommandMenuProps> = ({
-  tags,
-  entities,
-  userPermissons,
-}) => {
+const CommandMenu = () => {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState<string>();
+
+  const { data: tags, isSuccess: isTagsSuccess } =
+    api.tags.getFiltered.useQuery(undefined, { enabled: open });
+  const { data: entities, isSuccess: isEntitiesSuccess } =
+    api.entities.getFiltered.useQuery(
+      { permissionName: "ACCOUNTS_VISUALIZE" },
+      { enabled: open },
+    );
+  const { data: userPermissions } = api.users.getAllPermissions.useQuery(
+    {},
+    { enabled: open },
+  );
 
   const router = useRouter();
   const isMac =
@@ -129,7 +131,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
         <CommandList>
           <CommandEmpty>No se encontraron comandos.</CommandEmpty>
           <CommandGroup heading="Operaciones">
-            {userPermissons?.find(
+            {userPermissions?.find(
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_CREATE"),
             ) && (
@@ -142,7 +144,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
                 <CommandShortcut>⌘C</CommandShortcut>
               </CommandItem>
             )}
-            {userPermissons?.find(
+            {userPermissions?.find(
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_VISUALIZE"),
             ) && (
@@ -185,7 +187,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
               <Icons.person className="mr-2 h-4 w-4" />
               <span>Logout</span>
             </CommandItem>
-            {userPermissons?.find(
+            {userPermissions?.find(
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
             ) && (
@@ -198,7 +200,7 @@ const CommandMenu: FC<CommandMenuProps> = ({
                 <CommandShortcut>⌘P</CommandShortcut>
               </CommandItem>
             )}
-            {userPermissons?.find(
+            {userPermissions?.find(
               (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
             ) && (
               <CommandItem
@@ -226,43 +228,45 @@ const CommandMenu: FC<CommandMenuProps> = ({
           <CommandSeparator />
           <CommandGroup heading="Cuentas">
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Tags</p>
-            {tags.map((tag) => (
-              <CommandItem
-                key={tag.name}
-                value={tag.name}
-                onSelect={() =>
-                  handleSelect(
-                    "/cuentas" +
-                      "?" +
-                      createQueryString(undefined, "tag", tag.name),
-                  )
-                }
-              >
-                <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
-                <span>{tag.name}</span>
-              </CommandItem>
-            ))}
+            {isTagsSuccess &&
+              tags.map((tag) => (
+                <CommandItem
+                  key={tag.name}
+                  value={tag.name}
+                  onSelect={() =>
+                    handleSelect(
+                      "/cuentas" +
+                        "?" +
+                        createQueryString(undefined, "tag", tag.name),
+                    )
+                  }
+                >
+                  <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
+                  <span>{tag.name}</span>
+                </CommandItem>
+              ))}
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Entidades</p>
-            {entities.map((entity) => (
-              <CommandItem
-                key={entity.id}
-                value={entity.name}
-                onSelect={() =>
-                  handleSelect(
-                    "/cuentas" +
-                      "?" +
-                      createQueryString(
-                        undefined,
-                        "entidad",
-                        entity.id.toString(),
-                      ),
-                  )
-                }
-              >
-                <Icons.currentAccount className="mr-2 h-4 w-4" />
-                <span>{entity.name}</span>
-              </CommandItem>
-            ))}
+            {isEntitiesSuccess &&
+              entities.map((entity) => (
+                <CommandItem
+                  key={entity.id}
+                  value={entity.name}
+                  onSelect={() =>
+                    handleSelect(
+                      "/cuentas" +
+                        "?" +
+                        createQueryString(
+                          undefined,
+                          "entidad",
+                          entity.id.toString(),
+                        ),
+                    )
+                  }
+                >
+                  <Icons.currentAccount className="mr-2 h-4 w-4" />
+                  <span>{entity.name}</span>
+                </CommandItem>
+              ))}
           </CommandGroup>
         </CommandList>
       </CommandDialog>

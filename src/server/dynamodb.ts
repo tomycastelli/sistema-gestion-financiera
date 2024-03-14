@@ -6,16 +6,15 @@ import {
   QueryCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import AWS from "aws-sdk";
 import { env } from "~/env.mjs";
 
-AWS.config.update({
-  accessKeyId: env.S3_PUBLIC_KEY,
-  secretAccessKey: env.S3_SECRET_KEY,
+const dynamoDBClient = new DynamoDBClient({
   region: "sa-east-1",
+  credentials: {
+    accessKeyId: env.S3_PUBLIC_KEY,
+    secretAccessKey: env.S3_SECRET_KEY,
+  },
 });
-
-const dynamoDBClient = new DynamoDBClient({ region: "sa-east-1" });
 const client = DynamoDBDocumentClient.from(dynamoDBClient, {
   marshallOptions: {
     removeUndefinedValues: true,
