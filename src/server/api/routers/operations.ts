@@ -1,4 +1,4 @@
-import type { Transactions } from "@prisma/client";
+import { eq } from "drizzle-orm";
 import moment from "moment";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
@@ -10,6 +10,11 @@ import {
   undoBalances,
 } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
+import {
+  operations,
+  transactions,
+  transactionsMetadata,
+} from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -42,105 +47,132 @@ export const operationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (input.opId) {
-        const response: Transactions[] = [];
-        for (const transactionToInsert of input.transactions) {
-          const tx = await ctx.db.transactions.create({
-            data: {
-              ...transactionToInsert,
-              operationId: input.opId,
-              transactionMetadata: {
-                create: {
-                  uploadedBy: ctx.session.user.id,
-                  uploadedDate: new Date(),
-                  metadata: transactionToInsert.metadata,
-                },
-              },
-            },
-            include: { operation: true },
-          });
-          response.push(tx);
-          if (
-            cashAccountOnlyTypes.includes(tx.type) ||
-            tx.type === "pago por cta cte"
-          ) {
-            await generateMovements(ctx.db, tx, true, 1, "upload");
-          }
-          if (
-            !cashAccountOnlyTypes.includes(tx.type) ||
-            tx.type === "pago por cta cte"
-          ) {
-            await generateMovements(ctx.db, tx, false, -1, "upload");
-          }
-        }
+        const opId = input.opId;
 
-        if (response) {
-          await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
-        }
-        return response;
-      } else {
-        const response = await ctx.db.operations.create({
-          data: {
-            date: input.opDate,
-            observations: input.opObservations,
-            transactions: {
-              create: input.transactions.map((transaction) => ({
-                type: transaction.type,
-                date: transaction.date,
-                operatorEntity: {
-                  connect: { id: transaction.operatorEntityId },
-                },
-                fromEntity: { connect: { id: transaction.fromEntityId } },
-                toEntity: { connect: { id: transaction.toEntityId } },
-                currency: transaction.currency,
-                amount: transaction.amount,
-                method: transaction.method,
-                status:
-                  cashAccountOnlyTypes.includes(transaction.type) ||
-                  transaction.type === "pago por cta cte"
-                    ? "confirmed"
-                    : "pending",
-                transactionMetadata: {
-                  create: {
-                    uploadedBy: ctx.session.user.id,
-                    uploadedDate: new Date(),
-                    metadata: transaction.metadata,
-                  },
-                },
-              })),
-            },
-          },
-          include: {
-            transactions: {
-              include: {
-                transactionMetadata: true,
-                operation: { select: { date: true } },
-              },
-            },
-          },
+        const response = await ctx.db2.transaction(async (tx) => {
+          const list = [];
+          const operation = await tx.query.operations.findFirst({
+            where: eq(operations.id, opId),
+          });
+          for (const transactionToInsert of input.transactions) {
+            const insertedTxReturn = await tx
+              .insert(transactions)
+              .values({ ...transactionToInsert, operationId: opId })
+              .returning();
+            const insertedTx = insertedTxReturn[0]!;
+            await tx.insert(transactionsMetadata).values({
+              transactionId: insertedTx.id,
+              uploadedBy: ctx.user.id,
+              uploadedDate: new Date(),
+              metadata: transactionToInsert.metadata,
+            });
+
+            list.push(insertedTx);
+
+            if (
+              cashAccountOnlyTypes.includes(insertedTx.type) ||
+              insertedTx.type === "pago por cta cte"
+            ) {
+              await generateMovements(
+                ctx.db2,
+                { ...insertedTx, operation: operation! },
+                true,
+                1,
+                "upload",
+              );
+            }
+            if (
+              !cashAccountOnlyTypes.includes(insertedTx.type) ||
+              insertedTx.type === "pago por cta cte"
+            ) {
+              await generateMovements(
+                ctx.db2,
+                { ...insertedTx, operation: operation! },
+                false,
+                -1,
+                "upload",
+              );
+            }
+          }
+          return list;
         });
 
-        for (const tx of response.transactions) {
-          if (
-            cashAccountOnlyTypes.includes(tx.type) ||
-            tx.type === "pago por cta cte"
-          ) {
-            await generateMovements(ctx.db, tx, true, 1, "upload");
-          }
-          if (
-            !cashAccountOnlyTypes.includes(tx.type) ||
-            tx.type === "pago por cta cte"
-          ) {
-            await generateMovements(ctx.db, tx, false, -1, "upload");
-          }
-        }
+        await ctx.redis.del(`user_operations:${ctx.user.id}`);
+        return response;
+      } else {
+        const response = await ctx.db2.transaction(async (tx) => {
+          const list = [];
+          const op = await tx
+            .insert(operations)
+            .values({ date: input.opDate, observations: input.opObservations })
+            .returning();
 
-        if (response) {
-          await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
-        }
+          for (const txToInsert of input.transactions) {
+            const insertedTxResponse = await tx
+              .insert(transactions)
+              .values({
+                operationId: op[0]!.id,
+                type: txToInsert.type,
+                date: txToInsert.date,
+                operatorEntityId: txToInsert.operatorEntityId,
+                fromEntityId: txToInsert.fromEntityId,
+                toEntityId: txToInsert.toEntityId,
+                currency: txToInsert.currency,
+                amount: txToInsert.amount,
+                method: txToInsert.method,
+                status:
+                  cashAccountOnlyTypes.includes(txToInsert.type) ||
+                  txToInsert.type === "pago por cta cte"
+                    ? "confirmed"
+                    : "cancelled",
+              })
+              .returning();
+
+            const insertedTx = insertedTxResponse[0]!;
+
+            list.push({ ...insertedTx, operation: op[0]! });
+
+            await tx.insert(transactionsMetadata).values({
+              transactionId: insertedTx.id,
+              uploadedBy: ctx.user.id,
+              uploadedDate: new Date(),
+              metadata: txToInsert.metadata,
+            });
+
+            if (
+              cashAccountOnlyTypes.includes(insertedTx.type) ||
+              insertedTx.type === "pago por cta cte"
+            ) {
+              await generateMovements(
+                ctx.db2,
+                { ...insertedTx, operation: op[0]! },
+                true,
+                1,
+                "upload",
+              );
+            }
+            if (
+              !cashAccountOnlyTypes.includes(insertedTx.type) ||
+              insertedTx.type === "pago por cta cte"
+            ) {
+              await generateMovements(
+                ctx.db2,
+                { ...insertedTx, operation: op[0]! },
+                false,
+                -1,
+                "upload",
+              );
+            }
+          }
+
+          return list;
+        });
+
+        await ctx.redis.del(`user_operations:${ctx.user.id}`);
 
         await logIO(
           ctx.dynamodb,
-          ctx.session.user.id,
+          ctx.user.id,
           "Insertar operación",
           input,
           response,
@@ -179,12 +211,12 @@ export const operationsRouter = createTRPCRouter({
       });
 
       if (response) {
-        await ctx.redis.del(`user_operations:${ctx.session.user.id}`);
+        await ctx.redis.del(`user_operations:${ctx.user.id}`);
       }
 
       await logIO(
         ctx.dynamodb,
-        ctx.session.user.id,
+        ctx.user.id,
         "Insertar transacciones",
         input,
         response,
@@ -199,7 +231,7 @@ export const operationsRouter = createTRPCRouter({
         transactions: {
           some: {
             transactionMetadata: {
-              uploadedBy: ctx.session.user.id,
+              uploadedBy: ctx.user.id,
             },
           },
         },
@@ -393,11 +425,10 @@ export const operationsRouter = createTRPCRouter({
 
       const userPermissions = await getAllPermissions(
         ctx.redis,
-        ctx.session,
-        ctx.db,
-        { userId: undefined },
+        ctx.user,
+        ctx.db2,
       );
-      const tags = await getAllTags(ctx.redis, ctx.db);
+      const tags = await getAllTags(ctx.redis, ctx.db2);
 
       const operationsWithPermissions = queriedOperations.map((op) => {
         const isVisualizeAllowed = userPermissions?.find(
@@ -612,11 +643,10 @@ export const operationsRouter = createTRPCRouter({
       if (operationDetails) {
         const userPermissions = await getAllPermissions(
           ctx.redis,
-          ctx.session,
-          ctx.db,
-          { userId: undefined },
+          ctx.user,
+          ctx.db2,
         );
-        const tags = await getAllTags(ctx.redis, ctx.db);
+        const tags = await getAllTags(ctx.redis, ctx.db2);
 
         const isVisualizeAllowed = userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
@@ -789,7 +819,7 @@ export const operationsRouter = createTRPCRouter({
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db, undefined, input.operationId);
+      await undoBalances(ctx.db2, undefined, input.operationId);
 
       const response = await ctx.db.operations.delete({
         where: {
@@ -806,7 +836,7 @@ export const operationsRouter = createTRPCRouter({
 
       await logIO(
         ctx.dynamodb,
-        ctx.session.user.id,
+        ctx.user.id,
         "Eliminar operación",
         input,
         response,
@@ -818,7 +848,7 @@ export const operationsRouter = createTRPCRouter({
   deleteTransaction: protectedProcedure
     .input(z.object({ transactionId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db, input.transactionId, undefined);
+      await undoBalances(ctx.db2, input.transactionId, undefined);
 
       const response = await ctx.db.transactions.delete({
         where: {
@@ -834,7 +864,7 @@ export const operationsRouter = createTRPCRouter({
 
       await logIO(
         ctx.dynamodb,
-        ctx.session.user.id,
+        ctx.user.id,
         "Eliminar transacciones",
         input,
         response,

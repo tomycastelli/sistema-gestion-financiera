@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import LinkTree from "./LinkTree";
 import { ThemeToggler } from "./ThemeToggler";
 import CommandMenu from "./ui/CommandMenu";
 
 const Navbar = async () => {
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   return (
     <header className="h-fit w-full py-4 text-foreground">
@@ -22,12 +22,10 @@ const Navbar = async () => {
             v0.1.4-2
           </p>
         </div>
-        {session?.user && (
-          <div className="hidden sm:block">
-            <LinkTree />
-          </div>
-        )}
-        {session?.user && (
+        <div className="hidden sm:block">
+          <LinkTree />
+        </div>
+        {user && (
           <div className="flex flex-row items-center space-x-4">
             <CommandMenu />
             <ThemeToggler />

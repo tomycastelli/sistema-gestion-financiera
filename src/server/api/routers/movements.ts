@@ -35,7 +35,7 @@ export const movementsRouter = createTRPCRouter({
 
       let isRequestValid = false;
 
-      if (ctx.session?.user !== undefined) {
+      if (ctx.user !== undefined) {
         isRequestValid = true;
       } else if (input.linkId && input.linkToken && input.sharedEntityId) {
         const link = await ctx.db.links.findUnique({
@@ -321,12 +321,11 @@ export const movementsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       let isRequestValid = false;
 
-      if (ctx.session?.user !== undefined) {
+      if (ctx.user !== undefined) {
         const userPermissions = await getAllPermissions(
           ctx.redis,
-          ctx.session,
+          ctx.user,
           ctx.db,
-          { userId: undefined },
         );
         const tags = await getAllTags(ctx.redis, ctx.db);
 
@@ -373,7 +372,7 @@ export const movementsRouter = createTRPCRouter({
       }
 
       if (!isRequestValid) {
-        if (ctx.session?.user) {
+        if (ctx.user) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message:
@@ -485,7 +484,7 @@ export const movementsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       let isRequestValid = false;
 
-      if (ctx.session?.user !== undefined) {
+      if (ctx.user !== undefined) {
         isRequestValid = true;
       } else if (input.linkId && input.linkToken && input.entityId) {
         const link = await ctx.db.links.findUnique({

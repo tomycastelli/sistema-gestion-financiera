@@ -28,9 +28,8 @@ export const entitiesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(
         ctx.redis,
-        ctx.session,
+        ctx.user,
         ctx.db,
-        { userId: undefined },
       );
       const tags = await getAllTags(ctx.redis, ctx.db);
       const entities = await getAllEntities(ctx.redis, ctx.db);
@@ -53,7 +52,7 @@ export const entitiesRouter = createTRPCRouter({
           )
         ) {
           return true;
-        } else if (entity.name === ctx.session.user.name) {
+        } else if (entity.name === ctx.user.name) {
           return true;
         }
       });
@@ -88,13 +87,7 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
 
-      await logIO(
-        ctx.dynamodb,
-        ctx.session.user.id,
-        "Añadir entidad",
-        input,
-        response,
-      );
+      await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
 
       await ctx.redis.del("cached_entities");
       return response;
@@ -120,7 +113,7 @@ export const entitiesRouter = createTRPCRouter({
 
         await logIO(
           ctx.dynamodb,
-          ctx.session.user.id,
+          ctx.user.id,
           "Eliminar entidad",
           input,
           response,
@@ -157,7 +150,7 @@ export const entitiesRouter = createTRPCRouter({
 
       await logIO(
         ctx.dynamodb,
-        ctx.session.user.id,
+        ctx.user.id,
         "Actualizar entidad",
         input,
         response,

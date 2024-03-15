@@ -232,7 +232,7 @@ export function getAllChildrenTags(
     name: string;
     parent: string | null;
     color: string | null;
-    childTags: {
+    children: {
       name: string;
       parent: string | null;
       color: string | null;
@@ -253,9 +253,9 @@ export function getAllChildrenTags(
     if (currentTag) {
       result.push(currentTag.name);
 
-      if (currentTag.childTags) {
+      if (currentTag.children) {
         // Recursively find children of the current tag
-        for (const child of currentTag.childTags) {
+        for (const child of currentTag.children) {
           getAllChildrenTags(child.name, allTags, result);
         }
       }

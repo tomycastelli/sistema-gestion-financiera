@@ -18,13 +18,7 @@ export const tagsRouter = createTRPCRouter({
         },
       });
 
-      await logIO(
-        ctx.dynamodb,
-        ctx.session.user.id,
-        "Añadir tag",
-        input,
-        response,
-      );
+      await logIO(ctx.dynamodb, ctx.user.id, "Añadir tag", input, response);
 
       await ctx.redis.del("tags");
 
@@ -39,13 +33,7 @@ export const tagsRouter = createTRPCRouter({
         },
       });
 
-      await logIO(
-        ctx.dynamodb,
-        ctx.session.user.id,
-        "Eliminar tag",
-        input,
-        response,
-      );
+      await logIO(ctx.dynamodb, ctx.user.id, "Eliminar tag", input, response);
 
       await ctx.redis.del("tags");
 
@@ -54,9 +42,8 @@ export const tagsRouter = createTRPCRouter({
   getFiltered: protectedProcedure.query(async ({ ctx }) => {
     const userPermissions = await getAllPermissions(
       ctx.redis,
-      ctx.session,
+      ctx.user,
       ctx.db,
-      { userId: undefined },
     );
 
     const tags = await getAllTags(ctx.redis, ctx.db);

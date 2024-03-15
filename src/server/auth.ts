@@ -1,123 +1,85 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import {
-  getServerSession,
-  type DefaultSession,
-  type NextAuthOptions,
-} from "next-auth";
-import AzureADProvider from "next-auth/providers/azure-ad";
-import GoogleProvider from "next-auth/providers/google";
+import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
+import { MicrosoftEntraId } from "arctic";
+import { Lucia } from "lucia";
+import { cookies } from "next/headers";
+import { cache } from "react";
 import { type z } from "zod";
-
 import { env } from "~/env.mjs";
 import { type PermissionSchema } from "~/lib/permissionsTypes";
-import { db } from "~/server/db";
-import { api } from "~/trpc/server";
-import { redis } from "./redis";
+import { db2 } from "./db";
+import { session, user } from "./db/schema";
 
-/**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
- *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- */
-declare module "next-auth" {
-  interface User {
-    roleId?: number | null;
-    permissions?: z.infer<typeof PermissionSchema> | null;
-    entityId?: number | null;
-  }
+const adapter = new DrizzlePostgreSQLAdapter(db2, session, user);
 
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      roleId?: number | null;
+const baseUrl =
+  env.NODE_ENV === "production"
+    ? "https://financial-tracker.vercel.app"
+    : "http://localhost:3000";
+
+const redirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
+
+export const microsoft = new MicrosoftEntraId(
+  env.AZURE_AD_TENANT_ID,
+  env.AZURE_AD_CLIENT_ID,
+  env.AZURE_AD_CLIENT_SECRET,
+  redirectUrl,
+);
+
+export const lucia = new Lucia(adapter, {
+  sessionCookie: {
+    attributes: {
+      secure: env.NODE_ENV === "production",
+    },
+  },
+  getUserAttributes: (attributes) => {
+    return {
+      name: attributes.name,
+      email: attributes.email,
+      photoUrl: attributes.photoUrl,
+      permissions: attributes.permissions,
+      roleId: attributes.roleId,
+      entityId: attributes.entityId,
+    };
+  },
+});
+
+declare module "lucia" {
+  interface Register {
+    Lucia: typeof lucia;
+    DatabaseUserAttributes: {
+      name: string;
+      email: string;
+      photoUrl: string;
       permissions?: z.infer<typeof PermissionSchema> | null;
-      entityId?: number | null;
-    } & DefaultSession["user"];
+      entityId: number;
+      roleId?: number | null;
+    };
   }
 }
 
-/**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
- *
- * @see https://next-auth.js.org/configuration/options
- */
-export const authOptions: NextAuthOptions = {
-  pages: {
-    signIn: "/",
-  },
-  callbacks: {
-    redirect() {
-      return "/";
-    },
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-        roleId: user.roleId,
-        permissions: user.permissions,
-        entityId: user.entityId,
-      },
-    }),
-  },
-  adapter: PrismaAdapter(db),
-  secret: env.NEXTAUTH_SECRET,
-  session: {
-    strategy: "database",
-    updateAge: 12 * 60 * 60,
-  },
-  events: {
-    createUser: async (message) => {
-      if (message.user.name) {
-        await api.entities.addOne.mutate({
-          name: message.user.name,
-          tag: "Operadores",
-          userId: message.user.id,
-        });
-        await redis.del("users");
-      }
-    },
-    signIn: (message) => {
-      console.log(
-        `User ${
-          message.user.name
-        } signed in at: ${new Date().toLocaleTimeString("es-AR")}`,
+export const getUser = cache(async () => {
+  const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+  if (!sessionId) return null;
+  const { session, user } = await lucia.validateSession(sessionId);
+  try {
+    if (session?.fresh) {
+      const sessionCookie = lucia.createSessionCookie(session.id);
+      cookies().set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes,
       );
-    },
-  },
-  providers: [
-    GoogleProvider({
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: `${profile.given_name} ${profile.family_name}`,
-          email: profile.email,
-        };
-      },
-    }),
-    AzureADProvider({
-      clientId: env.AZURE_AD_CLIENT_ID,
-      clientSecret: env.AZURE_AD_CLIENT_SECRET,
-      tenantId: env.AZURE_AD_TENANT_ID,
-    }),
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
-  ],
-};
-
-/**
- * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
- *
- * @see https://next-auth.js.org/configuration/nextjs
- */
-export const getServerAuthSession = () => getServerSession(authOptions);
+    }
+    if (!session) {
+      const sessionCookie = lucia.createBlankSessionCookie();
+      cookies().set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes,
+      );
+    }
+  } catch {
+    // Next.js throws error when attempting to set cookies when rendering page
+  }
+  return user;
+});

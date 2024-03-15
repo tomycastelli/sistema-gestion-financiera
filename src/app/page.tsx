@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { Icons } from "./components/ui/Icons";
 import { Button } from "./components/ui/button";
 const AuthForm = dynamic(() => import("./components/AuthForm"));
@@ -12,17 +12,17 @@ const UsersMenuCard = dynamic(() => import("./components/UsersMenuCard"));
 const AccountsMenuCard = dynamic(() => import("./components/AccountsMenuCard"));
 
 export default async function Home() {
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   return (
     <div className="mt-12 flex h-full w-full flex-col items-center justify-center">
       <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight">
         Bienvenido al portal de Maika
       </h1>
-      {session ? (
+      {user ? (
         <div className="flex flex-col items-center justify-center space-y-8">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <OperationsMenuCard userId={session.user.id} />
+            <OperationsMenuCard userId={user.id} />
             <AccountsMenuCard />
             <EntitiesMenuCard />
             <UsersMenuCard />

@@ -33,8 +33,9 @@ export const env = createEnv({
     S3_SECRET_KEY: z.string(),
 
     LAMBDA_API_ENDPOINT: z.string(),
-
     LAMBDA_API_KEY: z.string(),
+
+    NEONDB_URL: z.string(),
   },
 
   /**
@@ -65,6 +66,7 @@ export const env = createEnv({
     S3_SECRET_KEY: process.env.S3_SECRET_KEY,
     LAMBDA_API_ENDPOINT: process.env.LAMBDA_API_ENDPOINT,
     LAMBDA_API_KEY: process.env.LAMBDA_API_KEY,
+    NEONDB_URL: process.env.NEONDB_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

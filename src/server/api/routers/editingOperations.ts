@@ -49,7 +49,7 @@ export const editingOperationsRouter = createTRPCRouter({
           const changesMade = findDifferences(
             input.oldTransactionData,
             input.newTransactionData,
-            ctx.session.user.id,
+            ctx.user.id,
           );
           // @ts-ignore
           let newHistoryJson = [];
@@ -131,7 +131,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
         await logIO(
           ctx.dynamodb,
-          ctx.session.user.id,
+          ctx.user.id,
           "Actualizar transacción",
           input,
           response,
@@ -171,7 +171,7 @@ export const editingOperationsRouter = createTRPCRouter({
             },
           },
           data: {
-            confirmedBy: ctx.session.user.id,
+            confirmedBy: ctx.user.id,
             confirmedDate: new Date(),
           },
         });
@@ -200,7 +200,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
         await logIO(
           ctx.dynamodb,
-          ctx.session.user.id,
+          ctx.user.id,
           "Confirmar transacción",
           input,
           responses,
@@ -246,7 +246,7 @@ export const editingOperationsRouter = createTRPCRouter({
             }
           : { transaction: { operationId: input.operationId } },
         data: {
-          cancelledBy: ctx.session.user.id,
+          cancelledBy: ctx.user.id,
           cancelledDate: new Date(),
         },
       });
@@ -265,9 +265,9 @@ export const editingOperationsRouter = createTRPCRouter({
         status: tx.status,
         transactionMetadata: {
           create: {
-            uploadedBy: ctx.session.user.id,
+            uploadedBy: ctx.user.id,
             uploadedDate: new Date(),
-            cancelledBy: ctx.session.user.id,
+            cancelledBy: ctx.user.id,
             cancelledDate: new Date(),
             metadata: tx.transactionMetadata?.metadata
               ? tx.transactionMetadata.metadata
@@ -302,7 +302,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
       await logIO(
         ctx.dynamodb,
-        ctx.session.user.id,
+        ctx.user.id,
         "Cancelar transacciones",
         input,
         invertedTransactions,

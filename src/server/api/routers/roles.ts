@@ -9,12 +9,7 @@ import {
 
 export const rolesRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    const permissions = await getAllPermissions(
-      ctx.redis,
-      ctx.session,
-      ctx.db,
-      {},
-    );
+    const permissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db);
 
     const hasPermissions = permissions?.find(
       (permission) =>
@@ -52,12 +47,7 @@ export const rolesRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
+      const permissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db);
 
       const hasPermissions = permissions?.find(
         (permission) =>
@@ -90,12 +80,7 @@ export const rolesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
+      const permissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db);
 
       const hasPermissions = permissions?.find(
         (permission) =>
@@ -120,12 +105,7 @@ export const rolesRouter = createTRPCRouter({
   deleteOne: protectedLoggedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
+      const permissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db);
 
       const hasPermissions = permissions?.find(
         (permission) =>
@@ -165,12 +145,7 @@ export const rolesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const permissions = await getAllPermissions(
-        ctx.redis,
-        ctx.session,
-        ctx.db,
-        {},
-      );
+      const permissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db);
 
       const hasPermissions = permissions?.find(
         (permission) =>

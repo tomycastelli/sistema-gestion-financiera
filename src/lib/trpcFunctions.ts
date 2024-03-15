@@ -1,82 +1,83 @@
-import type {
-  Balances,
-  Movements,
-  Prisma,
-  PrismaClient,
-  Transactions,
-} from "@prisma/client";
-import { type DefaultArgs } from "@prisma/client/runtime/library";
 import { TRPCError } from "@trpc/server";
+import { and, desc, eq, gt, or, sql } from "drizzle-orm";
+import { type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type Redis from "ioredis";
+import { type User } from "lucia";
 import moment from "moment";
-import { type Session } from "next-auth";
-import { z } from "zod";
+import { ZodError, type z } from "zod";
 import { type dynamodb } from "~/server/dynamodb";
+import type * as schema from "../server/db/schema";
+import {
+  balances,
+  movements,
+  operations,
+  role,
+  transactions,
+  type returnedBalancesSchema,
+  type returnedMovementsSchema,
+  type returnedTransactionsSchema,
+} from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
-import { mergePermissions, type PermissionSchema } from "./permissionsTypes";
-
-const permissionsInput = z.object({ userId: z.string().optional() });
+import { PermissionSchema, mergePermissions } from "./permissionsTypes";
 
 export const getAllPermissions = async (
   redis: Redis,
-  session: Session | null,
-  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
-  input: z.infer<typeof permissionsInput>,
+  user: User | null | undefined,
+  db: PostgresJsDatabase<typeof schema>,
 ) => {
-  if (!session) {
+  if (!user) {
     return [];
   }
-  const cachedResponseString = await redis.get(
-    `user_permissions:${session.user.id}`,
-  );
+
+  const cachedResponseString = await redis.get(`user_permissions:${user.id}`);
   if (cachedResponseString) {
     const cachedResponse: z.infer<typeof PermissionSchema> =
       JSON.parse(cachedResponseString);
     return cachedResponse;
   }
 
-  const user = await db.user.findUnique({
-    where: {
-      id: input.userId ? input.userId : session.user.id,
-    },
-  });
-  if (session.user.roleId) {
-    const role = await db.role.findUnique({
-      where: {
-        id: session.user.roleId,
-      },
+  if (user.roleId) {
+    const roleFound = await db.query.role.findFirst({
+      where: eq(role.id, user.roleId),
     });
 
-    if (role?.permissions && user?.permissions) {
-      const merged = mergePermissions(
-        // @ts-ignore
-        role.permissions,
-        user.permissions,
-      );
+    if (roleFound?.permissions && user?.permissions) {
+      try {
+        const permissions = PermissionSchema.parse(roleFound.permissions);
 
-      await redis.set(
-        `user_permissions:${session.user.id}`,
-        JSON.stringify(merged),
-        "EX",
-        300,
-      );
+        const merged = mergePermissions(permissions, user.permissions);
 
-      return merged as z.infer<typeof PermissionSchema> | null;
+        await redis.set(
+          `user_permissions:${user.id}`,
+          JSON.stringify(merged),
+          "EX",
+          300,
+        );
+
+        return merged;
+      } catch (e) {
+        if (e instanceof ZodError) {
+          throw new TRPCError({
+            code: "PARSE_ERROR",
+            message: e.toString(),
+          });
+        }
+      }
     }
-    if (role?.permissions) {
+    if (roleFound?.permissions) {
       await redis.set(
-        `user_permissions:${session.user.id}`,
+        `user_permissions:${user.id}`,
         JSON.stringify(role.permissions),
         "EX",
         300,
       );
 
-      return role.permissions as z.infer<typeof PermissionSchema> | null;
+      return roleFound.permissions as z.infer<typeof PermissionSchema> | null;
     }
   }
   if (user?.permissions) {
     await redis.set(
-      `user_permissions:${session.user.id}`,
+      `user_permissions:${user.id}`,
       JSON.stringify(user.permissions),
       "EX",
       300,
@@ -88,7 +89,7 @@ export const getAllPermissions = async (
 
 export const getAllTags = async (
   redis: Redis,
-  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+  db: PostgresJsDatabase<typeof schema>,
 ) => {
   const cachedTagsString = await redis.get("tags");
   if (cachedTagsString) {
@@ -96,11 +97,12 @@ export const getAllTags = async (
     return cachedTags;
   }
 
-  const tags = await db.tag.findMany({
-    include: {
-      childTags: true,
+  const tags = await db.query.tag.findMany({
+    with: {
+      children: true,
     },
   });
+
   if (tags) {
     await redis.set("tags", JSON.stringify(tags), "EX", 3600);
   }
@@ -109,7 +111,7 @@ export const getAllTags = async (
 
 export const getAllEntities = async (
   redis: Redis,
-  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+  db: PostgresJsDatabase<typeof schema>,
 ) => {
   const cachedEntities: string | null = await redis.get("cached_entities");
 
@@ -119,11 +121,13 @@ export const getAllEntities = async (
     return parsedEntities;
   }
 
-  const entities = await db.entities.findMany({
-    select: {
+  const entities = await db.query.entities.findMany({
+    with: {
+      tag: true,
+    },
+    columns: {
       id: true,
       name: true,
-      tag: true,
     },
   });
 
@@ -139,36 +143,39 @@ export const getAllEntities = async (
 };
 
 export const generateMovements = async (
-  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
-  tx: Transactions & { operation: { date: Date } },
+  db: PostgresJsDatabase<typeof schema>,
+  tx: z.infer<typeof returnedTransactionsSchema> & {
+    operation: { date: Date };
+  },
   account: boolean,
   direction: number,
   type: string,
 ) => {
-  const movements: Omit<Movements, "id">[] = [];
+  const movementsArray: Omit<z.infer<typeof returnedMovementsSchema>, "id">[] =
+    [];
   const currentDate = moment().startOf("day").format("DD-MM-YYYY");
 
-  const balance = await db.balances.findFirst({
-    where: {
-      AND: [
-        { account: account, currency: tx.currency },
-        tx.fromEntityId < tx.toEntityId
-          ? {
-              selectedEntityId: tx.fromEntityId,
-              otherEntityId: tx.toEntityId,
-            }
-          : {
-              selectedEntityId: tx.toEntityId,
-              otherEntityId: tx.fromEntityId,
-            },
-      ],
-    },
-    orderBy: {
-      date: "desc",
-    },
-  });
+  const [balance] = await db
+    .select()
+    .from(balances)
+    .where(
+      and(
+        eq(balances.account, account),
+        eq(balances.currency, tx.currency),
+        eq(
+          balances.selectedEntityId,
+          tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+        ),
+        eq(
+          balances.otherEntityId,
+          tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+        ),
+      ),
+    )
+    .orderBy(desc(balances.date))
+    .limit(1);
 
-  const insertedMovements = await db.$transaction(async (prisma) => {
+  const insertedMovements = await db.transaction(async (transaction) => {
     if (
       tx.date
         ? moment(tx.date).isBefore(moment(currentDate, "DD-MM-YYYY"), "day")
@@ -180,130 +187,127 @@ export const generateMovements = async (
       const oldDate = tx.date
         ? moment(tx.date).startOf("day").toDate()
         : moment(tx.operation.date).startOf("day").toDate();
+
       // Si la operatoria es antes de hoy, busco el balance de ese dia
-      const oldBalance = await db.balances.findFirst({
-        where: {
-          AND: [
-            { account: account, currency: tx.currency, date: oldDate },
-            tx.fromEntityId < tx.toEntityId
-              ? {
-                  selectedEntityId: tx.fromEntityId,
-                  otherEntityId: tx.toEntityId,
-                }
-              : {
-                  selectedEntityId: tx.toEntityId,
-                  otherEntityId: tx.fromEntityId,
-                },
-          ],
-        },
-      });
+      const [oldBalance] = await transaction
+        .select()
+        .from(balances)
+        .where(
+          and(
+            eq(balances.account, account),
+            eq(balances.currency, tx.currency),
+            eq(balances.date, oldDate),
+            eq(
+              balances.selectedEntityId,
+              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+            ),
+            eq(
+              balances.otherEntityId,
+              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+            ),
+          ),
+        )
+        .limit(1);
 
       // Le cambio el monto a todos los balances posteriores
-      await db.balances.updateMany({
-        where: {
-          OR: [
-            oldBalance ? { id: oldBalance.id } : {},
-            {
-              AND: [
-                {
-                  account: account,
-                  currency: tx.currency,
-                  date: { gt: oldDate },
-                },
+      await transaction
+        .update(balances)
+        .set({
+          balance: sql`${balances.balance} + ${
+            movementBalanceDirection(
+              tx.fromEntityId,
+              tx.toEntityId,
+              direction,
+            ) * tx.amount
+          }`,
+        })
+        .where(
+          or(
+            oldBalance ? eq(balances.id, oldBalance.id) : undefined,
+            and(
+              eq(balances.account, account),
+              eq(balances.currency, tx.currency),
+              gt(balances.date, oldDate),
+            ),
+            and(
+              eq(
+                balances.selectedEntityId,
                 tx.fromEntityId < tx.toEntityId
-                  ? {
-                      selectedEntityId: tx.fromEntityId,
-                      otherEntityId: tx.toEntityId,
-                    }
-                  : {
-                      selectedEntityId: tx.toEntityId,
-                      otherEntityId: tx.fromEntityId,
-                    },
-              ],
-            },
-          ],
-        },
-        data: {
-          balance: {
-            increment:
-              movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) * tx.amount,
-          },
-        },
-      });
+                  ? tx.fromEntityId
+                  : tx.toEntityId,
+              ),
+              eq(
+                balances.otherEntityId,
+                tx.fromEntityId < tx.toEntityId
+                  ? tx.toEntityId
+                  : tx.fromEntityId,
+              ),
+            ),
+          ),
+        );
 
       // Le cambio del monto al balance de los movimientos posteriores tambien
-      await db.movements.updateMany({
-        where: {
-          balanceObject: {
-            OR: [
-              oldBalance ? { id: oldBalance.id } : {},
-              {
-                AND: [
-                  {
-                    account: account,
-                    currency: tx.currency,
-                    date: { gt: oldDate },
-                  },
-                  tx.fromEntityId < tx.toEntityId
-                    ? {
-                        selectedEntityId: tx.fromEntityId,
-                        otherEntityId: tx.toEntityId,
-                      }
-                    : {
-                        selectedEntityId: tx.toEntityId,
-                        otherEntityId: tx.fromEntityId,
-                      },
-                ],
-              },
-            ],
-          },
-        },
-        data: {
-          balance: {
-            increment:
-              movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) * tx.amount,
-          },
-        },
-      });
+      await transaction.update(movements).set({
+        balance: sql`${movements.balance} + ${
+          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+          tx.amount
+        }`,
+      }).where(sql`${movements.balanceId} IN (
+        SELECT b.id
+        FROM balances b
+        WHERE ${oldBalance ? sql`b.id = ${oldBalance.id}` : sql`1=2`}
+        OR (
+          AND (
+            b.account = ${account}
+            b.currency = ${tx.currency}
+            b.date > ${oldDate.toDateString()}
+            ${
+              tx.fromEntityId < tx.toEntityId
+                ? sql`
+            b.selectedEntityId = ${tx.fromEntityId}
+            b.otherEntityId = ${tx.toEntityId}
+            `
+                : sql`
+            b.selectedEntityId = ${tx.toEntityId}
+            b.otherEntityId = ${tx.fromEntityId}
+            `
+            }
+          )
+        )
+      )`);
 
       if (!oldBalance) {
         // Creo el balance para ese dia si no existe, tomando el monto del anterior y sumandole, asi justifico el gap con haber subido todos los que estan adelante
 
         // Busco el anterior
-        const beforeBalance = await db.balances.findFirst({
-          where: {
-            AND: [
-              {
-                account: account,
-                currency: tx.currency,
-                date: { lt: oldDate },
-              },
-              tx.fromEntityId < tx.toEntityId
-                ? {
-                    selectedEntityId: tx.fromEntityId,
-                    otherEntityId: tx.toEntityId,
-                  }
-                : {
-                    selectedEntityId: tx.toEntityId,
-                    otherEntityId: tx.fromEntityId,
-                  },
-            ],
-          },
-          orderBy: {
-            date: "desc",
-          },
-        });
+        const [beforeBalance2] = await transaction
+          .select()
+          .from(balances)
+          .where(
+            and(
+              eq(balances.account, account),
+              eq(balances.currency, tx.currency),
+              eq(balances.date, oldDate),
+              eq(
+                balances.selectedEntityId,
+                tx.fromEntityId < tx.toEntityId
+                  ? tx.fromEntityId
+                  : tx.toEntityId,
+              ),
+              eq(
+                balances.otherEntityId,
+                tx.fromEntityId < tx.toEntityId
+                  ? tx.toEntityId
+                  : tx.fromEntityId,
+              ),
+            ),
+          )
+          .orderBy(desc(balances.date))
+          .limit(1);
 
-        const response = await db.balances.create({
-          data: {
+        const [response] = await transaction
+          .insert(balances)
+          .values({
             selectedEntityId:
               tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
             otherEntityId:
@@ -313,8 +317,8 @@ export const generateMovements = async (
             date: tx.date
               ? moment(tx.date).startOf("day").toDate()
               : moment(tx.operation.date).startOf("day").toDate(),
-            balance: beforeBalance
-              ? beforeBalance.balance +
+            balance: beforeBalance2
+              ? beforeBalance2.balance +
                 movementBalanceDirection(
                   tx.fromEntityId,
                   tx.toEntityId,
@@ -326,18 +330,18 @@ export const generateMovements = async (
                   tx.toEntityId,
                   direction,
                 ) * tx.amount,
-          },
-        });
-        movements.push({
+          })
+          .returning();
+        movementsArray.push({
           transactionId: tx.id,
-          direction: direction,
-          type: type,
-          account: account,
-          balance: response.balance,
-          balanceId: response.id,
+          direction,
+          type,
+          account,
+          balance: response!.balance,
+          balanceId: response!.id,
         });
       } else {
-        movements.push({
+        movementsArray.push({
           transactionId: tx.id,
           direction: direction,
           type: type,
@@ -349,26 +353,27 @@ export const generateMovements = async (
     } else {
       if (balance) {
         if (moment(balance.date).format("DD-MM-YYYY") === currentDate) {
-          const response = await prisma.balances.update({
-            where: { id: balance.id },
-            data: {
-              balance: {
-                increment:
-                  movementBalanceDirection(
-                    tx.fromEntityId,
-                    tx.toEntityId,
-                    direction,
-                  ) * tx.amount,
-              },
-            },
-          });
-          movements.push({
+          const [response] = await transaction
+            .update(balances)
+            .set({
+              balance: sql`${balances.balance} + ${
+                movementBalanceDirection(
+                  tx.fromEntityId,
+                  tx.toEntityId,
+                  direction,
+                ) * tx.amount
+              }`,
+            })
+            .where(eq(balances.id, balance.id))
+            .returning();
+
+          movementsArray.push({
             transactionId: tx.id,
             direction: direction,
             type: type,
             account: account,
-            balance: response.balance,
-            balanceId: response.id,
+            balance: response!.balance,
+            balanceId: response!.id,
           });
         } else {
           const balanceNumber =
@@ -380,8 +385,9 @@ export const generateMovements = async (
             ) *
               tx.amount;
 
-          const response = await prisma.balances.create({
-            data: {
+          const [response] = await transaction
+            .insert(balances)
+            .values({
               selectedEntityId:
                 tx.fromEntityId < tx.toEntityId
                   ? tx.fromEntityId
@@ -394,20 +400,22 @@ export const generateMovements = async (
               currency: tx.currency,
               date: moment(currentDate, "DD-MM-YYYY").toDate(),
               balance: balanceNumber,
-            },
-          });
-          movements.push({
+            })
+            .returning();
+
+          movementsArray.push({
             transactionId: tx.id,
             direction: direction,
             type: type,
             account: account,
-            balance: response.balance,
-            balanceId: response.id,
+            balance: response!.balance,
+            balanceId: response!.id,
           });
         }
       } else {
-        const response = await prisma.balances.create({
-          data: {
+        const [response] = await transaction
+          .insert(balances)
+          .values({
             selectedEntityId:
               tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
             otherEntityId:
@@ -421,22 +429,24 @@ export const generateMovements = async (
                 tx.toEntityId,
                 direction,
               ) * tx.amount,
-          },
-        });
-        movements.push({
+          })
+          .returning();
+
+        movementsArray.push({
           transactionId: tx.id,
           direction: direction,
           type: type,
           account: account,
-          balance: response.balance,
-          balanceId: response.id,
+          balance: response!.balance,
+          balanceId: response!.id,
         });
       }
     }
 
-    const createdMovements = await prisma.movements.createMany({
-      data: movements,
-    });
+    const createdMovements = await transaction
+      .insert(movements)
+      .values(movementsArray)
+      .returning();
 
     return createdMovements;
   });
@@ -445,18 +455,18 @@ export const generateMovements = async (
 };
 
 export const undoBalances = async (
-  db: PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+  db: PostgresJsDatabase<typeof schema>,
   txId?: number,
   opId?: number,
 ) => {
-  const balances: Balances[] = [];
+  const balancesArray: z.infer<typeof returnedBalancesSchema>[] = [];
   if (txId) {
-    const transaction = await db.transactions.findUnique({
-      where: {
-        id: txId,
-      },
-      select: {
+    const transaction = await db.query.transactions.findFirst({
+      where: eq(transactions.id, txId),
+      with: {
         movements: true,
+      },
+      columns: {
         fromEntityId: true,
         toEntityId: true,
         amount: true,
@@ -472,32 +482,27 @@ export const undoBalances = async (
             mv.direction,
           ) * transaction.amount;
 
-        const balance = await db.balances.update({
-          where: {
-            id: mv.balanceId,
-          },
-          data: {
-            balance: {
-              decrement: amountModifiedByMovement,
-            },
-          },
-        });
+        const [balance] = await db
+          .update(balances)
+          .set({
+            balance: sql`${balances.balance} - ${amountModifiedByMovement}`,
+          })
+          .where(eq(balances.id, mv.balanceId))
+          .returning();
 
-        balances.push(balance);
+        balancesArray.push(balance!);
       }
     }
   } else if (opId) {
-    const operation = await db.operations.findUnique({
-      where: {
-        id: opId,
-      },
-      select: {
+    const operation = await db.query.operations.findFirst({
+      with: {
         transactions: {
-          include: {
+          with: {
             movements: true,
           },
         },
       },
+      where: eq(operations, opId),
     });
 
     if (operation) {
@@ -510,17 +515,15 @@ export const undoBalances = async (
               mv.direction,
             ) * transaction.amount;
 
-          const balance = await db.balances.update({
-            where: {
-              id: mv.balanceId,
-            },
-            data: {
-              balance: {
-                decrement: amountModifiedByMovement,
-              },
-            },
-          });
-          balances.push(balance);
+          const [balance] = await db
+            .update(balances)
+            .set({
+              balance: sql`${balances.balance} - ${amountModifiedByMovement}`,
+            })
+            .where(eq(balances.id, mv.balanceId))
+            .returning();
+
+          balancesArray.push(balance!);
         }
       }
     }

@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./db/schema";
 
 import { env } from "~/env.mjs";
 
@@ -14,3 +17,6 @@ export const db =
   });
 
 if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+const queryClient = postgres(env.NEONDB_URL);
+export const db2 = drizzle(queryClient, { schema });
