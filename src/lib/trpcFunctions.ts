@@ -1,6 +1,18 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gt, or, sql } from "drizzle-orm";
-import { type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  or,
+  sql,
+  type ExtractTablesWithRelations,
+} from "drizzle-orm";
+import { type PgTransaction } from "drizzle-orm/pg-core";
+import {
+  type PostgresJsDatabase,
+  type PostgresJsQueryResultHKT,
+} from "drizzle-orm/postgres-js";
 import type Redis from "ioredis";
 import { type User } from "lucia";
 import moment from "moment";
@@ -91,6 +103,7 @@ export const getAllTags = async (
   redis: Redis,
   db: PostgresJsDatabase<typeof schema>,
 ) => {
+  await redis.del("tags");
   const cachedTagsString = await redis.get("tags");
   if (cachedTagsString) {
     const cachedTags: typeof tags = JSON.parse(cachedTagsString);
@@ -113,6 +126,8 @@ export const getAllEntities = async (
   redis: Redis,
   db: PostgresJsDatabase<typeof schema>,
 ) => {
+  await redis.del("entities");
+
   const cachedEntities: string | null = await redis.get("cached_entities");
 
   if (cachedEntities) {
@@ -143,7 +158,11 @@ export const getAllEntities = async (
 };
 
 export const generateMovements = async (
-  db: PostgresJsDatabase<typeof schema>,
+  transaction: PgTransaction<
+    PostgresJsQueryResultHKT,
+    typeof schema,
+    ExtractTablesWithRelations<typeof schema>
+  >,
   tx: z.infer<typeof returnedTransactionsSchema> & {
     operation: { date: Date };
   },
@@ -155,7 +174,7 @@ export const generateMovements = async (
     [];
   const currentDate = moment().startOf("day").format("DD-MM-YYYY");
 
-  const [balance] = await db
+  const [balance] = await transaction
     .select()
     .from(balances)
     .where(
@@ -175,21 +194,102 @@ export const generateMovements = async (
     .orderBy(desc(balances.date))
     .limit(1);
 
-  const insertedMovements = await db.transaction(async (transaction) => {
-    if (
-      tx.date
-        ? moment(tx.date).isBefore(moment(currentDate, "DD-MM-YYYY"), "day")
-        : moment(tx.operation.date).isBefore(
-            moment(currentDate, "DD-MM-YYYY"),
-            "day",
-          )
-    ) {
-      const oldDate = tx.date
-        ? moment(tx.date).startOf("day").toDate()
-        : moment(tx.operation.date).startOf("day").toDate();
+  if (
+    tx.date
+      ? moment(tx.date).isBefore(moment(currentDate, "DD-MM-YYYY"), "day")
+      : moment(tx.operation.date).isBefore(
+          moment(currentDate, "DD-MM-YYYY"),
+          "day",
+        )
+  ) {
+    const oldDate = tx.date
+      ? moment(tx.date).startOf("day").toDate()
+      : moment(tx.operation.date).startOf("day").toDate();
 
-      // Si la operatoria es antes de hoy, busco el balance de ese dia
-      const [oldBalance] = await transaction
+    // Si la operatoria es antes de hoy, busco el balance de ese dia
+    const [oldBalance] = await transaction
+      .select()
+      .from(balances)
+      .where(
+        and(
+          eq(balances.account, account),
+          eq(balances.currency, tx.currency),
+          eq(balances.date, oldDate),
+          eq(
+            balances.selectedEntityId,
+            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+          ),
+          eq(
+            balances.otherEntityId,
+            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+          ),
+        ),
+      )
+      .limit(1);
+
+    // Le cambio el monto a todos los balances posteriores
+    await transaction
+      .update(balances)
+      .set({
+        balance: sql`${balances.balance} + ${
+          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+          tx.amount
+        }`,
+      })
+      .where(
+        or(
+          oldBalance ? eq(balances.id, oldBalance.id) : undefined,
+          and(
+            eq(balances.account, account),
+            eq(balances.currency, tx.currency),
+            gt(balances.date, oldDate),
+          ),
+          and(
+            eq(
+              balances.selectedEntityId,
+              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+            ),
+            eq(
+              balances.otherEntityId,
+              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+            ),
+          ),
+        ),
+      );
+
+    // Le cambio del monto al balance de los movimientos posteriores tambien
+    await transaction.update(movements).set({
+      balance: sql`${movements.balance} + ${
+        movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+        tx.amount
+      }`,
+    }).where(sql`${movements.balanceId} IN (
+        SELECT ${balances.id}
+        FROM ${balances}
+        WHERE ${oldBalance ? sql`b.id = ${oldBalance.id}` : sql`1=2`}
+        OR (
+            ${balances.account} = ${account}
+            AND ${balances.currency} = ${tx.currency}
+            AND ${balances.date} > ${oldDate.toDateString()}
+            ${
+              tx.fromEntityId < tx.toEntityId
+                ? sql`
+                AND ${balances.selectedEntityId} = ${tx.fromEntityId}
+                AND ${balances.otherEntityId} = ${tx.toEntityId}
+            `
+                : sql`
+                AND ${balances.selectedEntityId} = ${tx.toEntityId}
+                AND ${balances.otherEntityId} = ${tx.fromEntityId}
+            `
+            }
+        )
+      )`);
+
+    if (!oldBalance) {
+      // Creo el balance para ese dia si no existe, tomando el monto del anterior y sumandole, asi justifico el gap con haber subido todos los que estan adelante
+
+      // Busco el anterior
+      const [beforeBalance2] = await transaction
         .select()
         .from(balances)
         .where(
@@ -207,212 +307,85 @@ export const generateMovements = async (
             ),
           ),
         )
+        .orderBy(desc(balances.date))
         .limit(1);
 
-      // Le cambio el monto a todos los balances posteriores
-      await transaction
-        .update(balances)
-        .set({
-          balance: sql`${balances.balance} + ${
-            movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) * tx.amount
-          }`,
+      const [response] = await transaction
+        .insert(balances)
+        .values({
+          selectedEntityId:
+            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+          otherEntityId:
+            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+          account: account,
+          currency: tx.currency,
+          date: tx.date
+            ? moment(tx.date).startOf("day").toDate()
+            : moment(tx.operation.date).startOf("day").toDate(),
+          balance: beforeBalance2
+            ? beforeBalance2.balance +
+              movementBalanceDirection(
+                tx.fromEntityId,
+                tx.toEntityId,
+                direction,
+              ) *
+                tx.amount
+            : movementBalanceDirection(
+                tx.fromEntityId,
+                tx.toEntityId,
+                direction,
+              ) * tx.amount,
         })
-        .where(
-          or(
-            oldBalance ? eq(balances.id, oldBalance.id) : undefined,
-            and(
-              eq(balances.account, account),
-              eq(balances.currency, tx.currency),
-              gt(balances.date, oldDate),
-            ),
-            and(
-              eq(
-                balances.selectedEntityId,
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.fromEntityId
-                  : tx.toEntityId,
-              ),
-              eq(
-                balances.otherEntityId,
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.toEntityId
-                  : tx.fromEntityId,
-              ),
-            ),
-          ),
-        );
-
-      // Le cambio del monto al balance de los movimientos posteriores tambien
-      await transaction.update(movements).set({
-        balance: sql`${movements.balance} + ${
-          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-          tx.amount
-        }`,
-      }).where(sql`${movements.balanceId} IN (
-        SELECT b.id
-        FROM balances b
-        WHERE ${oldBalance ? sql`b.id = ${oldBalance.id}` : sql`1=2`}
-        OR (
-          AND (
-            b.account = ${account}
-            b.currency = ${tx.currency}
-            b.date > ${oldDate.toDateString()}
-            ${
-              tx.fromEntityId < tx.toEntityId
-                ? sql`
-            b.selectedEntityId = ${tx.fromEntityId}
-            b.otherEntityId = ${tx.toEntityId}
-            `
-                : sql`
-            b.selectedEntityId = ${tx.toEntityId}
-            b.otherEntityId = ${tx.fromEntityId}
-            `
-            }
-          )
-        )
-      )`);
-
-      if (!oldBalance) {
-        // Creo el balance para ese dia si no existe, tomando el monto del anterior y sumandole, asi justifico el gap con haber subido todos los que estan adelante
-
-        // Busco el anterior
-        const [beforeBalance2] = await transaction
-          .select()
-          .from(balances)
-          .where(
-            and(
-              eq(balances.account, account),
-              eq(balances.currency, tx.currency),
-              eq(balances.date, oldDate),
-              eq(
-                balances.selectedEntityId,
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.fromEntityId
-                  : tx.toEntityId,
-              ),
-              eq(
-                balances.otherEntityId,
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.toEntityId
-                  : tx.fromEntityId,
-              ),
-            ),
-          )
-          .orderBy(desc(balances.date))
-          .limit(1);
-
+        .returning();
+      movementsArray.push({
+        transactionId: tx.id,
+        direction,
+        type,
+        account,
+        balance: response!.balance,
+        balanceId: response!.id,
+      });
+    } else {
+      movementsArray.push({
+        transactionId: tx.id,
+        direction: direction,
+        type: type,
+        account: account,
+        balance: oldBalance.balance,
+        balanceId: oldBalance.id,
+      });
+    }
+  } else {
+    if (balance) {
+      if (moment(balance.date).format("DD-MM-YYYY") === currentDate) {
         const [response] = await transaction
-          .insert(balances)
-          .values({
-            selectedEntityId:
-              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-            otherEntityId:
-              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-            account: account,
-            currency: tx.currency,
-            date: tx.date
-              ? moment(tx.date).startOf("day").toDate()
-              : moment(tx.operation.date).startOf("day").toDate(),
-            balance: beforeBalance2
-              ? beforeBalance2.balance +
-                movementBalanceDirection(
-                  tx.fromEntityId,
-                  tx.toEntityId,
-                  direction,
-                ) *
-                  tx.amount
-              : movementBalanceDirection(
-                  tx.fromEntityId,
-                  tx.toEntityId,
-                  direction,
-                ) * tx.amount,
+          .update(balances)
+          .set({
+            balance: sql`${balances.balance} + ${
+              movementBalanceDirection(
+                tx.fromEntityId,
+                tx.toEntityId,
+                direction,
+              ) * tx.amount
+            }`,
           })
+          .where(eq(balances.id, balance.id))
           .returning();
-        movementsArray.push({
-          transactionId: tx.id,
-          direction,
-          type,
-          account,
-          balance: response!.balance,
-          balanceId: response!.id,
-        });
-      } else {
+
         movementsArray.push({
           transactionId: tx.id,
           direction: direction,
           type: type,
           account: account,
-          balance: oldBalance.balance,
-          balanceId: oldBalance.id,
+          balance: response!.balance,
+          balanceId: response!.id,
         });
-      }
-    } else {
-      if (balance) {
-        if (moment(balance.date).format("DD-MM-YYYY") === currentDate) {
-          const [response] = await transaction
-            .update(balances)
-            .set({
-              balance: sql`${balances.balance} + ${
-                movementBalanceDirection(
-                  tx.fromEntityId,
-                  tx.toEntityId,
-                  direction,
-                ) * tx.amount
-              }`,
-            })
-            .where(eq(balances.id, balance.id))
-            .returning();
-
-          movementsArray.push({
-            transactionId: tx.id,
-            direction: direction,
-            type: type,
-            account: account,
-            balance: response!.balance,
-            balanceId: response!.id,
-          });
-        } else {
-          const balanceNumber =
-            balance.balance +
-            movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) *
-              tx.amount;
-
-          const [response] = await transaction
-            .insert(balances)
-            .values({
-              selectedEntityId:
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.fromEntityId
-                  : tx.toEntityId,
-              otherEntityId:
-                tx.fromEntityId < tx.toEntityId
-                  ? tx.toEntityId
-                  : tx.fromEntityId,
-              account: account,
-              currency: tx.currency,
-              date: moment(currentDate, "DD-MM-YYYY").toDate(),
-              balance: balanceNumber,
-            })
-            .returning();
-
-          movementsArray.push({
-            transactionId: tx.id,
-            direction: direction,
-            type: type,
-            account: account,
-            balance: response!.balance,
-            balanceId: response!.id,
-          });
-        }
       } else {
+        const balanceNumber =
+          balance.balance +
+          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+            tx.amount;
+
         const [response] = await transaction
           .insert(balances)
           .values({
@@ -423,12 +396,7 @@ export const generateMovements = async (
             account: account,
             currency: tx.currency,
             date: moment(currentDate, "DD-MM-YYYY").toDate(),
-            balance:
-              movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) * tx.amount,
+            balance: balanceNumber,
           })
           .returning();
 
@@ -441,17 +409,45 @@ export const generateMovements = async (
           balanceId: response!.id,
         });
       }
+    } else {
+      const [response] = await transaction
+        .insert(balances)
+        .values({
+          selectedEntityId:
+            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+          otherEntityId:
+            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+          account: account,
+          currency: tx.currency,
+          date: moment(currentDate, "DD-MM-YYYY").toDate(),
+          balance:
+            movementBalanceDirection(
+              tx.fromEntityId,
+              tx.toEntityId,
+              direction,
+            ) * tx.amount,
+        })
+        .returning();
+
+      movementsArray.push({
+        transactionId: tx.id,
+        direction: direction,
+        type: type,
+        account: account,
+        balance: response!.balance,
+        balanceId: response!.id,
+      });
     }
+  }
 
-    const createdMovements = await transaction
-      .insert(movements)
-      .values(movementsArray)
-      .returning();
+  console.log(movementsArray);
 
-    return createdMovements;
-  });
+  const createdMovements = await transaction
+    .insert(movements)
+    .values(movementsArray)
+    .returning();
 
-  return insertedMovements;
+  return createdMovements;
 };
 
 export const undoBalances = async (

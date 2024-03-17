@@ -1,5 +1,17 @@
-import { eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import {
+  and,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lte,
+  sql,
+} from "drizzle-orm";
 import moment from "moment";
+import type postgres from "postgres";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
@@ -11,6 +23,7 @@ import {
 } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
+  movements,
   operations,
   transactions,
   transactionsMetadata,
@@ -49,11 +62,19 @@ export const operationsRouter = createTRPCRouter({
       if (input.opId) {
         const opId = input.opId;
 
-        const response = await ctx.db2.transaction(async (tx) => {
+        const response = await ctx.db.transaction(async (tx) => {
           const list = [];
           const operation = await tx.query.operations.findFirst({
             where: eq(operations.id, opId),
           });
+
+          if (!operation) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "The provided operation ID is not in the database",
+            });
+          }
+
           for (const transactionToInsert of input.transactions) {
             const insertedTxReturn = await tx
               .insert(transactions)
@@ -74,8 +95,8 @@ export const operationsRouter = createTRPCRouter({
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
-                ctx.db2,
-                { ...insertedTx, operation: operation! },
+                tx,
+                { ...insertedTx, operation: operation },
                 true,
                 1,
                 "upload",
@@ -86,8 +107,8 @@ export const operationsRouter = createTRPCRouter({
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
-                ctx.db2,
-                { ...insertedTx, operation: operation! },
+                tx,
+                { ...insertedTx, operation: operation },
                 false,
                 -1,
                 "upload",
@@ -100,7 +121,7 @@ export const operationsRouter = createTRPCRouter({
         await ctx.redis.del(`user_operations:${ctx.user.id}`);
         return response;
       } else {
-        const response = await ctx.db2.transaction(async (tx) => {
+        const response = await ctx.db.transaction(async (tx) => {
           const list = [];
           const op = await tx
             .insert(operations)
@@ -144,7 +165,7 @@ export const operationsRouter = createTRPCRouter({
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
-                ctx.db2,
+                tx,
                 { ...insertedTx, operation: op[0]! },
                 true,
                 1,
@@ -156,7 +177,7 @@ export const operationsRouter = createTRPCRouter({
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
-                ctx.db2,
+                tx,
                 { ...insertedTx, operation: op[0]! },
                 false,
                 -1,
@@ -181,78 +202,22 @@ export const operationsRouter = createTRPCRouter({
         return response;
       }
     }),
-
-  insertTransactions: protectedLoggedProcedure
-    .input(
-      z.object({
-        operationId: z.number().int(),
-        transactions: z.array(
-          z.object({
-            type: z.string(),
-            operatorEntityId: z.number().int(),
-            fromEntityId: z.number().int(),
-            toEntityId: z.number().int(),
-            currency: z.string(),
-            amount: z.number(),
-            method: z.string().optional(),
-            metadata: z
-              .object({ exchangeRate: z.number().optional() })
-              .optional(),
-          }),
-        ),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.transactions.createMany({
-        data: input.transactions.map((tx) => ({
-          ...tx,
-          operationId: input.operationId,
-        })),
-      });
-
-      if (response) {
-        await ctx.redis.del(`user_operations:${ctx.user.id}`);
-      }
-
-      await logIO(
-        ctx.dynamodb,
-        ctx.user.id,
-        "Insertar transacciones",
-        input,
-        response,
-      );
-
-      return response;
-    }),
-
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
-    const operations = await ctx.db.operations.findMany({
-      where: {
-        transactions: {
-          some: {
-            transactionMetadata: {
-              uploadedBy: ctx.user.id,
-            },
-          },
-        },
-      },
-      select: {
-        id: true,
-        date: true,
-        observations: true,
-        _count: {
-          select: { transactions: true },
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-      take: 5,
-    });
+    const response = await ctx.db
+      .select({
+        id: operations.id,
+        date: operations.date,
+        observations: operations.observations,
+        transactionsCount: count(transactions.id),
+      })
+      .from(operations)
+      .leftJoin(transactions, eq(operations.id, transactions.operationId))
+      .groupBy(operations.id)
+      .orderBy(desc(operations.id))
+      .limit(5);
 
-    return operations;
+    return response;
   }),
-
   getOperations: protectedLoggedProcedure
     .input(
       z.object({
@@ -264,9 +229,9 @@ export const operationsRouter = createTRPCRouter({
         transactionId: z.number().optional(),
         transactionType: z.string().optional(),
         transactionDate: z.date().optional(),
-        operatorEntityId: z.number().optional(),
-        fromEntityId: z.union([z.number(), z.array(z.number())]).optional(),
-        toEntityId: z.number().optional(),
+        operatorEntityId: z.array(z.number()).optional(),
+        fromEntityId: z.array(z.number()).optional(),
+        toEntityId: z.array(z.number()).optional(),
         currency: z.string().optional(),
         method: z.string().optional(),
         status: z.enum(["pending", "confirmed", "cancelled"]).optional(),
@@ -278,159 +243,149 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const whereConditions = {
-        AND: [
-          input.opDateIsGreater && !input.opDateIsLesser
-            ? {
-                date: {
-                  gte: moment(input.opDateIsGreater)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                    .toDate(),
-                  lt: moment(input.opDateIsGreater)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                    .add(1, "day")
-                    .toDate(),
-                },
-              }
-            : {},
-          input.opDateIsGreater && input.opDateIsLesser
-            ? {
-                AND: [
-                  {
-                    date: {
-                      gte: moment(input.opDateIsGreater)
-                        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                        .toDate(),
-                    },
+      const operationsWhere = and(
+        input.opDateIsGreater && !input.opDateIsLesser
+          ? and(
+              gte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .add(1, "day")
+                  .toDate(),
+              ),
+            )
+          : undefined,
+        input.opDateIsGreater && input.opDateIsLesser
+          ? and(
+              gte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                operations.date,
+                moment(input.opDateIsLesser)
+                  .set({
+                    hour: 23,
+                    minute: 59,
+                    second: 59,
+                    millisecond: 999,
+                  })
+                  .toDate(),
+              ),
+            )
+          : undefined,
+      );
+
+      const transactionsWhere = and(
+        input.transactionId
+          ? eq(transactions.id, input.transactionId)
+          : undefined,
+        input.transactionType
+          ? eq(transactions.type, input.transactionType)
+          : undefined,
+        input.transactionDate
+          ? sql`DATE_TRUNC('day', ${transactions.date}) = DATE ${moment(
+              input.transactionDate,
+            ).format("YYYY-MM-DD")}`
+          : undefined,
+        input.operatorEntityId
+          ? inArray(transactions.operatorEntityId, input.operatorEntityId)
+          : undefined,
+        input.fromEntityId
+          ? inArray(transactions.fromEntityId, input.fromEntityId)
+          : undefined,
+        input.toEntityId
+          ? inArray(transactions.toEntityId, input.toEntityId)
+          : undefined,
+        input.currency ? eq(transactions.currency, input.currency) : undefined,
+        input.method ? eq(transactions.method, input.method) : undefined,
+        input.status ? eq(transactions.status, input.status) : undefined,
+        input.amount ? eq(transactions.amount, input.amount) : undefined,
+        input.amountIsGreater
+          ? gte(transactions.amount, input.amountIsGreater)
+          : undefined,
+        input.amountIsLesser
+          ? lte(transactions.amount, input.amountIsLesser)
+          : undefined,
+        input.uploadedById
+          ? eq(transactionsMetadata.uploadedBy, input.uploadedById)
+          : undefined,
+        input.confirmedById
+          ? eq(transactionsMetadata.confirmedBy, input.confirmedById)
+          : undefined,
+      );
+
+      const sq = ctx.db
+        .select({ operationId: transactions.operationId })
+        .from(transactions)
+        .where(transactionsWhere)
+        .as("sq");
+
+      const [amountThatSatisfy] = await ctx.db
+        .select({ count: countDistinct(operations.id) })
+        .from(operations)
+        .leftJoin(sq, eq(operations.id, sq.operationId))
+        .where(operationsWhere);
+
+      const operationsPreparedQuery = ctx.db.query.operations
+        .findMany({
+          where: operationsWhere,
+          with: {
+            transactions: {
+              where: transactionsWhere,
+              with: {
+                transactionMetadata: {
+                  with: {
+                    uploadedByUser: true,
+                    confirmedByUser: true,
+                    cancelledByUser: true,
                   },
-                  {
-                    date: {
-                      lte: moment(input.opDateIsLesser)
-                        .set({
-                          hour: 23,
-                          minute: 59,
-                          second: 59,
-                          millisecond: 999,
-                        })
-                        .toDate(),
-                    },
+                },
+                fromEntity: {
+                  with: {
+                    tag: true,
                   },
-                ],
-              }
-            : {},
-          input.operationId ? { id: input.operationId } : {},
-        ],
-        transactions: {
-          some: {
-            AND: [
-              input.transactionId ? { id: input.transactionId } : {},
-              input.transactionType ? { type: input.transactionType } : {},
-              input.transactionDate ? { date: input.transactionDate } : {},
-              input.operatorEntityId
-                ? { operatorEntityId: input.operatorEntityId }
-                : {},
-              input.fromEntityId
-                ? Array.isArray(input.fromEntityId)
-                  ? { fromEntityId: { in: input.fromEntityId } }
-                  : { fromEntityId: input.fromEntityId }
-                : {},
-              input.toEntityId ? { toEntityId: input.toEntityId } : {},
-              input.currency ? { currency: input.currency } : {},
-              input.method ? { method: input.method } : {},
-              input.status ? { status: input.status } : {},
-              input.amount && input.currency
-                ? {
-                    amount: input.amount,
-                    currency: input.currency,
-                  }
-                : input.amount
-                ? { amount: input.amount }
-                : input.currency
-                ? { currency: input.currency }
-                : {},
-              input.amountIsGreater && input.currency
-                ? {
-                    amount: { gte: input.amountIsGreater },
-                    currency: input.currency,
-                  }
-                : input.amountIsGreater
-                ? { amount: { gte: input.amountIsGreater } }
-                : input.currency
-                ? { currency: input.currency }
-                : {},
-              input.amountIsLesser && input.currency
-                ? {
-                    amount: { lte: input.amountIsLesser },
-                    currency: input.currency,
-                  }
-                : input.amountIsLesser
-                ? { amount: { lte: input.amountIsLesser } }
-                : input.currency
-                ? { currency: input.currency }
-                : {},
-              input.uploadedById
-                ? {
-                    transactionMetadata: {
-                      uploadedBy: input.uploadedById,
-                    },
-                  }
-                : {},
-              input.confirmedById
-                ? {
-                    transactionMetadata: {
-                      confirmedBy: input.confirmedById,
-                    },
-                  }
-                : {},
-            ],
-          },
-        },
-      };
-      const queriedOperations = await ctx.db.operations.findMany({
-        where: whereConditions,
-        include: {
-          transactions: {
-            include: {
-              transactionMetadata: {
-                include: {
-                  uploadedByUser: true,
-                  confirmedByUser: true,
-                  cancelledByUser: true,
                 },
-              },
-              operatorEntity: {
-                include: {
-                  tag: true,
+                toEntity: {
+                  with: {
+                    tag: true,
+                  },
                 },
-              },
-              fromEntity: {
-                include: {
-                  tag: true,
-                },
-              },
-              toEntity: {
-                include: {
-                  tag: true,
+                operatorEntity: {
+                  with: {
+                    tag: true,
+                  },
                 },
               },
             },
           },
-        },
-        skip: (input.page - 1) * input.limit,
-        take: input.limit,
-        orderBy: {
-          id: "desc",
-        },
+          limit: sql.placeholder("oLimit"),
+          offset: sql.placeholder("oOffset"),
+          orderBy: desc(operations.id),
+        })
+        .prepare("operations_query");
+
+      const operationsQuery = await operationsPreparedQuery.execute({
+        oLimit: input.limit,
+        oOffset: (input.page - 1) * input.limit,
       });
 
       const userPermissions = await getAllPermissions(
         ctx.redis,
         ctx.user,
-        ctx.db2,
+        ctx.db,
       );
-      const tags = await getAllTags(ctx.redis, ctx.db2);
+      const tags = await getAllTags(ctx.redis, ctx.db);
 
-      const operationsWithPermissions = queriedOperations.map((op) => {
+      const operationsWithPermissions = operationsQuery.map((op) => {
         const isVisualizeAllowed = userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
         )
@@ -596,43 +551,39 @@ export const operationsRouter = createTRPCRouter({
         };
       });
 
-      const count = await ctx.db.operations.count({
-        where: whereConditions,
-      });
-
-      return { operations: operationsWithPermissions, count };
+      return {
+        operations: operationsWithPermissions,
+        count: amountThatSatisfy?.count ?? 0,
+      };
     }),
   getOperationDetails: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const operationDetails = await ctx.db.operations.findUnique({
-        where: {
-          id: input.operationId,
-        },
-        include: {
+      const [operationDetails] = await ctx.db.query.operations.findMany({
+        where: eq(operations.id, input.operationId),
+        with: {
           transactions: {
-            include: {
+            with: {
+              transactionMetadata: {
+                with: {
+                  uploadedByUser: true,
+                  confirmedByUser: true,
+                  cancelledByUser: true,
+                },
+              },
               fromEntity: {
-                include: {
+                with: {
                   tag: true,
                 },
               },
               toEntity: {
-                include: {
+                with: {
                   tag: true,
                 },
               },
               operatorEntity: {
-                include: {
+                with: {
                   tag: true,
-                },
-              },
-              movements: true,
-              transactionMetadata: {
-                include: {
-                  uploadedByUser: true,
-                  confirmedByUser: true,
-                  cancelledByUser: true,
                 },
               },
             },
@@ -644,9 +595,9 @@ export const operationsRouter = createTRPCRouter({
         const userPermissions = await getAllPermissions(
           ctx.redis,
           ctx.user,
-          ctx.db2,
+          ctx.db,
         );
-        const tags = await getAllTags(ctx.redis, ctx.db2);
+        const tags = await getAllTags(ctx.redis, ctx.db);
 
         const isVisualizeAllowed = userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
@@ -819,21 +770,19 @@ export const operationsRouter = createTRPCRouter({
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db2, undefined, input.operationId);
+      await undoBalances(ctx.db, undefined, input.operationId);
 
-      const response = await ctx.db.operations.delete({
-        where: {
-          id: input.operationId,
-        },
-        select: {
-          transactions: {
-            include: {
-              movements: true,
-            },
-          },
-        },
-      });
+      const [response] = await ctx.db
+        .delete(operations)
+        .where(eq(operations.id, input.operationId))
+        .returning();
 
+      if (!response) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not delete operation",
+        });
+      }
       await logIO(
         ctx.dynamodb,
         ctx.user.id,
@@ -848,19 +797,19 @@ export const operationsRouter = createTRPCRouter({
   deleteTransaction: protectedProcedure
     .input(z.object({ transactionId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db2, input.transactionId, undefined);
+      await undoBalances(ctx.db, input.transactionId, undefined);
 
-      const response = await ctx.db.transactions.delete({
-        where: {
-          id: input.transactionId,
-        },
-        select: {
-          movements: true,
-          fromEntityId: true,
-          toEntityId: true,
-          amount: true,
-        },
-      });
+      const [response] = await ctx.db
+        .delete(transactions)
+        .where(eq(transactions.id, input.transactionId))
+        .returning();
+
+      if (!response) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not delete operation",
+        });
+      }
 
       await logIO(
         ctx.dynamodb,
@@ -878,43 +827,45 @@ export const operationsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const monthCountSchema = z.array(
         z.object({
-          day: z.date(),
-          operationsCount: z.bigint(),
-          transactionsCount: z.bigint(),
+          day: z.string().refine((str) => moment(str).toDate()),
+          operationsCount: z.string().refine((str) => parseInt(str)),
+          transactionsCount: z.string().refine((str) => parseInt(str)),
         }),
       );
 
-      const monthCount = await ctx.db.$queryRaw`SELECT
-      DATE_TRUNC('day', "o"."date" AT TIME ZONE 'UTC') as "day",
-      COUNT(DISTINCT "o"."id") as "operationsCount",
-      COUNT(DISTINCT "t"."id") as "transactionsCount"
+      const statement = sql`SELECT
+      DATE_TRUNC('day', ${operations.date} AT TIME ZONE 'UTC') as "day",
+      COUNT(DISTINCT ${operations.id}) as "operationsCount",
+      COUNT(DISTINCT ${transactions.id}) as "transactionsCount"
     FROM
-      "Operations" "o"
-      LEFT JOIN "Transactions" "t" ON "o"."id" = "t"."operationId"
+      ${operations}
+      LEFT JOIN ${transactions} ON ${operations.id} = ${transactions.operationId}
     WHERE
-      "o"."date" >= NOW() - INTERVAL '7 days'
+      ${operations.date} >= NOW() - INTERVAL '7 days'
     GROUP BY
-      DATE_TRUNC('day', "o"."date" AT TIME ZONE 'UTC')
+      DATE_TRUNC('day', ${operations.date} AT TIME ZONE 'UTC')
     ORDER BY
       "day" ASC;`;
 
-      const parsedMonthCount = monthCountSchema.parse(monthCount);
+      const res: postgres.RowList<Record<string, unknown>[]> =
+        await ctx.db.execute(statement);
 
-      const userUploadsCount = await ctx.db.transactionsMetadata.count({
-        where: {
-          uploadedBy: input.userId,
-        },
-      });
-      const userConfirmationsCount = await ctx.db.transactionsMetadata.count({
-        where: {
-          confirmedBy: input.userId,
-        },
-      });
+      const parsedMonthCount = monthCountSchema.parse(res);
+
+      const [userUploadsCount] = await ctx.db
+        .select({ count: count() })
+        .from(transactionsMetadata)
+        .where(eq(transactionsMetadata.uploadedBy, input.userId));
+
+      const [userConfirmationsCount] = await ctx.db
+        .select({ count: count() })
+        .from(transactionsMetadata)
+        .where(eq(transactionsMetadata.confirmedBy, input.userId));
 
       return {
         monthCount: parsedMonthCount,
-        uploads: userUploadsCount,
-        confirmations: userConfirmationsCount,
+        uploads: userUploadsCount?.count ?? 0,
+        confirmations: userConfirmationsCount?.count ?? 0,
       };
     }),
   findOperationId: protectedProcedure
@@ -925,16 +876,17 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const response = await ctx.db.operations.findFirst({
-        where: input.txId
-          ? { transactions: { some: { id: input.txId } } }
-          : input.mvId
-          ? {
-              transactions: {
-                some: { movements: { some: { id: input.mvId } } },
+      const response = await ctx.db.query.operations.findFirst({
+        with: {
+          transactions: {
+            where: input.txId ? eq(transactions.id, input.txId) : undefined,
+            with: {
+              movements: {
+                where: input.mvId ? eq(movements.id, input.mvId) : undefined,
               },
-            }
-          : { id: 0 },
+            },
+          },
+        },
       });
 
       return response;

@@ -1,6 +1,8 @@
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { PermissionSchema } from "~/lib/permissionsTypes";
 import { getAllPermissions } from "~/lib/trpcFunctions";
+import { role, user } from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -23,9 +25,9 @@ export const rolesRouter = createTRPCRouter({
     )?.entitiesTags;
 
     if (hasSpecificRoles && !hasPermissions) {
-      const response = await ctx.db.role.findMany({
-        where: { name: { in: hasSpecificRoles } },
-        include: {
+      const response = await ctx.db.query.role.findMany({
+        where: inArray(role.name, hasSpecificRoles),
+        with: {
           users: true,
         },
       });
@@ -33,12 +35,11 @@ export const rolesRouter = createTRPCRouter({
       return response;
     }
     if (hasPermissions) {
-      const response = await ctx.db.role.findMany({
-        include: {
+      const response = await ctx.db.query.role.findMany({
+        with: {
           users: true,
         },
       });
-
       return response;
     } else {
       return null;
@@ -57,11 +58,9 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.role.findUnique({
-          where: {
-            id: input.id,
-          },
-          include: {
+        const response = await ctx.db.query.role.findFirst({
+          where: eq(role.id, input.id),
+          with: {
             users: true,
           },
         });
@@ -89,13 +88,14 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.role.create({
-          data: {
+        const response = await ctx.db
+          .insert(role)
+          .values({
             name: input.name,
             permissions: input.permissions,
             color: input.color,
-          },
-        });
+          })
+          .returning();
 
         return response;
       } else {
@@ -114,17 +114,17 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.role.delete({
-          where: {
-            id: input.id,
-          },
-          include: {
-            users: true,
-          },
-        });
+        const [response] = await ctx.db
+          .delete(role)
+          .where(eq(role.id, input.id))
+          .returning();
+        const users = await ctx.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.roleId, input.id));
 
         const pipeline = ctx.redis.pipeline();
-        response.users.forEach((user) => {
+        users.forEach((user) => {
           pipeline.del(`user_permissions:${user.id}`);
         });
 
@@ -154,22 +154,22 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.role.update({
-          where: {
-            id: input.id,
-          },
-          data: {
+        const response = await ctx.db
+          .update(role)
+          .set({
             name: input.name,
             permissions: input.permissions,
             color: input.color,
-          },
-          include: {
-            users: true,
-          },
-        });
+          })
+          .where(eq(role.id, input.id))
+          .returning();
+        const users = await ctx.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.roleId, input.id));
 
         const pipeline = ctx.redis.pipeline();
-        response.users.forEach((user) => {
+        users.forEach((user) => {
           pipeline.del(`user_permissions:${user.id}`);
         });
 

@@ -4,8 +4,7 @@ import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
-import { generateTableData, getAllChildrenTags } from "~/lib/functions";
-import { getAllEntities, getAllTags } from "~/lib/trpcFunctions";
+import { getAllEntities } from "~/lib/trpcFunctions";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -16,133 +15,62 @@ export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
     .input(
       z.object({
-        entityId: z.number().int().optional().nullish(),
-        entityTag: z.string().optional().nullish(),
-        fromDate: z.date().optional().nullish(),
+        tableData: z.array(
+          z.object({
+            id: z.number(),
+            date: z.string(),
+            selectedEntity: z.string(),
+            otherEntity: z.string(),
+            type: z.string(),
+            txType: z.string(),
+            currency: z.string(),
+            observations: z.string().nullable(),
+            ingress: z.number(),
+            egress: z.number(),
+            balance: z.number(),
+          }),
+        ),
+        fileType: z.enum(["csv", "pdf"]),
+        entityId: z.number().nullish(),
+        entityTag: z.string().nullish(),
+        fromDate: z.date().nullish(),
         toDate: z.date().optional().nullish(),
-        fileType: z.enum(["pdf", "csv"]),
         account: z.boolean(),
-        toEntityId: z.number().int().optional().nullish(),
         currency: z.string().optional().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const whereConditions = [];
-
-      whereConditions.push({ account: input.account });
-
-      if (input.entityId) {
-        whereConditions.push({
-          transaction: {
-            currency: input.currency ? input.currency : {},
-            OR: [
-              {
-                fromEntityId: input.entityId,
-                toEntityId: input.toEntityId
-                  ? input.toEntityId
-                  : {
-                      not: input.entityId,
-                    },
-              },
-              {
-                fromEntityId: input.toEntityId
-                  ? input.toEntityId
-                  : {
-                      not: input.entityId,
-                    },
-                toEntityId: input.entityId,
-              },
-            ],
-          },
-        });
-      } else if (input.entityTag) {
-        const tags = await getAllTags(ctx.redis, ctx.db);
-        const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
-
-        whereConditions.push({
-          transaction: {
-            currency: input.currency ? input.currency : {},
-            OR: [
-              {
-                AND: [
-                  { fromEntity: { tagName: { in: tagAndChildren } } },
-                  {
-                    toEntity: input.toEntityId
-                      ? { id: input.toEntityId }
-                      : { tagName: { notIn: tagAndChildren } },
-                  },
-                ],
-              },
-              {
-                AND: [
-                  {
-                    fromEntity: input.toEntityId
-                      ? { id: input.toEntityId }
-                      : { tagName: { notIn: tagAndChildren } },
-                  },
-                  { toEntity: { tagName: { in: tagAndChildren } } },
-                ],
-              },
-            ],
-          },
-        });
-      }
-
-      if (input.fromDate) {
-        whereConditions.push({
-          OR: [
-            { transaction: { date: { gte: input.fromDate } } },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: { operation: { date: { gte: input.fromDate } } },
-                },
-              ],
-            },
-          ],
-        });
-      }
-      if (input.toDate) {
-        whereConditions.push({
-          OR: [
-            { transaction: { date: { lte: input.toDate } } },
-            {
-              AND: [
-                { transaction: { date: null } },
-                { transaction: { operation: { date: { lte: input.toDate } } } },
-              ],
-            },
-          ],
-        });
-      }
-
-      const movements = await ctx.db.movements.findMany({
-        where: {
-          AND: whereConditions,
-        },
-        include: {
-          transaction: {
-            include: {
-              operation: {
-                select: {
-                  id: true,
-                  observations: true,
-                  date: true,
-                },
-              },
-              transactionMetadata: true,
-              fromEntity: true,
-              toEntity: true,
-            },
-          },
-        },
-        orderBy: [
-          { transaction: { date: "desc" } },
-          { transaction: { operation: { date: "desc" } } },
-          { id: "desc" },
-        ],
-      });
+      const data = input.tableData.map((mv) => ({
+        fecha: mv.date,
+        origen: mv.selectedEntity,
+        cliente: mv.otherEntity,
+        detalle: `${
+          mv.type === "upload"
+            ? "Carga"
+            : mv.type === "confirmation"
+            ? "Confirmación"
+            : "Cancelación"
+        } de ${mv.txType} - Nro ${mv.id}`,
+        observaciones: mv.observations,
+        entrada:
+          mv.ingress !== 0
+            ? mv.currency.toUpperCase() +
+              " " +
+              new Intl.NumberFormat("es-AR").format(mv.ingress)
+            : "",
+        salida:
+          mv.egress !== 0
+            ? mv.currency.toUpperCase() +
+              " " +
+              new Intl.NumberFormat("es-AR").format(mv.egress)
+            : "",
+        saldo:
+          mv.balance !== 0
+            ? mv.currency.toUpperCase() +
+              " " +
+              new Intl.NumberFormat("es-AR").format(mv.balance)
+            : "",
+      }));
 
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
@@ -161,66 +89,24 @@ export const filesRouter = createTRPCRouter({
           ? `_hasta:${moment(input.toDate).format("DD-MM-YYYY")}`
           : ""
       }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
-      const formattedMovements = input.entityId
-        ? generateTableData(movements, input.entityId, undefined, undefined)
-        : input.entityTag
-        ? generateTableData(
-            movements,
-            undefined,
-            input.entityTag,
-            await getAllTags(ctx.redis, ctx.db),
-          )
-        : undefined;
-      if (formattedMovements) {
-        const data = formattedMovements.flatMap((mv) => ({
-          fecha: mv.date,
-          origen: mv.selectedEntity,
-          cliente: mv.otherEntity,
-          detalle: `${
-            mv.type === "upload"
-              ? "Carga"
-              : mv.type === "confirmation"
-              ? "Confirmación"
-              : "Cancelación"
-          } de ${mv.txType} - Nro ${mv.id}`,
-          observaciones: mv.observations,
-          entrada:
-            mv.ingress !== 0
-              ? mv.currency.toUpperCase() +
-                " " +
-                new Intl.NumberFormat("es-AR").format(mv.ingress)
-              : "",
-          salida:
-            mv.egress !== 0
-              ? mv.currency.toUpperCase() +
-                " " +
-                new Intl.NumberFormat("es-AR").format(mv.egress)
-              : "",
-          saldo:
-            mv.balance !== 0
-              ? mv.currency.toUpperCase() +
-                " " +
-                new Intl.NumberFormat("es-AR").format(mv.balance)
-              : "",
-        }));
 
-        if (input.fileType === "csv") {
-          const csv = unparse(data, { delimiter: "," });
-          const putCommand = new PutObjectCommand({
-            Bucket: ctx.s3.bucketNames.reports,
-            Key: `cuentas/${filename}`,
-            Body: Buffer.from(csv, "utf-8"),
-          });
+      if (input.fileType === "csv") {
+        const csv = unparse(data, { delimiter: "," });
+        const putCommand = new PutObjectCommand({
+          Bucket: ctx.s3.bucketNames.reports,
+          Key: `cuentas/${filename}`,
+          Body: Buffer.from(csv, "utf-8"),
+        });
 
-          await ctx.s3.client.send(putCommand);
-        } else if (input.fileType === "pdf") {
-          const htmlString =
-            `<div class="header-div"><h1 class="title">Cuenta corriente de ${
-              input.entityId
-                ? entities.find((e) => e.id === input.entityId)?.name
-                : input.entityTag
-            }</h1></div>` +
-            `
+        await ctx.s3.client.send(putCommand);
+      } else if (input.fileType === "pdf") {
+        const htmlString =
+          `<div class="header-div"><h1 class="title">Cuenta corriente de ${
+            input.entityId
+              ? entities.find((e) => e.id === input.entityId)?.name
+              : input.entityTag
+          }</h1></div>` +
+          `
           <div class="table">
           <div class="table-header">
             <p>Fecha</p>
@@ -249,43 +135,40 @@ export const filesRouter = createTRPCRouter({
               .join("")}
             </div>`;
 
-          const cssString =
-            ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
+        const cssString =
+          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
 
-          try {
-            await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-api-key": env.LAMBDA_API_KEY,
-              },
-              body: JSON.stringify({
-                htmlString,
-                cssString,
-                bucketName: ctx.s3.bucketNames.reports,
-                fileKey: `cuentas/${filename}`,
-              }),
-            });
-          } catch (e) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: JSON.stringify(e),
-            });
-          }
+        try {
+          await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": env.LAMBDA_API_KEY,
+            },
+            body: JSON.stringify({
+              htmlString,
+              cssString,
+              bucketName: ctx.s3.bucketNames.reports,
+              fileKey: `cuentas/${filename}`,
+            }),
+          });
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: JSON.stringify(e),
+          });
         }
-
-        const getCommand = new GetObjectCommand({
-          Bucket: ctx.s3.bucketNames.reports,
-          Key: `cuentas/${filename}`,
-        });
-
-        const downloadUrl = await ctx.s3.getSignedUrl(
-          ctx.s3.client,
-          getCommand,
-          { expiresIn: 300 },
-        );
-        return { downloadUrl, filename };
       }
+
+      const getCommand = new GetObjectCommand({
+        Bucket: ctx.s3.bucketNames.reports,
+        Key: `cuentas/${filename}`,
+      });
+
+      const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
+        expiresIn: 300,
+      });
+      return { downloadUrl, filename };
     }),
   detailedBalancesFile: protectedLoggedProcedure
     .input(

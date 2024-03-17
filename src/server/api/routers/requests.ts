@@ -1,4 +1,6 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requests } from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -9,16 +11,17 @@ export const requestsRouter = createTRPCRouter({
   addOne: protectedLoggedProcedure
     .input(z.object({ title: z.string(), content: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const newRequest = await ctx.db.requests.create({
-        data: {
-          uploadedBy: ctx.session.user.id,
+      const response = await ctx.db
+        .insert(requests)
+        .values({
+          uploadedBy: ctx.user.id,
           title: input.title,
           content: input.content,
           status: "pending",
-        },
-      });
+        })
+        .returning();
 
-      return newRequest;
+      return response;
     }),
   updateOne: protectedLoggedProcedure
     .input(
@@ -29,34 +32,38 @@ export const requestsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const updatedRequest = await ctx.db.requests.update({
-        where: {
-          id: input.id,
-        },
-        data: {
+      const [response] = await ctx.db
+        .update(requests)
+        .set({
           title: input.title,
           content: input.content,
-        },
-      });
+        })
+        .where(eq(requests.id, input.id))
+        .returning();
 
-      return updatedRequest;
+      return response;
     }),
   deleteOne: protectedLoggedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const deletedRequest = await ctx.db.requests.delete({
-        where: {
-          id: input.id,
-        },
-      });
+      const response = await ctx.db
+        .delete(requests)
+        .where(eq(requests.id, input.id))
+        .returning();
 
-      return deletedRequest;
+      return response;
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    const allRequests = await ctx.db.requests.findMany({
-      include: { uploadedByUser: { select: { name: true } } },
+    const response = await ctx.db.query.requests.findMany({
+      with: {
+        uploadedByUser: {
+          columns: {
+            name: true,
+          },
+        },
+      },
     });
 
-    return allRequests;
+    return response;
   }),
 });

@@ -1,8 +1,8 @@
 "use client";
 
 import Lottie from "lottie-react";
+import { type User } from "lucia";
 import moment from "moment";
-import { type Session } from "next-auth";
 import Link from "next/link";
 import { useState, type FC } from "react";
 import { z } from "zod";
@@ -47,7 +47,7 @@ interface BalancesProps {
   selectedEntityId: number | null;
   selectedTag: string | null;
   tags: RouterOutputs["tags"]["getAll"];
-  session: Session | null;
+  user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
 }
 
@@ -59,7 +59,7 @@ const Balances: FC<BalancesProps> = ({
   selectedEntityId,
   selectedTag,
   tags,
-  session,
+  user,
   entities,
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
@@ -104,8 +104,10 @@ const Balances: FC<BalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
-    balances!.reduce(
+  let transformedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
+
+  if (balances) {
+    transformedBalances = balances.reduce(
       (acc, balance) => {
         if (selectedEntityId) {
           let entityEntry = acc.find(
@@ -183,13 +185,14 @@ const Balances: FC<BalancesProps> = ({
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
     );
+  }
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
-  if (selectedEntityId) {
-    detailedBalances = balances!.reduce(
+  if (selectedEntityId && balances) {
+    detailedBalances = balances.reduce(
       (acc, balance) => {
         let entityEntry = acc.find(
           (entry) =>
@@ -231,8 +234,8 @@ const Balances: FC<BalancesProps> = ({
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
     );
-  } else if (selectedTag) {
-    detailedBalances = balances!.reduce(
+  } else if (selectedTag && balances) {
+    detailedBalances = balances.reduce(
       (acc, balance) => {
         const myPOVEntity = allChildrenTags.includes(
           balance.selectedEntity.tagName,
@@ -315,8 +318,8 @@ const Balances: FC<BalancesProps> = ({
     refetch: refetchAccountsLists,
     isLoading: isAccountsListsLoading,
   } = api.userPreferences.getPreference.useQuery(
-    { userId: session!.user.id, preferenceKey: "accountsLists" },
-    { enabled: !!session },
+    { userId: user!.id, preferenceKey: "accountsLists" },
+    { enabled: !!user },
   );
 
   const { mutateAsync: addPreference } =
@@ -340,7 +343,7 @@ const Balances: FC<BalancesProps> = ({
   };
 
   const addList = async () => {
-    if (session) {
+    if (user) {
       const newList = {
         id: accountsLists ? accountsLists.length + 1 : 1,
         idList: accountListToAdd,
@@ -351,7 +354,7 @@ const Balances: FC<BalancesProps> = ({
         isDefault: false,
       }));
       await addPreference({
-        userId: session.user.id,
+        userId: user.id,
         preference: {
           key: "accountsLists",
           value: accountsLists ? [...undefaultedList!, newList] : [newList],
@@ -496,9 +499,9 @@ const Balances: FC<BalancesProps> = ({
                               className="flex flex-row space-x-1"
                               variant="outline"
                               onClick={async () => {
-                                if (session) {
+                                if (user) {
                                   await addPreference({
-                                    userId: session.user.id,
+                                    userId: user.id,
                                     preference: {
                                       key: "accountsLists",
                                       value: accountsLists.map((obj) => {
@@ -522,9 +525,9 @@ const Balances: FC<BalancesProps> = ({
                               className="flex flex-row space-x-1"
                               variant="outline"
                               onClick={async () => {
-                                if (session) {
+                                if (user) {
                                   await addPreference({
-                                    userId: session.user.id,
+                                    userId: user.id,
                                     preference: {
                                       key: "accountsLists",
                                       value: accountsLists.map((obj) => {
@@ -547,9 +550,9 @@ const Balances: FC<BalancesProps> = ({
                             className="flex flex-row space-x-1"
                             variant="outline"
                             onClick={async () => {
-                              if (session) {
+                              if (user) {
                                 await addPreference({
-                                  userId: session.user.id,
+                                  userId: user.id,
                                   preference: {
                                     key: "accountsLists",
                                     value: accountsLists.filter(

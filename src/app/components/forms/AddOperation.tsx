@@ -1,8 +1,8 @@
 "use client";
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { type User } from "lucia";
 import moment from "moment";
-import type { User } from "next-auth";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -107,10 +107,6 @@ const AddOperation = ({
           });
         }
 
-        setIsInitialOperationSubmitted(false);
-        resetTransactionsStore();
-        resetInitialOperationStore();
-
         // Doing the Optimistic update
         await utils.operations.getOperationsByUser.cancel();
 
@@ -123,7 +119,7 @@ const AddOperation = ({
             observations: newOperation.opObservations
               ? newOperation.opObservations
               : "",
-            _count: { transactions: newOperation.transactions.length },
+            transactionsCount: newOperation.transactions.length,
           };
 
         utils.operations.getOperationsByUser.setData(undefined, (old) => [
@@ -147,9 +143,13 @@ const AddOperation = ({
       },
       onSettled() {
         void utils.operations.getOperationsByUser.invalidate();
+        setIsInitialOperationSubmitted(false);
+        resetTransactionsStore();
+        resetInitialOperationStore();
       },
     },
   );
+
   const uploadOperation = async () => {
     try {
       await mutateAsync({
@@ -193,8 +193,6 @@ const AddOperation = ({
       { permissionName: "OPERATIONS_CREATE" },
       {
         initialData: initialEntities,
-        refetchOnMount: false,
-        refetchOnReconnect: false,
       },
     );
 

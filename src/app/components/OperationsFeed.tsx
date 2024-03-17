@@ -1,6 +1,6 @@
 "use client";
 
-import type { User } from "next-auth";
+import { type User } from "lucia";
 import dynamic from "next/dynamic";
 import { type FC } from "react";
 import { api } from "~/trpc/react";

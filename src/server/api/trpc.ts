@@ -12,7 +12,7 @@ import { type NextRequest } from "next/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { db, db2 } from "~/server/db";
+import { db } from "~/server/db";
 import { redis } from "~/server/redis";
 import { getUser } from "../auth";
 import { dynamodb } from "../dynamodb";
@@ -47,7 +47,6 @@ export const createInnerTRPCContext = async (opts: CreateContextOptions) => {
     user,
     headers: opts.headers,
     db,
-    db2,
     redis,
     s3,
     dynamodb,

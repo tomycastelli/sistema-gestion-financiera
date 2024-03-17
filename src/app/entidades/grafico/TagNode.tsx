@@ -18,7 +18,7 @@ const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
   const { data: balancesTag, isLoading: isLoadingTag } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityTag: props.data.name },
-      { refetchOnReconnect: false, staleTime: 182000 },
+      { staleTime: 182000 },
     );
 
   return (

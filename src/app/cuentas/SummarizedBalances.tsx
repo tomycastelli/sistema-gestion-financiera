@@ -42,7 +42,7 @@ import { DataTable } from "./DataTable";
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
   initialBalancesForCardInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
-  initialMovements: RouterOutputs["movements"]["getMovementsByCurrency"];
+  initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   movementsAmount: number;
   selectedTag: string | null;
   selectedEntityId: number | null;
@@ -88,27 +88,24 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     dayInPast,
   });
 
-  const queryInput: RouterInputs["movements"]["getMovementsByCurrency"] = {
+  const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
-    limit: movementsAmount,
+    pageSize: movementsAmount,
+    pageNumber: 5,
+    entityTag: selectedTag,
+    entityId: selectedEntityId,
   };
-
-  if (selectedTag) {
-    queryInput.entityTag = selectedTag;
-  } else if (selectedEntityId) {
-    queryInput.entityId = selectedEntityId;
-  }
 
   queryInput.dayInPast = dayInPast;
 
   const { data: movements, isLoading } =
-    api.movements.getMovementsByCurrency.useQuery(queryInput, {
+    api.movements.getCurrentAccounts.useQuery(queryInput, {
       initialData: initialMovements,
-      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
     });
 
   const tableData = generateTableData(
-    movements,
+    movements.movements,
     selectedEntityId,
     selectedTag,
     tags,
@@ -398,7 +395,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             <CardContent>
               {isLoading ? (
                 <p>Cargando...</p>
-              ) : movements.length > 0 ? (
+              ) : movements.totalRows > 0 ? (
                 <DataTable
                   columns={columns}
                   data={tableData.map((row) => {

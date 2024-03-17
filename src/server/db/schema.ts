@@ -43,14 +43,14 @@ export const transactionsMetadata = pgTable(
       onDelete: "set null",
       onUpdate: "cascade",
     }),
-    confirmedDate: timestamp("confirmedDate", { precision: 3, mode: "string" }),
+    confirmedDate: date("confirmedDate", { mode: "date" }),
     history: jsonb("history"),
     metadata: jsonb("metadata"),
     cancelledBy: text("cancelledBy").references(() => user.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
-    cancelledDate: timestamp("cancelledDate", { precision: 3, mode: "string" }),
+    cancelledDate: date("cancelledDate", { mode: "date" }),
   },
   (table) => {
     return {
@@ -171,7 +171,7 @@ export const links = pgTable("Links", {
       onUpdate: "cascade",
     }),
   password: text("password").notNull(),
-  expiration: timestamp("expiration", { precision: 3, mode: "string" }),
+  expiration: date("date", { mode: "date" }).notNull(),
 });
 
 export const balances = pgTable(
@@ -392,10 +392,11 @@ export const requests = pgTable("Requests", {
 
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
-  children: many(tag),
+  children: many(tag, { relationName: "children" }),
   parent: one(tag, {
     fields: [tag.parent],
     references: [tag.name],
+    relationName: "children",
   }),
 }));
 
@@ -428,17 +429,21 @@ export const transactionsOneRelations = relations(
       fields: [transactions.operatorEntityId],
       references: [entities.id],
     }),
-    operationId: one(operations, {
+    operation: one(operations, {
       fields: [transactions.operationId],
       references: [operations.id],
     }),
-    transactionMetadata: one(transactionsMetadata),
+    transactionMetadata: one(transactionsMetadata, {
+      relationName: "transactionMetadata",
+      fields: [transactions.id],
+      references: [transactionsMetadata.transactionId],
+    }),
     movements: many(movements),
   }),
 );
 
 export const movementsOneRelations = relations(movements, ({ one }) => ({
-  transactionId: one(transactions, {
+  transaction: one(transactions, {
     fields: [movements.transactionId],
     references: [transactions.id],
   }),
@@ -448,12 +453,38 @@ export const movementsOneRelations = relations(movements, ({ one }) => ({
   }),
 }));
 
+export const transactionsMetadataRelations = relations(
+  transactionsMetadata,
+  ({ one }) => ({
+    uploadedByUser: one(user, {
+      fields: [transactionsMetadata.uploadedBy],
+      references: [user.id],
+      relationName: "uploadedByUser",
+    }),
+    confirmedByUser: one(user, {
+      fields: [transactionsMetadata.confirmedBy],
+      references: [user.id],
+      relationName: "confirmedByUser",
+    }),
+    cancelledByUser: one(user, {
+      fields: [transactionsMetadata.cancelledBy],
+      references: [user.id],
+      relationName: "cancelledByUser",
+    }),
+    transactions: one(transactions, {
+      relationName: "transactionMetadata",
+      fields: [transactionsMetadata.transactionId],
+      references: [transactions.id],
+    }),
+  }),
+);
+
 export const balancesOneRelations = relations(balances, ({ one, many }) => ({
-  selectedEntityId: one(entities, {
+  selectedEntity: one(entities, {
     fields: [balances.selectedEntityId],
     references: [entities.id],
   }),
-  otherEntityId: one(entities, {
+  otherEntity: one(entities, {
     fields: [balances.otherEntityId],
     references: [entities.id],
   }),
@@ -461,7 +492,7 @@ export const balancesOneRelations = relations(balances, ({ one, many }) => ({
 }));
 
 export const linksOneRelations = relations(links, ({ one }) => ({
-  sharedEntityId: one(entities, {
+  sharedEntity: one(entities, {
     fields: [links.sharedEntityId],
     references: [entities.id],
   }),
@@ -472,15 +503,24 @@ export const rolesManyRelations = relations(role, ({ many }) => ({
 }));
 
 export const usersOneRelations = relations(user, ({ one, many }) => ({
-  roleId: one(role, {
+  role: one(role, {
     fields: [user.roleId],
     references: [role.id],
   }),
   requests: many(requests),
+  transactionsUploads: many(transactionsMetadata, {
+    relationName: "uploadedByUser",
+  }),
+  transactionsConfirmations: many(transactionsMetadata, {
+    relationName: "confirmedByUser",
+  }),
+  transactionsCancellations: many(transactionsMetadata, {
+    relationName: "cancelledByUser",
+  }),
 }));
 
 export const requestsOneRelations = relations(requests, ({ one }) => ({
-  uploadedBy: one(user, {
+  uploadedByUser: one(user, {
     fields: [requests.uploadedBy],
     references: [user.id],
   }),

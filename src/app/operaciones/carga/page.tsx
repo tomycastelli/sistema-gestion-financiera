@@ -1,5 +1,5 @@
 import AddOperation from "~/app/components/forms/AddOperation";
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 
 const Page = async () => {
@@ -7,7 +7,7 @@ const Page = async () => {
     permissionName: "OPERATIONS_CREATE",
   });
 
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   const operations = await api.operations.getOperationsByUser.query();
 
@@ -17,12 +17,12 @@ const Page = async () => {
 
   return (
     <div className="h-full">
-      {session?.user && (
+      {user && (
         <AddOperation
           tags={tags}
           userPermissions={userPermissions}
           initialEntities={initialEntities}
-          user={session?.user}
+          user={user}
           initialOperations={operations}
         />
       )}

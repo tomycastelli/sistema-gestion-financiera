@@ -50,16 +50,12 @@ const UploadedUserOperations = forwardRef<
                 <p className="text-md text-muted-foreground">
                   {op.observations}
                 </p>
-                {op._count && (
-                  <p className="text-md">
-                    <span className="mr-2 text-primary">
-                      {op._count.transactions}
-                    </span>
-                    {op._count.transactions > 1
-                      ? "Transacciones"
-                      : "Transacción"}
-                  </p>
-                )}
+                <p className="text-md">
+                  <span className="mr-2 text-primary">
+                    {op.transactionsCount}
+                  </span>
+                  {op.transactionsCount > 1 ? "Transacciones" : "Transacción"}
+                </p>
                 <div className="flex w-full flex-row justify-between">
                   {isLoading && index === 0 ? (
                     <Lottie

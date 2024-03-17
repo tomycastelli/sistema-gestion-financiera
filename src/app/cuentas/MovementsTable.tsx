@@ -1,9 +1,9 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
 import moment from "moment";
-import { type Session } from "next-auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -67,7 +67,7 @@ interface CuentasTableProps {
   entityId: number | null;
   entityTag: string | null;
   pageSize: number;
-  session: Session | null;
+  user: User | null;
   accountType: boolean;
   linkId: number | null;
   linkToken: string | null;
@@ -80,7 +80,7 @@ const MovementsTable = ({
   entityId,
   entityTag,
   pageSize,
-  session,
+  user,
   accountType,
   linkId,
   linkToken,
@@ -481,7 +481,7 @@ const MovementsTable = ({
             />
           </div>
 
-          {session && selectedEntityString && !accountType && (
+          {user && selectedEntityString && !accountType && (
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
           <Button
@@ -512,11 +512,11 @@ const MovementsTable = ({
                         ? parseInt(selectedFromEntity)
                         : entityId,
                       entityTag: selectedFromEntity ? undefined : entityTag,
-                      toEntityId: destinationEntityId,
                       currency: selectedCurrency,
                       fromDate: fromDate,
                       toDate: toDate,
                       fileType: "pdf",
+                      tableData,
                     });
                   }}
                 >
@@ -531,11 +531,11 @@ const MovementsTable = ({
                         ? parseInt(selectedFromEntity)
                         : entityId,
                       entityTag: selectedFromEntity ? undefined : entityTag,
-                      toEntityId: destinationEntityId,
                       currency: selectedCurrency,
                       fromDate: fromDate,
                       toDate: toDate,
                       fileType: "csv",
+                      tableData,
                     });
                   }}
                 >

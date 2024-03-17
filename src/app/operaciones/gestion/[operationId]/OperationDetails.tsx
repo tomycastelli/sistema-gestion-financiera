@@ -1,6 +1,6 @@
 "use client";
 
-import { type Session } from "next-auth";
+import { type User } from "lucia";
 import { type FC } from "react";
 import Operation from "~/app/components/Operation";
 import { api } from "~/trpc/react";
@@ -12,7 +12,7 @@ interface OperationDetailsProps {
   entities: RouterOutputs["entities"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   operationId: string;
-  session: Session;
+  user: User;
   users: RouterOutputs["users"]["getAll"];
   movements: RouterOutputs["movements"]["getMovementsByOpId"];
 }
@@ -22,15 +22,13 @@ const OperationDetails: FC<OperationDetailsProps> = ({
   initialOperation,
   entities,
   operationId,
-  session,
+  user,
   users,
 }) => {
   const { data, isLoading } = api.operations.getOperations.useQuery(
     { operationId: parseInt(operationId), limit: 1, page: 1 },
     {
       initialData: initialOperation,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
       refetchOnWindowFocus: false,
     },
   );
@@ -52,7 +50,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
                 }}
                 isInFeed={false}
                 users={users}
-                user={session.user}
+                user={user}
                 entities={entities}
               />
             </div>

@@ -42,7 +42,7 @@ const ClientLinkGenerator = ({
     api.shareableLinks.removeLink.useMutation({
       async onSuccess(newOperation) {
         toast({
-          title: `Link ${newOperation.id} borrado`,
+          title: `Link ${newOperation?.id} borrado`,
           variant: "destructive",
         });
         await utils.shareableLinks.getLinksByEntityId.refetch();

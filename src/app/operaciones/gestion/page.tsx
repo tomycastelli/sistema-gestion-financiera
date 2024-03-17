@@ -5,7 +5,8 @@ import CustomPagination from "~/app/components/CustomPagination";
 import OperationsFeed from "~/app/components/OperationsFeed";
 import FilterOperationsForm from "~/app/components/forms/FilterOperationsForm";
 import { Separator } from "~/app/components/ui/separator";
-import { getServerAuthSession } from "~/server/auth";
+import { dateFormatting } from "~/lib/variables";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
 const LoadingAnimation = dynamic(
@@ -17,16 +18,16 @@ const Page = async ({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) => {
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
-  const selectedFromEntity = searchParams.origen;
-  const selectedToEntity = searchParams.destino as string;
+  const selectedFromEntity = searchParams.origen as string[];
+  const selectedToEntity = searchParams.destino as string[];
   const selectedCurrency = searchParams.divisa as string;
-  const selectedDateGreater = searchParams.diaDesde as string;
-  const selectedDateLesser = searchParams.diaHasta as string;
+  const selectedDateGreater = searchParams.diaDesde as string | undefined;
+  const selectedDateLesser = searchParams.diaHasta as string | undefined;
   const selectedType = searchParams.tipo as string;
-  const selectedOperator = searchParams.operador as string;
+  const selectedOperator = searchParams.operador as string[];
   const selectedAmount = searchParams.monto as string;
   const selectedAmountGreater = searchParams.montoMin as string;
   const selectedAmountLesser = searchParams.montoMax as string;
@@ -39,12 +40,14 @@ const Page = async ({
   };
 
   if (selectedFromEntity) {
-    operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity)
-      ? selectedFromEntity.flatMap((nString) => parseInt(nString))
-      : parseInt(selectedFromEntity);
+    operationsQueryInput.fromEntityId = selectedFromEntity.map((str) =>
+      parseInt(str),
+    );
   }
   if (selectedToEntity) {
-    operationsQueryInput.toEntityId = parseInt(selectedToEntity);
+    operationsQueryInput.toEntityId = selectedToEntity.map((str) =>
+      parseInt(str),
+    );
   }
   if (selectedCurrency) {
     operationsQueryInput.currency = selectedCurrency;
@@ -52,20 +55,22 @@ const Page = async ({
   if (selectedDateGreater) {
     operationsQueryInput.opDateIsGreater = moment(
       selectedDateGreater,
-      "DD-MM-YYYY",
+      dateFormatting.day,
     ).toDate();
   }
   if (selectedDateLesser) {
     operationsQueryInput.opDateIsLesser = moment(
       selectedDateLesser,
-      "DD-MM-YYYY",
+      dateFormatting.day,
     ).toDate();
   }
   if (selectedType) {
     operationsQueryInput.transactionType = selectedType;
   }
   if (selectedOperator) {
-    operationsQueryInput.operatorEntityId = parseInt(selectedOperator);
+    operationsQueryInput.operatorEntityId = selectedOperator.map((str) =>
+      parseInt(str),
+    );
   }
   if (selectedAmount) {
     operationsQueryInput.amount = parseFloat(selectedAmount);
@@ -92,7 +97,7 @@ const Page = async ({
   return (
     <div className="flex w-full flex-col">
       <h1 className="mb-4 text-4xl font-bold tracking-tighter">Operaciones</h1>
-      {session && (
+      {user && (
         <>
           <div className="flex flex-col justify-start">
             <FilterOperationsForm entities={initialEntities} users={users} />
@@ -113,7 +118,7 @@ const Page = async ({
               initialEntities={initialEntities}
               initialOperations={initialOperations}
               operationsQueryInput={operationsQueryInput}
-              user={session.user}
+              user={user}
             />
           </Suspense>
           <CustomPagination

@@ -19,7 +19,7 @@ const EntityNode = (
   const { data: balances, isLoading } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityId: props.data.id },
-      { refetchOnReconnect: false, staleTime: 182000 },
+      { staleTime: 182000 },
     );
 
   return (

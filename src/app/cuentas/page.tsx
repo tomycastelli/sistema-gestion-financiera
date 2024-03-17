@@ -1,9 +1,9 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { getAllChildrenTags } from "~/lib/functions";
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
-import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import { type RouterInputs } from "~/trpc/shared";
 import EntitySwitcher from "./EntitySwitcher";
 import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
@@ -20,7 +20,7 @@ const Page = async ({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) => {
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   const userPermissions = await api.users.getAllPermissions.query({});
 
@@ -87,32 +87,24 @@ const Page = async ({
 
   const movementsAmount = 5;
 
-  const queryInput: RouterInputs["movements"]["getMovementsByCurrency"] = {
-    limit: movementsAmount,
+  const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
+    pageSize: movementsAmount,
     currency: "ars",
+    pageNumber: 1,
+    entityTag: selectedTag,
+    entityId: selectedEntityId,
   };
 
-  if (selectedTag) {
-    queryInput.entityTag = selectedTag;
-  } else if (selectedEntityId) {
-    queryInput.entityId = selectedEntityId;
-  }
-
-  let initialMovements: RouterOutputs["movements"]["getMovementsByCurrency"] =
-    [];
-
-  if (session?.user) {
-    initialMovements = await api.movements.getMovementsByCurrency.query(
-      queryInput,
-    );
-  }
+  const initialMovements = await api.movements.getCurrentAccounts.query(
+    queryInput,
+  );
 
   return (
     <div>
       {initialBalances ? (
         <>
           <div className="flex w-full flex-row justify-between space-x-8 border-b border-muted pb-4">
-            {session && (
+            {user && (
               <div className="flex flex-wrap gap-4">
                 <EntitySwitcher
                   entities={initialEntities}
@@ -169,7 +161,7 @@ const Page = async ({
             )}
           </Suspense>
         </>
-      ) : session?.user ? (
+      ) : user ? (
         <p className="text-3xl font-semibold">No se encontraron balances</p>
       ) : (
         <p className="text-3xl font-semibold">

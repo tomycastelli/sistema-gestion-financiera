@@ -1,6 +1,19 @@
-import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  not,
+  or,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
+import type postgres from "postgres";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
@@ -9,6 +22,14 @@ import {
   getAllTags,
 } from "~/lib/trpcFunctions";
 import { dateFormatting } from "~/lib/variables";
+import {
+  balances,
+  entities,
+  links,
+  movements,
+  operations,
+  transactions,
+} from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
@@ -31,23 +52,22 @@ export const movementsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const whereConditions = [];
-
       let isRequestValid = false;
 
       if (ctx.user !== undefined) {
         isRequestValid = true;
       } else if (input.linkId && input.linkToken && input.sharedEntityId) {
-        const link = await ctx.db.links.findUnique({
-          where: {
-            id: input.linkId,
-            sharedEntityId: input.sharedEntityId,
-            password: input.linkToken,
-            expiration: {
-              gte: new Date(),
-            },
-          },
-        });
+        const [link] = await ctx.db
+          .select()
+          .from(links)
+          .where(
+            and(
+              eq(links.id, input.linkId),
+              eq(links.sharedEntityId, input.sharedEntityId),
+              eq(links.password, input.linkToken),
+              gte(links.expiration, new Date()),
+            ),
+          );
 
         if (link) {
           isRequestValid = true;
@@ -61,74 +81,61 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
-      if (input.entityId) {
-        whereConditions.push({
-          transaction: {
-            currency: input.currency ? input.currency : {},
-            OR: [
-              {
-                fromEntityId: input.entityId,
-                toEntityId: input.toEntityId
-                  ? input.toEntityId
-                  : {
-                      not: input.entityId,
-                    },
-              },
-              {
-                fromEntityId: input.toEntityId
-                  ? input.toEntityId
-                  : {
-                      not: input.entityId,
-                    },
-                toEntityId: input.entityId,
-              },
-            ],
-          },
-        });
-      } else if (input.entityTag) {
-        const tags = await getAllTags(ctx.redis, ctx.db);
-        const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
+      const tags = await getAllTags(ctx.redis, ctx.db);
+      const tagAndChildren = input.entityTag
+        ? getAllChildrenTags(input.entityTag, tags)
+        : ["a"];
 
-        whereConditions.push({
-          transaction: {
-            currency: input.currency ? input.currency : {},
-            OR: [
-              {
-                AND: [
-                  { fromEntity: { tagName: { in: tagAndChildren } } },
-                  {
-                    toEntity: input.toEntityId
-                      ? { id: input.toEntityId }
-                      : { tagName: { notIn: tagAndChildren } },
-                  },
-                ],
-              },
-              {
-                AND: [
-                  {
-                    fromEntity: input.toEntityId
-                      ? { id: input.toEntityId }
-                      : { tagName: { notIn: tagAndChildren } },
-                  },
-                  { toEntity: { tagName: { in: tagAndChildren } } },
-                ],
-              },
-            ],
-          },
-        });
-      }
-
-      if (input.account !== null) {
-        whereConditions.push({ account: input.account });
-      }
-
-      if (input.dayInPast) {
-        whereConditions.push({
-          OR: [
-            {
-              transaction: {
-                date: {
-                  lte: moment(input.dayInPast, dateFormatting.day)
+      // Hay que hacer join con transactions para que funcionen estas conditions
+      const transactionsConditions = and(
+        or(
+          input.entityId
+            ? and(
+                input.currency
+                  ? eq(transactions.currency, input.currency)
+                  : undefined,
+                or(
+                  and(
+                    eq(transactions.fromEntityId, input.entityId),
+                    input.toEntityId
+                      ? eq(transactions.toEntityId, input.toEntityId)
+                      : not(eq(transactions.toEntityId, input.entityId)),
+                  ),
+                  and(
+                    eq(transactions.toEntityId, input.entityId),
+                    input.toEntityId
+                      ? eq(transactions.fromEntityId, input.toEntityId)
+                      : not(eq(transactions.fromEntityId, input.entityId)),
+                  ),
+                ),
+              )
+            : undefined,
+          input.entityTag
+            ? and(
+                input.currency
+                  ? eq(transactions.currency, input.currency)
+                  : undefined,
+              )
+            : undefined,
+        ),
+        input.dayInPast
+          ? or(
+              lte(
+                transactions.date,
+                moment(input.dayInPast, dateFormatting.day)
+                  .set({
+                    hour: 23,
+                    minute: 59,
+                    second: 59,
+                    millisecond: 999,
+                  })
+                  .toDate(),
+              ),
+              and(
+                isNull(transactions.date),
+                lte(
+                  operations.date,
+                  moment(input.dayInPast, dateFormatting.day)
                     .set({
                       hour: 23,
                       minute: 59,
@@ -136,43 +143,22 @@ export const movementsRouter = createTRPCRouter({
                       millisecond: 999,
                     })
                     .toDate(),
-                },
-              },
-            },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: {
-                    operation: {
-                      date: {
-                        lte: moment(input.dayInPast, dateFormatting.day)
-                          .set({
-                            hour: 23,
-                            minute: 59,
-                            second: 59,
-                            millisecond: 999,
-                          })
-                          .toDate(),
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        });
-      }
-      if (input.fromDate && input.toDate) {
-        whereConditions.push({
-          OR: [
-            {
-              transaction: {
-                date: {
-                  gte: moment(input.fromDate)
+                ),
+              ),
+            )
+          : undefined,
+        input.fromDate && input.toDate
+          ? or(
+              and(
+                gte(
+                  transactions.date,
+                  moment(input.fromDate)
                     .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
                     .toDate(),
-                  lte: moment(input.toDate)
+                ),
+                lte(
+                  transactions.date,
+                  moment(input.toDate)
                     .set({
                       hour: 23,
                       minute: 59,
@@ -180,50 +166,49 @@ export const movementsRouter = createTRPCRouter({
                       millisecond: 999,
                     })
                     .toDate(),
-                },
-              },
-            },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: {
-                    operation: {
-                      date: {
-                        gte: moment(input.fromDate)
-                          .set({
-                            hour: 0,
-                            minute: 0,
-                            second: 0,
-                            millisecond: 0,
-                          })
-                          .toDate(),
-                        lte: moment(input.toDate)
-                          .set({
-                            hour: 23,
-                            minute: 59,
-                            second: 59,
-                            millisecond: 999,
-                          })
-                          .toDate(),
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        });
-      } else if (input.fromDate && !input.toDate) {
-        whereConditions.push({
-          OR: [
-            {
-              transaction: {
-                date: {
-                  gte: moment(input.fromDate)
+                ),
+              ),
+              and(
+                isNull(transactions.date),
+                and(
+                  gte(
+                    operations.date,
+                    moment(input.fromDate)
+                      .set({
+                        hour: 0,
+                        minute: 0,
+                        second: 0,
+                        millisecond: 0,
+                      })
+                      .toDate(),
+                  ),
+                  lte(
+                    operations.date,
+                    moment(input.toDate)
+                      .set({
+                        hour: 23,
+                        minute: 59,
+                        second: 59,
+                        millisecond: 999,
+                      })
+                      .toDate(),
+                  ),
+                ),
+              ),
+            )
+          : undefined,
+        input.fromDate && !input.toDate
+          ? or(
+              and(
+                gte(
+                  transactions.date,
+                  moment(input.fromDate)
                     .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
                     .toDate(),
-                  lte: moment(input.fromDate)
+                ),
+                lte(
+                  transactions.date,
+                  moment(input.fromDate)
                     .set({
                       hour: 0,
                       minute: 0,
@@ -232,79 +217,114 @@ export const movementsRouter = createTRPCRouter({
                     })
                     .add(1, "day")
                     .toDate(),
-                },
-              },
-            },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: {
-                    operation: {
-                      date: {
-                        gte: moment(input.fromDate)
-                          .set({
-                            hour: 0,
-                            minute: 0,
-                            second: 0,
-                            millisecond: 0,
-                          })
-                          .toDate(),
-                        lte: moment(input.fromDate)
-                          .set({
-                            hour: 0,
-                            minute: 0,
-                            second: 0,
-                            millisecond: 0,
-                          })
-                          .add(1, "day")
-                          .toDate(),
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        });
-      }
+                ),
+              ),
+              and(
+                isNull(transactions.date),
+                and(
+                  gte(
+                    operations.date,
+                    moment(input.fromDate)
+                      .set({
+                        hour: 0,
+                        minute: 0,
+                        second: 0,
+                        millisecond: 0,
+                      })
+                      .toDate(),
+                  ),
+                  lte(
+                    operations.date,
+                    moment(input.fromDate)
+                      .set({
+                        hour: 0,
+                        minute: 0,
+                        second: 0,
+                        millisecond: 0,
+                      })
+                      .add(1, "day")
+                      .toDate(),
+                  ),
+                ),
+              ),
+            )
+          : undefined,
+      );
 
-      const totalRows = await ctx.db.movements.count({
-        where: {
-          AND: whereConditions,
-        },
-      });
+      // Hay que hacer join con tags en fromEntity y toEntity para que funcionen estas where conditions
+      const fromEntityObject = alias(entities, "fromEntityObject");
+      const toEntityObject = alias(entities, "toEntityObject");
 
-      const movements = await ctx.db.movements.findMany({
-        where: {
-          AND: whereConditions,
-        },
-        include: {
-          transaction: {
-            include: {
-              operation: {
-                select: {
-                  id: true,
-                  observations: true,
-                  date: true,
-                },
+      console.log(tagAndChildren);
+
+      const entitiesConditions = or(
+        and(
+          inArray(fromEntityObject.tagName, tagAndChildren),
+          input.toEntityId
+            ? eq(toEntityObject.id, input.toEntityId)
+            : not(inArray(toEntityObject.tagName, tagAndChildren)),
+        ),
+        and(
+          input.toEntityId
+            ? eq(fromEntityObject.id, input.toEntityId)
+            : not(inArray(fromEntityObject.tagName, tagAndChildren)),
+          inArray(toEntityObject.tagName, tagAndChildren),
+        ),
+      );
+
+      const movementsConditions = and(
+        input.account ? eq(movements.account, input.account) : undefined,
+      );
+
+      const response = await ctx.db.transaction(async (transaction) => {
+        const movementsIds = await transaction
+          .select({ id: movements.id })
+          .from(movements)
+          .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .leftJoin(
+            fromEntityObject,
+            eq(fromEntityObject.id, transactions.fromEntityId),
+          )
+          .leftJoin(
+            toEntityObject,
+            eq(toEntityObject.id, transactions.toEntityId),
+          )
+          .where(
+            and(
+              movementsConditions,
+              input.entityTag ? entitiesConditions : undefined,
+              transactionsConditions,
+            ),
+          );
+
+        const ids =
+          movementsIds.length > 0 ? movementsIds.map((obj) => obj.id) : [0];
+
+        const movementsQuery = await transaction.query.movements.findMany({
+          with: {
+            transaction: {
+              with: {
+                operation: true,
+                fromEntity: true,
+                toEntity: true,
+                transactionMetadata: true,
               },
-              transactionMetadata: true,
-              fromEntity: true,
-              toEntity: true,
             },
           },
-        },
-        orderBy: [
-          { transaction: { date: "desc" } },
-          { transaction: { operation: { date: "desc" } } },
-          { id: "desc" },
-        ],
-        take: input.pageSize,
-        skip: (input.pageNumber - 1) * input.pageSize,
+          where: inArray(movements.id, ids),
+          orderBy: desc(movements.id),
+          offset: (input.pageNumber - 1) * input.pageSize,
+          limit: input.pageSize,
+        });
+
+        return { movementsQuery, totalRows: movementsIds.length };
       });
 
-      return { movements: movements, totalRows: totalRows };
+      return {
+        movements: response.movementsQuery,
+        totalRows: response.totalRows,
+      };
     }),
 
   getBalancesByEntities: publicProcedure
@@ -355,15 +375,13 @@ export const movementsRouter = createTRPCRouter({
           isRequestValid = true;
         }
       } else if (input.linkId && input.linkToken && input.entityId) {
-        const link = await ctx.db.links.findUnique({
-          where: {
-            id: input.linkId,
-            sharedEntityId: input.entityId,
-            password: input.linkToken,
-            expiration: {
-              gte: new Date(),
-            },
-          },
+        const link = await ctx.db.query.links.findFirst({
+          where: and(
+            eq(links.id, input.linkId),
+            eq(links.sharedEntityId, input.entityId),
+            eq(links.password, input.linkToken),
+            gte(links.expiration, new Date()),
+          ),
         });
 
         if (link) {
@@ -386,89 +404,116 @@ export const movementsRouter = createTRPCRouter({
         }
       }
 
+      const selectedEntityObject = alias(entities, "selectedEntity");
+      const otherEntityObject = alias(entities, "otherEntity");
+
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
         const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-        const balances = await ctx.db.balances.findMany({
-          where: {
-            AND: [
-              {
-                OR: [
-                  {
-                    selectedEntity: { tagName: { in: allChildrenTags } },
-                    otherEntity: { tagName: { notIn: allChildrenTags } },
-                  },
-                  {
-                    selectedEntity: { tagName: { notIn: allChildrenTags } },
-                    otherEntity: { tagName: { in: allChildrenTags } },
-                  },
-                ],
-              },
+        const balancesDat = await ctx.db
+          .selectDistinctOn([
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+          ])
+          .from(balances)
+          .leftJoin(
+            selectedEntityObject,
+            eq(selectedEntityObject.id, balances.selectedEntityId),
+          )
+          .leftJoin(
+            otherEntityObject,
+            eq(otherEntityObject.id, balances.otherEntityId),
+          )
+          .where(
+            and(
+              or(
+                and(
+                  inArray(selectedEntityObject.tagName, allChildrenTags),
+                  not(inArray(otherEntityObject.tagName, allChildrenTags)),
+                ),
+                and(
+                  not(inArray(selectedEntityObject.tagName, allChildrenTags)),
+                  inArray(otherEntityObject.tagName, allChildrenTags),
+                ),
+              ),
               typeof input.account === "boolean"
-                ? { account: input.account }
-                : {},
+                ? eq(balances.account, input.account)
+                : undefined,
               input.dayInPast
-                ? {
-                    date: {
-                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
-                    },
-                  }
-                : {},
-            ],
-          },
-          orderBy: {
-            date: "desc",
-          },
-          distinct: [
-            "selectedEntityId",
-            "otherEntityId",
-            "account",
-            "currency",
-          ],
-          include: {
-            selectedEntity: true,
-            otherEntity: true,
-          },
-        });
-        return balances;
+                ? lte(
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
+                : undefined,
+            ),
+          )
+          .orderBy(
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+            desc(balances.date),
+          );
+
+        const balancesTransformed = balancesDat.map((b) => ({
+          ...b.Balances,
+          selectedEntity: b.selectedEntity!,
+          otherEntity: b.otherEntity!,
+        }));
+
+        return balancesTransformed;
       } else if (input.entityId) {
-        const balances = await ctx.db.balances.findMany({
-          where: {
-            AND: [
-              {
-                OR: [
-                  { selectedEntityId: input.entityId },
-                  { otherEntityId: input.entityId },
-                ],
-              },
+        const balancesData = await ctx.db
+          .selectDistinctOn([
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+          ])
+          .from(balances)
+          .leftJoin(
+            selectedEntityObject,
+            eq(selectedEntityObject.id, balances.selectedEntityId),
+          )
+          .leftJoin(
+            otherEntityObject,
+            eq(otherEntityObject.id, balances.otherEntityId),
+          )
+          .where(
+            and(
+              or(
+                eq(selectedEntityObject.id, input.entityId),
+                eq(otherEntityObject.id, input.entityId),
+              ),
               typeof input.account === "boolean"
-                ? { account: input.account }
-                : {},
+                ? eq(balances.account, input.account)
+                : undefined,
               input.dayInPast
-                ? {
-                    date: {
-                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
-                    },
-                  }
-                : {},
-            ],
-          },
-          orderBy: {
-            date: "desc",
-          },
-          distinct: [
-            "selectedEntityId",
-            "otherEntityId",
-            "account",
-            "currency",
-          ],
-          include: {
-            selectedEntity: true,
-            otherEntity: true,
-          },
-        });
-        return balances;
+                ? lte(
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
+                : undefined,
+            ),
+          )
+          .orderBy(
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+            desc(balances.date),
+          );
+
+        const balancesTransformed = balancesData.map((b) => ({
+          ...b.Balances,
+          selectedEntity: b.selectedEntity!,
+          otherEntity: b.otherEntity!,
+        }));
+
+        return balancesTransformed;
       }
     }),
   getBalancesByEntitiesForCard: publicProcedure
@@ -487,16 +532,18 @@ export const movementsRouter = createTRPCRouter({
       if (ctx.user !== undefined) {
         isRequestValid = true;
       } else if (input.linkId && input.linkToken && input.entityId) {
-        const link = await ctx.db.links.findUnique({
-          where: {
-            id: input.linkId,
-            sharedEntityId: input.entityId,
-            password: input.linkToken,
-            expiration: {
-              gte: new Date(),
-            },
-          },
-        });
+        const [link] = await ctx.db
+          .select()
+          .from(links)
+          .where(
+            and(
+              eq(links.id, input.linkId),
+              eq(links.sharedEntityId, input.entityId),
+              eq(links.password, input.linkToken),
+              gte(links.expiration, new Date()),
+            ),
+          )
+          .limit(1);
 
         if (link) {
           isRequestValid = true;
@@ -520,51 +567,65 @@ export const movementsRouter = createTRPCRouter({
         ),
       });
 
+      const selectedEntityObject = alias(entities, "selectedEntity");
+      const otherEntityObject = alias(entities, "otherEntity");
+
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
         const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-        const balances = await ctx.db.balances.findMany({
-          where: {
-            AND: [
-              {
-                OR: [
-                  {
-                    selectedEntity: { tagName: { in: allChildrenTags } },
-                    otherEntity: { tagName: { notIn: allChildrenTags } },
-                  },
-                  {
-                    selectedEntity: { tagName: { notIn: allChildrenTags } },
-                    otherEntity: { tagName: { in: allChildrenTags } },
-                  },
-                ],
-              },
+        const balancesDat = await ctx.db
+          .selectDistinctOn([
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+          ])
+          .from(balances)
+          .leftJoin(
+            selectedEntityObject,
+            eq(selectedEntityObject.id, balances.selectedEntityId),
+          )
+          .leftJoin(
+            otherEntityObject,
+            eq(otherEntityObject.id, balances.otherEntityId),
+          )
+          .where(
+            and(
+              or(
+                and(
+                  inArray(selectedEntityObject.tagName, allChildrenTags),
+                  not(inArray(otherEntityObject.tagName, allChildrenTags)),
+                ),
+                and(
+                  not(inArray(selectedEntityObject.tagName, allChildrenTags)),
+                  inArray(otherEntityObject.tagName, allChildrenTags),
+                ),
+              ),
               input.dayInPast
-                ? {
-                    date: {
-                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
-                    },
-                  }
-                : {},
-            ],
-          },
-          orderBy: {
-            date: "desc",
-          },
-          distinct: [
-            "selectedEntityId",
-            "otherEntityId",
-            "account",
-            "currency",
-          ],
-          include: {
-            selectedEntity: true,
-            otherEntity: true,
-          },
-        });
+                ? lte(
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
+                : undefined,
+            ),
+          )
+          .orderBy(
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+            desc(balances.date),
+          );
+
+        const balancesTransformed = balancesDat.map((b) => ({
+          ...b.Balances,
+          selectedEntity: b.selectedEntity!,
+          otherEntity: b.otherEntity!,
+        }));
 
         const totalBalances: z.infer<typeof TotalBalanceSchema>[] =
-          balances.reduce(
+          balancesTransformed.reduce(
             (acc, balance) => {
               const isEntityTagSelected = allChildrenTags.includes(
                 balance.selectedEntity.tagName,
@@ -619,41 +680,52 @@ export const movementsRouter = createTRPCRouter({
 
         return totalBalances;
       } else if (input.entityId) {
-        const balances = await ctx.db.balances.findMany({
-          where: {
-            AND: [
-              {
-                OR: [
-                  { selectedEntityId: input.entityId },
-                  { otherEntityId: input.entityId },
-                ],
-              },
+        const balancesData = await ctx.db
+          .selectDistinctOn([
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+          ])
+          .from(balances)
+          .leftJoin(
+            selectedEntityObject,
+            eq(selectedEntityObject.id, balances.selectedEntityId),
+          )
+          .leftJoin(
+            otherEntityObject,
+            eq(otherEntityObject.id, balances.otherEntityId),
+          )
+          .where(
+            and(
+              or(
+                eq(selectedEntityObject.id, input.entityId),
+                eq(otherEntityObject.id, input.entityId),
+              ),
               input.dayInPast
-                ? {
-                    date: {
-                      lte: moment(input.dayInPast, dateFormatting.day).toDate(),
-                    },
-                  }
-                : {},
-            ],
-          },
-          orderBy: {
-            date: "desc",
-          },
-          distinct: [
-            "selectedEntityId",
-            "otherEntityId",
-            "account",
-            "currency",
-          ],
-          include: {
-            selectedEntity: true,
-            otherEntity: true,
-          },
-        });
+                ? lte(
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
+                : undefined,
+            ),
+          )
+          .orderBy(
+            balances.selectedEntityId,
+            balances.otherEntityId,
+            balances.account,
+            balances.currency,
+            desc(balances.date),
+          );
+
+        const balancesTransformed = balancesData.map((b) => ({
+          ...b.Balances,
+          selectedEntity: b.selectedEntity!,
+          otherEntity: b.otherEntity!,
+        }));
 
         const totalBalances: z.infer<typeof TotalBalanceSchema>[] =
-          balances.reduce(
+          balancesTransformed.reduce(
             (acc, balance) => {
               const isEntityIdSelected =
                 input.entityId === balance.selectedEntityId;
@@ -736,36 +808,39 @@ export const movementsRouter = createTRPCRouter({
       });
 
       if (input.entityId) {
-        const balances: z.infer<typeof balancesSchema>[] = await ctx.db
-          .$queryRaw`
+        const statement = sql`
             SELECT 
-            account,
-            currency,
-            TO_CHAR(DATE_TRUNC(${input.timeRange}, date), ${
+            ${balances.account},
+            ${balances.currency},
+            TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${
               dateFormatting[input.timeRange]
             }) AS datestring,
-            SUM(CASE WHEN "selectedEntityId" = ${
+            SUM(CASE WHEN ${balances.selectedEntityId} = ${
               input.entityId
             } THEN balance ELSE -balance END) balance
-            FROM "Balances"
+            FROM ${balances}
             WHERE
-            ("selectedEntityId" = ${input.entityId} OR "otherEntityId" = ${
-              input.entityId
-            })
-            AND "currency" = ${input.currency}
+            (${balances.selectedEntityId} = ${input.entityId} OR ${
+              balances.otherEntityId
+            } = ${input.entityId})
+            AND ${balances.currency} = ${input.currency}
             ${
-              input.dayInPast
-                ? Prisma.sql`AND date::date <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-                : Prisma.sql``
+              input.dayInPast &&
+              sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
             }
             GROUP BY 
-            account,
-            currency,
+            ${balances.account},
+            ${balances.currency},
             datestring;
           `;
 
+        const res: postgres.RowList<Record<string, unknown>[]> =
+          await ctx.db.execute(statement);
+
+        const balancesData = z.array(balancesSchema).parse(res);
+
         const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
-          balances.reduce(
+          balancesData.reduce(
             (acc, entry) => {
               const existingEntry = acc.find(
                 (groupedEntry) => groupedEntry.datestring === entry.datestring,
@@ -795,49 +870,49 @@ export const movementsRouter = createTRPCRouter({
         const allTags = await getAllTags(ctx.redis, ctx.db);
         const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-        const balances: z.infer<typeof balancesSchema>[] = await ctx.db
-          .$queryRaw`
+        const entities1 = alias(entities, "entities1");
+        const entities2 = alias(entities, "entities2");
+
+        const statement = sql`
         SELECT 
-          account,
-          currency,
-          TO_CHAR(DATE_TRUNC(${Prisma.raw(
-            `'${input.timeRange}'`,
-          )}, date), ${Prisma.raw(
-            `'${dateFormatting[input.timeRange]}'`,
+          ${balances.account},
+          ${balances.currency},
+          TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${
+            dateFormatting[input.timeRange]
+          },
           )}) AS datestring,
-          SUM(CASE WHEN e."tagName" IN (${Prisma.join(
-            allChildrenTags,
-            ",",
-          )}) THEN balance ELSE -balance END) balance
-        FROM "Balances" b
-        JOIN "Entities" e ON b."selectedEntityId" = e."id"
-        JOIN "Entities" e2 ON b."otherEntityId" = e2."id"
-        WHERE
-          (
-            (e."tagName" IN (${Prisma.join(
-              allChildrenTags,
-              ",",
-            )}) AND e2."tagName" NOT IN (${Prisma.join(allChildrenTags, ",")}))
-            OR
-            (e2."tagName" IN (${Prisma.join(
-              allChildrenTags,
-              ",",
-            )}) AND e."tagName" NOT IN (${Prisma.join(allChildrenTags, ",")}))
-          )
-          AND b."currency" = ${Prisma.raw(`'${input.currency}'`)}
-          ${
-            input.dayInPast
-              ? Prisma.sql`AND date::date <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-              : Prisma.sql``
-          }
-        GROUP BY 
-          account,
-          currency,
-          datestring;
-      `;
+          SUM(CASE WHEN ${entities.tagName} IN ${allChildrenTags}, 
+          THEN balance ELSE -balance END) balance
+          FROM ${balances}
+          JOIN ${entities1} ON ${balances.selectedEntityId} = ${entities1.id}
+          JOIN ${entities2} ON ${balances.otherEntityId} = ${entities2.id}
+          WHERE
+            (
+              (${entities1.tagName} IN ${allChildrenTags},
+              )}) AND ${entities2.tagName} NOT IN ${allChildrenTags}
+              OR
+              (${entities2.tagName} IN ${allChildrenTags} AND ${
+                entities1.tagName
+              } NOT IN ${allChildrenTags}
+            )
+            AND ${balances.currency} = ${input.currency}
+            ${
+              input.dayInPast &&
+              sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
+            }
+          GROUP BY 
+            ${balances.account},
+            ${balances.currency},
+            datestring;
+        `;
+
+        const res: postgres.RowList<Record<string, unknown>[]> =
+          await ctx.db.execute(statement);
+
+        const balancesData = z.array(balancesSchema).parse(res);
 
         const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
-          balances.reduce(
+          balancesData.reduce(
             (acc, entry) => {
               const existingEntry = acc.find(
                 (groupedEntry) => groupedEntry.datestring === entry.datestring,
@@ -865,159 +940,40 @@ export const movementsRouter = createTRPCRouter({
         return transformedBalances;
       }
     }),
-  getMovementsByCurrency: protectedProcedure
-    .input(
-      z.object({
-        currency: z.string().nullish(),
-        entityId: z.number().int().optional(),
-        entityTag: z.string().optional(),
-        limit: z.number().int(),
-        dayInPast: z.string().optional(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const whereConditions = [];
-
-      if (!input.currency) {
-        return [];
-      }
-
-      if (input.entityId !== undefined) {
-        whereConditions.push({
-          transaction: {
-            currency: input.currency,
-            OR: [
-              {
-                fromEntityId: input.entityId,
-                toEntityId: {
-                  not: input.entityId,
-                },
-              },
-              {
-                fromEntityId: {
-                  not: input.entityId,
-                },
-                toEntityId: input.entityId,
-              },
-            ],
-          },
-        });
-      } else if (input.entityTag) {
-        const tags = await getAllTags(ctx.redis, ctx.db);
-        const tagAndChildren = getAllChildrenTags(input.entityTag, tags);
-
-        whereConditions.push({
-          transaction: {
-            currency: input.currency,
-            OR: [
-              {
-                AND: [
-                  { fromEntity: { tagName: { in: tagAndChildren } } },
-                  { toEntity: { tagName: { notIn: tagAndChildren } } },
-                ],
-              },
-              {
-                AND: [
-                  { fromEntity: { tagName: { notIn: tagAndChildren } } },
-                  { toEntity: { tagName: { in: tagAndChildren } } },
-                ],
-              },
-            ],
-          },
-        });
-      }
-
-      if (input.dayInPast) {
-        whereConditions.push({
-          OR: [
-            {
-              transaction: {
-                date: {
-                  lte: moment(input.dayInPast, dateFormatting.day)
-                    .set({
-                      hour: 23,
-                      minute: 59,
-                      second: 59,
-                      millisecond: 999,
-                    })
-                    .toDate(),
-                },
-              },
-            },
-            {
-              AND: [
-                { transaction: { date: null } },
-                {
-                  transaction: {
-                    operation: {
-                      date: {
-                        lte: moment(input.dayInPast, dateFormatting.day)
-                          .set({
-                            hour: 23,
-                            minute: 59,
-                            second: 59,
-                            millisecond: 999,
-                          })
-                          .toDate(),
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-          ],
-        });
-      }
-
-      const movements = await ctx.db.movements.findMany({
-        where: {
-          AND: whereConditions,
-        },
-        include: {
-          transaction: {
-            include: {
-              transactionMetadata: true,
-              operation: {
-                select: {
-                  id: true,
-                  observations: true,
-                  date: true,
-                },
-              },
-              fromEntity: true,
-              toEntity: true,
-            },
-          },
-        },
-        orderBy: {
-          id: "desc",
-        },
-        take: input.limit,
-      });
-
-      return movements;
-    }),
   getMovementsByOpId: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const movements = await ctx.db.movements.findMany({
-        where: {
-          transaction: {
-            operation: {
-              id: input.operationId,
+      const response = await ctx.db.transaction(async (transaction) => {
+        const movementsIds = await transaction
+          .select({ id: movements.id })
+          .from(movements)
+          .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .where(eq(operations.id, input.operationId));
+
+        if (movementsIds.length > 0) {
+          return await transaction.query.movements.findMany({
+            where: inArray(
+              movements.id,
+              movementsIds.map((obj) => obj.id),
+            ),
+            with: {
+              transaction: {
+                with: {
+                  fromEntity: true,
+                  toEntity: true,
+                },
+              },
             },
-          },
-        },
-        include: {
-          transaction: {
-            include: {
-              fromEntity: true,
-              toEntity: true,
-            },
-          },
-        },
+          });
+        } else {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "There are no movements with this operation",
+          });
+        }
       });
 
-      return movements;
+      return response;
     }),
 });

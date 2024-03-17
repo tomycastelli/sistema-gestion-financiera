@@ -1,8 +1,16 @@
 import { TRPCError } from "@trpc/server";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { findDifferences, movementBalanceDirection } from "~/lib/functions";
 import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes } from "~/lib/variables";
+import {
+  balances,
+  movements,
+  operations,
+  transactions,
+  transactionsMetadata,
+} from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -34,109 +42,110 @@ export const editingOperationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const response = await ctx.db.$transaction(async (prisma) => {
-          const historyResponse = await prisma.transactionsMetadata.findUnique({
-            where: {
-              transactionId: input.txId,
-            },
-            select: {
-              history: true,
-            },
-          });
+        const response = await ctx.db.transaction(async (transaction) => {
+          const [historyResponse2] = await transaction
+            .select({ history: transactionsMetadata.history })
+            .from(transactionsMetadata)
+            .where(eq(transactionsMetadata.transactionId, input.txId));
 
-          const oldHistoryJson = historyResponse?.history;
+          const oldHistoryJson2 = historyResponse2?.history;
 
           const changesMade = findDifferences(
             input.oldTransactionData,
             input.newTransactionData,
             ctx.user.id,
           );
+
           // @ts-ignore
-          let newHistoryJson = [];
+          let newHistoryJson2 = [];
 
           if (
-            oldHistoryJson &&
-            typeof oldHistoryJson === "object" &&
-            Array.isArray(oldHistoryJson)
+            oldHistoryJson2 &&
+            typeof oldHistoryJson2 === "object" &&
+            Array.isArray(oldHistoryJson2)
           ) {
-            newHistoryJson = [...oldHistoryJson, changesMade];
-          } else if (oldHistoryJson !== undefined) {
-            newHistoryJson = [changesMade];
+            newHistoryJson2 = [...oldHistoryJson2, changesMade];
+          } else if (oldHistoryJson2 !== undefined) {
+            newHistoryJson2 = [changesMade];
           }
 
-          const updateTransactionResponse = await prisma.transactions.update({
-            where: {
-              id: input.txId,
-            },
-            data: {
+          await transaction
+            .update(transactions)
+            .set({
               fromEntityId: input.newTransactionData.fromEntityId,
               toEntityId: input.newTransactionData.toEntityId,
               operatorEntityId: input.newTransactionData.operatorEntityId,
               currency: input.newTransactionData.currency,
               amount: input.newTransactionData.amount,
               method: input.newTransactionData.method,
-              transactionMetadata: {
-                update: {
-                  // @ts-ignore
-                  history: newHistoryJson,
-                },
-              },
-            },
-            include: {
-              movements: true,
-              operation: { select: { date: true } },
-            },
-          });
+            })
+            .where(eq(transactions.id, input.txId));
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              // @ts-ignore
+              history: newHistoryJson2,
+            })
+            .where(eq(transactionsMetadata.transactionId, input.txId));
 
-          // Borro todos los movimientos y retrocedo en los balances
-          await ctx.db.movements.deleteMany({
-            where: {
-              id: {
-                in: updateTransactionResponse.movements.flatMap((mv) => mv.id),
-              },
-            },
-          });
-
-          for (const mv of updateTransactionResponse.movements) {
-            const amountModifiedByMovement =
-              movementBalanceDirection(
-                input.oldTransactionData.fromEntityId,
-                input.oldTransactionData.toEntityId,
-                mv.direction,
-              ) * input.oldTransactionData.amount;
-
-            await ctx.db.balances.update({
-              where: {
-                id: mv.balanceId,
-              },
-              data: {
-                balance: {
-                  decrement: amountModifiedByMovement,
+          const updatedTransactionResponse2 =
+            await transaction.query.transactions.findFirst({
+              where: eq(transactions.id, input.txId),
+              with: {
+                movements: true,
+                operation: {
+                  columns: {
+                    date: true,
+                  },
                 },
               },
             });
 
-            // Creo los movimientos y balances con los nuevos datos
-            await generateMovements(
-              ctx.db,
-              updateTransactionResponse,
-              mv.account,
-              mv.direction,
-              mv.type,
+          if (updatedTransactionResponse2) {
+            await ctx.db.delete(movements).where(
+              inArray(
+                movements.id,
+                updatedTransactionResponse2.movements.map((mv) => mv.id),
+              ),
             );
-          }
 
-          return updateTransactionResponse;
+            for (const mv of updatedTransactionResponse2.movements) {
+              const amountModifiedByMovement =
+                movementBalanceDirection(
+                  input.oldTransactionData.fromEntityId,
+                  input.oldTransactionData.toEntityId,
+                  mv.direction,
+                ) * input.oldTransactionData.amount;
+
+              await ctx.db
+                .update(balances)
+                .set({
+                  balance: sql`${balances.balance} + ${amountModifiedByMovement}`,
+                })
+                .where(eq(balances.id, mv.balanceId));
+
+              await generateMovements(
+                transaction,
+                updatedTransactionResponse2,
+                mv.account,
+                mv.direction,
+                mv.type,
+              );
+
+              return updatedTransactionResponse2;
+            }
+          }
         });
 
-        await logIO(
-          ctx.dynamodb,
-          ctx.user.id,
-          "Actualizar transacción",
-          input,
-          response,
-        );
-
+        if (response) {
+          await logIO(
+            ctx.dynamodb,
+            ctx.user.id,
+            "Actualizar transacción",
+            input,
+            response,
+          );
+        }
         return response;
       } catch (error) {
         throw new TRPCError({
@@ -153,60 +162,52 @@ export const editingOperationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const updateTransactions = ctx.db.transactions.updateMany({
-          where: {
-            id: {
-              in: input.transactionIds,
-            },
-          },
-          data: {
-            status: "confirmed",
-          },
+        const response = await ctx.db.transaction(async (transaction) => {
+          await transaction
+            .update(transactions)
+            .set({
+              status: "confirmed",
+            })
+            .where(inArray(transactions.id, input.transactionIds));
+
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              confirmedBy: ctx.user.id,
+              confirmedDate: new Date(),
+            })
+            .where(
+              inArray(transactionsMetadata.transactionId, input.transactionIds),
+            );
+
+          const transactionsData =
+            await transaction.query.transactions.findMany({
+              where: inArray(transactions.id, input.transactionIds),
+              with: {
+                operation: {
+                  columns: {
+                    date: true,
+                  },
+                },
+              },
+            });
+
+          for (const tx of transactionsData) {
+            await generateMovements(transaction, tx, false, 1, "confirmation");
+            await generateMovements(transaction, tx, true, 1, "confirmation");
+          }
+          return transactionsData;
         });
-
-        const updateMetadata = ctx.db.transactionsMetadata.updateMany({
-          where: {
-            transactionId: {
-              in: input.transactionIds,
-            },
-          },
-          data: {
-            confirmedBy: ctx.user.id,
-            confirmedDate: new Date(),
-          },
-        });
-
-        const transactionsData = ctx.db.transactions.findMany({
-          where: {
-            id: {
-              in: input.transactionIds,
-            },
-          },
-          include: {
-            operation: { select: { date: true } },
-          },
-        });
-
-        const responses = await ctx.db.$transaction([
-          updateTransactions,
-          updateMetadata,
-          transactionsData,
-        ]);
-
-        for (const tx of responses[2]) {
-          await generateMovements(ctx.db, tx, false, 1, "confirmation");
-          await generateMovements(ctx.db, tx, true, 1, "confirmation");
-        }
 
         await logIO(
           ctx.dynamodb,
           ctx.user.id,
           "Confirmar transacción",
           input,
-          responses,
+          response,
         );
 
-        return responses;
+        return response;
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -221,93 +222,137 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.transactions.updateMany({
-        where: input.transactionId
-          ? { id: input.transactionId }
-          : { operationId: input.operationId },
-        data: {
-          status: "cancelled",
-        },
-      });
+      const response = await ctx.db.transaction(async (transaction) => {
+        const updatedIds = await transaction
+          .update(transactions)
+          .set({ status: "cancelled" })
+          .where(
+            and(
+              input.transactionId
+                ? eq(transactions.id, input.transactionId)
+                : undefined,
+              input.operationId
+                ? eq(transactions.operationId, input.operationId)
+                : undefined,
+            ),
+          )
+          .returning({ id: transactions.id });
 
-      const cancelledTransactions = await ctx.db.transactions.findMany({
-        where: input.transactionId
-          ? { id: input.transactionId }
-          : { operationId: input.operationId },
-        include: {
-          transactionMetadata: true,
-        },
-      });
+        if (input.transactionId) {
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              cancelledBy: ctx.user.id,
+              cancelledDate: new Date(),
+            })
+            .where(eq(transactionsMetadata.transactionId, input.transactionId));
+        } else if (input.operationId) {
+          const relatedTxIds = await transaction
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(eq(transactions.operationId, input.operationId));
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              cancelledBy: ctx.user.id,
+              cancelledDate: new Date(),
+            })
+            .where(
+              inArray(
+                transactionsMetadata.transactionId,
+                relatedTxIds.map((obj) => obj.id),
+              ),
+            );
+        }
 
-      await ctx.db.transactionsMetadata.updateMany({
-        where: input.transactionId
-          ? {
-              transactionId: input.transactionId,
-            }
-          : { transaction: { operationId: input.operationId } },
-        data: {
-          cancelledBy: ctx.user.id,
-          cancelledDate: new Date(),
-        },
-      });
+        const cancelledTransactions =
+          await transaction.query.transactions.findMany({
+            where: inArray(
+              transactions.id,
+              updatedIds.map((obj) => obj.id),
+            ),
+            with: {
+              transactionMetadata: true,
+            },
+          });
 
-      const invertedTransactions = cancelledTransactions.map((tx) => ({
-        operationId: tx.operationId,
-        operatorEntityId: tx.operatorEntityId,
-        fromEntityId: tx.toEntityId,
-        toEntityId: tx.fromEntityId,
-        currency: tx.currency,
-        amount: tx.amount,
-        method: tx.method,
-        type: tx.type,
-        date: new Date(),
-        observations: tx.observations,
-        status: tx.status,
-        transactionMetadata: {
-          create: {
-            uploadedBy: ctx.user.id,
-            uploadedDate: new Date(),
-            cancelledBy: ctx.user.id,
-            cancelledDate: new Date(),
-            metadata: tx.transactionMetadata?.metadata
-              ? tx.transactionMetadata.metadata
-              : undefined,
+        const invertedTransactions = cancelledTransactions.map((tx) => ({
+          operationId: tx.operationId,
+          operatorEntityId: tx.operatorEntityId,
+          fromEntityId: tx.toEntityId,
+          toEntityId: tx.fromEntityId,
+          currency: tx.currency,
+          amount: tx.amount,
+          method: tx.method,
+          type: tx.type,
+          date: new Date(),
+          observations: tx.observations,
+          status: tx.status,
+          transactionMetadata: {
+            create: {
+              uploadedBy: ctx.user.id,
+              uploadedDate: new Date(),
+              cancelledBy: ctx.user.id,
+              cancelledDate: new Date(),
+              metadata: tx.transactionMetadata?.metadata
+                ? tx.transactionMetadata.metadata
+                : undefined,
+            },
           },
-        },
-      }));
+        }));
 
-      // Para cancelar, vamos a crear transacciones nuevas que cancelen con invertir from and to, con movimientos iguales
-      for (const txToInsert of invertedTransactions) {
-        const tx = await ctx.db.transactions.create({
-          data: txToInsert,
-          include: { operation: { select: { date: true } } },
-        });
-        if (
-          cashAccountOnlyTypes.includes(tx.type) ||
-          tx.type === "pago por cta cte"
-        ) {
-          await generateMovements(ctx.db, tx, true, 1, "cancellation");
+        // Para cancelar, vamos a crear transacciones nuevas que cancelen con invertir from and to, con movimientos iguales
+        const insertedTxs = await transaction
+          .insert(transactions)
+          .values(invertedTransactions)
+          .returning();
+        const operationsRelated = await transaction
+          .select({ id: operations.id, date: operations.date })
+          .from(operations)
+          .where(
+            inArray(
+              operations.id,
+              invertedTransactions.map((obj) => obj.operationId),
+            ),
+          );
+        const txsForMovements = insertedTxs.map((insertedTx) => ({
+          ...insertedTx,
+          operation: {
+            date: operationsRelated.find(
+              (op) => op.id === insertedTx.operationId,
+            )!.date,
+          },
+        }));
+        for (const tx of txsForMovements) {
+          if (
+            cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(transaction, tx, true, 1, "cancellation");
+          }
+          if (
+            !cashAccountOnlyTypes.includes(tx.type) ||
+            tx.type === "pago por cta cte"
+          ) {
+            await generateMovements(transaction, tx, false, -1, "cancellation");
+          }
+          if (tx.status === "confirmed") {
+            await generateMovements(transaction, tx, false, 1, "cancellation");
+            await generateMovements(transaction, tx, true, 1, "cancellation");
+          }
         }
-        if (
-          !cashAccountOnlyTypes.includes(tx.type) ||
-          tx.type === "pago por cta cte"
-        ) {
-          await generateMovements(ctx.db, tx, false, -1, "cancellation");
-        }
-        if (tx.status === "confirmed") {
-          await generateMovements(ctx.db, tx, false, 1, "cancellation");
-          await generateMovements(ctx.db, tx, true, 1, "cancellation");
-        }
-      }
+
+        return cancelledTransactions;
+      });
 
       await logIO(
         ctx.dynamodb,
         ctx.user.id,
         "Cancelar transacciones",
         input,
-        invertedTransactions,
+        response,
       );
 
-      return invertedTransactions;
+      return response;
     }),
 });

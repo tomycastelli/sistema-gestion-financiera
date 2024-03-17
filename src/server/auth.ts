@@ -6,10 +6,10 @@ import { cache } from "react";
 import { type z } from "zod";
 import { env } from "~/env.mjs";
 import { type PermissionSchema } from "~/lib/permissionsTypes";
-import { db2 } from "./db";
+import { db } from "./db";
 import { session, user } from "./db/schema";
 
-const adapter = new DrizzlePostgreSQLAdapter(db2, session, user);
+const adapter = new DrizzlePostgreSQLAdapter(db, session, user);
 
 const baseUrl =
   env.NODE_ENV === "production"

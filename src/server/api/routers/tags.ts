@@ -1,6 +1,9 @@
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import { getAllPermissions, getAllTags, logIO } from "~/lib/trpcFunctions";
+import { tag } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const tagsRouter = createTRPCRouter({
@@ -11,12 +14,20 @@ export const tagsRouter = createTRPCRouter({
   addOne: protectedProcedure
     .input(z.object({ name: z.string(), parent: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.tag.create({
-        data: {
+      const [response] = await ctx.db
+        .insert(tag)
+        .values({
           name: input.name,
           parent: input.parent,
-        },
-      });
+        })
+        .returning();
+
+      if (!response) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tag couldn't be added",
+        });
+      }
 
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir tag", input, response);
 
@@ -27,11 +38,17 @@ export const tagsRouter = createTRPCRouter({
   removeOne: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.tag.delete({
-        where: {
-          name: input.name,
-        },
-      });
+      const [response] = await ctx.db
+        .delete(tag)
+        .where(eq(tag.name, input.name))
+        .returning();
+
+      if (!response) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tag was not found",
+        });
+      }
 
       await logIO(ctx.dynamodb, ctx.user.id, "Eliminar tag", input, response);
 

@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { PermissionSchema, mergePermissions } from "~/lib/permissionsTypes";
+import { PermissionSchema } from "~/lib/permissionsTypes";
 import { getAllPermissions } from "~/lib/trpcFunctions";
+import { entities, user } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const usersRouter = createTRPCRouter({
@@ -14,99 +16,47 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userUpdate = ctx.db.user.update({
-        where: {
-          id: input.userId,
-        },
-        data: {
-          name: input.name,
-        },
-      });
+      const response = await ctx.db.transaction(async (transaction) => {
+        const [userUpdate] = await transaction
+          .update(user)
+          .set({
+            name: input.name,
+          })
+          .where(eq(user.id, input.userId))
+          .returning();
 
-      const userEntityUpdate = ctx.db.entities.update({
-        where: {
-          name: input.oldName,
-        },
-        data: {
-          name: input.name,
-        },
-      });
+        const [entityUpdate] = await transaction
+          .update(entities)
+          .set({
+            name: input.name,
+          })
+          .where(eq(entities.name, input.oldName))
+          .returning();
 
-      const response = await ctx.db.$transaction([
-        userUpdate,
-        userEntityUpdate,
-      ]);
+        return { userUpdate, entityUpdate };
+      });
 
       if (response) {
         await ctx.redis.del("cached_entities");
       }
-      return response[0];
+      return response;
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
-    const response = await ctx.db.user.findMany({ include: { role: true } });
+    const response = await ctx.db.query.user.findMany({
+      with: {
+        role: true,
+      },
+    });
     return response;
   }),
   getAllPermissions: publicProcedure
     .input(z.object({ userId: z.string().optional() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ ctx }) => {
       if (!ctx.user) {
         return [];
       }
-      const cachedResponseString = await ctx.redis.get(
-        `user_permissions:${ctx.user.id}`,
-      );
-      if (cachedResponseString) {
-        const cachedResponse: z.infer<typeof PermissionSchema> =
-          JSON.parse(cachedResponseString);
-        return cachedResponse;
-      }
-
-      const user = await ctx.db.user.findUnique({
-        where: {
-          id: input.userId ? input.userId : ctx.user.id,
-        },
-      });
-      if (ctx.user.roleId) {
-        const role = await ctx.db.role.findUnique({
-          where: {
-            id: ctx.user.roleId,
-          },
-        });
-
-        if (role?.permissions && user?.permissions) {
-          // @ts-ignore
-          const merged = mergePermissions(role.permissions, user.permissions);
-
-          await ctx.redis.set(
-            `user_permissions:${ctx.user.id}`,
-            JSON.stringify(merged),
-            "EX",
-            300,
-          );
-
-          return merged as z.infer<typeof PermissionSchema> | null;
-        }
-        if (role?.permissions) {
-          await ctx.redis.set(
-            `user_permissions:${ctx.user.id}`,
-            JSON.stringify(role.permissions),
-            "EX",
-            300,
-          );
-
-          return role.permissions as z.infer<typeof PermissionSchema> | null;
-        }
-      }
-      if (user?.permissions) {
-        await ctx.redis.set(
-          `user_permissions:${ctx.user.id}`,
-          JSON.stringify(user.permissions),
-          "EX",
-          300,
-        );
-
-        return user.permissions as z.infer<typeof PermissionSchema> | null;
-      }
+      const response = getAllPermissions(ctx.redis, ctx.user, ctx.db);
+      return response;
     }),
   getUserPermissions: protectedProcedure
     .input(z.object({ id: z.string() }))
@@ -143,11 +93,9 @@ export const usersRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const response = ctx.db.user.findUnique({
-        where: {
-          id: input.id,
-        },
-        include: {
+      const response = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input.id),
+        with: {
           role: true,
         },
       });
@@ -166,14 +114,13 @@ export const usersRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.user.update({
-          where: {
-            id: input.id,
-          },
-          data: {
+        const [response] = await ctx.db
+          .update(user)
+          .set({
             permissions: input.permissions,
-          },
-        });
+          })
+          .where(eq(user.id, input.id))
+          .returning();
 
         await ctx.redis.del(`user_permissions:${input.id}`);
         return response;
@@ -194,28 +141,22 @@ export const usersRouter = createTRPCRouter({
 
       if (hasPermissions) {
         // @ts-ignore
-        const permissionsData: z.infer<typeof PermissionSchema> =
-          await ctx.db.user.findUnique({
-            where: {
-              id: input.id,
-            },
-            select: {
-              permissions: true,
-            },
-          });
+        const permissionsData: z.infer<typeof PermissionSchema> = await ctx.db
+          .select({ permissions: user.permissions })
+          .from(user)
+          .where(eq(user.id, input.id));
 
         const newPermissions = permissionsData.filter(
           (permission) => !input.permissionNames.includes(permission.name),
         );
 
-        const response = await ctx.db.user.update({
-          where: {
-            id: input.id,
-          },
-          data: {
+        const [response] = await ctx.db
+          .update(user)
+          .set({
             permissions: newPermissions,
-          },
-        });
+          })
+          .where(eq(user.id, input.id))
+          .returning();
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 
@@ -236,14 +177,13 @@ export const usersRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.user.update({
-          where: {
-            id: input.userId,
-          },
-          data: {
+        const [response] = await ctx.db
+          .update(user)
+          .set({
             roleId: input.roleId,
-          },
-        });
+          })
+          .where(eq(user.id, input.userId))
+          .returning();
 
         await ctx.redis.del(`user_permissions:${input.userId}`);
 
@@ -264,14 +204,13 @@ export const usersRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db.user.update({
-          where: {
-            id: input.id,
-          },
-          data: {
+        const [response] = await ctx.db
+          .update(user)
+          .set({
             roleId: null,
-          },
-        });
+          })
+          .where(eq(user.id, input.id))
+          .returning();
 
         await ctx.redis.del(`user_permissions:${input.id}`);
 

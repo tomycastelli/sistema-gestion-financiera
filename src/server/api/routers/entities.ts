@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import { PermissionsNames } from "~/lib/permissionsTypes";
@@ -15,6 +16,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { entities, transactions, user } from "~/server/db/schema";
 
 export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -69,22 +71,26 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.entities.create({
-        data: {
+      const [response] = await ctx.db
+        .insert(entities)
+        .values({
           name: input.name,
           tagName: input.tag,
-        },
-      });
+        })
+        .returning();
+
+      if (!response) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "The entity couldn't be added",
+        });
+      }
 
       if (input.tag === "Usuario" && input.userId) {
-        await ctx.db.user.update({
-          where: {
-            id: input.userId,
-          },
-          data: {
-            entityId: response.id,
-          },
-        });
+        await ctx.db
+          .update(user)
+          .set({ entityId: response.id })
+          .where(eq(user.id, input.userId));
       }
 
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
@@ -95,21 +101,29 @@ export const entitiesRouter = createTRPCRouter({
   deleteOne: protectedLoggedProcedure
     .input(z.object({ entityId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const transaction = await ctx.db.transactions.findFirst({
-        where: {
-          OR: [
-            { fromEntityId: input.entityId },
-            { toEntityId: input.entityId },
-          ],
-        },
-      });
+      const [transactionId] = await ctx.db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(
+          or(
+            eq(transactions.fromEntityId, input.entityId),
+            eq(transactions.toEntityId, input.entityId),
+          ),
+        )
+        .limit(1);
 
-      if (!transaction) {
-        const response = await ctx.db.entities.delete({
-          where: {
-            id: input.entityId,
-          },
-        });
+      if (!transactionId) {
+        const [response] = await ctx.db
+          .delete(entities)
+          .where(eq(entities.id, input.entityId))
+          .returning();
+
+        if (!response) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Entity ID was not found",
+          });
+        }
 
         await logIO(
           ctx.dynamodb,
@@ -124,7 +138,7 @@ export const entitiesRouter = createTRPCRouter({
         return response;
       } else {
         throw new TRPCError({
-          message: `La entidad tiene aunque sea una transacción (${transaction.id}) relacionada`,
+          message: `La entidad tiene aunque sea una transacción (ID: ${transactionId.id}) relacionada`,
           code: "CONFLICT",
         });
       }
@@ -138,16 +152,21 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.entities.update({
-        where: {
-          id: input.id,
-        },
-        data: {
+      const [response] = await ctx.db
+        .update(entities)
+        .set({
           name: input.name,
           tagName: input.tag,
-        },
-      });
+        })
+        .where(eq(entities.id, input.id))
+        .returning();
 
+      if (!response) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Entity ID was not found",
+        });
+      }
       await logIO(
         ctx.dynamodb,
         ctx.user.id,

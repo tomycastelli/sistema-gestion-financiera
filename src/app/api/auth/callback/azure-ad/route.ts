@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { ZodError, z } from "zod";
 import { lucia, microsoft } from "~/server/auth";
 import { db2 } from "~/server/db";
-import { entities, oauth_account, user } from "~/server/db/schema";
+import { entities, oauth_account, tag, user } from "~/server/db/schema";
 
 export const dynamic = "force-dynamic"; // defaults to auto
 export async function GET(request: Request) {
@@ -74,9 +74,18 @@ export async function GET(request: Request) {
 
     const userId = generateId(15);
 
+    const userFullName =
+      microsoftUser.given_name + " " + microsoftUser.family_name;
+
     await db2.transaction(async (tx) => {
-      const userFullName =
-        microsoftUser.given_name + " " + microsoftUser.family_name;
+      const [isOperadoresTag] = await tx
+        .select({ tagName: tag.name })
+        .from(tag)
+        .where(eq(tag.name, "Operadores"));
+      if (!isOperadoresTag) {
+        await tx.insert(tag).values({ name: "Operadores" });
+      }
+
       const userEntity = await tx
         .insert(entities)
         .values({

@@ -40,9 +40,9 @@ const FormSchema = z.object({
   transactionId: z.number().optional(),
   transactionType: z.string().optional(),
   transactionDate: z.date().optional(),
-  operatorEntityId: z.string().optional(),
-  fromEntityId: z.string().optional(),
-  toEntityId: z.string().optional(),
+  operatorEntityId: z.array(z.string()).optional(),
+  fromEntityId: z.array(z.string()).optional(),
+  toEntityId: z.array(z.string()).optional(),
   currency: z.string().optional(),
   method: z.string().optional(),
   status: z.boolean().optional(),
@@ -71,9 +71,9 @@ const FilterOperationsForm = ({
   const selectedDateGreater = searchParams.get("diaDesde");
   const selectedDateLesser = searchParams.get("diaHasta");
   const selectedTransactionType = searchParams.get("tipo") ?? undefined;
-  const selectedOperator = searchParams.get("operador") ?? undefined;
-  const selectedFromEntity = searchParams.get("origen") ?? undefined;
-  const selectedToEntity = searchParams.get("destino") ?? undefined;
+  const selectedOperator = searchParams.getAll("operador") ?? undefined;
+  const selectedFromEntity = searchParams.getAll("origen") ?? undefined;
+  const selectedToEntity = searchParams.getAll("destino") ?? undefined;
   const selectedCurrency = searchParams.get("divisa") ?? undefined;
   const selectedAmount = searchParams.get("monto");
   const selectedMinAmount = searchParams.get("montoMin");
@@ -166,12 +166,14 @@ const FilterOperationsForm = ({
       origen: watchFromEntityId,
       destino: watchToEntityId,
       divisa: watchCurrency,
-      diaDesde: watchOpDateRange?.from
-        ? moment(watchOpDateRange.from).format(dateFormatting.day)
-        : undefined,
-      diaHasta: watchOpDateRange?.to
-        ? moment(watchOpDateRange.to).format(dateFormatting.day)
-        : undefined,
+      diaDesde:
+        watchOpDateRange?.from && moment(watchOpDateRange.from).isValid()
+          ? moment(watchOpDateRange.from).format(dateFormatting.day)
+          : undefined,
+      diaHasta:
+        watchOpDateRange?.to && moment(watchOpDateRange.to).isValid()
+          ? moment(watchOpDateRange.to).format(dateFormatting.day)
+          : undefined,
       monto:
         watchAmountFilterType === "equal" && watchAmount
           ? watchAmount
@@ -222,6 +224,7 @@ const FilterOperationsForm = ({
                     field={field}
                     fieldName="fromEntityId"
                     placeholder="Elegir"
+                    isMultiSelect={true}
                   />
                 )}
                 <FormMessage />
@@ -243,6 +246,7 @@ const FilterOperationsForm = ({
                     field={field}
                     fieldName="toEntityId"
                     placeholder="Elegir"
+                    isMultiSelect={true}
                   />
                 )}
                 <FormMessage />
@@ -264,6 +268,7 @@ const FilterOperationsForm = ({
                     field={field}
                     fieldName="operatorEntityId"
                     placeholder="Elegir"
+                    isMultiSelect={true}
                   />
                 )}
                 <FormMessage />

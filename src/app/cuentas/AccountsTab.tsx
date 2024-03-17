@@ -1,4 +1,4 @@
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterOutputs } from "~/trpc/shared";
 import Balances from "./Balances";
@@ -22,7 +22,7 @@ const AccountsTable = async ({
   entityId: number | null;
   entityTag: string | null;
 }) => {
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   const entities = await api.entities.getAll.query();
 
@@ -49,7 +49,7 @@ const AccountsTable = async ({
         linkToken={linkToken}
         selectedEntityId={entityId}
         selectedTag={entityTag}
-        session={session}
+        user={user}
         entities={entities}
       />
       {initialMovements.movements.length > 0 && (
@@ -63,7 +63,7 @@ const AccountsTable = async ({
             linkToken={linkToken}
             tags={initialTags}
             accountType={accountType}
-            session={session}
+            user={user}
             pageSize={pageSize}
             initialMovements={initialMovements}
             entityTag={entityTag}
