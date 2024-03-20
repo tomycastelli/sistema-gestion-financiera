@@ -1,6 +1,7 @@
-import type { Balances } from "@prisma/client";
 import moment from "moment";
 import { type ReadonlyURLSearchParams } from "next/navigation";
+import { type z } from "zod";
+import { type returnedBalancesSchema } from "~/server/db/schema";
 import type { RouterOutputs } from "~/trpc/shared";
 import { translations } from "./variables";
 
@@ -374,7 +375,7 @@ export const movementBalanceDirection = (
 
 // Function to calculate the beforeAmount based on the duration
 export const calculateBeforeAmount = (
-  balancesData: Balances[],
+  balancesData: z.infer<typeof returnedBalancesSchema>[],
   duration: "day" | "week" | "month" | "year",
 ): number => {
   const currentDate = moment();
@@ -422,6 +423,7 @@ export const generateTableData = (
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,
           type: movement.type,
+          account: movement.account,
           otherEntityId: otherEntity.id,
           otherEntity: otherEntity.name,
           selectedEntityId: selectedEntity.id,

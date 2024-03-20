@@ -1,4 +1,3 @@
-import { Status } from "@prisma/client";
 import moment from "moment";
 import type { User } from "next-auth";
 import { memo, type FC } from "react";
@@ -6,6 +5,7 @@ import { z } from "zod";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currentAccountOnlyTypes } from "~/lib/variables";
+import { Status } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import TransactionStatusButton from "./TransactionStatusButton";
@@ -82,12 +82,12 @@ const Transaction: FC<TransactionProps> = ({
                     transactions: item.transactions.flatMap((tx) => {
                       if (tx.id === newOperation.transactionId) {
                         return [
-                          { ...tx, status: "cancelled" },
+                          { ...tx, status: Status.enumValues[0] },
                           {
                             ...tx,
                             fromEntityId: tx.toEntityId,
                             toEntityId: tx.fromEntityId,
-                            status: "cancelled",
+                            status: Status.enumValues[0],
                           },
                         ];
                       } else {
@@ -113,7 +113,7 @@ const Transaction: FC<TransactionProps> = ({
               ...old,
               transactions: old?.transactions.map((tx) => {
                 if (tx.id === newOperation.transactionId) {
-                  return { ...tx, status: "cancelled" };
+                  return { ...tx, status: Status.enumValues[0] };
                 } else {
                   return tx;
                 }
@@ -379,9 +379,9 @@ const Transaction: FC<TransactionProps> = ({
           <Icons.arrowRight
             className={cn(
               "h-16",
-              tx.status === Status.cancelled
+              tx.status === Status.enumValues[0]
                 ? "text-red"
-                : tx.status === Status.confirmed
+                : tx.status === Status.enumValues[1]
                 ? "text-green"
                 : "",
             )}
@@ -395,7 +395,7 @@ const Transaction: FC<TransactionProps> = ({
                   user={user}
                 />
               )}
-            {tx.isUpdateAllowed && tx.status === Status.pending && (
+            {tx.isUpdateAllowed && tx.status === Status.enumValues[2] && (
               <UpdateTransaction
                 transaction={tx}
                 operationsQueryInput={operationsQueryInput}

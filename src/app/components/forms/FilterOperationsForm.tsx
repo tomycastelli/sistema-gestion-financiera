@@ -68,8 +68,8 @@ const FilterOperationsForm = ({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const selectedDateGreater = searchParams.get("diaDesde");
-  const selectedDateLesser = searchParams.get("diaHasta");
+  const selectedDateGreater = searchParams.get("diaDesde") ?? undefined;
+  const selectedDateLesser = searchParams.get("diaHasta") ?? undefined;
   const selectedTransactionType = searchParams.get("tipo") ?? undefined;
   const selectedOperator = searchParams.getAll("operador") ?? undefined;
   const selectedFromEntity = searchParams.getAll("origen") ?? undefined;
@@ -86,10 +86,14 @@ const FilterOperationsForm = ({
     resolver: zodResolver(FormSchema),
     mode: "onChange",
     defaultValues: {
-      opDateRange: {
-        from: moment(selectedDateGreater, dateFormatting.day).toDate(),
-        to: moment(selectedDateLesser, dateFormatting.day).toDate(),
-      },
+      opDateRange: selectedDateGreater
+        ? {
+            from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+            to: selectedDateGreater
+              ? moment(selectedDateLesser, dateFormatting.day).toDate()
+              : undefined,
+          }
+        : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
       fromEntityId: selectedFromEntity,
@@ -131,7 +135,7 @@ const FilterOperationsForm = ({
     origen?: typeof watchFromEntityId;
     destino?: typeof watchToEntityId;
     divisa?: typeof watchCurrency;
-    diaDesde?: string;
+    diaDesde?: string | undefined;
     diaHasta?: string | undefined;
     monto?: typeof watchAmount;
     montoMin?: typeof watchAmount;

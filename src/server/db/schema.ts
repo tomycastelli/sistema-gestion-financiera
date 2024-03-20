@@ -38,19 +38,21 @@ export const transactionsMetadata = pgTable(
     uploadedBy: text("uploadedBy")
       .notNull()
       .references(() => user.id, { onDelete: "restrict", onUpdate: "cascade" }),
-    uploadedDate: date("uploadedDate", { mode: "date" }).defaultNow().notNull(),
+    uploadedDate: timestamp("uploadedDate", { mode: "date" })
+      .defaultNow()
+      .notNull(),
     confirmedBy: text("confirmedBy").references(() => user.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
-    confirmedDate: date("confirmedDate", { mode: "date" }),
+    confirmedDate: timestamp("confirmedDate", { mode: "date" }),
     history: jsonb("history"),
     metadata: jsonb("metadata"),
     cancelledBy: text("cancelledBy").references(() => user.id, {
       onDelete: "set null",
       onUpdate: "cascade",
     }),
-    cancelledDate: date("cancelledDate", { mode: "date" }),
+    cancelledDate: timestamp("cancelledDate", { mode: "date" }),
   },
   (table) => {
     return {
@@ -101,7 +103,7 @@ export const operations = pgTable(
   "Operations",
   {
     id: serial("id").primaryKey().notNull(),
-    date: date("date", { mode: "date" }).notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
     observations: text("observations"),
   },
   (table) => {
@@ -122,7 +124,7 @@ export const transactions = pgTable(
         onUpdate: "cascade",
       }),
     type: text("type").notNull(),
-    date: date("date", { mode: "date" }),
+    date: timestamp("date", { mode: "date" }),
     operatorEntityId: integer("operatorEntityId")
       .notNull()
       .references(() => entities.id, {
@@ -179,7 +181,7 @@ export const balances = pgTable(
   {
     id: serial("id").primaryKey().notNull(),
     account: boolean("account").notNull(),
-    date: date("date", { mode: "date" }).notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
     balance: doublePrecision("balance").notNull(),
     otherEntityId: integer("otherEntityId")
       .notNull()
@@ -304,36 +306,6 @@ export const tag = pgTable(
       })
         .onUpdate("cascade")
         .onDelete("set null"),
-    };
-  },
-);
-
-export const account = pgTable(
-  "Account",
-  {
-    id: text("id").primaryKey().notNull(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    type: text("type").notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
-    refreshToken: text("refresh_token"),
-    accessToken: text("access_token"),
-    expiresAt: integer("expires_at"),
-    tokenType: text("token_type"),
-    scope: text("scope"),
-    idToken: text("id_token"),
-    sessionState: text("session_state"),
-    expiresIn: integer("expires_in"),
-    extExpiresIn: integer("ext_expires_in"),
-  },
-  (table) => {
-    return {
-      userIdIdx: index("Account_userId_idx").on(table.userId),
-      providerProviderAccountIdKey: uniqueIndex(
-        "Account_provider_providerAccountId_key",
-      ).on(table.provider, table.providerAccountId),
     };
   },
 );

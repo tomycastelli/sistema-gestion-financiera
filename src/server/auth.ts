@@ -2,6 +2,7 @@ import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
 import { MicrosoftEntraId } from "arctic";
 import { Lucia } from "lucia";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { type z } from "zod";
 import { env } from "~/env.mjs";
@@ -83,3 +84,24 @@ export const getUser = cache(async () => {
   }
   return user;
 });
+
+export const logOut = async () => {
+  const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+  if (!sessionId) return null;
+  const { session } = await lucia.validateSession(sessionId);
+  if (!session) {
+    return {
+      error: "Unauthorized",
+    };
+  }
+
+  await lucia.invalidateSession(session.id);
+
+  const sessionCookie = lucia.createBlankSessionCookie();
+  cookies().set(
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes,
+  );
+  return redirect("/");
+};

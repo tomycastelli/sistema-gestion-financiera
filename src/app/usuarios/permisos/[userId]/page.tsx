@@ -1,4 +1,3 @@
-import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import PermissionsForm from "./PermissionsForm";
 
@@ -9,8 +8,6 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   const entities = await api.entities.getAll.query();
 
-  const session = await getServerAuthSession();
-
   const tags = await api.tags.getAll.query();
 
   const userPermissions = await api.users.getAllPermissions.query({});
@@ -19,17 +16,14 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   return (
     <div>
-      {session && (
-        <PermissionsForm
-          initialRoles={initialRoles}
-          userPermissions={userPermissions}
-          initialEntities={entities}
-          initialPermissions={permissions}
-          userId={params.userId}
-          session={session}
-          tags={tags}
-        />
-      )}
+      <PermissionsForm
+        initialRoles={initialRoles}
+        userPermissions={userPermissions}
+        initialEntities={entities}
+        initialPermissions={permissions}
+        userId={params.userId}
+        tags={tags}
+      />
     </div>
   );
 }

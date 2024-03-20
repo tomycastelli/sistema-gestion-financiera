@@ -1,25 +1,25 @@
-import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import AddRequest from "./AddRequest";
 import Kanban from "./Kanban";
+import { getUser } from "~/server/auth";
 
 const Page = async () => {
   const initialRequests = await api.requests.getAll.query();
 
-  const session = await getServerAuthSession();
+  const user = await getUser()
 
   const userPermissions = await api.users.getAllPermissions.query({});
-  if (session) {
+  if (user) {
     return (
       <div className="flex flex-col items-center justify-center space-y-8">
         <h1 className="text-5xl font-semibold">Peticiones</h1>
         <div className="flex flex-row items-center space-x-2">
           <p>Añadir petición</p>
-          <AddRequest session={session} />
+          <AddRequest user={user} />
         </div>
         <div className="h-screen w-full">
           <Kanban
-            session={session}
+            user={user}
             initialRequests={initialRequests}
             userPermissions={userPermissions}
           />

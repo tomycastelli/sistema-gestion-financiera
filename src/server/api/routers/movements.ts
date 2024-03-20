@@ -273,7 +273,9 @@ export const movementsRouter = createTRPCRouter({
       );
 
       const movementsConditions = and(
-        input.account ? eq(movements.account, input.account) : undefined,
+        typeof input.account === "boolean"
+          ? eq(movements.account, input.account)
+          : undefined,
       );
 
       const response = await ctx.db.transaction(async (transaction) => {

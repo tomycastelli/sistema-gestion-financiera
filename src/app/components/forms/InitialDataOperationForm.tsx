@@ -38,11 +38,8 @@ const InitialDataOperationForm = () => {
 
   const { handleSubmit, control } = form;
 
-  const {
-    setIsInitialOperationSubmitted,
-    setInitialOperationStore,
-    initialOperationStore,
-  } = useInitialOperationStore();
+  const { setIsInitialOperationSubmitted, setInitialOperationStore } =
+    useInitialOperationStore();
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     setInitialOperationStore({

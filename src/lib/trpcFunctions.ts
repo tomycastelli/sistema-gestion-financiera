@@ -172,7 +172,6 @@ export const generateMovements = async (
 ) => {
   const movementsArray: Omit<z.infer<typeof returnedMovementsSchema>, "id">[] =
     [];
-  const currentDate = moment().startOf("day").format("DD-MM-YYYY");
 
   const [balance] = await transaction
     .select()
@@ -196,11 +195,8 @@ export const generateMovements = async (
 
   if (
     tx.date
-      ? moment(tx.date).isBefore(moment(currentDate, "DD-MM-YYYY"), "day")
-      : moment(tx.operation.date).isBefore(
-          moment(currentDate, "DD-MM-YYYY"),
-          "day",
-        )
+      ? moment(tx.date).isBefore(moment().startOf("day"), "day")
+      : moment(tx.operation.date).isBefore(moment().startOf("day"), "day")
   ) {
     const oldDate = tx.date
       ? moment(tx.date).startOf("day").toDate()
@@ -227,6 +223,8 @@ export const generateMovements = async (
       )
       .limit(1);
 
+    console.log(oldBalance);
+
     // Le cambio el monto a todos los balances posteriores
     await transaction
       .update(balances)
@@ -243,8 +241,6 @@ export const generateMovements = async (
             eq(balances.account, account),
             eq(balances.currency, tx.currency),
             gt(balances.date, oldDate),
-          ),
-          and(
             eq(
               balances.selectedEntityId,
               tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
@@ -266,7 +262,7 @@ export const generateMovements = async (
     }).where(sql`${movements.balanceId} IN (
         SELECT ${balances.id}
         FROM ${balances}
-        WHERE ${oldBalance ? sql`b.id = ${oldBalance.id}` : sql`1=2`}
+        WHERE ${oldBalance ? sql`${balances.id} = ${oldBalance.id}` : sql`1=2`}
         OR (
             ${balances.account} = ${account}
             AND ${balances.currency} = ${tx.currency}
@@ -289,7 +285,7 @@ export const generateMovements = async (
       // Creo el balance para ese dia si no existe, tomando el monto del anterior y sumandole, asi justifico el gap con haber subido todos los que estan adelante
 
       // Busco el anterior
-      const [beforeBalance2] = await transaction
+      const [beforeBalance] = await transaction
         .select()
         .from(balances)
         .where(
@@ -322,8 +318,8 @@ export const generateMovements = async (
           date: tx.date
             ? moment(tx.date).startOf("day").toDate()
             : moment(tx.operation.date).startOf("day").toDate(),
-          balance: beforeBalance2
-            ? beforeBalance2.balance +
+          balance: beforeBalance
+            ? beforeBalance.balance +
               movementBalanceDirection(
                 tx.fromEntityId,
                 tx.toEntityId,
@@ -357,7 +353,11 @@ export const generateMovements = async (
     }
   } else {
     if (balance) {
-      if (moment(balance.date).format("DD-MM-YYYY") === currentDate) {
+      if (moment(balance.date).isSame(moment(), "day")) {
+        console.log(tx.amount);
+        console.log(
+          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction),
+        );
         const [response] = await transaction
           .update(balances)
           .set({
@@ -381,10 +381,14 @@ export const generateMovements = async (
           balanceId: response!.id,
         });
       } else {
+        console.log(balance.balance);
+        console.log(tx.amount);
         const balanceNumber =
           balance.balance +
           movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
             tx.amount;
+
+        console.log(balanceNumber);
 
         const [response] = await transaction
           .insert(balances)
@@ -395,7 +399,7 @@ export const generateMovements = async (
               tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
             account: account,
             currency: tx.currency,
-            date: moment(currentDate, "DD-MM-YYYY").toDate(),
+            date: moment().startOf("day").toDate(),
             balance: balanceNumber,
           })
           .returning();
@@ -410,6 +414,11 @@ export const generateMovements = async (
         });
       }
     } else {
+      console.log(tx.amount);
+      console.log(
+        movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+          tx.amount,
+      );
       const [response] = await transaction
         .insert(balances)
         .values({
@@ -419,7 +428,7 @@ export const generateMovements = async (
             tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
           account: account,
           currency: tx.currency,
-          date: moment(currentDate, "DD-MM-YYYY").toDate(),
+          date: moment().startOf("day").toDate(),
           balance:
             movementBalanceDirection(
               tx.fromEntityId,

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { type FC } from "react";
+import { getInitials } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 
 interface UserCardProps {
@@ -36,8 +38,14 @@ const UserCard: FC<UserCardProps> = ({ user }) => {
           <Link
             href={`/usuarios/permisos/${user.id}`}
             key={user.id}
-            className="flex flex-col items-center justify-center rounded-xl transition-all hover:scale-105"
+            className="flex flex-row items-center justify-center gap-2 rounded-xl transition-all hover:scale-105"
           >
+            <Avatar>
+              <AvatarImage src={user.photoUrl ? user.photoUrl : undefined} />
+              <AvatarFallback>
+                {user.name && getInitials(user.name)}
+              </AvatarFallback>
+            </Avatar>
             {user.name}
           </Link>
         </CardTitle>

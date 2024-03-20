@@ -1,15 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import {
-  and,
-  count,
-  countDistinct,
-  desc,
-  eq,
-  gte,
-  inArray,
-  lte,
-  sql,
-} from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import moment from "moment";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -78,7 +68,15 @@ export const operationsRouter = createTRPCRouter({
           for (const transactionToInsert of input.transactions) {
             const insertedTxReturn = await tx
               .insert(transactions)
-              .values({ ...transactionToInsert, operationId: opId })
+              .values({
+                ...transactionToInsert,
+                operationId: opId,
+                status:
+                  cashAccountOnlyTypes.includes(transactionToInsert.type) ||
+                  transactionToInsert.type === "pago por cta cte"
+                    ? "confirmed"
+                    : "pending",
+              })
               .returning();
             const insertedTx = insertedTxReturn[0]!;
             await tx.insert(transactionsMetadata).values({
@@ -145,7 +143,7 @@ export const operationsRouter = createTRPCRouter({
                   cashAccountOnlyTypes.includes(txToInsert.type) ||
                   txToInsert.type === "pago por cta cte"
                     ? "confirmed"
-                    : "cancelled",
+                    : "pending",
               })
               .returning();
 
@@ -244,6 +242,7 @@ export const operationsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const operationsWhere = and(
+        input.operationId ? eq(operations.id, input.operationId) : undefined,
         input.opDateIsGreater && !input.opDateIsLesser
           ? and(
               gte(
@@ -284,6 +283,28 @@ export const operationsRouter = createTRPCRouter({
           : undefined,
       );
 
+      const txMetadataIds: number[] = [0];
+
+      if (input.uploadedById || input.confirmedById) {
+        const transactionsWithMetadata = await ctx.db
+          .select({ transactionId: transactionsMetadata.transactionId })
+          .from(transactionsMetadata)
+          .where(
+            and(
+              input.uploadedById
+                ? eq(transactionsMetadata.uploadedBy, input.uploadedById)
+                : undefined,
+              input.confirmedById
+                ? eq(transactionsMetadata.confirmedBy, input.confirmedById)
+                : undefined,
+            ),
+          );
+
+        txMetadataIds.push(
+          ...transactionsWithMetadata.map((obj) => obj.transactionId),
+        );
+      }
+
       const transactionsWhere = and(
         input.transactionId
           ? eq(transactions.id, input.transactionId)
@@ -315,32 +336,29 @@ export const operationsRouter = createTRPCRouter({
         input.amountIsLesser
           ? lte(transactions.amount, input.amountIsLesser)
           : undefined,
-        input.uploadedById
-          ? eq(transactionsMetadata.uploadedBy, input.uploadedById)
-          : undefined,
-        input.confirmedById
-          ? eq(transactionsMetadata.confirmedBy, input.confirmedById)
+        input.uploadedById || input.confirmedById
+          ? inArray(transactions.id, txMetadataIds)
           : undefined,
       );
 
-      const sq = ctx.db
-        .select({ operationId: transactions.operationId })
-        .from(transactions)
-        .where(transactionsWhere)
-        .as("sq");
-
-      const [amountThatSatisfy] = await ctx.db
-        .select({ count: countDistinct(operations.id) })
+      const idsThatSatisfy = await ctx.db
+        .selectDistinct({ id: operations.id })
         .from(operations)
-        .leftJoin(sq, eq(operations.id, sq.operationId))
-        .where(operationsWhere);
+        .leftJoin(transactions, eq(operations.id, transactions.operationId))
+        .where(and(operationsWhere, transactionsWhere));
+
+      console.log(idsThatSatisfy);
 
       const operationsPreparedQuery = ctx.db.query.operations
         .findMany({
-          where: operationsWhere,
+          where: inArray(
+            operations.id,
+            idsThatSatisfy.length > 0
+              ? idsThatSatisfy.map((obj) => obj.id)
+              : [0],
+          ),
           with: {
             transactions: {
-              where: transactionsWhere,
               with: {
                 transactionMetadata: {
                   with: {
@@ -553,7 +571,7 @@ export const operationsRouter = createTRPCRouter({
 
       return {
         operations: operationsWithPermissions,
-        count: amountThatSatisfy?.count ?? 0,
+        count: idsThatSatisfy.length,
       };
     }),
   getOperationDetails: protectedProcedure

@@ -1,6 +1,5 @@
 "use client";
 
-import { type Session } from "next-auth";
 import { type FC } from "react";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -17,17 +16,18 @@ import {
 import { Separator } from "../components/ui/separator";
 import { toast } from "../components/ui/use-toast";
 import UpdateRequest from "./UpdateRequest";
+import { type User } from "lucia";
 
 interface KanbanProps {
   initialRequests: RouterOutputs["requests"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
-  session: Session;
+  user: User
 }
 
 const Kanban: FC<KanbanProps> = ({
   initialRequests,
   userPermissions,
-  session,
+  user
 }) => {
   const utils = api.useContext();
 
@@ -94,7 +94,7 @@ const Kanban: FC<KanbanProps> = ({
                             <Icons.cross className="h-5 text-red" />
                           </Button>
                         )}
-                      {r.uploadedBy === session.user.id && (
+                      {r.uploadedBy === user.id && (
                         <UpdateRequest request={r} />
                       )}
                     </div>

@@ -140,7 +140,6 @@ const Page = async ({
                     <SummarizedBalances
                       tags={initialTags}
                       initialMovements={initialMovements}
-                      movementsAmount={movementsAmount}
                       selectedTag={selectedTag}
                       selectedEntityId={selectedEntityId}
                       initialBalancesForCard={initialBalancesForCard}

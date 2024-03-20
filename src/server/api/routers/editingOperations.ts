@@ -120,7 +120,7 @@ export const editingOperationsRouter = createTRPCRouter({
               await ctx.db
                 .update(balances)
                 .set({
-                  balance: sql`${balances.balance} + ${amountModifiedByMovement}`,
+                  balance: sql`${balances.balance} - ${amountModifiedByMovement}`,
                 })
                 .where(eq(balances.id, mv.balanceId));
 
@@ -223,7 +223,7 @@ export const editingOperationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const response = await ctx.db.transaction(async (transaction) => {
-        const updatedIds = await transaction
+        const cancelledTransactions = await transaction
           .update(transactions)
           .set({ status: "cancelled" })
           .where(
@@ -236,7 +236,7 @@ export const editingOperationsRouter = createTRPCRouter({
                 : undefined,
             ),
           )
-          .returning({ id: transactions.id });
+          .returning();
 
         if (input.transactionId) {
           await transaction
@@ -265,17 +265,6 @@ export const editingOperationsRouter = createTRPCRouter({
             );
         }
 
-        const cancelledTransactions =
-          await transaction.query.transactions.findMany({
-            where: inArray(
-              transactions.id,
-              updatedIds.map((obj) => obj.id),
-            ),
-            with: {
-              transactionMetadata: true,
-            },
-          });
-
         const invertedTransactions = cancelledTransactions.map((tx) => ({
           operationId: tx.operationId,
           operatorEntityId: tx.operatorEntityId,
@@ -284,21 +273,10 @@ export const editingOperationsRouter = createTRPCRouter({
           currency: tx.currency,
           amount: tx.amount,
           method: tx.method,
-          type: tx.type,
+          type: "Cancelación",
           date: new Date(),
           observations: tx.observations,
           status: tx.status,
-          transactionMetadata: {
-            create: {
-              uploadedBy: ctx.user.id,
-              uploadedDate: new Date(),
-              cancelledBy: ctx.user.id,
-              cancelledDate: new Date(),
-              metadata: tx.transactionMetadata?.metadata
-                ? tx.transactionMetadata.metadata
-                : undefined,
-            },
-          },
         }));
 
         // Para cancelar, vamos a crear transacciones nuevas que cancelen con invertir from and to, con movimientos iguales
@@ -306,6 +284,7 @@ export const editingOperationsRouter = createTRPCRouter({
           .insert(transactions)
           .values(invertedTransactions)
           .returning();
+
         const operationsRelated = await transaction
           .select({ id: operations.id, date: operations.date })
           .from(operations)

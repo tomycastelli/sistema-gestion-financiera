@@ -1,15 +1,12 @@
-import { getServerAuthSession } from "~/server/auth";
-import { api } from "~/trpc/server";
+import { getUser } from "~/server/auth";
 import MyUserForm from "./MyUserForm";
 
 const Page = async () => {
-  const session = await getServerAuthSession();
-
-  const user = await api.users.getById.query({ id: session?.user.id ?? "" });
+  const user = await getUser()
 
   return (
     <div className="space-y-6">
-      {session && <MyUserForm initialUser={user} />}
+      {user && <MyUserForm user={user} />}
     </div>
   );
 };

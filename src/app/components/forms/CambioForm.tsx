@@ -126,7 +126,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         watchLockAmountA &&
         amountA > 0 &&
         watchLockExchange &&
-        exchangeRate > 0
+        (exchangeRate > 0 || exchangeRate < 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
           setValue("amountB", (amountA * exchangeRate).toFixed(2).toString());
@@ -137,13 +137,13 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             "amountB",
-            (amountA * (exchangeRate / 100) + 1).toFixed(4).toString(),
+            (amountA / (1 + exchangeRate / 100)).toFixed(4).toString(),
           );
         }
         if (watchCurrencyB === "usd" && watchCurrencyA === "usdt") {
           setValue(
             "amountB",
-            ((amountA - 1) * (100 / exchangeRate)).toFixed(4).toString(),
+            (amountA * (1 + exchangeRate / 100)).toFixed(4).toString(),
           );
         }
       }
@@ -151,7 +151,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         watchLockAmountB &&
         amountB > 0 &&
         watchLockExchange &&
-        exchangeRate > 0
+        (exchangeRate > 0 || exchangeRate < 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
           setValue("amountA", (amountB / exchangeRate).toFixed(2).toString());

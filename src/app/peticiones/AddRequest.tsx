@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type Session } from "next-auth";
 import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -26,6 +25,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "../components/ui/use-toast";
+import { type User } from "lucia";
 
 const FormSchema = z.object({
   title: z.string(),
@@ -33,10 +33,10 @@ const FormSchema = z.object({
 });
 
 interface AddRequestProps {
-  session: Session;
+  user: User
 }
 
-const AddRequest: FC<AddRequestProps> = ({ session }) => {
+const AddRequest: FC<AddRequestProps> = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const utils = api.useContext();
 
@@ -66,17 +66,17 @@ const AddRequest: FC<AddRequestProps> = ({ session }) => {
       utils.requests.getAll.setData(undefined, (old) =>
         old
           ? [
-              ...old,
-              {
-                id: 0,
-                uploadedBy: session.user.id,
-                uploadedByUser: { name: session.user.name! },
-                title: newOperation.title,
-                content: newOperation.content,
-                status: "pending",
-                developerMessage: "",
-              },
-            ]
+            ...old,
+            {
+              id: 0,
+              uploadedBy: user.id,
+              uploadedByUser: { name: user.name },
+              title: newOperation.title,
+              content: newOperation.content,
+              status: "pending",
+              developerMessage: "",
+            },
+          ]
           : [],
       );
 

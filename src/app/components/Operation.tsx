@@ -1,15 +1,16 @@
 "use client";
 
-import { Status } from "@prisma/client";
 import moment from "moment";
 import type { User } from "next-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useState, type FC } from "react";
 import { cn } from "~/lib/utils";
+import { Status } from "~/server/db/schema";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
+import CustomPagination from "./CustomPagination";
 import Transaction from "./Transaction";
 import { Icons } from "./ui/Icons";
 import {
@@ -32,7 +33,6 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Input } from "./ui/input";
 import { toast } from "./ui/use-toast";
 
 interface OperationProps {
@@ -86,7 +86,7 @@ const Operation: FC<OperationProps> = ({
                   ...item,
                   transactions: item.transactions.map((tx) => ({
                     ...tx,
-                    status: "cancelled",
+                    status: Status.enumValues[0],
                   })),
                 };
               } else {
@@ -142,7 +142,7 @@ const Operation: FC<OperationProps> = ({
                 ) {
                   return {
                     ...transaction,
-                    status: Status.confirmed,
+                    status: Status.enumValues[1],
                     transactionMetadata: {
                       ...transaction.transactionMetadata,
                       confirmedBy: user.id,
@@ -228,10 +228,10 @@ const Operation: FC<OperationProps> = ({
     <div className="my-4 flex flex-col">
       <Card
         className={cn(
-          op.transactions.filter((tx) => tx.status === Status.cancelled)
+          op.transactions.filter((tx) => tx.status === Status.enumValues[0])
             .length === op.transactions.length
             ? "border border-red"
-            : op.transactions.filter((tx) => tx.status === Status.confirmed)
+            : op.transactions.filter((tx) => tx.status === Status.enumValues[1])
                 .length === op.transactions.length
             ? "border border-green"
             : "",
@@ -255,11 +255,12 @@ const Operation: FC<OperationProps> = ({
             {op.observations}
           </CardDescription>
           <CardDescription>
-            {op.transactions.filter((tx) => tx.status === "confirmed")
+            {op.transactions.filter((tx) => tx.status === Status.enumValues[1])
               .length === op.transactions.length
               ? "Confirmada"
-              : op.transactions.filter((tx) => tx.status === "cancelled")
-                  .length === op.transactions.length
+              : op.transactions.filter(
+                  (tx) => tx.status === Status.enumValues[0],
+                ).length === op.transactions.length
               ? "Cancelada"
               : ""}
           </CardDescription>
@@ -285,40 +286,13 @@ const Operation: FC<OperationProps> = ({
               />
             ))}
           {op.transactions.length > 4 && (
-            <div className="flex flex-row items-center justify-end space-x-2 ">
-              {page > 1 && (
-                <Button
-                  className="flex p-2"
-                  variant="outline"
-                  onClick={() => setPage(page - 1)}
-                >
-                  <Icons.chevronLeft className="h-4" />
-                </Button>
-              )}
-              <Input
-                className="w-12"
-                value={page}
-                onChange={(e) => {
-                  const pageNumber = parseInt(e.target.value);
-                  if (pageNumber > op.transactions.length / 4) {
-                    setPage(page);
-                  } else if (pageNumber < 1 || isNaN(pageNumber)) {
-                    setPage(1);
-                  } else {
-                    setPage(pageNumber);
-                  }
-                }}
-              />
-              {Math.round(op.transactions.length / 4) > page && (
-                <Button
-                  className="flex p-2"
-                  variant="outline"
-                  onClick={() => setPage(page + 1)}
-                >
-                  <Icons.chevronRight className="h-4" />
-                </Button>
-              )}
-            </div>
+            <CustomPagination
+              page={page}
+              pageSize={4}
+              changePageState={setPage}
+              totalCount={op.transactions.length}
+              itemName="transacciones"
+            />
           )}
         </CardContent>
         <CardFooter className="flex flex-row justify-end">

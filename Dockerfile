@@ -6,8 +6,7 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json pnpm-lock.yaml* ./
-COPY prisma ./
-RUN yarn global add pnpm && pnpm i
+RUN npm install -g pnpm && pnpm i
 
 # Rebuild the source code only when needed
 FROM --platform=linux/arm64 node:20-alpine AS builder

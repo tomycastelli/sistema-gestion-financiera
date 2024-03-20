@@ -1,856 +1,9 @@
 {
-  "id": "00000000-0000-0000-0000-000000000000",
-  "prevId": "",
+  "id": "7f22bd4a-741f-41aa-8859-d5ed0c9d3552",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
   "tables": {
-    "TransactionsMetadata": {
-      "name": "TransactionsMetadata",
-      "schema": "",
-      "columns": {
-        "transactionId": {
-          "name": "transactionId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uploadedBy": {
-          "name": "uploadedBy",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uploadedDate": {
-          "name": "uploadedDate",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "confirmedBy": {
-          "name": "confirmedBy",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmedDate": {
-          "name": "confirmedDate",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "history": {
-          "name": "history",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelledBy": {
-          "name": "cancelledBy",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelledDate": {
-          "name": "cancelledDate",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "TransactionsMetadata_transactionId_key": {
-          "name": "TransactionsMetadata_transactionId_key",
-          "columns": [
-            "transactionId"
-          ],
-          "isUnique": true
-        },
-        "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx": {
-          "name": "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx",
-          "columns": [
-            "transactionId",
-            "uploadedBy",
-            "confirmedBy"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "TransactionsMetadata_transactionId_fkey": {
-          "name": "TransactionsMetadata_transactionId_fkey",
-          "tableFrom": "TransactionsMetadata",
-          "tableTo": "Transactions",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "transactionId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "TransactionsMetadata_uploadedBy_fkey": {
-          "name": "TransactionsMetadata_uploadedBy_fkey",
-          "tableFrom": "TransactionsMetadata",
-          "tableTo": "User",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "uploadedBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "cascade"
-        },
-        "TransactionsMetadata_confirmedBy_fkey": {
-          "name": "TransactionsMetadata_confirmedBy_fkey",
-          "tableFrom": "TransactionsMetadata",
-          "tableTo": "User",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "confirmedBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "cascade"
-        },
-        "TransactionsMetadata_cancelledBy_fkey": {
-          "name": "TransactionsMetadata_cancelledBy_fkey",
-          "tableFrom": "TransactionsMetadata",
-          "tableTo": "User",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "cancelledBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "_prisma_migrations": {
-      "name": "_prisma_migrations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(36)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "checksum": {
-          "name": "checksum",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "finished_at": {
-          "name": "finished_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "migration_name": {
-          "name": "migration_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "logs": {
-          "name": "logs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rolled_back_at": {
-          "name": "rolled_back_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "applied_steps_count": {
-          "name": "applied_steps_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "VerificationToken": {
-      "name": "VerificationToken",
-      "schema": "",
-      "columns": {
-        "identifier": {
-          "name": "identifier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "VerificationToken_token_key": {
-          "name": "VerificationToken_token_key",
-          "columns": [
-            "token"
-          ],
-          "isUnique": true
-        },
-        "VerificationToken_identifier_token_key": {
-          "name": "VerificationToken_identifier_token_key",
-          "columns": [
-            "identifier",
-            "token"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Operations": {
-      "name": "Operations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "observations": {
-          "name": "observations",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "Operations_date_idx": {
-          "name": "Operations_date_idx",
-          "columns": [
-            "date"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Transactions": {
-      "name": "Transactions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "operationId": {
-          "name": "operationId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "operatorEntityId": {
-          "name": "operatorEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fromEntityId": {
-          "name": "fromEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "toEntityId": {
-          "name": "toEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "observations": {
-          "name": "observations",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "Status",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        }
-      },
-      "indexes": {
-        "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx": {
-          "name": "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx",
-          "columns": [
-            "operationId",
-            "date",
-            "fromEntityId",
-            "toEntityId",
-            "currency"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "Transactions_operationId_fkey": {
-          "name": "Transactions_operationId_fkey",
-          "tableFrom": "Transactions",
-          "tableTo": "Operations",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "operationId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "Transactions_operatorEntityId_fkey": {
-          "name": "Transactions_operatorEntityId_fkey",
-          "tableFrom": "Transactions",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "operatorEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "Transactions_fromEntityId_fkey": {
-          "name": "Transactions_fromEntityId_fkey",
-          "tableFrom": "Transactions",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "fromEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "Transactions_toEntityId_fkey": {
-          "name": "Transactions_toEntityId_fkey",
-          "tableFrom": "Transactions",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "toEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Links": {
-      "name": "Links",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "sharedEntityId": {
-          "name": "sharedEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password": {
-          "name": "password",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expiration": {
-          "name": "expiration",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "Links_sharedEntityId_fkey": {
-          "name": "Links_sharedEntityId_fkey",
-          "tableFrom": "Links",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "sharedEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Balances": {
-      "name": "Balances",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "account": {
-          "name": "account",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "balance": {
-          "name": "balance",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "otherEntityId": {
-          "name": "otherEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "selectedEntityId": {
-          "name": "selectedEntityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "Balances_selectedEntityId_otherEntityId_date_account_curren_idx": {
-          "name": "Balances_selectedEntityId_otherEntityId_date_account_curren_idx",
-          "columns": [
-            "account",
-            "date",
-            "otherEntityId",
-            "selectedEntityId",
-            "currency"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "Balances_selectedEntityId_fkey": {
-          "name": "Balances_selectedEntityId_fkey",
-          "tableFrom": "Balances",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "selectedEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "Balances_otherEntityId_fkey": {
-          "name": "Balances_otherEntityId_fkey",
-          "tableFrom": "Balances",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "otherEntityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Entities": {
-      "name": "Entities",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tagName": {
-          "name": "tagName",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "Entities_name_idx": {
-          "name": "Entities_name_idx",
-          "columns": [
-            "name"
-          ],
-          "isUnique": false
-        },
-        "Entities_name_key": {
-          "name": "Entities_name_key",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        },
-        "Entities_tagName_idx": {
-          "name": "Entities_tagName_idx",
-          "columns": [
-            "tagName"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "Entities_tagName_fkey": {
-          "name": "Entities_tagName_fkey",
-          "tableFrom": "Entities",
-          "tableTo": "Tag",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "tagName"
-          ],
-          "columnsTo": [
-            "name"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "User": {
-      "name": "User",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "emailVerified": {
-          "name": "emailVerified",
-          "type": "timestamp(3)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "image": {
-          "name": "image",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "permissions": {
-          "name": "permissions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "roleId": {
-          "name": "roleId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entityId": {
-          "name": "entityId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "User_email_key": {
-          "name": "User_email_key",
-          "columns": [
-            "email"
-          ],
-          "isUnique": true
-        },
-        "User_name_key": {
-          "name": "User_name_key",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        },
-        "User_entityId_key": {
-          "name": "User_entityId_key",
-          "columns": [
-            "entityId"
-          ],
-          "isUnique": true
-        },
-        "User_email_name_idx": {
-          "name": "User_email_name_idx",
-          "columns": [
-            "name",
-            "email"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "User_roleId_fkey": {
-          "name": "User_roleId_fkey",
-          "tableFrom": "User",
-          "tableTo": "Role",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "roleId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "cascade"
-        },
-        "User_entityId_fkey": {
-          "name": "User_entityId_fkey",
-          "tableFrom": "User",
-          "tableTo": "Entities",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "entityId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Role": {
-      "name": "Role",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "permissions": {
-          "name": "permissions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "color": {
-          "name": "color",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "Role_name_key": {
-          "name": "Role_name_key",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        },
-        "Role_name_idx": {
-          "name": "Role_name_idx",
-          "columns": [
-            "name"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Tag": {
-      "name": "Tag",
-      "schema": "",
-      "columns": {
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "parent": {
-          "name": "parent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "color": {
-          "name": "color",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "Tag_parent_fkey": {
-          "name": "Tag_parent_fkey",
-          "tableFrom": "Tag",
-          "tableTo": "Tag",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "parent"
-          ],
-          "columnsTo": [
-            "name"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
     "Account": {
       "name": "Account",
       "schema": "",
@@ -958,11 +111,10 @@
         }
       },
       "foreignKeys": {
-        "Account_userId_fkey": {
-          "name": "Account_userId_fkey",
+        "Account_userId_User_id_fk": {
+          "name": "Account_userId_User_id_fk",
           "tableFrom": "Account",
           "tableTo": "User",
-          "schemaTo": "public",
           "columnsFrom": [
             "userId"
           ],
@@ -976,60 +128,198 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "Session": {
-      "name": "Session",
+    "Balances": {
+      "name": "Balances",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "serial",
           "primaryKey": true,
           "notNull": true
         },
-        "sessionToken": {
-          "name": "sessionToken",
-          "type": "text",
+        "account": {
+          "name": "account",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
-        "userId": {
-          "name": "userId",
-          "type": "text",
+        "date": {
+          "name": "date",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp(3)",
+        "balance": {
+          "name": "balance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "otherEntityId": {
+          "name": "otherEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "selectedEntityId": {
+          "name": "selectedEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         }
       },
       "indexes": {
-        "Session_sessionToken_key": {
-          "name": "Session_sessionToken_key",
+        "Balances_selectedEntityId_otherEntityId_date_account_curren_idx": {
+          "name": "Balances_selectedEntityId_otherEntityId_date_account_curren_idx",
           "columns": [
-            "sessionToken"
-          ],
-          "isUnique": true
-        },
-        "Session_userId_sessionToken_idx": {
-          "name": "Session_userId_sessionToken_idx",
-          "columns": [
-            "sessionToken",
-            "userId"
+            "account",
+            "date",
+            "otherEntityId",
+            "selectedEntityId",
+            "currency"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {
-        "Session_userId_fkey": {
-          "name": "Session_userId_fkey",
-          "tableFrom": "Session",
-          "tableTo": "User",
-          "schemaTo": "public",
+        "Balances_otherEntityId_Entities_id_fk": {
+          "name": "Balances_otherEntityId_Entities_id_fk",
+          "tableFrom": "Balances",
+          "tableTo": "Entities",
           "columnsFrom": [
-            "userId"
+            "otherEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "Balances_selectedEntityId_Entities_id_fk": {
+          "name": "Balances_selectedEntityId_Entities_id_fk",
+          "tableFrom": "Balances",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "selectedEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Entities": {
+      "name": "Entities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tagName": {
+          "name": "tagName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "Entities_name_idx": {
+          "name": "Entities_name_idx",
+          "columns": [
+            "name"
+          ],
+          "isUnique": false
+        },
+        "Entities_name_key": {
+          "name": "Entities_name_key",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        },
+        "Entities_tagName_idx": {
+          "name": "Entities_tagName_idx",
+          "columns": [
+            "tagName"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "Entities_tagName_Tag_name_fk": {
+          "name": "Entities_tagName_Tag_name_fk",
+          "tableFrom": "Entities",
+          "tableTo": "Tag",
+          "columnsFrom": [
+            "tagName"
+          ],
+          "columnsTo": [
+            "name"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Links": {
+      "name": "Links",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sharedEntityId": {
+          "name": "sharedEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Links_sharedEntityId_Entities_id_fk": {
+          "name": "Links_sharedEntityId_Entities_id_fk",
+          "tableFrom": "Links",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "sharedEntityId"
           ],
           "columnsTo": [
             "id"
@@ -1100,11 +390,10 @@
         }
       },
       "foreignKeys": {
-        "Movements_transactionId_fkey": {
-          "name": "Movements_transactionId_fkey",
+        "Movements_transactionId_Transactions_id_fk": {
+          "name": "Movements_transactionId_Transactions_id_fk",
           "tableFrom": "Movements",
           "tableTo": "Transactions",
-          "schemaTo": "public",
           "columnsFrom": [
             "transactionId"
           ],
@@ -1114,11 +403,10 @@
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
-        "Movements_balanceId_fkey": {
-          "name": "Movements_balanceId_fkey",
+        "Movements_balanceId_Balances_id_fk": {
+          "name": "Movements_balanceId_Balances_id_fk",
           "tableFrom": "Movements",
           "tableTo": "Balances",
-          "schemaTo": "public",
           "columnsFrom": [
             "balanceId"
           ],
@@ -1129,6 +417,152 @@
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "oauth_account": {
+      "name": "oauth_account",
+      "schema": "",
+      "columns": {
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "oauth_account_user_id_User_id_fk": {
+          "name": "oauth_account_user_id_User_id_fk",
+          "tableFrom": "oauth_account",
+          "tableTo": "User",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "oauth_account_provider_provider_id_pk": {
+          "name": "oauth_account_provider_provider_id_pk",
+          "columns": [
+            "provider",
+            "provider_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
+    "Operations": {
+      "name": "Operations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observations": {
+          "name": "observations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "Operations_date_idx": {
+          "name": "Operations_date_idx",
+          "columns": [
+            "date"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "_prisma_migrations": {
+      "name": "_prisma_migrations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "checksum": {
+          "name": "checksum",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "migration_name": {
+          "name": "migration_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "logs": {
+          "name": "logs",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rolled_back_at": {
+          "name": "rolled_back_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "applied_steps_count": {
+          "name": "applied_steps_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
@@ -1176,11 +610,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "Requests_uploadedBy_fkey": {
-          "name": "Requests_uploadedBy_fkey",
+        "Requests_uploadedBy_User_id_fk": {
+          "name": "Requests_uploadedBy_User_id_fk",
           "tableFrom": "Requests",
           "tableTo": "User",
-          "schemaTo": "public",
           "columnsFrom": [
             "uploadedBy"
           ],
@@ -1191,6 +624,575 @@
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Role": {
+      "name": "Role",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "Role_name_key": {
+          "name": "Role_name_key",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        },
+        "Role_name_idx": {
+          "name": "Role_name_idx",
+          "columns": [
+            "name"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Session": {
+      "name": "Session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Session_user_id_User_id_fk": {
+          "name": "Session_user_id_User_id_fk",
+          "tableFrom": "Session",
+          "tableTo": "User",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Tag": {
+      "name": "Tag",
+      "schema": "",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "parent": {
+          "name": "parent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "Tag_parent_fkey": {
+          "name": "Tag_parent_fkey",
+          "tableFrom": "Tag",
+          "tableTo": "Tag",
+          "columnsFrom": [
+            "parent"
+          ],
+          "columnsTo": [
+            "name"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Transactions": {
+      "name": "Transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "operationId": {
+          "name": "operationId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operatorEntityId": {
+          "name": "operatorEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fromEntityId": {
+          "name": "fromEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "toEntityId": {
+          "name": "toEntityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "name": "method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observations": {
+          "name": "observations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "Status",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        }
+      },
+      "indexes": {
+        "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx": {
+          "name": "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx",
+          "columns": [
+            "operationId",
+            "date",
+            "fromEntityId",
+            "toEntityId",
+            "currency"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "Transactions_operationId_Operations_id_fk": {
+          "name": "Transactions_operationId_Operations_id_fk",
+          "tableFrom": "Transactions",
+          "tableTo": "Operations",
+          "columnsFrom": [
+            "operationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "Transactions_operatorEntityId_Entities_id_fk": {
+          "name": "Transactions_operatorEntityId_Entities_id_fk",
+          "tableFrom": "Transactions",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "operatorEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "Transactions_fromEntityId_Entities_id_fk": {
+          "name": "Transactions_fromEntityId_Entities_id_fk",
+          "tableFrom": "Transactions",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "fromEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "Transactions_toEntityId_Entities_id_fk": {
+          "name": "Transactions_toEntityId_Entities_id_fk",
+          "tableFrom": "Transactions",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "toEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "TransactionsMetadata": {
+      "name": "TransactionsMetadata",
+      "schema": "",
+      "columns": {
+        "transactionId": {
+          "name": "transactionId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uploadedBy": {
+          "name": "uploadedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uploadedDate": {
+          "name": "uploadedDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "confirmedBy": {
+          "name": "confirmedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirmedDate": {
+          "name": "confirmedDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "history": {
+          "name": "history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelledBy": {
+          "name": "cancelledBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelledDate": {
+          "name": "cancelledDate",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "TransactionsMetadata_transactionId_key": {
+          "name": "TransactionsMetadata_transactionId_key",
+          "columns": [
+            "transactionId"
+          ],
+          "isUnique": true
+        },
+        "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx": {
+          "name": "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx",
+          "columns": [
+            "transactionId",
+            "uploadedBy",
+            "confirmedBy"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "TransactionsMetadata_transactionId_Transactions_id_fk": {
+          "name": "TransactionsMetadata_transactionId_Transactions_id_fk",
+          "tableFrom": "TransactionsMetadata",
+          "tableTo": "Transactions",
+          "columnsFrom": [
+            "transactionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "TransactionsMetadata_uploadedBy_User_id_fk": {
+          "name": "TransactionsMetadata_uploadedBy_User_id_fk",
+          "tableFrom": "TransactionsMetadata",
+          "tableTo": "User",
+          "columnsFrom": [
+            "uploadedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        },
+        "TransactionsMetadata_confirmedBy_User_id_fk": {
+          "name": "TransactionsMetadata_confirmedBy_User_id_fk",
+          "tableFrom": "TransactionsMetadata",
+          "tableTo": "User",
+          "columnsFrom": [
+            "confirmedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        },
+        "TransactionsMetadata_cancelledBy_User_id_fk": {
+          "name": "TransactionsMetadata_cancelledBy_User_id_fk",
+          "tableFrom": "TransactionsMetadata",
+          "tableTo": "User",
+          "columnsFrom": [
+            "cancelledBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "User": {
+      "name": "User",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "photo_url": {
+          "name": "photo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roleId": {
+          "name": "roleId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entityId": {
+          "name": "entityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "User_email_key": {
+          "name": "User_email_key",
+          "columns": [
+            "email"
+          ],
+          "isUnique": true
+        },
+        "User_name_key": {
+          "name": "User_name_key",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        },
+        "User_entityId_key": {
+          "name": "User_entityId_key",
+          "columns": [
+            "entityId"
+          ],
+          "isUnique": true
+        },
+        "User_email_name_idx": {
+          "name": "User_email_name_idx",
+          "columns": [
+            "name",
+            "email"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "User_roleId_Role_id_fk": {
+          "name": "User_roleId_Role_id_fk",
+          "tableFrom": "User",
+          "tableTo": "Role",
+          "columnsFrom": [
+            "roleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        },
+        "User_entityId_Entities_id_fk": {
+          "name": "User_entityId_Entities_id_fk",
+          "tableFrom": "User",
+          "tableTo": "Entities",
+          "columnsFrom": [
+            "entityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "VerificationToken": {
+      "name": "VerificationToken",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp(3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "VerificationToken_token_key": {
+          "name": "VerificationToken_token_key",
+          "columns": [
+            "token"
+          ],
+          "isUnique": true
+        },
+        "VerificationToken_identifier_token_key": {
+          "name": "VerificationToken_identifier_token_key",
+          "columns": [
+            "identifier",
+            "token"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     }
@@ -1215,8 +1217,8 @@
   },
   "schemas": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
+    "tables": {}
   }
 }

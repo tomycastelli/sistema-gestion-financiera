@@ -43,7 +43,6 @@ interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
   initialBalancesForCardInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
-  movementsAmount: number;
   selectedTag: string | null;
   selectedEntityId: number | null;
   tags: RouterOutputs["tags"]["getAll"];
@@ -53,7 +52,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalancesForCard,
   initialBalancesForCardInput,
   initialMovements,
-  movementsAmount,
   selectedTag,
   selectedEntityId,
   tags,
@@ -90,8 +88,8 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
-    pageSize: movementsAmount,
-    pageNumber: 5,
+    pageSize: 5,
+    pageNumber: 1,
     entityTag: selectedTag,
     entityId: selectedEntityId,
   };
@@ -141,6 +139,20 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           type = "Confirmación";
         }
         return <p className="font-medium">{type}</p>;
+      },
+    },
+    {
+      accessorKey: "account",
+      header: "Cuenta",
+      cell: ({ row }) => {
+        let cuenta = "";
+        if (row.getValue("account") === true) {
+          cuenta = "Caja";
+        }
+        if (row.getValue("account") === false) {
+          cuenta = "Cuenta corriente";
+        }
+        return <p className="font-medium">{cuenta}</p>;
       },
     },
     {

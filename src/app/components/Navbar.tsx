@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getUser } from "~/server/auth";
 import LinkTree from "./LinkTree";
 import { ThemeToggler } from "./ThemeToggler";
+import UserInfo from "./UserInfo";
 import CommandMenu from "./ui/CommandMenu";
 
 const Navbar = async () => {
@@ -27,6 +28,7 @@ const Navbar = async () => {
         </div>
         {user && (
           <div className="flex flex-row items-center space-x-4">
+            <UserInfo user={user} />
             <CommandMenu />
             <ThemeToggler />
           </div>

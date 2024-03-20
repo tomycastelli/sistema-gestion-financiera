@@ -1,10 +1,10 @@
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import AddRoleForm from "./AddRoleForm";
 import RolesFeed from "./RolesFeed";
 
 const Page = async () => {
-  const session = await getServerAuthSession();
+  const user = await getUser()
   const roles = await api.roles.getAll.query();
   const entities = await api.entities.getAll.query();
   const tags = await api.tags.getAll.query();
@@ -27,10 +27,10 @@ const Page = async () => {
               <h1 className="text-3xl font-semibold tracking-tight">
                 Nuevo rol
               </h1>
-              {session && (
+              {user && (
                 <AddRoleForm
                   roles={roles}
-                  user={await api.users.getById.query({ id: session.user.id })}
+                  user={await api.users.getById.query({ id: user.id })}
                   initialEntities={entities}
                   initialTags={tags}
                   userPermissions={permissions}

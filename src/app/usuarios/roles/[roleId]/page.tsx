@@ -1,11 +1,11 @@
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import ChangeRole from "./ChangeRole";
 import ManageUsers from "./ManageUsers";
 import RoleHeader from "./RoleHeader";
 
 const Page = async ({ params }: { params: { roleId: string } }) => {
-  const session = await getServerAuthSession();
+  const user = await getUser();
   const role = await api.roles.getById.query({ id: parseInt(params.roleId) });
   const entities = await api.entities.getAll.query();
   const tags = await api.tags.getAll.query();
@@ -15,7 +15,7 @@ const Page = async ({ params }: { params: { roleId: string } }) => {
 
   return (
     <div>
-      {role && session ? (
+      {role && user ? (
         <div className="flex flex-col space-y-6">
           <RoleHeader initialRole={role} />
           {userPermissions?.find(
@@ -23,7 +23,7 @@ const Page = async ({ params }: { params: { roleId: string } }) => {
           ) && <ManageUsers initialRole={role} initialUsers={users} />}
           <ChangeRole
             roles={roles}
-            user={users.find((u) => u.id === session.user.id)!}
+            user={users.find((u) => u.id === user.id)}
             userPermissions={userPermissions}
             role={role}
             initialEntities={entities}

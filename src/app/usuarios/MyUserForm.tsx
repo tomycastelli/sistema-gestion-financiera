@@ -5,7 +5,6 @@ import { type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
 import { Button } from "../components/ui/button";
 import {
   Form,
@@ -17,25 +16,19 @@ import {
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 import { toast } from "../components/ui/use-toast";
+import { type User } from "lucia";
 
 interface MyUserFormProps {
-  initialUser: RouterOutputs["users"]["getById"];
+  user: User
 }
 
-const MyUserForm: FC<MyUserFormProps> = ({ initialUser }) => {
+const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
   const FormSchema = z.object({ name: z.string().max(25) });
-
-  const { data: user } = api.users.getById.useQuery(
-    { id: initialUser?.id ?? "" },
-    { initialData: initialUser },
-  );
-
-  const name = user?.name;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      name: name ?? "",
+      name: user.name,
     },
   });
 
@@ -55,7 +48,7 @@ const MyUserForm: FC<MyUserFormProps> = ({ initialUser }) => {
 
       const prevData = utils.users.getById.getData();
 
-      utils.users.getById.setData({ id: initialUser?.id ?? "" }, (old) => ({
+      utils.users.getById.setData({ id: user.id }, (old) => ({
         ...old!,
         name: newOperation.name,
       }));
@@ -76,9 +69,9 @@ const MyUserForm: FC<MyUserFormProps> = ({ initialUser }) => {
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     await mutateAsync({
-      oldName: name ?? "",
+      oldName: user.name,
       name: values.name,
-      userId: initialUser?.id ?? "",
+      userId: user.id,
     });
   };
 
@@ -92,7 +85,7 @@ const MyUserForm: FC<MyUserFormProps> = ({ initialUser }) => {
             <FormItem>
               <FormLabel>Nombre de usuario</FormLabel>
               <FormControl>
-                <Input className="w-32" placeholder={name ?? ""} {...field} />
+                <Input className="w-32" placeholder={user.name} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

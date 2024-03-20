@@ -1,9 +1,9 @@
 "use client";
 
 import Lottie from "lottie-react";
+import moment from "moment";
 import Link from "next/link";
 import { forwardRef } from "react";
-import { formatDateString } from "~/lib/functions";
 import type { RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import {
@@ -43,7 +43,7 @@ const UploadedUserOperations = forwardRef<
                   </Link>
                 </CardTitle>
                 <CardDescription>
-                  {op.date ? formatDateString(op.date.toString()) : ""}
+                  {op.date ? moment(op.date).format("DD-MM-YYYY: HH:mm") : ""}
                 </CardDescription>
               </CardHeader>
               <CardContent>

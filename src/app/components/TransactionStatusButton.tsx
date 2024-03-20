@@ -89,6 +89,7 @@ const TransactionStatusButton = ({
     },
     onSettled() {
       void utils.operations.getOperations.invalidate();
+      void utils.movements.getMovementsByOpId.invalidate();
     },
   });
 

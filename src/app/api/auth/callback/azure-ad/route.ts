@@ -4,7 +4,7 @@ import { generateId } from "lucia";
 import { cookies } from "next/headers";
 import { ZodError, z } from "zod";
 import { lucia, microsoft } from "~/server/auth";
-import { db2 } from "~/server/db";
+import { db } from "~/server/db";
 import { entities, oauth_account, tag, user } from "~/server/db/schema";
 
 export const dynamic = "force-dynamic"; // defaults to auto
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
     const microsoftUser = userSchema.parse(await response.json());
 
-    const existingUser = await db2.query.oauth_account.findFirst({
+    const existingUser = await db.query.oauth_account.findFirst({
       where: and(
         eq(oauth_account.providerId, "microsoft"),
         eq(oauth_account.providerUserId, microsoftUser.sub),
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     const userFullName =
       microsoftUser.given_name + " " + microsoftUser.family_name;
 
-    await db2.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const [isOperadoresTag] = await tx
         .select({ tagName: tag.name })
         .from(tag)

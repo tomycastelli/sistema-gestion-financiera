@@ -1,4 +1,4 @@
-import { getServerAuthSession } from "~/server/auth";
+import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import OperationDetails from "./OperationDetails";
 
@@ -19,7 +19,7 @@ export default async function Page({
 
   const users = await api.users.getAll.query();
 
-  const session = await getServerAuthSession();
+  const user = await getUser();
 
   const userPermissions = await api.users.getAllPermissions.query({});
 
@@ -29,7 +29,7 @@ export default async function Page({
 
   return (
     <div>
-      {session && (
+      {user && (
         <OperationDetails
           movements={movements}
           users={users}
@@ -37,7 +37,7 @@ export default async function Page({
           initialOperation={operation}
           operationId={operationId}
           entities={entities}
-          session={session}
+          user={user}
         />
       )}
     </div>

@@ -150,44 +150,6 @@ const AddOperation = ({
     },
   );
 
-  const uploadOperation = async () => {
-    try {
-      await mutateAsync({
-        opDate: moment(
-          `${moment(initialOperationStore.opDate).format("YYYY-MM-DD")} ${
-            initialOperationStore.opTime
-          }`,
-          "YYYY-MM-DD HH:mm",
-        ).toDate(),
-        opObservations: initialOperationStore.opObservations,
-        opId: selectedOpId,
-        transactions: transactionsStore.map((transaction) => ({
-          type: transaction.type,
-          date:
-            transaction.date && transaction.time
-              ? moment(
-                  `${moment(transaction.date).format("YYYY-MM-DD")} ${
-                    transaction.time
-                  }`,
-                  "YYYY-MM-DD HH:mm",
-                ).toDate()
-              : transaction.date
-              ? transaction.date
-              : undefined,
-          operatorEntityId: transaction.operatorId,
-          fromEntityId: transaction.fromEntityId,
-          toEntityId: transaction.toEntityId,
-          currency: transaction.currency,
-          amount: transaction.amount,
-          method: transaction.method,
-          metadata: transaction.metadata,
-        })),
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   const { isLoading: isEntitiesLoading, data: entities } =
     api.entities.getFiltered.useQuery(
       { permissionName: "OPERATIONS_CREATE" },
@@ -342,7 +304,60 @@ const AddOperation = ({
                     <Button
                       className="w-full"
                       disabled={transactionsStore.length > 0 ? false : true}
-                      onClick={() => uploadOperation()}
+                      onClick={async () => {
+                        const [hoursString, minutesString] =
+                          initialOperationStore.opTime.split(":");
+                        const opDate = moment(initialOperationStore.opDate)
+                          .set({
+                            hour: hoursString
+                              ? parseInt(hoursString)
+                              : moment().hours(),
+                            minute: minutesString
+                              ? parseInt(minutesString)
+                              : moment().minutes(),
+                          })
+                          .toDate();
+                        console.log(
+                          moment(initialOperationStore.opDate)
+                            .set({
+                              hour: hoursString
+                                ? parseInt(hoursString)
+                                : moment().hours(),
+                              minute: minutesString
+                                ? parseInt(minutesString)
+                                : moment().minutes(),
+                            })
+                            .toDate(),
+                        );
+                        await mutateAsync({
+                          opDate,
+                          opObservations: initialOperationStore.opObservations,
+                          opId: selectedOpId,
+                          transactions: transactionsStore.map(
+                            (transaction) => ({
+                              type: transaction.type,
+                              date:
+                                transaction.date && transaction.time
+                                  ? moment(
+                                      `${moment(transaction.date).format(
+                                        "YYYY-MM-DD",
+                                      )} ${transaction.time}`,
+                                      "YYYY-MM-DD HH:mm",
+                                    ).toDate()
+                                  : transaction.date
+                                  ? transaction.date
+                                  : undefined,
+                              operatorEntityId: transaction.operatorId,
+                              fromEntityId: transaction.fromEntityId,
+                              toEntityId: transaction.toEntityId,
+                              currency: transaction.currency,
+                              amount: transaction.amount,
+                              method: transaction.method,
+                              metadata: transaction.metadata,
+                            }),
+                          ),
+                        });
+                      }}
                     >
                       <Icons.addPackage className="mr-2 h-4 w-4" />
                       {isLoading ? (
