@@ -38,7 +38,7 @@ import EntityOptions from "./EntityOptions";
 interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
-  initialTags: RouterOutputs["tags"]["getAll"];
+  initialTags: RouterOutputs["tags"]["getFiltered"];
 }
 
 const EntitiesFeed: FC<EntitiesFeedProps> = ({
@@ -195,7 +195,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                     {entity.tag.name !== "user" &&
                       manageableEntities.find(
                         (item) => item.name === entity.name,
-                      ) && <EntityOptions entity={entity} />}
+                      ) && <EntityOptions entity={entity} tags={initialTags} />}
                   </div>
                 ))}
             </div>

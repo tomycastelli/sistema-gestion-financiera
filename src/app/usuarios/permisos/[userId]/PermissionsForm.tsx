@@ -107,7 +107,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       // Doing some ui actions
       toast({
         title: "No se pudieron actualizar los permisos del usuario",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },

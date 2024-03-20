@@ -273,7 +273,7 @@ export const editingOperationsRouter = createTRPCRouter({
           currency: tx.currency,
           amount: tx.amount,
           method: tx.method,
-          type: "Cancelación",
+          type: tx.type,
           date: new Date(),
           observations: tx.observations,
           status: tx.status,

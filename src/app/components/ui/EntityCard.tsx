@@ -38,7 +38,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
       {entity ? (
         <Card
           className={cn(
-            "flex h-36 w-36 flex-col border",
+            "flex h-36 w-36 flex-col border shadow-md",
             entity.tag.color === "primary"
               ? "border-primary"
               : entity.tag.color === "green"

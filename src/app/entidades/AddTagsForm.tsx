@@ -128,7 +128,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       // Doing some ui actions
       toast({
         title: "No se pudo eliminar el tag",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },
@@ -163,7 +163,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       // Doing some ui actions
       toast({
         title: "No se pudo añadir el tag",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },

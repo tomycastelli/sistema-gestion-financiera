@@ -54,6 +54,9 @@ const FormSchema = z.object({
   lockAmountA: z.boolean().default(true),
   lockAmountB: z.boolean().default(false),
   direction: z.boolean().default(true),
+}).refine(data => data.entityA !== data.entityB, {
+  message: "Las entidades no pueden ser la misma",
+  path: ['entityB']
 });
 
 interface OperationFormProps {

@@ -84,8 +84,8 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
       // Doing some ui actions
       toast({
         title:
-          "No se pudo cargar la operación y las transacciones relacionadas",
-        description: `${JSON.stringify(err.data)}`,
+          "No se pudo crear la entidad",
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },

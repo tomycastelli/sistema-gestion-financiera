@@ -58,7 +58,7 @@ const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
     onError(err) {
       toast({
         title: "No se pudo cambiar el nombre de usuario",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },

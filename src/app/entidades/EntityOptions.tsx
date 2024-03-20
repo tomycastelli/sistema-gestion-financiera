@@ -21,9 +21,10 @@ import ChangeEntityForm from "./ChangeEntityForm";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
+  tags: RouterOutputs["tags"]["getAll"]
 }
 
-const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
+const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
   const utils = api.useContext();
 
   const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
@@ -88,7 +89,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity }) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ChangeEntityForm entity={entity} />
+      <ChangeEntityForm entity={entity} tags={tags} />
     </div>
   );
 };

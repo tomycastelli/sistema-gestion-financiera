@@ -131,7 +131,7 @@ const Transaction: FC<TransactionProps> = ({
         // Doing some ui actions
         toast({
           title: `No se pudo anular la transacción ${newOperation.transactionId}`,
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },
@@ -194,7 +194,7 @@ const Transaction: FC<TransactionProps> = ({
         // Doing some ui actions
         toast({
           title: `No se pudo eliminar la transacción ${newOperation.transactionId}`,
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },
@@ -219,16 +219,16 @@ const Transaction: FC<TransactionProps> = ({
               {
                 // @ts-ignore
                 tx.transactionMetadata?.metadata &&
-                  // @ts-ignore
-                  tx.transactionMetadata.metadata.exchangeRate && (
-                    <p className="rounded-xl border border-muted-foreground p-2 shadow-md">
-                      Cambio:{" "}
-                      <span className="font-semibold">
-                        {// @ts-ignore
+                // @ts-ignore
+                tx.transactionMetadata.metadata.exchangeRate && (
+                  <p className="rounded-xl border border-muted-foreground p-2 shadow-md">
+                    Cambio:{" "}
+                    <span className="font-semibold">
+                      {// @ts-ignore
                         tx.transactionMetadata?.metadata.exchangeRate.toString()}
-                      </span>
-                    </p>
-                  )
+                    </span>
+                  </p>
+                )
               }
               <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
                 <p className="font-semibold">
@@ -334,25 +334,25 @@ const Transaction: FC<TransactionProps> = ({
                                 "fromEntityId",
                                 "toEntityId",
                               ].includes(change.key) && (
-                                <div className="flex flex-row items-center space-x-2">
-                                  <Icons.person className="h-6" />
-                                  <p className="font-light">
-                                    {
-                                      entities.find(
-                                        (entity) => change.before === entity.id,
-                                      )?.name
-                                    }
-                                  </p>
-                                  <Icons.chevronRight className="h-4" />
-                                  <p className="font-semibold">
-                                    {
-                                      entities.find(
-                                        (entity) => change.after === entity.id,
-                                      )?.name
-                                    }
-                                  </p>
-                                </div>
-                              )}
+                                  <div className="flex flex-row items-center space-x-2">
+                                    <Icons.person className="h-6" />
+                                    <p className="font-light">
+                                      {
+                                        entities.find(
+                                          (entity) => change.before === entity.id,
+                                        )?.name
+                                      }
+                                    </p>
+                                    <Icons.chevronRight className="h-4" />
+                                    <p className="font-semibold">
+                                      {
+                                        entities.find(
+                                          (entity) => change.after === entity.id,
+                                        )?.name
+                                      }
+                                    </p>
+                                  </div>
+                                )}
                             </div>
                           ))}
                         </div>
@@ -382,8 +382,8 @@ const Transaction: FC<TransactionProps> = ({
               tx.status === Status.enumValues[0]
                 ? "text-red"
                 : tx.status === Status.enumValues[1]
-                ? "text-green"
-                : "",
+                  ? "text-green"
+                  : "",
             )}
           />
           <div className="flex w-3/4 flex-row items-center justify-center space-x-2">

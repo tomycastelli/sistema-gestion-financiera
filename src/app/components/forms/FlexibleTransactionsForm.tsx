@@ -48,6 +48,9 @@ const FormSchema = z.object({
       direction: z.boolean().optional().default(false),
       date: z.date().optional(),
       time: z.string().optional(),
+    }).refine(data => data.fromEntityId !== data.toEntityId, {
+      message: "La entidad de origen y la entidad de destino no pueden ser la misma",
+      path: ['toEntityId']
     }),
   ),
 });
@@ -316,14 +319,14 @@ const FlexibleTransactionsForm = ({
                         )
                           ? "La transacción no podrá ser confirmada"
                           : cashAccountOnlyTypes.includes(
-                              // @ts-ignore
-                              watchTransactions[index].type,
-                            )
-                          ? "La transacción solo afectará caja"
-                          : watchTransactions[index]?.type ===
-                            "pago por cta cte"
-                          ? "La transacción será confirmada automaticamente"
-                          : ""}
+                            // @ts-ignore
+                            watchTransactions[index].type,
+                          )
+                            ? "La transacción solo afectará caja"
+                            : watchTransactions[index]?.type ===
+                              "pago por cta cte"
+                              ? "La transacción será confirmada automaticamente"
+                              : ""}
                       </p>
                     )}
                   </div>

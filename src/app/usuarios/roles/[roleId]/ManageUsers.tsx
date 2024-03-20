@@ -106,7 +106,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
       // Doing some ui actions
       toast({
         title: "No se pudo añadir el usuario",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },
@@ -148,7 +148,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         // Doing some ui actions
         toast({
           title: "No se pudo eliminar el usuario",
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },

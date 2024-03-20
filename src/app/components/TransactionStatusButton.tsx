@@ -82,7 +82,7 @@ const TransactionStatusButton = ({
       // Doing some ui actions
       toast({
         title: "No se pudieron actualizar las transacciones",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
       return { prevData };

@@ -45,8 +45,8 @@ interface AddOperationProps {
   user: User;
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   initialOperations:
-    | RouterOutputs["operations"]["getOperationsByUser"]
-    | undefined;
+  | RouterOutputs["operations"]["getOperationsByUser"]
+  | undefined;
   tags: RouterOutputs["tags"]["getAll"];
 }
 
@@ -89,21 +89,19 @@ const AddOperation = ({
         const transaccionesCargadas = newOperation.transactions.length;
         if (newOperation.opId) {
           toast({
-            title: `${
-              transaccionesCargadas > 1
+            title: `${transaccionesCargadas > 1
                 ? transaccionesCargadas.toString() +
-                  ` transacciones cargadas a la operación ${newOperation.opId}`
+                ` transacciones cargadas a la operación ${newOperation.opId}`
                 : transaccionesCargadas +
-                  ` transaccion cargada a la operación ${newOperation.opId}`
-            }`,
+                ` transaccion cargada a la operación ${newOperation.opId}`
+              }`,
           });
         } else {
           toast({
-            title: `Operacion y ${
-              transaccionesCargadas > 1
+            title: `Operacion y ${transaccionesCargadas > 1
                 ? transaccionesCargadas.toString() + " transacciones cargadas"
                 : transaccionesCargadas + " transaccion cargada"
-            }`,
+              }`,
           });
         }
 
@@ -113,14 +111,14 @@ const AddOperation = ({
         const prevData = utils.operations.getOperationsByUser.getData();
 
         const fakeNewData: RouterOutputs["operations"]["getOperationsByUser"][number] =
-          {
-            id: 0,
-            date: newOperation.opDate,
-            observations: newOperation.opObservations
-              ? newOperation.opObservations
-              : "",
-            transactionsCount: newOperation.transactions.length,
-          };
+        {
+          id: 0,
+          date: newOperation.opDate,
+          observations: newOperation.opObservations
+            ? newOperation.opObservations
+            : "",
+          transactionsCount: newOperation.transactions.length,
+        };
 
         utils.operations.getOperationsByUser.setData(undefined, (old) => [
           fakeNewData,
@@ -137,7 +135,7 @@ const AddOperation = ({
         toast({
           title:
             "No se pudo cargar la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },
@@ -339,14 +337,14 @@ const AddOperation = ({
                               date:
                                 transaction.date && transaction.time
                                   ? moment(
-                                      `${moment(transaction.date).format(
-                                        "YYYY-MM-DD",
-                                      )} ${transaction.time}`,
-                                      "YYYY-MM-DD HH:mm",
-                                    ).toDate()
+                                    `${moment(transaction.date).format(
+                                      "YYYY-MM-DD",
+                                    )} ${transaction.time}`,
+                                    "YYYY-MM-DD HH:mm",
+                                  ).toDate()
                                   : transaction.date
-                                  ? transaction.date
-                                  : undefined,
+                                    ? transaction.date
+                                    : undefined,
                               operatorEntityId: transaction.operatorId,
                               fromEntityId: transaction.fromEntityId,
                               toEntityId: transaction.toEntityId,
@@ -431,8 +429,8 @@ const AddOperation = ({
                         .find((entity) => entity.name === user.name)!
                         .id.toString()
                         ? entities
-                            .find((entity) => entity.name === user.name)!
-                            .id.toString()
+                          .find((entity) => entity.name === user.name)!
+                          .id.toString()
                         : ""
                     }
                   />

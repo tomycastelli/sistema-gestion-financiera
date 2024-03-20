@@ -91,37 +91,50 @@ export const movementsRouter = createTRPCRouter({
         or(
           input.entityId
             ? and(
-                input.currency
-                  ? eq(transactions.currency, input.currency)
-                  : undefined,
-                or(
-                  and(
-                    eq(transactions.fromEntityId, input.entityId),
-                    input.toEntityId
-                      ? eq(transactions.toEntityId, input.toEntityId)
-                      : not(eq(transactions.toEntityId, input.entityId)),
-                  ),
-                  and(
-                    eq(transactions.toEntityId, input.entityId),
-                    input.toEntityId
-                      ? eq(transactions.fromEntityId, input.toEntityId)
-                      : not(eq(transactions.fromEntityId, input.entityId)),
-                  ),
+              input.currency
+                ? eq(transactions.currency, input.currency)
+                : undefined,
+              or(
+                and(
+                  eq(transactions.fromEntityId, input.entityId),
+                  input.toEntityId
+                    ? eq(transactions.toEntityId, input.toEntityId)
+                    : not(eq(transactions.toEntityId, input.entityId)),
                 ),
-              )
+                and(
+                  eq(transactions.toEntityId, input.entityId),
+                  input.toEntityId
+                    ? eq(transactions.fromEntityId, input.toEntityId)
+                    : not(eq(transactions.fromEntityId, input.entityId)),
+                ),
+              ),
+            )
             : undefined,
           input.entityTag
             ? and(
-                input.currency
-                  ? eq(transactions.currency, input.currency)
-                  : undefined,
-              )
+              input.currency
+                ? eq(transactions.currency, input.currency)
+                : undefined,
+            )
             : undefined,
         ),
         input.dayInPast
           ? or(
+            lte(
+              transactions.date,
+              moment(input.dayInPast, dateFormatting.day)
+                .set({
+                  hour: 23,
+                  minute: 59,
+                  second: 59,
+                  millisecond: 999,
+                })
+                .toDate(),
+            ),
+            and(
+              isNull(transactions.date),
               lte(
-                transactions.date,
+                operations.date,
                 moment(input.dayInPast, dateFormatting.day)
                   .set({
                     hour: 23,
@@ -131,33 +144,46 @@ export const movementsRouter = createTRPCRouter({
                   })
                   .toDate(),
               ),
-              and(
-                isNull(transactions.date),
-                lte(
-                  operations.date,
-                  moment(input.dayInPast, dateFormatting.day)
-                    .set({
-                      hour: 23,
-                      minute: 59,
-                      second: 59,
-                      millisecond: 999,
-                    })
-                    .toDate(),
-                ),
-              ),
-            )
+            ),
+          )
           : undefined,
         input.fromDate && input.toDate
           ? or(
+            and(
+              gte(
+                transactions.date,
+                moment(input.fromDate)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                transactions.date,
+                moment(input.toDate)
+                  .set({
+                    hour: 23,
+                    minute: 59,
+                    second: 59,
+                    millisecond: 999,
+                  })
+                  .toDate(),
+              ),
+            ),
+            and(
+              isNull(transactions.date),
               and(
                 gte(
-                  transactions.date,
+                  operations.date,
                   moment(input.fromDate)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .set({
+                      hour: 0,
+                      minute: 0,
+                      second: 0,
+                      millisecond: 0,
+                    })
                     .toDate(),
                 ),
                 lte(
-                  transactions.date,
+                  operations.date,
                   moment(input.toDate)
                     .set({
                       hour: 23,
@@ -168,46 +194,47 @@ export const movementsRouter = createTRPCRouter({
                     .toDate(),
                 ),
               ),
-              and(
-                isNull(transactions.date),
-                and(
-                  gte(
-                    operations.date,
-                    moment(input.fromDate)
-                      .set({
-                        hour: 0,
-                        minute: 0,
-                        second: 0,
-                        millisecond: 0,
-                      })
-                      .toDate(),
-                  ),
-                  lte(
-                    operations.date,
-                    moment(input.toDate)
-                      .set({
-                        hour: 23,
-                        minute: 59,
-                        second: 59,
-                        millisecond: 999,
-                      })
-                      .toDate(),
-                  ),
-                ),
-              ),
-            )
+            ),
+          )
           : undefined,
         input.fromDate && !input.toDate
           ? or(
+            and(
+              gte(
+                transactions.date,
+                moment(input.fromDate)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                transactions.date,
+                moment(input.fromDate)
+                  .set({
+                    hour: 0,
+                    minute: 0,
+                    second: 0,
+                    millisecond: 0,
+                  })
+                  .add(1, "day")
+                  .toDate(),
+              ),
+            ),
+            and(
+              isNull(transactions.date),
               and(
                 gte(
-                  transactions.date,
+                  operations.date,
                   moment(input.fromDate)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .set({
+                      hour: 0,
+                      minute: 0,
+                      second: 0,
+                      millisecond: 0,
+                    })
                     .toDate(),
                 ),
                 lte(
-                  transactions.date,
+                  operations.date,
                   moment(input.fromDate)
                     .set({
                       hour: 0,
@@ -219,35 +246,8 @@ export const movementsRouter = createTRPCRouter({
                     .toDate(),
                 ),
               ),
-              and(
-                isNull(transactions.date),
-                and(
-                  gte(
-                    operations.date,
-                    moment(input.fromDate)
-                      .set({
-                        hour: 0,
-                        minute: 0,
-                        second: 0,
-                        millisecond: 0,
-                      })
-                      .toDate(),
-                  ),
-                  lte(
-                    operations.date,
-                    moment(input.fromDate)
-                      .set({
-                        hour: 0,
-                        minute: 0,
-                        second: 0,
-                        millisecond: 0,
-                      })
-                      .add(1, "day")
-                      .toDate(),
-                  ),
-                ),
-              ),
-            )
+            ),
+          )
           : undefined,
       );
 
@@ -298,7 +298,7 @@ export const movementsRouter = createTRPCRouter({
               input.entityTag ? entitiesConditions : undefined,
               transactionsConditions,
             ),
-          );
+          ).orderBy(desc(movements.id));
 
         const ids =
           movementsIds.length > 0 ? movementsIds.map((obj) => obj.id) : [0];
@@ -363,15 +363,15 @@ export const movementsRouter = createTRPCRouter({
               (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
                 (input.entityId
                   ? p.entitiesIds?.includes(input.entityId) ||
-                    (entityTag &&
-                      getAllChildrenTags(p.entitiesTags, tags).includes(
-                        entityTag,
-                      ))
+                  (entityTag &&
+                    getAllChildrenTags(p.entitiesTags, tags).includes(
+                      entityTag,
+                    ))
                   : input.entityTag
-                  ? getAllChildrenTags(p.entitiesTags, tags).includes(
+                    ? getAllChildrenTags(p.entitiesTags, tags).includes(
                       input.entityTag,
                     )
-                  : false)),
+                    : false)),
           )
         ) {
           isRequestValid = true;
@@ -446,9 +446,9 @@ export const movementsRouter = createTRPCRouter({
                 : undefined,
               input.dayInPast
                 ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day).toDate(),
-                  )
+                  balances.date,
+                  moment(input.dayInPast, dateFormatting.day).toDate(),
+                )
                 : undefined,
             ),
           )
@@ -495,9 +495,9 @@ export const movementsRouter = createTRPCRouter({
                 : undefined,
               input.dayInPast
                 ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day).toDate(),
-                  )
+                  balances.date,
+                  moment(input.dayInPast, dateFormatting.day).toDate(),
+                )
                 : undefined,
             ),
           )
@@ -606,9 +606,9 @@ export const movementsRouter = createTRPCRouter({
               ),
               input.dayInPast
                 ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day).toDate(),
-                  )
+                  balances.date,
+                  moment(input.dayInPast, dateFormatting.day).toDate(),
+                )
                 : undefined,
             ),
           )
@@ -706,9 +706,9 @@ export const movementsRouter = createTRPCRouter({
               ),
               input.dayInPast
                 ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day).toDate(),
-                  )
+                  balances.date,
+                  moment(input.dayInPast, dateFormatting.day).toDate(),
+                )
                 : undefined,
             ),
           )
@@ -814,22 +814,18 @@ export const movementsRouter = createTRPCRouter({
             SELECT 
             ${balances.account},
             ${balances.currency},
-            TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${
-              dateFormatting[input.timeRange]
-            }) AS datestring,
-            SUM(CASE WHEN ${balances.selectedEntityId} = ${
-              input.entityId
-            } THEN balance ELSE -balance END) balance
+            TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${dateFormatting[input.timeRange]
+          }) AS datestring,
+            SUM(CASE WHEN ${balances.selectedEntityId} = ${input.entityId
+          } THEN balance ELSE -balance END) balance
             FROM ${balances}
             WHERE
-            (${balances.selectedEntityId} = ${input.entityId} OR ${
-              balances.otherEntityId
-            } = ${input.entityId})
+            (${balances.selectedEntityId} = ${input.entityId} OR ${balances.otherEntityId
+          } = ${input.entityId})
             AND ${balances.currency} = ${input.currency}
-            ${
-              input.dayInPast &&
-              sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-            }
+            ${input.dayInPast &&
+          sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
+          }
             GROUP BY 
             ${balances.account},
             ${balances.currency},
@@ -879,8 +875,7 @@ export const movementsRouter = createTRPCRouter({
         SELECT 
           ${balances.account},
           ${balances.currency},
-          TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${
-            dateFormatting[input.timeRange]
+          TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${dateFormatting[input.timeRange]
           },
           )}) AS datestring,
           SUM(CASE WHEN ${entities.tagName} IN ${allChildrenTags}, 
@@ -893,15 +888,13 @@ export const movementsRouter = createTRPCRouter({
               (${entities1.tagName} IN ${allChildrenTags},
               )}) AND ${entities2.tagName} NOT IN ${allChildrenTags}
               OR
-              (${entities2.tagName} IN ${allChildrenTags} AND ${
-                entities1.tagName
-              } NOT IN ${allChildrenTags}
+              (${entities2.tagName} IN ${allChildrenTags} AND ${entities1.tagName
+          } NOT IN ${allChildrenTags}
             )
             AND ${balances.currency} = ${input.currency}
-            ${
-              input.dayInPast &&
-              sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-            }
+            ${input.dayInPast &&
+          sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
+          }
           GROUP BY 
             ${balances.account},
             ${balances.currency},
@@ -951,7 +944,7 @@ export const movementsRouter = createTRPCRouter({
           .from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(eq(operations.id, input.operationId));
+          .where(eq(operations.id, input.operationId)).orderBy(desc(movements.id));
 
         if (movementsIds.length > 0) {
           return await transaction.query.movements.findMany({
@@ -967,6 +960,7 @@ export const movementsRouter = createTRPCRouter({
                 },
               },
             },
+            orderBy: desc(movements.id)
           });
         } else {
           throw new TRPCError({

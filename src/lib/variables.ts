@@ -114,7 +114,7 @@ export const operationTypes = [
   },
 ];
 
-export const currentAccountOnlyTypes = ["fee", "cuenta corriente"];
+export const currentAccountOnlyTypes = ["fee", "cuenta corriente", "cable"];
 export const cashAccountOnlyTypes = ["ingreso", "gasto"];
 
 export const translations: Record<string, string> = {

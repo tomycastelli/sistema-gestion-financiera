@@ -63,11 +63,9 @@ const Operation: FC<OperationProps> = ({
     api.editingOperations.cancelTransaction.useMutation({
       async onMutate(newOperation) {
         toast({
-          title: `Operación ${newOperation.operationId} y ${
-            op.transactions.length
-          } ${
-            op.transactions.length === 1 ? "transacción" : "transacciones"
-          } cancelada${op.transactions.length === 1 ? "" : "s"}`,
+          title: `Operación ${newOperation.operationId} y ${op.transactions.length
+            } ${op.transactions.length === 1 ? "transacción" : "transacciones"
+            } cancelada${op.transactions.length === 1 ? "" : "s"}`,
           variant: "success",
         });
 
@@ -107,7 +105,7 @@ const Operation: FC<OperationProps> = ({
         toast({
           title:
             "No se pudo anular la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },
@@ -168,7 +166,7 @@ const Operation: FC<OperationProps> = ({
         // Doing some ui actions
         toast({
           title: "No se pudieron actualizar las transacciones",
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
         return { prevData };
@@ -182,11 +180,9 @@ const Operation: FC<OperationProps> = ({
     api.operations.deleteOperation.useMutation({
       async onMutate(newOperation) {
         toast({
-          title: `Operación ${newOperation.operationId} y ${
-            op.transactions.length
-          } ${
-            op.transactions.length === 1 ? "transacción" : "transacciones"
-          } eliminada${op.transactions.length === 1 ? "" : "s"}`,
+          title: `Operación ${newOperation.operationId} y ${op.transactions.length
+            } ${op.transactions.length === 1 ? "transacción" : "transacciones"
+            } eliminada${op.transactions.length === 1 ? "" : "s"}`,
           variant: "success",
         });
 
@@ -215,7 +211,7 @@ const Operation: FC<OperationProps> = ({
         toast({
           title:
             "No se pudo eliminar la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.data)}`,
+          description: `${JSON.stringify(err.message)}`,
           variant: "destructive",
         });
       },
@@ -227,14 +223,14 @@ const Operation: FC<OperationProps> = ({
   return (
     <div className="my-4 flex flex-col">
       <Card
-        className={cn(
+        className={cn("shadow-xl",
           op.transactions.filter((tx) => tx.status === Status.enumValues[0])
             .length === op.transactions.length
             ? "border border-red"
             : op.transactions.filter((tx) => tx.status === Status.enumValues[1])
-                .length === op.transactions.length
-            ? "border border-green"
-            : "",
+              .length === op.transactions.length
+              ? "border border-green"
+              : "",
         )}
       >
         <CardHeader>
@@ -259,10 +255,10 @@ const Operation: FC<OperationProps> = ({
               .length === op.transactions.length
               ? "Confirmada"
               : op.transactions.filter(
-                  (tx) => tx.status === Status.enumValues[0],
-                ).length === op.transactions.length
-              ? "Cancelada"
-              : ""}
+                (tx) => tx.status === Status.enumValues[0],
+              ).length === op.transactions.length
+                ? "Cancelada"
+                : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,36 +294,36 @@ const Operation: FC<OperationProps> = ({
         <CardFooter className="flex flex-row justify-end">
           {op.transactions.filter((tx) => tx.isValidateAllowed).length ===
             op.transactions.length && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="border-transparent p-2" variant="outline">
-                  <Icons.check className="h-6 text-green" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se confirmarán completamente {op.transactions.length}{" "}
-                    transacciones y sus movimientos relacionados
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() =>
-                      validateAsync({
-                        transactionIds: op.transactions.flatMap((tx) => tx.id),
-                      })
-                    }
-                    className="bg-red"
-                  >
-                    Anular
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="border-transparent p-2" variant="outline">
+                    <Icons.check className="h-6 text-green" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se confirmarán completamente {op.transactions.length}{" "}
+                      transacciones y sus movimientos relacionados
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        validateAsync({
+                          transactionIds: op.transactions.flatMap((tx) => tx.id),
+                        })
+                      }
+                      className="bg-red"
+                    >
+                      Anular
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           {op.isCreateAllowed && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -365,60 +361,60 @@ const Operation: FC<OperationProps> = ({
           )}
           {op.transactions.filter((tx) => tx.isCancelAllowed).length ===
             op.transactions.length && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="border-transparent p-2" variant="outline">
-                  <Icons.valueNone className="h-6 text-red" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se crearán {op.transactions.length} transacciones y sus
-                    movimientos para anular las transacciones actuales
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => cancelAsync({ operationId: op.id })}
-                    className="bg-red"
-                  >
-                    Anular
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="border-transparent p-2" variant="outline">
+                    <Icons.valueNone className="h-6 text-red" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se crearán {op.transactions.length} transacciones y sus
+                      movimientos para anular las transacciones actuales
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => cancelAsync({ operationId: op.id })}
+                      className="bg-red"
+                    >
+                      Anular
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           {op.transactions.filter((tx) => tx.isDeleteAllowed).length ===
             op.transactions.length && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="border-transparent p-2" variant="outline">
-                  <Icons.cross className="h-6 text-red" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Se borraran completamente {op.transactions.length}{" "}
-                    transacciones y sus movimientos relacionados
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteAsync({ operationId: op.id })}
-                    className="bg-red"
-                  >
-                    Eliminar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="border-transparent p-2" variant="outline">
+                    <Icons.cross className="h-6 text-red" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se borraran completamente {op.transactions.length}{" "}
+                      transacciones y sus movimientos relacionados
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteAsync({ operationId: op.id })}
+                      className="bg-red"
+                    >
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
         </CardFooter>
       </Card>
     </div>

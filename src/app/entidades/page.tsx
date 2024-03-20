@@ -5,7 +5,7 @@ import EntitiesFeed from "./EntitiesFeed";
 
 const Page = async () => {
   const entities = await api.entities.getAll.query();
-  const initialTags = await api.tags.getAll.query();
+  const initialTags = await api.tags.getFiltered.query();
   const userPermissions = await api.users.getAllPermissions.query({});
 
   return (

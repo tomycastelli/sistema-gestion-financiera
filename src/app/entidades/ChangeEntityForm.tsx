@@ -36,20 +36,21 @@ import { toast } from "../components/ui/use-toast";
 
 interface ChangeEntityFormProps {
   entity: RouterOutputs["entities"]["getAll"][number];
+  tags: RouterOutputs["tags"]["getAll"]
 }
 
 const FormSchema = z.object({
   name: z.string(),
-  tag: z.string().optional(),
+  tag: z.string(),
 });
 
-const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
+const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
   const utils = api.useContext();
 
   const { mutateAsync } = api.entities.updateOne.useMutation({
     async onMutate(newOperation) {
       toast({
-        title: "You submitted the following values:",
+        title: "La entidad ha sido modificada:",
         description: (
           <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
             <code className="text-white">
@@ -86,7 +87,7 @@ const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
       // Doing some ui actions
       toast({
         title: "No se pudo cargar la entidad",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
     },
@@ -153,8 +154,9 @@ const ChangeEntityForm = ({ entity }: ChangeEntityFormProps) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="client">Cliente</SelectItem>
-                          <SelectItem value="maika">Maika</SelectItem>
+                          {tags.map(tag => (
+                            <SelectItem value={tag.name}>{tag.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />

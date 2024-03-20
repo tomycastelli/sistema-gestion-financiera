@@ -39,15 +39,18 @@ const FormSchema = z.object({
   emittingFee: z
     .string()
     .optional()
-    .refine((value) => value === undefined || isNumeric(value), {
+    .refine((value) => value ? isNumeric(value) : true, {
       message: "Tiene que ser un valor númerico",
     }),
   receivingFee: z
     .string()
     .optional()
-    .refine((value) => value === undefined || isNumeric(value), {
+    .refine((value) => value ? isNumeric(value) : true, {
       message: "Tiene que ser un valor númerico",
     }),
+}).refine(data => data.emittingEntity !== data.receivingEntity, {
+  message: "La entidad emisora y receptora no puede ser la misma",
+  path: ['receivingEntity']
 });
 
 interface CableFormProps {
@@ -208,24 +211,24 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
                 <FormItem>
                   <FormLabel>Fee</FormLabel>
                   <FormControl>
-                    <Input className="w-32" placeholder="$" {...field} />
+                    <Input className="w-32" placeholder="%" {...field} />
                   </FormControl>
                 </FormItem>
               )}
             />
             {watchEmittingFee &&
               (isNumeric(watchEmittingFee) &&
-              parseFloat(watchEmittingFee) !== 0 ? (
+                parseFloat(watchEmittingFee) !== 0 ? (
                 <p>
                   {Math.abs(
                     (parseFloat(watchEmittingFee) * parseFloat(watchAmount)) /
-                      100,
+                    100,
                   ).toFixed(2)}{" "}
                   {parseFloat(watchEmittingFee) > 0
                     ? "a favor"
                     : parseFloat(watchEmittingFee) < 0
-                    ? "en contra"
-                    : ""}
+                      ? "en contra"
+                      : ""}
                 </p>
               ) : (
                 <p className="w-24 text-red">
@@ -367,24 +370,24 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
                 <FormItem>
                   <FormLabel>Fee</FormLabel>
                   <FormControl>
-                    <Input className="w-32" placeholder="$" {...field} />
+                    <Input className="w-32" placeholder="%" {...field} />
                   </FormControl>
                 </FormItem>
               )}
             />
             {watchReceivingFee &&
               (isNumeric(watchReceivingFee) &&
-              parseFloat(watchReceivingFee) !== 0 ? (
+                parseFloat(watchReceivingFee) !== 0 ? (
                 <p>
                   {Math.abs(
                     (parseFloat(watchReceivingFee) * parseFloat(watchAmount)) /
-                      100,
+                    100,
                   ).toFixed(2)}{" "}
                   {parseFloat(watchReceivingFee) > 0
                     ? "en contra"
                     : parseFloat(watchReceivingFee) < 0
-                    ? "a favor"
-                    : ""}
+                      ? "a favor"
+                      : ""}
                 </p>
               ) : (
                 <p className="w-24 text-red">

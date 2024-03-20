@@ -87,7 +87,7 @@ const AddRequest: FC<AddRequestProps> = ({ user }) => {
       // Doing some ui actions
       toast({
         title: "No se pudo añadir la petición",
-        description: `${JSON.stringify(err.data)}`,
+        description: `${JSON.stringify(err.message)}`,
         variant: "destructive",
       });
       return { prevData };

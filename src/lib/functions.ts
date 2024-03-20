@@ -418,8 +418,8 @@ export const generateTableData = (
           date: movement.transaction.date
             ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
             : moment(movement.transaction.operation.date).format(
-                "DD-MM-YYYY HH:mm",
-              ),
+              "DD-MM-YYYY HH:mm",
+            ),
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,
           type: movement.type,
@@ -464,8 +464,8 @@ export const generateTableData = (
           date: movement.transaction.date
             ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
             : moment(movement.transaction.operation.date).format(
-                "DD-MM-YYYY HH:mm",
-              ),
+              "DD-MM-YYYY HH:mm",
+            ),
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,
           type: movement.type,
@@ -487,17 +487,6 @@ export const generateTableData = (
         };
       }
     })
-    .sort((a, b) => {
-      const dateA = moment(a.date, "DD-MM-YYYY HH:mm").valueOf();
-      const dateB = moment(b.date, "DD-MM-YYYY HH:mm").valueOf();
-
-      if (dateA === dateB) {
-        return b.id - a.id;
-      }
-
-      // Ascending order
-      return dateB - dateA;
-    });
 
   return tableData;
 };
