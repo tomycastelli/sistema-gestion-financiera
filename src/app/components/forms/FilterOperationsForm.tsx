@@ -138,7 +138,7 @@ const FilterOperationsForm = ({
     confirmadoPor?: typeof watchConfirmedUserId;
   }
 
-  function arraysEqual(arr1: any[], arr2: any[]): boolean {
+  function arraysEqual(arr1: string[], arr2: string[]): boolean {
     if (arr1.length !== arr2.length) return false;
     for (let i = 0; i < arr1.length; i++) {
       if (arr1[i] !== arr2[i]) return false;
@@ -148,7 +148,7 @@ const FilterOperationsForm = ({
 
   const updateUrl = useCallback(
     (params: UrlParams) => {
-      let updatedSearchParams = new URLSearchParams(searchParams);
+      const updatedSearchParams = new URLSearchParams(searchParams);
 
       Object.entries(params).forEach(([paramName, paramValue]) => {
         const currentValue = updatedSearchParams.getAll(paramName);

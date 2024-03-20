@@ -155,7 +155,7 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
                         </FormControl>
                         <SelectContent>
                           {tags.map(tag => (
-                            <SelectItem value={tag.name}>{tag.name}</SelectItem>
+                            <SelectItem value={tag.name} key={tag.name}>{tag.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
