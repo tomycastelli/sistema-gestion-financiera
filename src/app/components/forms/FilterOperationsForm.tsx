@@ -2,15 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import moment from "moment";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
-  createQueryString,
   isNumeric,
-  removeQueryString,
 } from "~/lib/functions";
 import { currencies, dateFormatting, operationTypes } from "~/lib/variables";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -28,6 +25,7 @@ import {
 import { Input } from "../ui/input";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import CustomSelector from "./CustomSelector";
+import Link from "next/link";
 
 const FormSchema = z.object({
   operationId: z.string().optional(),
@@ -75,9 +73,9 @@ const FilterOperationsForm = ({
   const selectedFromEntity = searchParams.getAll("origen") ?? undefined;
   const selectedToEntity = searchParams.getAll("destino") ?? undefined;
   const selectedCurrency = searchParams.get("divisa") ?? undefined;
-  const selectedAmount = searchParams.get("monto");
-  const selectedMinAmount = searchParams.get("montoMin");
-  const selectedMaxAmount = searchParams.get("montoMax");
+  const selectedAmount = searchParams.get("monto") ?? undefined;
+  const selectedMinAmount = searchParams.get("montoMin") ?? undefined;
+  const selectedMaxAmount = searchParams.get("montoMax") ?? undefined;
   const selectedUploadUserId = searchParams.get("cargadoPor") ?? undefined;
   const selectedConfirmationUserId =
     searchParams.get("confirmadoPor") ?? undefined;
@@ -88,31 +86,25 @@ const FilterOperationsForm = ({
     defaultValues: {
       opDateRange: selectedDateGreater
         ? {
-            from: moment(selectedDateGreater, dateFormatting.day).toDate(),
-            to: selectedDateGreater
-              ? moment(selectedDateLesser, dateFormatting.day).toDate()
-              : undefined,
-          }
+          from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+          to: selectedDateGreater
+            ? moment(selectedDateLesser, dateFormatting.day).toDate()
+            : undefined,
+        }
         : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
       fromEntityId: selectedFromEntity,
       toEntityId: selectedToEntity,
       currency: selectedCurrency,
-      amount: selectedAmount
-        ? selectedAmount
-        : selectedMaxAmount
-        ? selectedMaxAmount
-        : selectedMinAmount
-        ? selectedMinAmount
-        : undefined,
+      amount: selectedAmount ?? selectedMaxAmount ?? selectedMinAmount ?? undefined,
       amountFilterType: selectedAmount
         ? "equal"
         : selectedMaxAmount
-        ? "lte"
-        : selectedMinAmount
-        ? "gte"
-        : "equal",
+          ? "lte"
+          : selectedMinAmount
+            ? "gte"
+            : "equal",
       uploadedById: selectedUploadUserId,
       confirmedById: selectedConfirmationUserId,
     },
@@ -146,24 +138,46 @@ const FilterOperationsForm = ({
     confirmadoPor?: typeof watchConfirmedUserId;
   }
 
+  function arraysEqual(arr1: any[], arr2: any[]): boolean {
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+      if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+  }
+
   const updateUrl = useCallback(
     (params: UrlParams) => {
       let updatedSearchParams = new URLSearchParams(searchParams);
+
       Object.entries(params).forEach(([paramName, paramValue]) => {
+        const currentValue = updatedSearchParams.getAll(paramName);
+
         if (paramValue === undefined) {
-          updatedSearchParams = new URLSearchParams(
-            removeQueryString(updatedSearchParams, paramName),
-          );
+          if (currentValue.length > 0) {
+            currentValue.forEach(() => {
+              updatedSearchParams.delete(paramName);
+            });
+          }
         } else {
-          updatedSearchParams = new URLSearchParams(
-            createQueryString(updatedSearchParams, paramName, paramValue),
-          );
+          if (!arraysEqual(currentValue, paramValue)) {
+            updatedSearchParams.delete(paramName);
+            if (Array.isArray(paramValue)) {
+              paramValue.forEach(value => {
+                updatedSearchParams.append(paramName, value);
+              });
+            } else {
+              updatedSearchParams.set(paramName, paramValue);
+            }
+          }
         }
       });
+
       router.push(pathname + "?" + updatedSearchParams.toString());
     },
     [pathname, searchParams, router],
   );
+
 
   useEffect(() => {
     updateUrl({
@@ -401,15 +415,8 @@ const FilterOperationsForm = ({
           />
         </div>
         <div className="flex flex-row justify-start">
-          <Link
-            prefetch={false}
-            onClick={() => reset({ amount: "", amountFilterType: "equal" })}
-            href={{
-              pathname: "/operaciones/gestion",
-              query: { pagina: "1" },
-            }}
-          >
-            <Button variant="outline">
+          <Link href={"http://localhost:3000/operaciones/gestion"}>
+            <Button variant="outline" onClick={() => reset()}>
               Resetear filtros <Icons.undo className="ml-2 h-5" />
             </Button>
           </Link>

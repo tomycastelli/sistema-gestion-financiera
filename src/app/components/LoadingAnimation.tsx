@@ -1,7 +1,7 @@
 "use client";
 
 import Lottie from "lottie-react";
-import loadingJson from "../../../public/animations/loading.json";
+import loadingJson from "~/../public/animations/loading.json";
 
 interface LoadingAnimationProps {
   text: string | null;

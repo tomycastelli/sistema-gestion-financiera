@@ -21,16 +21,16 @@ const Page = async ({
   const user = await getUser();
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
-  const selectedFromEntity = searchParams.origen as string[];
-  const selectedToEntity = searchParams.destino as string[];
+  const selectedFromEntity = searchParams.origen
+  const selectedToEntity = searchParams.destino;
   const selectedCurrency = searchParams.divisa as string;
   const selectedDateGreater = searchParams.diaDesde as string | undefined;
   const selectedDateLesser = searchParams.diaHasta as string | undefined;
   const selectedType = searchParams.tipo as string;
-  const selectedOperator = searchParams.operador as string[];
-  const selectedAmount = searchParams.monto as string;
-  const selectedAmountGreater = searchParams.montoMin as string;
-  const selectedAmountLesser = searchParams.montoMax as string;
+  const selectedOperator = searchParams.operador
+  const selectedAmount = searchParams.monto as string | undefined;
+  const selectedAmountGreater = searchParams.montoMin as string | undefined;
+  const selectedAmountLesser = searchParams.montoMax as string | undefined;
   const selectedUploadUserId = searchParams.cargadoPor as string;
   const selectedConfirmationUserId = searchParams.confirmadoPor as string;
 
@@ -40,14 +40,14 @@ const Page = async ({
   };
 
   if (selectedFromEntity) {
-    operationsQueryInput.fromEntityId = selectedFromEntity.map((str) =>
+    operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity) ? selectedFromEntity.map((str) =>
       parseInt(str),
-    );
+    ) : [parseInt(selectedFromEntity)];
   }
   if (selectedToEntity) {
-    operationsQueryInput.toEntityId = selectedToEntity.map((str) =>
+    operationsQueryInput.toEntityId = Array.isArray(selectedToEntity) ? selectedToEntity.map((str) =>
       parseInt(str),
-    );
+    ) : [parseInt(selectedToEntity)];
   }
   if (selectedCurrency) {
     operationsQueryInput.currency = selectedCurrency;
@@ -68,9 +68,9 @@ const Page = async ({
     operationsQueryInput.transactionType = selectedType;
   }
   if (selectedOperator) {
-    operationsQueryInput.operatorEntityId = selectedOperator.map((str) =>
+    operationsQueryInput.operatorEntityId = Array.isArray(selectedOperator) ? selectedOperator.map((str) =>
       parseInt(str),
-    );
+    ) : [parseInt(selectedOperator)];
   }
   if (selectedAmount) {
     operationsQueryInput.amount = parseFloat(selectedAmount);

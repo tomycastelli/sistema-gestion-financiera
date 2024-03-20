@@ -59,10 +59,8 @@ const CustomSelector = ({
               {isLoading
                 ? "Cargando..."
                 : field.value
-                ? Array.isArray(field.value) && field.value.length > 1
-                  ? field.value.length + " " + "elementos"
-                  : data.find((obj) => obj.value === field.value)?.label
-                : placeholder}
+                  ? Array.isArray(field.value) ? field.value.length > 1 ? field.value.length + " " + "elementos" : data.find(d => d.value === field.value[0])?.label : data.find(d => d.value === field.value)?.label
+                  : placeholder}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[200px] p-0">
@@ -123,7 +121,8 @@ const CustomSelector = ({
                         <Check
                           className={cn(
                             "mr-2 h-4 w-4",
-                            obj.value === field.value
+                            (Array.isArray(field.value) && field.value.includes(obj.value)) ||
+                              field.value === obj.value
                               ? "opacity-100"
                               : "opacity-0",
                           )}
