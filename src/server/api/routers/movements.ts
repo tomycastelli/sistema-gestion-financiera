@@ -279,7 +279,7 @@ export const movementsRouter = createTRPCRouter({
       );
 
       const response = await ctx.db.transaction(async (transaction) => {
-        const movementsIds = await transaction
+        const movementsIdsQuery = transaction
           .select({ id: movements.id })
           .from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
@@ -298,12 +298,14 @@ export const movementsRouter = createTRPCRouter({
               input.entityTag ? entitiesConditions : undefined,
               transactionsConditions,
             ),
-          ).orderBy(desc(movements.id));
+          ).orderBy(desc(movements.id)).prepare("movements_ids_query");
+
+        const movementsIds = await movementsIdsQuery.execute()
 
         const ids =
           movementsIds.length > 0 ? movementsIds.map((obj) => obj.id) : [0];
 
-        const movementsQuery = await transaction.query.movements.findMany({
+        const movementsQuery = transaction.query.movements.findMany({
           with: {
             transaction: {
               with: {
@@ -314,13 +316,15 @@ export const movementsRouter = createTRPCRouter({
               },
             },
           },
-          where: inArray(movements.id, ids),
+          where: inArray(movements.id, sql.placeholder("ids")),
           orderBy: desc(movements.id),
-          offset: (input.pageNumber - 1) * input.pageSize,
-          limit: input.pageSize,
-        });
+          offset: sql.placeholder("oOffset"),
+          limit: sql.placeholder("oLimit"),
+        }).prepare("movements_query");
 
-        return { movementsQuery, totalRows: movementsIds.length };
+        const movementsData = await movementsQuery.execute({ oLimit: input.pageSize, oOffset: (input.pageNumber - 1) * input.pageSize, ids: ids })
+
+        return { movementsQuery: movementsData, totalRows: movementsIds.length };
       });
 
       return {
@@ -576,7 +580,7 @@ export const movementsRouter = createTRPCRouter({
         const allTags = await getAllTags(ctx.redis, ctx.db);
         const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
 
-        const balancesDat = await ctx.db
+        const balancesData = await ctx.db
           .selectDistinctOn([
             balances.selectedEntityId,
             balances.otherEntityId,
@@ -620,7 +624,7 @@ export const movementsRouter = createTRPCRouter({
             desc(balances.date),
           );
 
-        const balancesTransformed = balancesDat.map((b) => ({
+        const balancesTransformed = balancesData.map((b) => ({
           ...b.Balances,
           selectedEntity: b.selectedEntity!,
           otherEntity: b.otherEntity!,

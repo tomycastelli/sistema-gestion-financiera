@@ -201,7 +201,7 @@ export const operationsRouter = createTRPCRouter({
       }
     }),
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
-    const response = await ctx.db
+    const getOperationsByUserQuery = ctx.db
       .select({
         id: operations.id,
         date: operations.date,
@@ -210,11 +210,14 @@ export const operationsRouter = createTRPCRouter({
       })
       .from(operations)
       .leftJoin(transactions, eq(operations.id, transactions.operationId))
-      .groupBy(operations.id)
+      .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
+      .where(eq(transactionsMetadata.uploadedBy, sql.placeholder("userId")))
       .orderBy(desc(operations.id))
-      .limit(5);
+      .limit(5).prepare("get_operations_by_user_query");
 
-    return response;
+    const response = await getOperationsByUserQuery.execute({ userId: ctx.user.id })
+
+    return response
   }),
   getOperations: protectedLoggedProcedure
     .input(
@@ -341,60 +344,64 @@ export const operationsRouter = createTRPCRouter({
           : undefined,
       );
 
-      const idsThatSatisfy = await ctx.db
-        .selectDistinct({ id: operations.id })
-        .from(operations)
-        .leftJoin(transactions, eq(operations.id, transactions.operationId))
-        .where(and(operationsWhere, transactionsWhere));
+      const response = await ctx.db.transaction(async (transaction) => {
+        const idsThatSatisfyQuery = transaction
+          .selectDistinct({ id: operations.id })
+          .from(operations)
+          .leftJoin(transactions, eq(operations.id, transactions.operationId))
+          .where(and(operationsWhere, transactionsWhere)).prepare("ids_that_satisfy_query");
 
-      console.log(idsThatSatisfy);
+        const idsThatSatisfy = await idsThatSatisfyQuery.execute()
 
-      const operationsPreparedQuery = ctx.db.query.operations
-        .findMany({
-          where: inArray(
-            operations.id,
-            idsThatSatisfy.length > 0
-              ? idsThatSatisfy.map((obj) => obj.id)
-              : [0],
-          ),
-          with: {
-            transactions: {
-              with: {
-                transactionMetadata: {
-                  with: {
-                    uploadedByUser: true,
-                    confirmedByUser: true,
-                    cancelledByUser: true,
+        const operationsPreparedQuery = transaction.query.operations
+          .findMany({
+            where: inArray(
+              operations.id,
+              sql.placeholder("operationsIds"),
+            ),
+            with: {
+              transactions: {
+                with: {
+                  transactionMetadata: {
+                    with: {
+                      uploadedByUser: true,
+                      confirmedByUser: true,
+                      cancelledByUser: true,
+                    },
                   },
-                },
-                fromEntity: {
-                  with: {
-                    tag: true,
+                  fromEntity: {
+                    with: {
+                      tag: true,
+                    },
                   },
-                },
-                toEntity: {
-                  with: {
-                    tag: true,
+                  toEntity: {
+                    with: {
+                      tag: true,
+                    },
                   },
-                },
-                operatorEntity: {
-                  with: {
-                    tag: true,
+                  operatorEntity: {
+                    with: {
+                      tag: true,
+                    },
                   },
                 },
               },
             },
-          },
-          limit: sql.placeholder("oLimit"),
-          offset: sql.placeholder("oOffset"),
-          orderBy: desc(operations.id),
-        })
-        .prepare("operations_query");
+            limit: sql.placeholder("oLimit"),
+            offset: sql.placeholder("oOffset"),
+            orderBy: desc(operations.id),
+          })
+          .prepare("operations_query");
 
-      const operationsQuery = await operationsPreparedQuery.execute({
-        oLimit: input.limit,
-        oOffset: (input.page - 1) * input.limit,
-      });
+        const operationsQuery = await operationsPreparedQuery.execute({
+          oLimit: input.limit,
+          oOffset: (input.page - 1) * input.limit,
+          operationsIds: idsThatSatisfy.length > 0
+            ? idsThatSatisfy.map((obj) => obj.id)
+            : [0]
+        });
+        return { operationsQuery, idsThatSatisfy }
+      })
 
       const userPermissions = await getAllPermissions(
         ctx.redis,
@@ -403,7 +410,7 @@ export const operationsRouter = createTRPCRouter({
       );
       const tags = await getAllTags(ctx.redis, ctx.db);
 
-      const operationsWithPermissions = operationsQuery.map((op) => {
+      const operationsWithPermissions = response.operationsQuery.map((op) => {
         const isVisualizeAllowed = userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
         )
@@ -546,14 +553,14 @@ export const operationsRouter = createTRPCRouter({
 
       return {
         operations: operationsWithPermissions,
-        count: idsThatSatisfy.length,
+        count: response.idsThatSatisfy.length,
       };
     }),
   getOperationDetails: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const [operationDetails] = await ctx.db.query.operations.findMany({
-        where: eq(operations.id, input.operationId),
+      const operationDetailsQuery = ctx.db.query.operations.findMany({
+        where: eq(operations.id, sql.placeholder("operationId")),
         with: {
           transactions: {
             with: {
@@ -582,7 +589,9 @@ export const operationsRouter = createTRPCRouter({
             },
           },
         },
-      });
+      }).prepare("operation_details_query");
+
+      const [operationDetails] = await operationDetailsQuery.execute({ operationId: input.operationId })
 
       if (operationDetails) {
         const userPermissions = await getAllPermissions(

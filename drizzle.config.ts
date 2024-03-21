@@ -5,6 +5,6 @@ export default {
   out: "./src/server/db/migrations",
   driver: "pg",
   dbCredentials: {
-    connectionString: env.NEONDB_URL,
+    connectionString: env.DATABASE_URL,
   },
 } satisfies Config;
