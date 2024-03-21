@@ -26,6 +26,8 @@ export const env = createEnv({
 
     LAMBDA_API_ENDPOINT: z.string(),
     LAMBDA_API_KEY: z.string(),
+
+    VERCEL_URL: z.string().optional(),
   },
 
   /**
@@ -42,6 +44,7 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    VERCEL_URL: process.env.VERCEL_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,

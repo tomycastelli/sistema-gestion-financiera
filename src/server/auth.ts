@@ -14,7 +14,7 @@ const adapter = new DrizzlePostgreSQLAdapter(db, session, user);
 
 const baseUrl =
   env.NODE_ENV === "production"
-    ? "https://financial-tracker.vercel.app"
+    ? env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "https://sistema.maika.com.ar"
     : "http://localhost:3000";
 
 const redirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
