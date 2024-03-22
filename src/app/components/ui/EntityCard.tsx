@@ -37,16 +37,8 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
     <>
       {entity ? (
         <Card
-          className={cn(
-            "flex h-36 w-36 flex-col border shadow-md",
-            entity.tag.color === "primary"
-              ? "border-primary"
-              : entity.tag.color === "green"
-                ? "border-green"
-                : entity.tag.color === "orange"
-                  ? "border-orange"
-                  : "",
-          )}
+          className="flex h-36 border-2 w-36 flex-col shadow-md"
+          style={{ borderColor: entity.tag.color ?? undefined }}
         >
           <CardHeader>
             <HoverCard onOpenChange={(open) => setEnableQueryId(open)}>

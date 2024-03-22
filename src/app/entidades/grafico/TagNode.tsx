@@ -22,7 +22,7 @@ const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
     );
 
   return (
-    <Card className={cn(`border border-${props.data.color} rounded-sm`)}>
+    <Card style={{ borderColor: props.data.color ?? undefined }} className={cn(`border-2 rounded-sm`)}>
       <Handle type="target" position={Position.Top} />
       <CardHeader>
         <HoverCard>

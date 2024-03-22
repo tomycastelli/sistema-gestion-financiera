@@ -37,7 +37,7 @@ export const usersRouter = createTRPCRouter({
       });
 
       if (response) {
-        await ctx.redis.del("cached_entities");
+        await ctx.redis.del("entities");
       }
       return response;
     }),

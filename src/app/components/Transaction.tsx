@@ -4,7 +4,6 @@ import { memo, type FC } from "react";
 import { z } from "zod";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currentAccountOnlyTypes } from "~/lib/variables";
 import { Status } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
@@ -104,14 +103,14 @@ const Transaction: FC<TransactionProps> = ({
 
           return { prevData };
         } else {
-          await utils.operations.getOperationDetails.cancel();
+          await utils.operations.getOperations.cancel();
 
-          utils.operations.getOperationDetails.setData(
-            { operationId: tx.operationId },
+          utils.operations.getOperations.setData(
+            { operationId: tx.operationId, limit: 1, page: 1 },
             // @ts-ignore
             (old) => ({
               ...old,
-              transactions: old?.transactions.map((tx) => {
+              transactions: old!.operations[0]!.transactions.map((tx) => {
                 if (tx.id === newOperation.transactionId) {
                   return { ...tx, status: Status.enumValues[0] };
                 } else {
@@ -137,7 +136,7 @@ const Transaction: FC<TransactionProps> = ({
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
-        void utils.operations.getOperationDetails.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate();
       },
     });
 
@@ -151,14 +150,12 @@ const Transaction: FC<TransactionProps> = ({
         // Doing the Optimistic update
         await utils.operations.getOperations.cancel();
 
-        await utils.operations.getOperationDetails.cancel();
-
-        utils.operations.getOperationDetails.setData(
-          { operationId: tx.operationId },
+        utils.operations.getOperations.setData(
+          { operationId: tx.operationId, page: 1, limit: 1 },
           // @ts-ignore
           (old) => ({
-            ...old,
-            transactions: old?.transactions.filter(
+            ...old!.operations[0],
+            transactions: old!.operations[0]!.transactions.filter(
               (tx) => tx.id !== newOperation.transactionId,
             ),
           }),
@@ -200,7 +197,7 @@ const Transaction: FC<TransactionProps> = ({
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
-        void utils.operations.getOperationDetails.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate();
       },
     });
 
@@ -387,14 +384,13 @@ const Transaction: FC<TransactionProps> = ({
             )}
           />
           <div className="flex w-3/4 flex-row items-center justify-center space-x-2">
-            {!currentAccountOnlyTypes.includes(tx.type) &&
-              tx.isValidateAllowed && (
-                <TransactionStatusButton
-                  transaction={tx}
-                  operationsQueryInput={operationsQueryInput}
-                  user={user}
-                />
-              )}
+            {tx.isValidateAllowed && (
+              <TransactionStatusButton
+                transaction={tx}
+                operationsQueryInput={operationsQueryInput}
+                user={user}
+              />
+            )}
             {tx.isUpdateAllowed && tx.status === Status.enumValues[2] && (
               <UpdateTransaction
                 transaction={tx}

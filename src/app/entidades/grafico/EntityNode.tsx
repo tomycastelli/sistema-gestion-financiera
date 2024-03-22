@@ -24,7 +24,8 @@ const EntityNode = (
 
   return (
     <Card
-      className={cn(`border-2 border-${props.data.tag.color} rounded-full`)}
+      style={{ borderColor: props.data.tag.color ?? undefined }}
+      className={cn(`border-2 rounded-full`)}
     >
       <Handle type="target" position={Position.Top} />
       <CardHeader>

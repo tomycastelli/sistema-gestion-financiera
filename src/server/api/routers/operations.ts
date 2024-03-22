@@ -212,6 +212,7 @@ export const operationsRouter = createTRPCRouter({
       .leftJoin(transactions, eq(operations.id, transactions.operationId))
       .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
       .where(eq(transactionsMetadata.uploadedBy, sql.placeholder("userId")))
+      .groupBy(operations.id)
       .orderBy(desc(operations.id))
       .limit(5).prepare("get_operations_by_user_query");
 
@@ -352,12 +353,16 @@ export const operationsRouter = createTRPCRouter({
           .where(and(operationsWhere, transactionsWhere)).prepare("ids_that_satisfy_query");
 
         const idsThatSatisfy = await idsThatSatisfyQuery.execute()
+        const operationsIds = idsThatSatisfy.length > 0
+          ? idsThatSatisfy.map((obj) => obj.id)
+          : [0]
+
 
         const operationsPreparedQuery = transaction.query.operations
           .findMany({
             where: inArray(
               operations.id,
-              sql.placeholder("operationsIds"),
+              operationsIds,
             ),
             with: {
               transactions: {
@@ -396,9 +401,6 @@ export const operationsRouter = createTRPCRouter({
         const operationsQuery = await operationsPreparedQuery.execute({
           oLimit: input.limit,
           oOffset: (input.page - 1) * input.limit,
-          operationsIds: idsThatSatisfy.length > 0
-            ? idsThatSatisfy.map((obj) => obj.id)
-            : [0]
         });
         return { operationsQuery, idsThatSatisfy }
       })
@@ -520,9 +522,7 @@ export const operationsRouter = createTRPCRouter({
                   ? true
                   : false;
 
-            const isValidateAllowed =
-              (tx.status !== "cancelled" &&
-                !currentAccountOnlyTypes.includes(tx.type)) ||
+            const isValidateAllowed = !currentAccountOnlyTypes.includes(tx.type) && tx.status !== "cancelled" &&
               (tx.status === "pending" &&
                 (userPermissions?.some(
                   (p) =>
@@ -555,194 +555,6 @@ export const operationsRouter = createTRPCRouter({
         operations: operationsWithPermissions,
         count: response.idsThatSatisfy.length,
       };
-    }),
-  getOperationDetails: protectedProcedure
-    .input(z.object({ operationId: z.number().int() }))
-    .query(async ({ ctx, input }) => {
-      const operationDetailsQuery = ctx.db.query.operations.findMany({
-        where: eq(operations.id, sql.placeholder("operationId")),
-        with: {
-          transactions: {
-            with: {
-              transactionMetadata: {
-                with: {
-                  uploadedByUser: true,
-                  confirmedByUser: true,
-                  cancelledByUser: true,
-                },
-              },
-              fromEntity: {
-                with: {
-                  tag: true,
-                },
-              },
-              toEntity: {
-                with: {
-                  tag: true,
-                },
-              },
-              operatorEntity: {
-                with: {
-                  tag: true,
-                },
-              },
-            },
-          },
-        },
-      }).prepare("operation_details_query");
-
-      const [operationDetails] = await operationDetailsQuery.execute({ operationId: input.operationId })
-
-      if (operationDetails) {
-        const userPermissions = await getAllPermissions(
-          ctx.redis,
-          ctx.user,
-          ctx.db,
-        );
-        const tags = await getAllTags(ctx.redis, ctx.db);
-
-        const isVisualizeAllowed = userPermissions?.find(
-          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
-        )
-          ? true
-          : userPermissions?.find((p) => {
-            const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
-            if (
-              p.name === "OPERATIONS_VISUALIZE_SOME" &&
-              operationDetails?.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.fromEntityId) ||
-                  allAllowedTags.includes(tx.fromEntity.tagName),
-              ) &&
-              operationDetails?.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.toEntityId) ||
-                  allAllowedTags.includes(tx.toEntity.tagName),
-              )
-            ) {
-              return true;
-            }
-          })
-            ? true
-            : false;
-
-        const isCreateAllowed = userPermissions?.find(
-          (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
-        )
-          ? true
-          : userPermissions?.find((p) => {
-            const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
-            if (
-              p.name === "OPERATIONS_CREATE_SOME" &&
-              operationDetails?.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.fromEntityId) ||
-                  allAllowedTags.includes(tx.fromEntity.tagName),
-              ) &&
-              operationDetails?.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.toEntityId) ||
-                  allAllowedTags.includes(tx.toEntity.tagName),
-              )
-            ) {
-              return true;
-            }
-          })
-            ? true
-            : false;
-
-        const operationDetailsWithPermissions = {
-          ...operationDetails,
-          isVisualizeAllowed,
-          isCreateAllowed,
-          transactions: operationDetails?.transactions.map((tx) => {
-            const isCancelAllowed =
-              tx.status !== "cancelled" &&
-                (tx.status !== "confirmed" ||
-                  cashAccountOnlyTypes.includes(tx.type) ||
-                  tx.type === "pago por cta cte") &&
-                userPermissions?.find(
-                  (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_CANCEL",
-                )
-                ? true
-                : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_CANCEL_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-                  ? true
-                  : false;
-
-            const isDeleteAllowed = false
-
-            const isUpdateAllowed = userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
-            )
-              ? true
-              : userPermissions?.find((p) => {
-                const allAllowedTags = getAllChildrenTags(
-                  p.entitiesTags,
-                  tags,
-                );
-                if (
-                  p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                  (p.entitiesIds?.includes(tx.fromEntityId) ||
-                    allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                  (p.entitiesIds?.includes(tx.toEntityId) ||
-                    allAllowedTags.includes(tx.toEntity.tagName))
-                ) {
-                  return true;
-                }
-              })
-                ? true
-                : false;
-
-            const isValidateAllowed =
-              tx.status === "pending" &&
-                userPermissions?.find(
-                  (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_VALIDATE",
-                )
-                ? true
-                : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_VALIDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-                  ? true
-                  : false;
-            return {
-              ...tx,
-              isDeleteAllowed,
-              isUpdateAllowed,
-              isValidateAllowed,
-              isCancelAllowed,
-            };
-          }),
-        };
-        return operationDetailsWithPermissions;
-      } else {
-        return null;
-      }
     }),
   deleteOperation: protectedProcedure
     .input(z.object({ operationId: z.number().int() }))

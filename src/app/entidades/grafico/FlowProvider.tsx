@@ -11,7 +11,7 @@ interface FlowProviderProps {
 
 const FlowProvider = ({ initialEntities, initialTags }: FlowProviderProps) => {
   return (
-    <div className="h-[41rem] rounded-xl border border-muted-foreground">
+    <div className="h-[36rem] rounded-xl border border-muted-foreground">
       <ReactFlowProvider>
         <Flow initialEntities={initialEntities} initialTags={initialTags} />
       </ReactFlowProvider>

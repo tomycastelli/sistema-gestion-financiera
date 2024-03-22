@@ -30,8 +30,8 @@ const Page = async () => {
   return (
     <div>
       <FlowProvider initialEntities={groupedEntites} initialTags={tags} />
-      <p className="mt-4">
-        **Se muestran solo 5 entidades por tag para la representación gráfica
+      <p className="mt-4 font-semibold">
+        *Se muestran solo 5 entidades por tag para la representación gráfica
       </p>
     </div>
   );

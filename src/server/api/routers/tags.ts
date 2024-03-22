@@ -12,13 +12,14 @@ export const tagsRouter = createTRPCRouter({
     return tags;
   }),
   addOne: protectedProcedure
-    .input(z.object({ name: z.string(), parent: z.string().optional() }))
+    .input(z.object({ name: z.string(), parent: z.string().optional(), color: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const [response] = await ctx.db
         .insert(tag)
         .values({
           name: input.name,
           parent: input.parent,
+          color: input.color
         })
         .returning();
 
@@ -32,9 +33,25 @@ export const tagsRouter = createTRPCRouter({
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir tag", input, response);
 
       await ctx.redis.del("tags");
+      await ctx.redis.del("entities")
 
       return response;
     }),
+  editOne: protectedProcedure.input(z.object({ oldName: z.string(), name: z.string().optional(), parent: z.string().optional(), color: z.string().optional() })).mutation(async ({ ctx, input }) => {
+    const [response] = await ctx.db.update(tag).set({ name: input.name, parent: input.parent, color: input.color }).where(eq(tag.name, input.oldName)).returning()
+
+    if (!response) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Tag couldn't be modified"
+      })
+    }
+
+    await ctx.redis.del("tags")
+    await ctx.redis.del("entities")
+
+    return response
+  }),
   removeOne: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -53,6 +70,7 @@ export const tagsRouter = createTRPCRouter({
       await logIO(ctx.dynamodb, ctx.user.id, "Eliminar tag", input, response);
 
       await ctx.redis.del("tags");
+      await ctx.redis.del("entities")
 
       return response;
     }),

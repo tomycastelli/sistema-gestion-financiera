@@ -63,7 +63,7 @@ export const getAllPermissions = async (
           `user_permissions:${user.id}`,
           JSON.stringify(merged),
           "EX",
-          300,
+          3600,
         );
 
         return merged;
@@ -81,7 +81,7 @@ export const getAllPermissions = async (
         `user_permissions:${user.id}`,
         JSON.stringify(role.permissions),
         "EX",
-        300,
+        3600,
       );
 
       return roleFound.permissions as z.infer<typeof PermissionSchema> | null;
@@ -92,7 +92,7 @@ export const getAllPermissions = async (
       `user_permissions:${user.id}`,
       JSON.stringify(user.permissions),
       "EX",
-      300,
+      3600,
     );
 
     return user.permissions as z.infer<typeof PermissionSchema> | null;
@@ -126,9 +126,7 @@ export const getAllEntities = async (
   redis: Redis,
   db: PostgresJsDatabase<typeof schema>,
 ) => {
-  await redis.del("entities");
-
-  const cachedEntities: string | null = await redis.get("cached_entities");
+  const cachedEntities: string | null = await redis.get("entities");
 
   if (cachedEntities) {
     const parsedEntities: typeof entities = JSON.parse(cachedEntities);
@@ -152,7 +150,7 @@ export const getAllEntities = async (
       message: "Entities returned empty from database",
     });
 
-  await redis.set("cached_entities", JSON.stringify(entities), "EX", "3600");
+  await redis.set("entities", JSON.stringify(entities), "EX", 3600);
 
   return entities;
 };
@@ -229,10 +227,9 @@ export const generateMovements = async (
     await transaction
       .update(balances)
       .set({
-        balance: sql`${balances.balance} + ${
-          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+        balance: sql`${balances.balance} + ${movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
           tx.amount
-        }`,
+          }`,
       })
       .where(
         or(
@@ -255,10 +252,9 @@ export const generateMovements = async (
 
     // Le cambio del monto al balance de los movimientos posteriores tambien
     await transaction.update(movements).set({
-      balance: sql`${movements.balance} + ${
-        movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
+      balance: sql`${movements.balance} + ${movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
         tx.amount
-      }`,
+        }`,
     }).where(sql`${movements.balanceId} IN (
         SELECT ${balances.id}
         FROM ${balances}
@@ -267,17 +263,16 @@ export const generateMovements = async (
             ${balances.account} = ${account}
             AND ${balances.currency} = ${tx.currency}
             AND ${balances.date} > ${oldDate.toDateString()}
-            ${
-              tx.fromEntityId < tx.toEntityId
-                ? sql`
+            ${tx.fromEntityId < tx.toEntityId
+        ? sql`
                 AND ${balances.selectedEntityId} = ${tx.fromEntityId}
                 AND ${balances.otherEntityId} = ${tx.toEntityId}
             `
-                : sql`
+        : sql`
                 AND ${balances.selectedEntityId} = ${tx.toEntityId}
                 AND ${balances.otherEntityId} = ${tx.fromEntityId}
             `
-            }
+      }
         )
       )`);
 
@@ -320,17 +315,17 @@ export const generateMovements = async (
             : moment(tx.operation.date).startOf("day").toDate(),
           balance: beforeBalance
             ? beforeBalance.balance +
-              movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) *
-                tx.amount
+            movementBalanceDirection(
+              tx.fromEntityId,
+              tx.toEntityId,
+              direction,
+            ) *
+            tx.amount
             : movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) * tx.amount,
+              tx.fromEntityId,
+              tx.toEntityId,
+              direction,
+            ) * tx.amount,
         })
         .returning();
       movementsArray.push({
@@ -361,13 +356,12 @@ export const generateMovements = async (
         const [response] = await transaction
           .update(balances)
           .set({
-            balance: sql`${balances.balance} + ${
-              movementBalanceDirection(
-                tx.fromEntityId,
-                tx.toEntityId,
-                direction,
-              ) * tx.amount
-            }`,
+            balance: sql`${balances.balance} + ${movementBalanceDirection(
+              tx.fromEntityId,
+              tx.toEntityId,
+              direction,
+            ) * tx.amount
+              }`,
           })
           .where(eq(balances.id, balance.id))
           .returning();
@@ -386,7 +380,7 @@ export const generateMovements = async (
         const balanceNumber =
           balance.balance +
           movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-            tx.amount;
+          tx.amount;
 
         console.log(balanceNumber);
 
@@ -417,7 +411,7 @@ export const generateMovements = async (
       console.log(tx.amount);
       console.log(
         movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-          tx.amount,
+        tx.amount,
       );
       const [response] = await transaction
         .insert(balances)

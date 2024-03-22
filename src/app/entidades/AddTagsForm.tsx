@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type FC } from "react";
+import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/app/components/ui/alert-dialog";
-import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
+import { capitalizeFirstLetter } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -47,59 +47,46 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { toast } from "../components/ui/use-toast";
+import { HexColorPicker } from "react-colorful";
+import "./color-picker.css"
+import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { cn } from "~/lib/utils";
 
 interface AddTagsFormProps {
   initialTags: RouterOutputs["tags"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
-  entities: RouterOutputs["entities"]["getAll"];
 }
 
 const AddTagsForm: FC<AddTagsFormProps> = ({
   initialTags,
   userPermissions,
-  entities,
 }) => {
-  const { data: tags } = api.tags.getAll.useQuery(undefined, {
-    initialData: initialTags,
-    refetchOnWindowFocus: false,
-  });
+  enum ActionStatus {
+    ADD = "ADD",
+    EDIT = "EDIT"
+  }
+  const [tagToEdit, setTagToEdit] = useState<string | undefined>(undefined)
+  const [actionStatus, setActionStatus] = useState<ActionStatus>(ActionStatus.ADD)
 
-  const manageableTags = tags.filter((tag) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
-      )
-    ) {
-      return true;
-    }
+  const { data: tags, isSuccess } = api.tags.getFiltered.useQuery(undefined, {
+    initialData: initialTags,
   });
 
   const FormSchema = z
     .object({
       name: z.string(),
       parent: z.string().optional(),
-    })
-    .refine(
-      (data) => {
-        const condition =
-          manageableTags && initialTags.length > manageableTags.length;
-        if (condition) {
-          return data.parent !== undefined;
-        }
-        return true;
-      },
-      {
-        message: "El tag padre es obligatorio",
-      },
-    );
+      color: z.string().optional()
+    });
+
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+  });
+
+  const { handleSubmit, control, setValue, watch, reset } = form;
+
+  const watchTagName = watch("name")
+  const watchTagColor = watch("color")
 
   const utils = api.useContext();
 
@@ -145,20 +132,22 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       });
 
       // Doing the Optimistic update
-      await utils.tags.getAll.cancel();
+      await utils.tags.getFiltered.cancel();
 
-      const prevData = utils.tags.getAll.getData();
+      const prevData = utils.tags.getFiltered.getData();
 
-      utils.tags.getAll.setData(undefined, (old) => [
+      utils.tags.getFiltered.setData(undefined, (old) => [
         // @ts-ignore
         ...old,
         newOperation,
       ]);
 
+      reset()
+
       return { prevData };
     },
     onError(err, newOperation, ctx) {
-      utils.tags.getAll.setData(undefined, ctx?.prevData);
+      utils.tags.getFiltered.setData(undefined, ctx?.prevData);
 
       // Doing some ui actions
       toast({
@@ -168,18 +157,57 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       });
     },
     onSettled() {
-      void utils.tags.getAll.invalidate();
+      void utils.tags.getFiltered.invalidate();
     },
   });
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
+  const { mutateAsync: editAsync } = api.tags.editOne.useMutation({
+    async onMutate(newOperation) {
+      toast({
+        title: `Tag ${newOperation.name} editado`,
+        variant: "success",
+      });
+
+      // Doing the Optimistic update
+      await utils.tags.getFiltered.cancel();
+
+      const prevData = utils.tags.getFiltered.getData();
+
+      utils.tags.getAll.setData(undefined, (old) => old!.map(tag => {
+        if (tag.name === newOperation.oldName) {
+          return ({ name: newOperation.name ?? newOperation.oldName, parent: newOperation.parent ?? null, color: newOperation.color ?? null, children: tag.children })
+        } else {
+          return tag
+        }
+      }));
+
+      reset()
+
+      return { prevData };
+    },
+    onError(err, newOperation, ctx) {
+      utils.tags.getFiltered.setData(undefined, ctx?.prevData);
+
+      // Doing some ui actions
+      toast({
+        title: "No se pudo editar el tag",
+        description: `${JSON.stringify(err.message)}`,
+        variant: "destructive",
+      });
+    },
+    onSettled() {
+      void utils.tags.getFiltered.invalidate();
+    },
   });
 
-  const { handleSubmit, control } = form;
+
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    await mutateAsync({ name: data.name, parent: data.parent });
+    if (actionStatus === ActionStatus.ADD) {
+      await mutateAsync({ name: data.name, parent: data.parent, color: data.color });
+    } else if (actionStatus === ActionStatus.EDIT && tagToEdit) {
+      await editAsync({ name: data.name, parent: data.parent, color: data.color, oldName: tagToEdit })
+    }
   }
 
   return (
@@ -207,7 +235,13 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader className="flex flex-row items-center justify-between">
-              <DialogTitle>Añadir tag</DialogTitle>
+              <DialogTitle className={cn(actionStatus === ActionStatus.EDIT && "animate-pulse")}>{actionStatus === ActionStatus.ADD ? "Añadiendo tag" : actionStatus === ActionStatus.EDIT ? "Editando tag" : ""}</DialogTitle>
+              {actionStatus === ActionStatus.EDIT && (
+                <Button variant="outline" className="animate-pulse" onClick={() => {
+                  reset()
+                  setActionStatus(ActionStatus.ADD)
+                }}>Volver a añadir</Button>
+              )}
               <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Cerrar
@@ -244,9 +278,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {manageableTags &&
-                          manageableTags
-                            .filter((tag) => tag.name !== "usuario")
+                        {isSuccess &&
+                          tags
                             .map((tag) => (
                               <SelectItem key={tag.name} value={tag.name}>
                                 {capitalizeFirstLetter(tag.name)}
@@ -258,20 +291,45 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                   </FormItem>
                 )}
               />
+              <FormField
+                control={control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-row gap-8 justify-start items-center h-32">
+                        <section className="small">
+                          <HexColorPicker color={field.value} onChange={(color) => setValue("color", color)} />
+                        </section>
+                        <Card className="flex items-start shadow-md justify-center h-32 w-32 border-2" style={{ borderColor: watchTagColor }}>
+                          <CardHeader>
+                            <CardTitle>Ejemplo</CardTitle>
+                            <CardDescription>{watchTagName}</CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <DialogFooter>
               <Button type="submit" variant="outline">
-                Añadir
+                {actionStatus === ActionStatus.ADD ? "Añadir" : actionStatus === ActionStatus.EDIT ? "Editar" : ""}
               </Button>
             </DialogFooter>
           </form>
         </Form>
-        <ScrollArea className="h-80 w-full">
+        <ScrollArea className="h-40 w-full">
           <div className="grid grid-cols-1 gap-2 pr-6">
-            {tags.map((tag, index) => (
+            <h1 className="text-2xl font-semibold">Tags</h1>
+            {isSuccess && tags.map((tag, index) => (
               <div
                 key={index}
-                className="flex flex-row items-center justify-between rounded-xl border border-muted p-2"
+                className="flex flex-row items-center justify-between rounded-xl border-2 p-2"
+                style={{ borderColor: tag.color ?? undefined }}
               >
                 <div className="flex flex-row space-x-4">
                   <h1>{capitalizeFirstLetter(tag.name)}</h1>
@@ -281,45 +339,46 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                     </p>
                   )}
                 </div>
-
-                {tag.name !== "usuario" &&
-                  !entities.find((entity) =>
-                    getAllChildrenTags(tag.name, tags).includes(
-                      entity.tag.name,
-                    ),
-                  ) &&
-                  manageableTags.find((item) => item.name === tag.name) && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="border-transparent p-1"
+                <div className="flex flex-row gap-2">
+                  <Button variant="outline" className="border-transparent" onClick={() => {
+                    setActionStatus(ActionStatus.EDIT)
+                    setTagToEdit(tag.name)
+                    setValue("name", tag.name)
+                    setValue("parent", tag.parent ?? undefined)
+                    setValue("color", tag.color ?? undefined)
+                  }}>
+                    <Icons.editing className="w-4 h-4 text-green" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="border-transparent"
+                      >
+                        <Icons.cross className="h-4 text-red" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          ¿Seguro que querés borrar el tag?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Si el mismo tiene entidades relacionadas, no podrá ser eliminado
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red"
+                          onClick={() => removeTag({ name: tag.name })}
                         >
-                          <Icons.cross className="h-4 text-red" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            ¿Seguro que querés borrar el tag?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esto es posible ya que no hay entidades relacionadas
-                            con este tag
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red"
-                            onClick={() => removeTag({ name: tag.name })}
-                          >
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             ))}
           </div>

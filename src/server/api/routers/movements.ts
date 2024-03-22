@@ -255,8 +255,6 @@ export const movementsRouter = createTRPCRouter({
       const fromEntityObject = alias(entities, "fromEntityObject");
       const toEntityObject = alias(entities, "toEntityObject");
 
-      console.log(tagAndChildren);
-
       const entitiesConditions = or(
         and(
           inArray(fromEntityObject.tagName, tagAndChildren),
@@ -316,13 +314,13 @@ export const movementsRouter = createTRPCRouter({
               },
             },
           },
-          where: inArray(movements.id, sql.placeholder("ids")),
+          where: inArray(movements.id, ids),
           orderBy: desc(movements.id),
           offset: sql.placeholder("oOffset"),
           limit: sql.placeholder("oLimit"),
         }).prepare("movements_query");
 
-        const movementsData = await movementsQuery.execute({ oLimit: input.pageSize, oOffset: (input.pageNumber - 1) * input.pageSize, ids: ids })
+        const movementsData = await movementsQuery.execute({ oLimit: input.pageSize, oOffset: (input.pageNumber - 1) * input.pageSize })
 
         return { movementsQuery: movementsData, totalRows: movementsIds.length };
       });

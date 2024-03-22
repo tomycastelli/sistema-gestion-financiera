@@ -99,9 +99,9 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   });
 
   return (
-    <div className="mx-auto my-4 flex max-w-4xl flex-col space-y-8">
-      <div className="flex flex-row flex-wrap justify-between space-x-4 space-y-6 rounded-xl border border-muted p-4">
-        <div className="flex flex-row justify-start space-x-4">
+    <div className="mx-auto my-4 flex max-w-4xl flex-col flex-wrap gap-4">
+      <div className="flex flex-row justify-between gap-4 rounded-xl border border-muted p-4 items-center">
+        <div className="flex flex-row gap-4">
           <Input
             className="w-36"
             placeholder="Nombre"
@@ -111,7 +111,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
               setSearchValue(e.target.value);
             }}
           />
-          <div className="flex flex-row items-center space-x-2">
+          <div className="flex flex-row items-center gap-2">
             <Select onValueChange={setTagFilter} value={tagFilter}>
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Todos" />
@@ -143,7 +143,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                   />
                 </Button>
               </HoverCardTrigger>
-              <HoverCardContent className="flex w-40 flex-col">
+              <HoverCardContent className="flex w-[12rem] flex-row gap-1">
                 <p
                   className={cn(
                     tagFilterMode === "strict"
@@ -153,6 +153,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                 >
                   Estricto
                 </p>
+                /
                 <p
                   className={cn(
                     tagFilterMode === "children"
@@ -172,18 +173,17 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             userPermissions={userPermissions}
           />
           <AddTagsForm
-            entities={initialEntities}
             initialTags={initialTags}
             userPermissions={userPermissions}
           />
         </div>
       </div>
-      <div className="flex items-center justify-center">
+      <div className="flex">
         {isLoading ? (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
-          <div className="flex flex-col space-y-6">
-            <div className="mx-auto grid grid-cols-2 gap-11 md:grid-cols-4 xl:grid-cols-6">
+          <div className="flex flex-col gap-6 items-start">
+            <div className="flex flex-wrap justify-start gap-4">
               {twiceFilteredEntities
                 .slice((page - 1) * pageSize, page * pageSize)
                 .map((entity) => (

@@ -4,5 +4,25 @@ import * as schema from "./db/schema";
 
 import { env } from "~/env.mjs";
 
-const queryClient = postgres(env.DATABASE_URL);
-export const db = drizzle(queryClient, { schema, logger: true });
+let connection: postgres.Sql
+
+if (process.env.NODE_ENV === "production") {
+  connection = postgres(env.DATABASE_URL, { prepare: false });
+} else {
+  const globalConnection = global as typeof globalThis & {
+    connection: postgres.Sql;
+  };
+
+  if (!globalConnection.connection) {
+    globalConnection.connection = postgres(env.DATABASE_URL, {
+      prepare: false,
+    });
+  }
+
+  connection = globalConnection.connection;
+}
+
+export const db = drizzle(connection, {
+  schema, logger: env.NODE_ENV ===
+    "development"
+});

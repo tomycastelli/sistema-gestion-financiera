@@ -95,7 +95,7 @@ export const entitiesRouter = createTRPCRouter({
 
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
 
-      await ctx.redis.del("cached_entities");
+      await ctx.redis.del("entities");
       return response;
     }),
   deleteOne: protectedLoggedProcedure
@@ -133,7 +133,7 @@ export const entitiesRouter = createTRPCRouter({
           response,
         );
 
-        await ctx.redis.del("cached_entities");
+        await ctx.redis.del("entities");
 
         return response;
       } else {
@@ -175,7 +175,7 @@ export const entitiesRouter = createTRPCRouter({
         response,
       );
 
-      await ctx.redis.del("cached_entities");
+      await ctx.redis.del("entities");
 
       return response;
     }),
