@@ -217,9 +217,9 @@ const MovementsTable = ({
               // @ts-ignore
               metadata && isNumeric(metadata.exchangeRate)
                 ? // @ts-ignore
-                  `- $${metadata.exchangeRate}`
+                `- $${metadata.exchangeRate}`
                 : ""
-            }`}</p>
+              }`}</p>
             <p className="text-sm font-light text-muted-foreground">
               {observations}
             </p>
@@ -354,8 +354,8 @@ const MovementsTable = ({
                   >
                     {selectedFromEntity
                       ? entities.find(
-                          (e) => e.id === parseInt(selectedFromEntity),
-                        )?.name
+                        (e) => e.id === parseInt(selectedFromEntity),
+                      )?.name
                       : "Elegir"}
                   </Button>
                 </PopoverTrigger>

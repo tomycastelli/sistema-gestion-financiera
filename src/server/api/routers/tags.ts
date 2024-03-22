@@ -14,6 +14,14 @@ export const tagsRouter = createTRPCRouter({
   addOne: protectedProcedure
     .input(z.object({ name: z.string(), parent: z.string().optional(), color: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && input.parent && p.entitiesTags?.includes(input.parent)))
+      if (!hasPermissions) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no tiene los permisos suficientes. En caso de tener los permisos para manejar algunas entidades, solo se puede ingresar un tag cuyo padre sea otro tag con el que si se tienen permisos."
+        })
+      }
       const [response] = await ctx.db
         .insert(tag)
         .values({
@@ -37,7 +45,19 @@ export const tagsRouter = createTRPCRouter({
 
       return response;
     }),
-  editOne: protectedProcedure.input(z.object({ oldName: z.string(), name: z.string().optional(), parent: z.string().optional(), color: z.string().optional() })).mutation(async ({ ctx, input }) => {
+  editOne: protectedProcedure.input(z.object({ oldName: z.string(), name: z.string(), parent: z.string().optional(), color: z.string().optional() })).mutation(async ({ ctx, input }) => {
+
+    const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+    const tags = await getAllTags(ctx.redis, ctx.db)
+    const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.name)))
+
+    if (!hasPermissions) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "El usuario no tiene los permisos suficientes."
+      })
+    }
+
     const [response] = await ctx.db.update(tag).set({ name: input.name, parent: input.parent, color: input.color }).where(eq(tag.name, input.oldName)).returning()
 
     if (!response) {
@@ -55,6 +75,17 @@ export const tagsRouter = createTRPCRouter({
   removeOne: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+      const tags = await getAllTags(ctx.redis, ctx.db)
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.name)))
+
+      if (!hasPermissions) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no tiene los permisos suficientes."
+        })
+      }
+
       const [response] = await ctx.db
         .delete(tag)
         .where(eq(tag.name, input.name))

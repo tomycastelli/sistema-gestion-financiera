@@ -14,11 +14,11 @@ interface OperationDetailsProps {
   operationId: string;
   user: User;
   users: RouterOutputs["users"]["getAll"];
-  movements: RouterOutputs["movements"]["getMovementsByOpId"];
+  initialMovements: RouterOutputs["movements"]["getMovementsByOpId"];
 }
 
 const OperationDetails: FC<OperationDetailsProps> = ({
-  movements,
+  initialMovements,
   initialOperation,
   entities,
   operationId,
@@ -54,13 +54,14 @@ const OperationDetails: FC<OperationDetailsProps> = ({
                 entities={entities}
               />
             </div>
-            <div className="mx-auto flex flex-col space-y-4">
+            <div className="justify-center items-center flex flex-col gap-4">
               <h1 className="mx-auto text-4xl font-semibold tracking-tighter">
                 Movimientos
               </h1>
               <DetailMovementsTable
                 operationDate={data.operations[0].date}
-                movements={movements}
+                initialMovements={initialMovements}
+                operationId={parseInt(operationId)}
               />
             </div>
           </div>

@@ -111,6 +111,7 @@ const Operation: FC<OperationProps> = ({
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate()
       },
     });
 
@@ -173,6 +174,7 @@ const Operation: FC<OperationProps> = ({
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate()
       },
     });
 
@@ -217,6 +219,7 @@ const Operation: FC<OperationProps> = ({
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate()
       },
     });
 
@@ -318,7 +321,7 @@ const Operation: FC<OperationProps> = ({
                       }
                       className="bg-red"
                     >
-                      Anular
+                      Confirmar
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

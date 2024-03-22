@@ -16,7 +16,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { entities, transactions, user } from "~/server/db/schema";
+import { entities, transactions } from "~/server/db/schema";
 
 export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -67,10 +67,20 @@ export const entitiesRouter = createTRPCRouter({
       z.object({
         name: z.string(),
         tag: z.string(),
-        userId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+      const tags = await getAllTags(ctx.redis, ctx.db)
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.tag)))
+
+      if (!hasPermissions) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no tiene los permisos suficientes."
+        })
+      }
+
       const [response] = await ctx.db
         .insert(entities)
         .values({
@@ -86,21 +96,25 @@ export const entitiesRouter = createTRPCRouter({
         });
       }
 
-      if (input.tag === "Usuario" && input.userId) {
-        await ctx.db
-          .update(user)
-          .set({ entityId: response.id })
-          .where(eq(user.id, input.userId));
-      }
-
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
 
       await ctx.redis.del("entities");
       return response;
     }),
   deleteOne: protectedLoggedProcedure
-    .input(z.object({ entityId: z.number().int() }))
+    .input(z.object({ entityId: z.number().int(), tag: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+      const tags = await getAllTags(ctx.redis, ctx.db)
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag) || p.entitiesIds?.includes(input.entityId))))
+
+      if (!hasPermissions) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no tiene los permisos suficientes."
+        })
+      }
+
       const [transactionId] = await ctx.db
         .select({ id: transactions.id })
         .from(transactions)
@@ -152,6 +166,17 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
+      const tags = await getAllTags(ctx.redis, ctx.db)
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag ?? "") || p.entitiesIds?.includes(input.id))))
+
+      if (!hasPermissions) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "El usuario no tiene los permisos suficientes."
+        })
+      }
+
       const [response] = await ctx.db
         .update(entities)
         .set({

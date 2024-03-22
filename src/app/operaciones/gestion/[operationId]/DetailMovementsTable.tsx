@@ -1,18 +1,26 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import moment from "moment";
 import { type FC } from "react";
+import LoadingAnimation from "~/app/components/LoadingAnimation";
 import { DataTable } from "~/app/cuentas/DataTable";
+import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface DetailMovementsTableProps {
   operationDate: RouterOutputs["operations"]["getOperations"]["operations"][number]["date"];
-  movements: RouterOutputs["movements"]["getMovementsByOpId"];
+  initialMovements: RouterOutputs["movements"]["getMovementsByOpId"];
+  operationId: number
 }
 
 const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
-  movements,
+  initialMovements,
   operationDate,
+  operationId
 }) => {
+  const { data: movements, isFetching } = api.movements.getMovementsByOpId.useQuery({ operationId }, {
+    initialData: initialMovements,
+    refetchOnWindowFocus: false
+  })
   const tableData = movements.flatMap((movement) => ({
     id: movement.id,
     date: movement.transaction.date
@@ -97,19 +105,14 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      data={tableData.sort((a, b) => {
-        const dateA = moment(a.date, "DD-MM-YYYY HH:mm:ss").valueOf();
-        const dateB = moment(b.date, "DD-MM-YYYY HH:mm:ss").valueOf();
-
-        if (dateA === dateB) {
-          return b.transactionId - a.transactionId;
-        }
-
-        return dateB - dateA;
-      })}
-    />
+    !isFetching ? (
+      <DataTable
+        columns={columns}
+        data={tableData}
+      />
+    ) : (
+      <LoadingAnimation text="Cargando movimientos" />
+    )
   );
 };
 

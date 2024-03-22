@@ -81,7 +81,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red"
-              onClick={() => deleteAsync({ entityId: entity.id })}
+              onClick={() => deleteAsync({ entityId: entity.id, tag: entity.tag.name })}
             >
               Eliminar
             </AlertDialogAction>

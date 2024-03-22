@@ -23,7 +23,7 @@ export default async function Page({
 
   const userPermissions = await api.users.getAllPermissions.query();
 
-  const movements = await api.movements.getMovementsByOpId.query({
+  const initialMovements = await api.movements.getMovementsByOpId.query({
     operationId: parseInt(operationId),
   });
 
@@ -31,7 +31,7 @@ export default async function Page({
     <div>
       {user && (
         <OperationDetails
-          movements={movements}
+          initialMovements={initialMovements}
           users={users}
           userPermissions={userPermissions}
           initialOperation={operation}
