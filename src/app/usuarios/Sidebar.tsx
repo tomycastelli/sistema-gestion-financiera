@@ -9,7 +9,7 @@ import { buttonVariants } from "../components/ui/button";
 const Sidebar = () => {
   const pathname = usePathname();
 
-  const { data: permissions } = api.users.getAllPermissions.useQuery({});
+  const { data: permissions } = api.users.getAllPermissions.useQuery();
 
   return (
     <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">

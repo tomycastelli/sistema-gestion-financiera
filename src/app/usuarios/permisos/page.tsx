@@ -2,7 +2,7 @@ import { api } from "~/trpc/server";
 import UsersFeed from "./UsersFeed";
 
 const Page = async () => {
-  const permissions = await api.users.getAllPermissions.query({});
+  const permissions = await api.users.getAllPermissions.query();
   const users = await api.users.getAll.query();
 
   return (

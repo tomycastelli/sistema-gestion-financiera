@@ -50,7 +50,6 @@ export const usersRouter = createTRPCRouter({
     return response;
   }),
   getAllPermissions: publicProcedure
-    .input(z.object({ userId: z.string().optional() }))
     .query(async ({ ctx }) => {
       if (!ctx.user) {
         return [];
@@ -71,22 +70,21 @@ export const usersRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        // @ts-ignore
-        const { permissions } = await ctx.db.user.findUnique({
-          where: {
-            id: input.id,
-          },
-          select: {
-            permissions: true,
-          },
-        });
+        const [response] = await ctx.db.select({ permissions: user.permissions }).from(user).where(eq(user.id, input.id))
 
-        return permissions as z.infer<typeof PermissionSchema> | null;
+        if (!response) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `The user with id: ${input.id} does not exist`
+          })
+        }
+
+        return response.permissions as z.infer<typeof PermissionSchema> | null;
       } else {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message:
-            "Usuario sin el siguiente permiso: USERS_PERMISSIONS_VISUALIZE",
+            "El usuario no tiene los permisos suficientes",
         });
       }
     }),

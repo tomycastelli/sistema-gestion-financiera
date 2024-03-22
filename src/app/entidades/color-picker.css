@@ -1,0 +1,15 @@
+.small .react-colorful {
+  height: 8rem;
+  width: 8rem;
+}
+
+.small .react-colorful__saturation-pointer {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+}
+
+.small .react-colorful__hue-pointer {
+  width: 15px;
+  border-radius: 3px;
+}

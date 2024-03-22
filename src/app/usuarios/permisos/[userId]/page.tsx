@@ -10,7 +10,7 @@ export default async function Page({ params }: { params: { userId: string } }) {
 
   const tags = await api.tags.getAll.query();
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   const initialRoles = await api.roles.getAll.query();
 

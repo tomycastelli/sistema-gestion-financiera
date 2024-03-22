@@ -8,7 +8,7 @@ const Page = async () => {
   const roles = await api.roles.getAll.query();
   const entities = await api.entities.getAll.query();
   const tags = await api.tags.getAll.query();
-  const permissions = await api.users.getAllPermissions.query({});
+  const permissions = await api.users.getAllPermissions.query();
 
   return (
     <div>

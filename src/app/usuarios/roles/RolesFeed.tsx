@@ -35,7 +35,7 @@ interface RolesFeedProps {
 const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
   const utils = api.useContext();
 
-  const { data: roles, isLoading } = api.roles.getAll.useQuery(undefined, {
+  const { data: roles, isLoading, isSuccess } = api.roles.getAll.useQuery(undefined, {
     initialData: initialRoles,
     refetchOnWindowFocus: false,
   });
@@ -76,7 +76,7 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       {!isLoading ? (
-        roles && roles?.length > 0 ? (
+        isSuccess && roles && roles.length > 0 ? (
           roles?.map((role) => (
             <Card
               key={role.id}
@@ -114,7 +114,7 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
                   </CardDescription>
                   <CardDescription>
                     {role.users ? role.users.length : 0}{" "}
-                    {role.users.length === 1 ? "usuario" : "usuarios"}
+                    {role.users ? role.users.length === 1 ? "usuario" : "usuarios" : ""}
                   </CardDescription>
                 </CardHeader>
                 <AlertDialog>

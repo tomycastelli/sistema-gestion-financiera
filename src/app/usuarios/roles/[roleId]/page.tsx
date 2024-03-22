@@ -10,7 +10,7 @@ const Page = async ({ params }: { params: { roleId: string } }) => {
   const entities = await api.entities.getAll.query();
   const tags = await api.tags.getAll.query();
   const users = await api.users.getAll.query();
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
   const roles = await api.roles.getAll.query();
 
   return (

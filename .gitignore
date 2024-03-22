@@ -8,15 +8,14 @@
 # testing
 /coverage
 
-# database
-/prisma/db.sqlite
-/prisma/db.sqlite-journal
-
 # next.js
 /.next/
 /out/
 next-env.d.ts
 .cache/
+
+# drizzle migrations
+/src/server/db/migrations/
 
 # production
 /build

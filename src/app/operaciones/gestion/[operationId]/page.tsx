@@ -21,7 +21,7 @@ export default async function Page({
 
   const user = await getUser();
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   const movements = await api.movements.getMovementsByOpId.query({
     operationId: parseInt(operationId),

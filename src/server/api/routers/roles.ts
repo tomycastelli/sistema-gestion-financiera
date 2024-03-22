@@ -20,11 +20,21 @@ export const rolesRouter = createTRPCRouter({
         permission.name === "USERS_ROLES_MANAGE",
     );
 
+    if (hasPermissions) {
+      const response = await ctx.db.query.role.findMany({
+        with: {
+          users: true,
+        },
+      });
+      return response;
+    }
+
     const hasSpecificRoles = permissions?.find(
       (p) => p.name === "USERS_ROLES_MANAGE_SOME",
     )?.entitiesTags;
 
-    if (hasSpecificRoles && !hasPermissions) {
+
+    if (hasSpecificRoles) {
       const response = await ctx.db.query.role.findMany({
         where: inArray(role.name, hasSpecificRoles),
         with: {
@@ -33,16 +43,6 @@ export const rolesRouter = createTRPCRouter({
       });
 
       return response;
-    }
-    if (hasPermissions) {
-      const response = await ctx.db.query.role.findMany({
-        with: {
-          users: true,
-        },
-      });
-      return response;
-    } else {
-      return null;
     }
   }),
   getById: protectedProcedure
@@ -114,14 +114,14 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const [response] = await ctx.db
-          .delete(role)
-          .where(eq(role.id, input.id))
-          .returning();
         const users = await ctx.db
           .select({ id: user.id })
           .from(user)
           .where(eq(user.roleId, input.id));
+        const [response] = await ctx.db
+          .delete(role)
+          .where(eq(role.id, input.id))
+          .returning();
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {
@@ -154,6 +154,11 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
+        const users = await ctx.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.roleId, input.id));
+
         const response = await ctx.db
           .update(role)
           .set({
@@ -163,10 +168,6 @@ export const rolesRouter = createTRPCRouter({
           })
           .where(eq(role.id, input.id))
           .returning();
-        const users = await ctx.db
-          .select({ id: user.id })
-          .from(user)
-          .where(eq(user.roleId, input.id));
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {

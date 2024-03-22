@@ -345,7 +345,7 @@ export const movementsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       let isRequestValid = false;
 
-      if (ctx.user !== undefined) {
+      if (ctx.user) {
         const userPermissions = await getAllPermissions(
           ctx.redis,
           ctx.user,
@@ -377,6 +377,8 @@ export const movementsRouter = createTRPCRouter({
           )
         ) {
           isRequestValid = true;
+        } else if (input.entityId === ctx.user.entityId) {
+          isRequestValid = true
         }
       } else if (input.linkId && input.linkToken && input.entityId) {
         const link = await ctx.db.query.links.findFirst({

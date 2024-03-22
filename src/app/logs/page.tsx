@@ -3,7 +3,7 @@ import Timeline from "./Timeline";
 
 const Page = async () => {
   const users = await api.users.getAll.query();
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   return (
     <div>

@@ -11,7 +11,7 @@ const Page = async () => {
 
   const operations = await api.operations.getOperationsByUser.query();
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   const tags = await api.tags.getAll.query();
 

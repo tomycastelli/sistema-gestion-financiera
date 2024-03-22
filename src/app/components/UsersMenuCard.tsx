@@ -3,7 +3,7 @@ import { api } from "~/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 const OperationsMenuCard = async () => {
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   return (
     <Card>

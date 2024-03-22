@@ -3,7 +3,7 @@ import ManageOperationsCard from "../components/ManageOperationsCard";
 import { UploadOperationsCard } from "../components/UploadOperationsCard";
 
 export default async function Page() {
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   return (
     <div className="flex h-full w-full flex-col">

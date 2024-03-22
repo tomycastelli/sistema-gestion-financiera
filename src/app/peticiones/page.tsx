@@ -8,7 +8,7 @@ const Page = async () => {
 
   const user = await getUser()
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
   if (user) {
     return (
       <div className="flex flex-col items-center justify-center space-y-8">

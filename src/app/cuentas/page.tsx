@@ -22,7 +22,7 @@ const Page = async ({
 }) => {
   const user = await getUser();
 
-  const userPermissions = await api.users.getAllPermissions.query({});
+  const userPermissions = await api.users.getAllPermissions.query();
 
   const selectedTag = searchParams.tag as string | null;
   const selectedEntityIdString = searchParams.entidad as string | null;
@@ -68,8 +68,8 @@ const Page = async ({
       selectedTab === "cuenta_corriente"
         ? false
         : selectedTab === "caja"
-        ? true
-        : undefined,
+          ? true
+          : undefined,
     linkToken: linkToken,
     linkId: linkId,
   };
@@ -124,17 +124,17 @@ const Page = async ({
               <div className="mt-4 w-full">
                 {(selectedTab === "cuenta_corriente" ||
                   selectedTab === "caja") && (
-                  <AccountsTab
-                    entityId={selectedEntityId}
-                    entityTag={selectedTag}
-                    accountType={selectedTab === "caja" ? true : false}
-                    searchParams={searchParams}
-                    initialBalances={initialBalances}
-                    initialTags={initialTags}
-                    linkId={linkId}
-                    linkToken={linkToken}
-                  />
-                )}
+                    <AccountsTab
+                      entityId={selectedEntityId}
+                      entityTag={selectedTag}
+                      accountType={selectedTab === "caja" ? true : false}
+                      searchParams={searchParams}
+                      initialBalances={initialBalances}
+                      initialTags={initialTags}
+                      linkId={linkId}
+                      linkToken={linkToken}
+                    />
+                  )}
                 {selectedTab === "resumen" && (
                   <div>
                     <SummarizedBalances
