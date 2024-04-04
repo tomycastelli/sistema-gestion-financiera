@@ -16,8 +16,8 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import { Button } from "../components/ui/button";
-import { toast } from "../components/ui/use-toast";
 import ChangeEntityForm from "./ChangeEntityForm";
+import { toast } from "sonner";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
@@ -28,11 +28,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
   const utils = api.useContext();
 
   const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
-    async onMutate(newOperation) {
-      toast({
-        title: `Entidad ${newOperation.entityId} eliminada`,
-        variant: "success",
-      });
+    async onMutate() {
 
       // Doing the Optimistic update
       await utils.entities.getAll.cancel();
@@ -49,16 +45,16 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
     onError(err, newOperation, ctx) {
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo eliminar la entidad",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`No se pudo eliminar la entidad ${newOperation.entityId}`, {
+        description: JSON.stringify(err.message)
+      })
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Entidad ${data.id} eliminada`)
+    }
   });
 
   return (

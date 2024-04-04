@@ -14,9 +14,9 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Separator } from "../components/ui/separator";
-import { toast } from "../components/ui/use-toast";
 import UpdateRequest from "./UpdateRequest";
 import { type User } from "lucia";
+import { toast } from "sonner";
 
 interface KanbanProps {
   initialRequests: RouterOutputs["requests"]["getAll"];
@@ -38,11 +38,6 @@ const Kanban: FC<KanbanProps> = ({
 
   const { mutateAsync: deleteAsync } = api.requests.deleteOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: "Petición eliminada",
-        variant: "success",
-      });
-
       await utils.requests.getAll.cancel();
 
       const prevData = utils.requests.getAll.getData(undefined);
@@ -56,15 +51,16 @@ const Kanban: FC<KanbanProps> = ({
     onError(err) {
       const prevData = utils.requests.getAll.getData(undefined);
       // Doing some ui actions
-      toast({
-        title: "No se pudo eliminar la petición",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error("No se pudo eliminar la petición", {
+        description: err.message
+      })
       return { prevData };
     },
     onSettled() {
       void utils.requests.getAll.invalidate();
+    },
+    onSuccess() {
+      toast.success("Petición eliminada")
     },
   });
 

@@ -56,9 +56,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "../components/ui/use-toast";
 import ClientLinkGenerator from "./ClientLinkGenerator";
 import { DataTable } from "./DataTable";
+import { toast } from "sonner";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -135,11 +135,10 @@ const MovementsTable = ({
     api.files.getCurrentAccount.useMutation({
       onSuccess(newOperation) {
         if (newOperation) {
-          toast({
-            title: "Archivo generado exitosamente",
-            description: newOperation.filename,
-            variant: "success",
-          });
+          toast.success("Archivo generado exitosamente", {
+            description: newOperation.filename
+          })
+
           const link = document.createElement("a");
           link.href = newOperation.downloadUrl;
           link.download = newOperation.filename;
@@ -149,12 +148,10 @@ const MovementsTable = ({
           document.body.removeChild(link);
         }
       },
-      onError(error) {
-        toast({
-          title: error.data ? error.data.code : "",
-          description: error.message,
-          variant: "destructive",
-        });
+      onError(err) {
+        toast.error("Error al generar el archivo", {
+          description: err.message
+        })
       },
     });
 
@@ -373,7 +370,7 @@ const MovementsTable = ({
                       {entities
                         .filter(
                           (e) =>
-                            getAllChildrenTags(entityTag, tags).includes(
+                            getAllChildrenTags(entityTag, tags).has(
                               e.tag.name,
                             ) || e.id === entityId,
                         )

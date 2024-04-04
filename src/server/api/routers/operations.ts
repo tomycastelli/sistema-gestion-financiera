@@ -72,7 +72,7 @@ export const operationsRouter = createTRPCRouter({
                 ...transactionToInsert,
                 operationId: opId,
                 status:
-                  cashAccountOnlyTypes.includes(transactionToInsert.type) ||
+                  cashAccountOnlyTypes.has(transactionToInsert.type) ||
                     transactionToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
@@ -89,7 +89,7 @@ export const operationsRouter = createTRPCRouter({
             list.push(insertedTx);
 
             if (
-              cashAccountOnlyTypes.includes(insertedTx.type) ||
+              cashAccountOnlyTypes.has(insertedTx.type) ||
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
@@ -101,7 +101,7 @@ export const operationsRouter = createTRPCRouter({
               );
             }
             if (
-              !cashAccountOnlyTypes.includes(insertedTx.type) ||
+              !cashAccountOnlyTypes.has(insertedTx.type) ||
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
@@ -140,7 +140,7 @@ export const operationsRouter = createTRPCRouter({
                 amount: txToInsert.amount,
                 method: txToInsert.method,
                 status:
-                  cashAccountOnlyTypes.includes(txToInsert.type) ||
+                  cashAccountOnlyTypes.has(txToInsert.type) ||
                     txToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
@@ -159,7 +159,7 @@ export const operationsRouter = createTRPCRouter({
             });
 
             if (
-              cashAccountOnlyTypes.includes(insertedTx.type) ||
+              cashAccountOnlyTypes.has(insertedTx.type) ||
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
@@ -171,7 +171,7 @@ export const operationsRouter = createTRPCRouter({
               );
             }
             if (
-              !cashAccountOnlyTypes.includes(insertedTx.type) ||
+              !cashAccountOnlyTypes.has(insertedTx.type) ||
               insertedTx.type === "pago por cta cte"
             ) {
               await generateMovements(
@@ -423,13 +423,13 @@ export const operationsRouter = createTRPCRouter({
               p.name === "OPERATIONS_VISUALIZE_SOME" &&
               op.transactions.find(
                 (tx) =>
-                  p.entitiesIds?.includes(tx.fromEntityId) ||
-                  allAllowedTags.includes(tx.fromEntity.tagName),
+                  p.entitiesIds?.has(tx.fromEntityId) ||
+                  allAllowedTags.has(tx.fromEntity.tagName),
               ) &&
               op.transactions.find(
                 (tx) =>
-                  p.entitiesIds?.includes(tx.toEntityId) ||
-                  allAllowedTags.includes(tx.toEntity.tagName),
+                  p.entitiesIds?.has(tx.toEntityId) ||
+                  allAllowedTags.has(tx.toEntity.tagName),
               )
             ) {
               return true;
@@ -448,13 +448,13 @@ export const operationsRouter = createTRPCRouter({
               p.name === "OPERATIONS_CREATE_SOME" &&
               op.transactions.find(
                 (tx) =>
-                  p.entitiesIds?.includes(tx.fromEntityId) ||
-                  allAllowedTags.includes(tx.fromEntity.tagName),
+                  p.entitiesIds?.has(tx.fromEntityId) ||
+                  allAllowedTags.has(tx.fromEntity.tagName),
               ) &&
               op.transactions.find(
                 (tx) =>
-                  p.entitiesIds?.includes(tx.toEntityId) ||
-                  allAllowedTags.includes(tx.toEntity.tagName),
+                  p.entitiesIds?.has(tx.toEntityId) ||
+                  allAllowedTags.has(tx.toEntity.tagName),
               )
             ) {
               return true;
@@ -470,7 +470,7 @@ export const operationsRouter = createTRPCRouter({
           transactions: op.transactions.map((tx) => {
             const isCancelAllowed =
               tx.status !== "cancelled" &&
-              (cashAccountOnlyTypes.includes(tx.type) ||
+              (cashAccountOnlyTypes.has(tx.type) ||
                 tx.type === "pago por cta cte" ||
                 Boolean(
                   userPermissions?.find(
@@ -486,10 +486,10 @@ export const operationsRouter = createTRPCRouter({
                     );
                     return (
                       p.name === "TRANSACTIONS_CANCEL_SOME" &&
-                      (p.entitiesIds?.includes(tx.fromEntityId) ||
-                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                      (p.entitiesIds?.includes(tx.toEntityId) ||
-                        allAllowedTags.includes(tx.toEntity.tagName))
+                      (p.entitiesIds?.has(tx.fromEntityId) ||
+                        allAllowedTags.has(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.has(tx.toEntityId) ||
+                        allAllowedTags.has(tx.toEntity.tagName))
                     );
                   }),
                 ));
@@ -511,10 +511,10 @@ export const operationsRouter = createTRPCRouter({
                   );
                   if (
                     p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
+                    (p.entitiesIds?.has(tx.fromEntityId) ||
+                      allAllowedTags.has(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.has(tx.toEntityId) ||
+                      allAllowedTags.has(tx.toEntity.tagName))
                   ) {
                     return true;
                   }
@@ -522,19 +522,19 @@ export const operationsRouter = createTRPCRouter({
                   ? true
                   : false;
 
-            const isValidateAllowed = !currentAccountOnlyTypes.includes(tx.type) && tx.status !== "cancelled" &&
+            const isValidateAllowed = !currentAccountOnlyTypes.has(tx.type) && tx.status !== "cancelled" &&
               (tx.status === "pending" &&
                 (userPermissions?.some(
                   (p) =>
                     p.name === "ADMIN" ||
                     p.name === "TRANSACTIONS_VALIDATE" ||
                     (p.name === "TRANSACTIONS_VALIDATE_SOME" &&
-                      (p.entitiesIds?.includes(tx.fromEntityId) ||
-                        getAllChildrenTags(p.entitiesTags, tags).includes(
+                      (p.entitiesIds?.has(tx.fromEntityId) ||
+                        getAllChildrenTags(p.entitiesTags, tags).has(
                           tx.fromEntity.tagName,
                         )) &&
-                      (p.entitiesIds?.includes(tx.toEntityId) ||
-                        getAllChildrenTags(p.entitiesTags, tags).includes(
+                      (p.entitiesIds?.has(tx.toEntityId) ||
+                        getAllChildrenTags(p.entitiesTags, tags).has(
                           tx.toEntity.tagName,
                         ))),
                 ) ??

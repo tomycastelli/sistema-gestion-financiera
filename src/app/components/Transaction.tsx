@@ -1,5 +1,5 @@
 import moment from "moment";
-import type { User } from "next-auth";
+import type { User } from "lucia";
 import { memo, type FC } from "react";
 import { z } from "zod";
 import { capitalizeFirstLetter } from "~/lib/functions";
@@ -24,7 +24,7 @@ import {
 } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
-import { toast } from "./ui/use-toast";
+import { toast } from "sonner";
 
 interface TransactionProps {
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -60,10 +60,6 @@ const Transaction: FC<TransactionProps> = ({
   const { mutateAsync: cancelTransaction } =
     api.editingOperations.cancelTransaction.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: `Transacción ${newOperation.transactionId} anulada`,
-          variant: "success",
-        });
         // Doing the Optimistic update
         if (isInFeed) {
           await utils.operations.getOperations.cancel();
@@ -127,26 +123,22 @@ const Transaction: FC<TransactionProps> = ({
           ctx?.prevData,
         );
 
-        // Doing some ui actions
-        toast({
-          title: `No se pudo anular la transacción ${newOperation.transactionId}`,
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error(`No se pudo anular la transacción ${newOperation.transactionId}`, {
+          description: err.message
+        })
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate();
       },
+      onSuccess(data, variables) {
+        toast.success(`Transacción ${variables.transactionId} anulada`)
+      }
     });
 
   const { mutateAsync: deleteTransaction } =
     api.operations.deleteTransaction.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: `Transacción ${newOperation.transactionId} eliminada`,
-          variant: "success",
-        });
         // Doing the Optimistic update
         await utils.operations.getOperations.cancel();
 
@@ -188,17 +180,18 @@ const Transaction: FC<TransactionProps> = ({
           ctx?.prevData,
         );
 
-        // Doing some ui actions
-        toast({
-          title: `No se pudo eliminar la transacción ${newOperation.transactionId}`,
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error(`No se pudo eliminar la transacción ${newOperation.transactionId}`, {
+          description: err.message
+        })
+
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate();
       },
+      onSuccess(data, variables) {
+        toast.success(`Transacción ${variables.transactionId} eliminada`)
+      }
     });
 
   return (

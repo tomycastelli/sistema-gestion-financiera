@@ -1,6 +1,6 @@
 "use client";
 
-import Lottie from "lottie-react";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import moment from "moment";
 import Link from "next/link";
 import { forwardRef } from "react";
@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
+import dynamic from "next/dynamic";
 
 interface UploadedUserOperationsProps {
   operations: RouterOutputs["operations"]["getOperationsByUser"] | undefined;

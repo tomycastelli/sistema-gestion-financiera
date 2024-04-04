@@ -1,6 +1,7 @@
 "use client";
 
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { type User } from "lucia";
 import moment from "moment";
 import Link from "next/link";
@@ -37,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
-import { toast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -146,7 +147,7 @@ const Balances: FC<BalancesProps> = ({
 
           dataEntry.balance += balance.balance * balanceMultiplier;
         } else if (selectedTag) {
-          const myPOVEntity = allChildrenTags.includes(
+          const myPOVEntity = allChildrenTags.has(
             balance.selectedEntity.tagName,
           )
             ? balance.selectedEntity
@@ -237,7 +238,7 @@ const Balances: FC<BalancesProps> = ({
   } else if (selectedTag && balances) {
     detailedBalances = balances.reduce(
       (acc, balance) => {
-        const myPOVEntity = allChildrenTags.includes(
+        const myPOVEntity = allChildrenTags.has(
           balance.selectedEntity.tagName,
         )
           ? balance.otherEntity
@@ -280,27 +281,21 @@ const Balances: FC<BalancesProps> = ({
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
       onSuccess(newOperation) {
-        if (newOperation) {
-          toast({
-            title: "Archivo generado exitosamente",
-            description: newOperation.filename,
-            variant: "success",
-          });
-          const link = document.createElement("a");
-          link.href = newOperation.downloadUrl;
-          link.download = newOperation.filename;
-          link.target = "_blank";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
+        toast.success(`Archivo generador exitosamente`, {
+          description: newOperation.filename
+        })
+        const link = document.createElement("a");
+        link.href = newOperation.downloadUrl;
+        link.download = newOperation.filename;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       },
-      onError(error) {
-        toast({
-          title: error.data ? error.data.code : "",
-          description: error.message,
-          variant: "destructive",
-        });
+      onError(err) {
+        toast.error("El archivo no pudo ser generado", {
+          description: err.message
+        })
       },
     });
 
@@ -336,10 +331,8 @@ const Balances: FC<BalancesProps> = ({
       title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
         ?.entity.name} fue añadida a la lista`;
     }
-    toast({
-      title,
-      variant: "success",
-    });
+
+    toast.info(title)
   };
 
   const addList = async () => {
@@ -742,8 +735,8 @@ const Balances: FC<BalancesProps> = ({
                   className={cn(
                     "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                     !selectedCurrency &&
-                      destinationEntityId === item.entity.id &&
-                      "bg-primary text-white shadow-md",
+                    destinationEntityId === item.entity.id &&
+                    "bg-primary text-white shadow-md",
                   )}
                 >
                   <p>{item.entity.name}</p>
@@ -772,8 +765,8 @@ const Balances: FC<BalancesProps> = ({
                         className={cn(
                           "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                           selectedCurrency === currency &&
-                            destinationEntityId === item.entity.id &&
-                            "bg-primary text-white shadow-md",
+                          destinationEntityId === item.entity.id &&
+                          "bg-primary text-white shadow-md",
                         )}
                       >
                         <p>

@@ -4,6 +4,9 @@ import LinkTree from "./LinkTree";
 import { ThemeToggler } from "./ThemeToggler";
 import UserInfo from "./UserInfo";
 import CommandMenu from "./ui/CommandMenu";
+import { Suspense } from "react";
+import LoadingAnimation from "./LoadingAnimation";
+import ChatsNav from "./ChatsNav";
 
 const Navbar = async () => {
   const user = await getUser();
@@ -28,6 +31,9 @@ const Navbar = async () => {
         </div>
         {user && (
           <div className="flex flex-row items-center space-x-4">
+            <Suspense fallback={<LoadingAnimation text="Cargando chats" size="sm" />}>
+              <ChatsNav />
+            </Suspense>
             <UserInfo user={user} />
             <CommandMenu />
             <ThemeToggler />

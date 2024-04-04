@@ -1,29 +1,30 @@
 # Install dependencies only when needed
 FROM --platform=linux/arm64 node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 py3-pip make g++ && ln -sf python3 /usr/bin/python
 
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm i
+RUN yarn global add pnpm && pnpm i
 
 # Rebuild the source code only when needed
-FROM --platform=linux/arm64 node:20-alpine AS builder
+FROM deps AS builder
 
 # These variables are passed on run time
-ENV DATABASE_URL=default
-ENV NEXTAUTH_SECRET=default
-ENV NEXTAUTH_URL=default
-ENV GOOGLE_CLIENT_ID=default
-ENV GOOGLE_CLIENT_SECRET=default
-ENV AZURE_AD_TENANT_ID=default
-ENV AZURE_AD_CLIENT_ID=default
-ENV AZURE_AD_CLIENT_SECRET=default
-ENV S3_PUBLIC_KEY=default
-ENV S3_SECRET_KEY=default
-ENV LAMBDA_API_ENDPOINT=default
-ENV LAMBDA_API_KEY=default
+ENV DATABASE_URL=http://default.com
+ENV NEXTAUTH_SECRET=default2
+ENV NEXTAUTH_URL=default3
+ENV GOOGLE_CLIENT_ID=default4
+ENV GOOGLE_CLIENT_SECRET=default5
+ENV AZURE_AD_TENANT_ID=default6
+ENV AZURE_AD_CLIENT_ID=default7
+ENV AZURE_AD_CLIENT_SECRET=default8
+ENV S3_PUBLIC_KEY=default9
+ENV S3_SECRET_KEY=default10
+ENV LAMBDA_API_ENDPOINT=default11
+ENV LAMBDA_API_KEY=default12
+ENV CHAT_URL=default14
 
 # These variables are passed on build time
 ARG REDIS_URL
@@ -32,20 +33,25 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN yarn global add pnpm && SKIN_ENV_VALIDATION=1 pnpm run build
+RUN SKIN_ENV_VALIDATION=1 pnpm run build
 
-FROM --platform=linux/arm64 node:20-alpine AS runner
+FROM node:20-alpine AS runner
 
 ENV NODE_ENV production
 
 WORKDIR /app
 
+# Don't run production as root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+USER nextjs
+
 COPY --from=builder /app/next.config.mjs ./
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 EXPOSE 3000
 

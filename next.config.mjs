@@ -2,6 +2,7 @@
 const nextConfig = {
   pageExtensions: ["ts", "tsx"],
   output: "standalone",
+  experimental: { instrumentationHook: true },
   images: {
     remotePatterns: [
       {

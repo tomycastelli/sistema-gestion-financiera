@@ -46,11 +46,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "../components/ui/use-toast";
 import { HexColorPicker } from "react-colorful";
 import "./color-picker.css"
 import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { cn } from "~/lib/utils";
+import { toast } from "sonner";
 
 interface AddTagsFormProps {
   initialTags: RouterOutputs["tags"]["getAll"];
@@ -92,11 +92,6 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
 
   const { mutateAsync: removeTag } = api.tags.removeOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: `Tag ${newOperation.name} eliminado`,
-        variant: "success",
-      });
-
       // Doing the Optimistic update
       await utils.tags.getAll.cancel();
 
@@ -112,25 +107,20 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
     onError(err, newOperation, ctx) {
       utils.tags.getAll.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo eliminar el tag",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`El tag ${newOperation.name} no se pudo eliminar`, {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.tags.getAll.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Tag ${data.name} eliminado`)
+    }
   });
 
   const { mutateAsync } = api.tags.addOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: `Tag ${newOperation.name} añadido`,
-        variant: "success",
-      });
-
       // Doing the Optimistic update
       await utils.tags.getFiltered.cancel();
 
@@ -149,25 +139,20 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
     onError(err, newOperation, ctx) {
       utils.tags.getFiltered.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo añadir el tag",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`El tag ${newOperation.name} no pudo ser eliminado`, {
+        description: JSON.stringify(err.message)
+      })
     },
     onSettled() {
       void utils.tags.getFiltered.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Tag ${data.name} añadido`)
+    }
   });
 
   const { mutateAsync: editAsync } = api.tags.editOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: `Tag ${newOperation.name} editado`,
-        variant: "success",
-      });
-
       // Doing the Optimistic update
       await utils.tags.getFiltered.cancel();
 
@@ -188,19 +173,19 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
     onError(err, newOperation, ctx) {
       utils.tags.getFiltered.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo editar el tag",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`El tag ${newOperation.name} no pudo ser editado`, {
+        description: err.message
+      })
+
     },
     onSettled() {
       void utils.tags.getFiltered.invalidate();
+      void utils.entities.getAll.invalidate()
     },
+    onSuccess(data) {
+      toast.success(`Tag ${data.name} editado`)
+    }
   });
-
-
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     if (actionStatus === ActionStatus.ADD) {

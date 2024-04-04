@@ -1,5 +1,5 @@
 {
-  "id": "65ce4b38-4ab4-4376-8872-3a95f321f880",
+  "id": "66d5b12c-142c-480a-822f-21ed5a29f100",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -93,6 +93,92 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Chat": {
+      "name": "Chat",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "chatToUsers": {
+      "name": "chatToUsers",
+      "schema": "",
+      "columns": {
+        "chatId": {
+          "name": "chatId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastConnection": {
+          "name": "lastConnection",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chatToUsers_chatId_Chat_id_fk": {
+          "name": "chatToUsers_chatId_Chat_id_fk",
+          "tableFrom": "chatToUsers",
+          "tableTo": "Chat",
+          "columnsFrom": [
+            "chatId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "chatToUsers_userId_User_id_fk": {
+          "name": "chatToUsers_userId_User_id_fk",
+          "tableFrom": "chatToUsers",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "chatToUsers_userId_chatId_pk": {
+          "name": "chatToUsers_userId_chatId_pk",
+          "columns": [
+            "userId",
+            "chatId"
+          ]
+        }
+      },
       "uniqueConstraints": {}
     },
     "Entities": {
@@ -196,6 +282,82 @@
           "tableTo": "Entities",
           "columnsFrom": [
             "sharedEntityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "Messages": {
+      "name": "Messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "chatId": {
+          "name": "chatId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "chat_timestamp_idx": {
+          "name": "chat_timestamp_idx",
+          "columns": [
+            "chatId",
+            "timestamp"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "Messages_chatId_Chat_id_fk": {
+          "name": "Messages_chatId_Chat_id_fk",
+          "tableFrom": "Messages",
+          "tableTo": "Chat",
+          "columnsFrom": [
+            "chatId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "Messages_userId_User_id_fk": {
+          "name": "Messages_userId_User_id_fk",
+          "tableFrom": "Messages",
+          "tableTo": "User",
+          "columnsFrom": [
+            "userId"
           ],
           "columnsTo": [
             "id"

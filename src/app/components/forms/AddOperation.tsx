@@ -32,8 +32,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { useToast } from "../ui/use-toast";
 import InitialDataOperationForm from "./InitialDataOperationForm";
+import { toast } from "sonner";
 const CambioForm = dynamic(() => import("./CambioForm"));
 const CableForm = dynamic(() => import("./CableForm"));
 const FlexibleTransactionsForm = dynamic(
@@ -55,7 +55,6 @@ const AddOperation = ({
   user,
   initialOperations,
 }: AddOperationProps) => {
-  const { toast } = useToast();
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState("flexible");
   const searchParams = useSearchParams();
@@ -86,25 +85,6 @@ const AddOperation = ({
   const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
     {
       async onMutate(newOperation) {
-        const transaccionesCargadas = newOperation.transactions.length;
-        if (newOperation.opId) {
-          toast({
-            title: `${transaccionesCargadas > 1
-                ? transaccionesCargadas.toString() +
-                ` transacciones cargadas a la operación ${newOperation.opId}`
-                : transaccionesCargadas +
-                ` transaccion cargada a la operación ${newOperation.opId}`
-              }`,
-          });
-        } else {
-          toast({
-            title: `Operacion y ${transaccionesCargadas > 1
-                ? transaccionesCargadas.toString() + " transacciones cargadas"
-                : transaccionesCargadas + " transaccion cargada"
-              }`,
-          });
-        }
-
         // Doing the Optimistic update
         await utils.operations.getOperationsByUser.cancel();
 
@@ -131,13 +111,9 @@ const AddOperation = ({
       onError(err, newOperation, ctx) {
         utils.operations.getOperationsByUser.setData(undefined, ctx?.prevData);
 
-        // Doing some ui actions
-        toast({
-          title:
-            "No se pudo cargar la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error("No se pudo cargar la operación y las transacciones relacionadas", {
+          description: err.message
+        })
       },
       onSettled() {
         void utils.operations.getOperationsByUser.invalidate();
@@ -145,6 +121,22 @@ const AddOperation = ({
         resetTransactionsStore();
         resetInitialOperationStore();
       },
+      onSuccess(data, variables) {
+        const transaccionesCargadas = variables.transactions.length;
+        if (variables.opId) {
+          toast.success(transaccionesCargadas > 1
+            ? transaccionesCargadas.toString() +
+            ` transacciones cargadas a la operación ${variables.opId}`
+            : transaccionesCargadas +
+            ` transaccion cargada a la operación ${variables.opId}`);
+        } else {
+          toast.success(`Operacion y ${transaccionesCargadas > 1
+            ? transaccionesCargadas.toString() + " transacciones cargadas"
+            : transaccionesCargadas + " transaccion cargada"
+            }`);
+        }
+
+      }
     },
   );
 

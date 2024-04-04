@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@radix-ui/react-dropdown-menu";
 import { CalendarIcon } from "lucide-react";
 import moment from "moment";
-import type { User } from "next-auth";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "~/lib/utils";
@@ -34,6 +33,7 @@ import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
+import { type User } from "lucia";
 
 const FormSchema = z.object({
   transactions: z.array(
@@ -313,12 +313,12 @@ const FlexibleTransactionsForm = ({
                     />
                     {watchTransactions[index]?.type && (
                       <p className="text-sm text-muted-foreground">
-                        {currentAccountOnlyTypes.includes(
+                        {currentAccountOnlyTypes.has(
                           // @ts-ignore
                           watchTransactions[index].type,
                         )
                           ? "La transacción no podrá ser confirmada"
-                          : cashAccountOnlyTypes.includes(
+                          : cashAccountOnlyTypes.has(
                             // @ts-ignore
                             watchTransactions[index].type,
                           )

@@ -114,8 +114,8 @@ export const operationTypes = [
   },
 ];
 
-export const currentAccountOnlyTypes = ["fee", "cuenta corriente", "cable"];
-export const cashAccountOnlyTypes = ["ingreso", "gasto"];
+export const currentAccountOnlyTypes = new Set(["fee", "cuenta corriente", "cable"]);
+export const cashAccountOnlyTypes = new Set(["ingreso", "gasto"]);
 
 export const translations: Record<string, string> = {
   user: "usuario",

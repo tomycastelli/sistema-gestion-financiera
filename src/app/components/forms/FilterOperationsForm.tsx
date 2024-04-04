@@ -415,7 +415,7 @@ const FilterOperationsForm = ({
           />
         </div>
         <div className="flex flex-row justify-start">
-          <Link href={"http://localhost:3000/operaciones/gestion"}>
+          <Link href={"/operaciones/gestion"}>
             <Button variant="outline" onClick={() => reset()}>
               Resetear filtros <Icons.undo className="ml-2 h-5" />
             </Button>

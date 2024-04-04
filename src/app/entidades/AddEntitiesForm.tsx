@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 const FormSchema = z.object({
   name: z.string(),
@@ -54,10 +54,6 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
 
   const { mutateAsync } = api.entities.addOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: `Entidad ${newOperation.name} añadida`,
-        variant: "success",
-      });
 
       // Doing the Optimistic update
       await utils.entities.getAll.cancel();
@@ -81,17 +77,16 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
     onError(err, newOperation, ctx) {
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title:
-          "No se pudo crear la entidad",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`No se pudo crear la entidad ${newOperation.name}`, {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Entidad ${data.name} añadida`)
+    }
   });
 
   const { data: tags } = api.tags.getAll.useQuery(undefined, {
@@ -109,7 +104,7 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
       userPermissions?.find(
         (p) =>
           p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
+          getAllChildrenTags(p.entitiesTags, tags).has(tag.name),
       )
     ) {
       return true;

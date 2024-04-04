@@ -1,6 +1,6 @@
 import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
-import { MicrosoftEntraId } from "arctic";
-import { Lucia } from "lucia";
+import { Google, MicrosoftEntraId } from "arctic";
+import { Lucia, TimeSpan } from "lucia";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -17,16 +17,20 @@ const baseUrl =
     ? env.VERCEL_URL ? `https://sistema-maika.vercel.app` : "https://sistema.maika.com.ar"
     : "http://localhost:3000";
 
-const redirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
+const msftRedirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
+const googleRedirectUrl = `${baseUrl}/api/auth/callback/google`
 
 export const microsoft = new MicrosoftEntraId(
   env.AZURE_AD_TENANT_ID,
   env.AZURE_AD_CLIENT_ID,
   env.AZURE_AD_CLIENT_SECRET,
-  redirectUrl,
+  msftRedirectUrl,
 );
 
+export const google = new Google(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, googleRedirectUrl)
+
 export const lucia = new Lucia(adapter, {
+  sessionExpiresIn: new TimeSpan(2, "w"),
   sessionCookie: {
     attributes: {
       secure: env.NODE_ENV === "production",
@@ -103,5 +107,8 @@ export const logOut = async () => {
     sessionCookie.value,
     sessionCookie.attributes,
   );
+
+  await lucia.deleteExpiredSessions()
+
   return redirect("/");
 };

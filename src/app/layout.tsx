@@ -9,7 +9,7 @@ import { cn } from "~/lib/utils";
 import { TRPCReactProvider } from "~/trpc/react";
 import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./components/theme-provider";
-import { Toaster } from "./components/ui/toaster";
+import { Toaster } from "./components/ui/sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,12 +39,12 @@ export default function RootLayout({
           <div
             className={cn(
               `font-sans ${inter.variable}`,
-              "bg-background px-4 lg:px-8",
+              "bg-background px-4 lg:px-8 min-h-screen",
             )}
           >
             <TRPCReactProvider headers={headers()}>
               <Navbar />
-              <main className="min-h-screen py-8">
+              <main className="h-full">
                 {children}
                 <Analytics />
                 <Toaster />

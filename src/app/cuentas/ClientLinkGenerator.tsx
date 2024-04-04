@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { useToast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 interface ClientLinkGeneratorProps {
   selectedEntityString: string;
@@ -28,12 +28,12 @@ interface ClientLinkGeneratorProps {
 const ClientLinkGenerator = ({
   selectedEntityString,
 }: ClientLinkGeneratorProps) => {
-  const { toast } = useToast();
   const [expiryTime, setExpiryTime] = useState<string>("");
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const utils = api.useContext();
   const { mutateAsync } = api.shareableLinks.createLink.useMutation({
-    async onSuccess() {
+    async onSuccess(newOperation) {
+      toast.success(`Link ${newOperation?.id} creado`)
       await utils.shareableLinks.getLinksByEntityId.refetch();
     },
   });
@@ -41,10 +41,7 @@ const ClientLinkGenerator = ({
   const { mutateAsync: deleteAsync } =
     api.shareableLinks.removeLink.useMutation({
       async onSuccess(newOperation) {
-        toast({
-          title: `Link ${newOperation?.id} borrado`,
-          variant: "destructive",
-        });
+        toast.success(`Link ${newOperation?.id} borrado`)
         await utils.shareableLinks.getLinksByEntityId.refetch();
       },
     });
@@ -80,12 +77,6 @@ const ClientLinkGenerator = ({
         linkId: data.id,
         linkToken: data.password,
       });
-      toast({
-        title: "Link generado exitosamente",
-        description: `Id: ${data.id}, Token: ${data.password}`,
-        variant: "success",
-      });
-
       await navigator.clipboard.writeText(link);
     }
   };

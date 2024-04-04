@@ -47,8 +47,8 @@ export const entitiesRouter = createTRPCRouter({
           userPermissions?.find(
             (p) =>
               p.name === `${input.permissionName}_SOME` &&
-              (p.entitiesIds?.includes(entity.id) ||
-                getAllChildrenTags(p.entitiesTags, tags).includes(
+              (p.entitiesIds?.has(entity.id) ||
+                getAllChildrenTags(p.entitiesTags, tags).has(
                   entity.tag.name,
                 )),
           )
@@ -72,7 +72,7 @@ export const entitiesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
       const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.tag)))
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).has(input.tag)))
 
       if (!hasPermissions) {
         throw new TRPCError({
@@ -106,7 +106,7 @@ export const entitiesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
       const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag) || p.entitiesIds?.includes(input.entityId))))
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).has(input.tag) || p.entitiesIds?.has(input.entityId))))
 
       if (!hasPermissions) {
         throw new TRPCError({
@@ -168,7 +168,7 @@ export const entitiesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
       const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag ?? "") || p.entitiesIds?.includes(input.id))))
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).has(input.tag ?? "") || p.entitiesIds?.has(input.id))))
 
       if (!hasPermissions) {
         throw new TRPCError({

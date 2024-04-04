@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { User } from "next-auth";
+import type { User } from "lucia";
 import { useCallback, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import z from "zod";

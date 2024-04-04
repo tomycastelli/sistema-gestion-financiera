@@ -28,6 +28,8 @@ export const env = createEnv({
     LAMBDA_API_KEY: z.string(),
 
     VERCEL_URL: z.string().optional(),
+
+    CHAT_URL: z.string(),
   },
 
   /**
@@ -57,6 +59,7 @@ export const env = createEnv({
     S3_SECRET_KEY: process.env.S3_SECRET_KEY,
     LAMBDA_API_ENDPOINT: process.env.LAMBDA_API_ENDPOINT,
     LAMBDA_API_KEY: process.env.LAMBDA_API_KEY,
+    CHAT_URL: process.env.CHAT_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

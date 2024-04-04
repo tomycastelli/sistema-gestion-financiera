@@ -304,13 +304,13 @@ export const editingOperationsRouter = createTRPCRouter({
         }));
         for (const tx of txsForMovements) {
           if (
-            cashAccountOnlyTypes.includes(tx.type) ||
+            cashAccountOnlyTypes.has(tx.type) ||
             tx.type === "pago por cta cte"
           ) {
             await generateMovements(transaction, tx, true, 1, "cancellation");
           }
           if (
-            !cashAccountOnlyTypes.includes(tx.type) ||
+            !cashAccountOnlyTypes.has(tx.type) ||
             tx.type === "pago por cta cte"
           ) {
             await generateMovements(transaction, tx, false, -1, "cancellation");

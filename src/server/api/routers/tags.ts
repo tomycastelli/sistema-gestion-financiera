@@ -15,7 +15,7 @@ export const tagsRouter = createTRPCRouter({
     .input(z.object({ name: z.string(), parent: z.string().optional(), color: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && input.parent && p.entitiesTags?.includes(input.parent)))
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && input.parent && p.entitiesTags?.has(input.parent)))
       if (!hasPermissions) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -49,7 +49,7 @@ export const tagsRouter = createTRPCRouter({
 
     const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
     const tags = await getAllTags(ctx.redis, ctx.db)
-    const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.name)))
+    const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).has(input.name)))
 
     if (!hasPermissions) {
       throw new TRPCError({
@@ -77,7 +77,7 @@ export const tagsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
       const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.name)))
+      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).has(input.name)))
 
       if (!hasPermissions) {
         throw new TRPCError({
@@ -125,7 +125,7 @@ export const tagsRouter = createTRPCRouter({
         userPermissions?.find(
           (p) =>
             p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-            getAllChildrenTags(p.entitiesTags, tags).includes(tag.name),
+            getAllChildrenTags(p.entitiesTags, tags).has(tag.name),
         )
       ) {
         return true;

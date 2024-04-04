@@ -34,8 +34,8 @@ export const PermissionsNames = [
 export const PermissionSchema = z.array(
   z.object({
     name: z.enum(PermissionsNames),
-    entitiesIds: z.array(z.number().int()).optional(),
-    entitiesTags: z.array(z.string()).optional(),
+    entitiesIds: z.set(z.number().int()).optional(),
+    entitiesTags: z.set(z.string()).optional(),
   }),
 );
 
@@ -58,18 +58,16 @@ export const mergePermissions = (
         permission.name.endsWith("_SOME") &&
         existingPermission.name.endsWith("_SOME")
       ) {
-        existingPermission.entitiesIds = Array.from(
+        existingPermission.entitiesIds =
           new Set([
             ...(existingPermission.entitiesIds ?? []),
             ...(permission.entitiesIds ?? []),
-          ]),
-        );
-        existingPermission.entitiesTags = Array.from(
+          ])
+        existingPermission.entitiesTags =
           new Set([
             ...(existingPermission.entitiesTags ?? []),
             ...(permission.entitiesTags ?? []),
-          ]),
-        );
+          ])
       }
     } else {
       // If the permission doesn't exist in the merged array, add it

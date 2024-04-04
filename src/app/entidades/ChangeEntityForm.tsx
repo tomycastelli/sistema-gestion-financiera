@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 interface ChangeEntityFormProps {
   entity: RouterOutputs["entities"]["getAll"][number];
@@ -49,17 +49,6 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
 
   const { mutateAsync } = api.entities.updateOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: "La entidad ha sido modificada:",
-        description: (
-          <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-            <code className="text-white">
-              {JSON.stringify(newOperation, null, 2)}
-            </code>
-          </pre>
-        ),
-      });
-
       // Doing the Optimistic update
       await utils.entities.getAll.cancel();
 
@@ -84,15 +73,15 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
     onError(err, newOperation, ctx) {
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo cargar la entidad",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`No se pudo cargar la entidad ${newOperation.id}`, {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
+    },
+    onSuccess(data) {
+      toast.success(`Entidad ${data.id} modificada`)
     },
   });
 

@@ -1,4 +1,5 @@
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import Link from "next/link";
 import { Handle, Position, type NodeProps } from "reactflow";
 import loadingJson from "~/../public/animations/loading.json";

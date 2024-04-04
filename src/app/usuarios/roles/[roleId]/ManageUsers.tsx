@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { type FC } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
 import {
@@ -38,7 +39,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/app/components/ui/select";
-import { toast } from "~/app/components/ui/use-toast";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -72,11 +72,6 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
 
   const { mutateAsync: addUserToRole } = api.users.addUserToRole.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: "Usuario añadido",
-        variant: "success",
-      });
-
       await utils.roles.getById.cancel();
 
       const prevData = utils.roles.getById.getData();
@@ -103,25 +98,20 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
     onError(err, newOperation, ctx) {
       utils.roles.getById.setData({ id: role!.id }, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo añadir el usuario",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error(`No se pudo añadir al usuario ${newOperation.userId}`, {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.roles.getById.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Usuario ${data?.name} añadido`)
+    }
   });
   const { mutateAsync: removeUserFromRole } =
     api.users.removeUserFromRole.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: "Usuario eliminado",
-          variant: "success",
-        });
-
         await utils.roles.getById.cancel();
 
         const prevData = utils.roles.getById.getData();
@@ -145,16 +135,16 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
       onError(err, newOperation, ctx) {
         utils.roles.getById.setData({ id: role!.id }, ctx?.prevData);
 
-        // Doing some ui actions
-        toast({
-          title: "No se pudo eliminar el usuario",
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error(`No se pudo eliminar al usuario ${newOperation.id}`, {
+          description: err.message
+        })
       },
       onSettled() {
         void utils.roles.getById.invalidate();
       },
+      onSuccess(data) {
+        toast.success(`Usuario ${data?.name} eliminado`)
+      }
     });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {

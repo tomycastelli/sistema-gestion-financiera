@@ -54,7 +54,7 @@ const Page = async ({
       userPermissions?.find(
         (p) =>
           p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          getAllChildrenTags(p.entitiesTags, initialTags).includes(tag.name),
+          getAllChildrenTags(p.entitiesTags, initialTags).has(tag.name),
       )
     ) {
       return true;

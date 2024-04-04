@@ -34,8 +34,8 @@ import {
   HoverCardTrigger,
 } from "../ui/hover-card";
 import { Input } from "../ui/input";
-import { useToast } from "../ui/use-toast";
 import CustomSelector from "./CustomSelector";
+import { toast } from "sonner";
 
 interface UpdateTransactionProps {
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -57,7 +57,6 @@ const UpdateTransaction = ({
   entities,
   operationsQueryInput,
 }: UpdateTransactionProps) => {
-  const { toast } = useToast();
   const [differingKeysCount, setDifferingKeysCount] = useState(0);
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -117,15 +116,18 @@ const UpdateTransaction = ({
       const prevData =
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
-      toast({
-        title: "No se pudieron actualizar las transacciones",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error("No se pudieron actualizar las transacciones", {
+        description: err.message
+      })
       return { prevData };
     },
     onSettled() {
       void utils.operations.getOperations.invalidate();
+    },
+    onSuccess(data) {
+      toast.success(`Transacción ${data?.id} editada`, {
+        description: `${differingKeysCount} atributos modificados`
+      })
     },
   });
 
@@ -218,11 +220,6 @@ const UpdateTransaction = ({
       },
     });
 
-    toast({
-      title: `Transacción ${tx.id} editada`,
-      description: `${differingKeysCount} atributos modificados`,
-      variant: "success",
-    });
   };
 
   return (

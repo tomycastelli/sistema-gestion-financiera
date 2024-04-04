@@ -228,7 +228,7 @@ export function isTagAllowed(
 }
 
 export function getAllChildrenTags(
-  tagNames: string | string[] | undefined | null,
+  tagNames: Set<string> | string | undefined | null,
   allTags: {
     name: string;
     parent: string | null;
@@ -239,25 +239,42 @@ export function getAllChildrenTags(
       color: string | null;
     }[];
   }[],
-  result: string[] = [],
-): string[] {
+  result: Set<string> = new Set<string>(),
+): Set<string> {
   if (!tagNames) {
-    return [];
+    return new Set("")
   }
-  const tagNamesArray = Array.isArray(tagNames) ? tagNames : [tagNames];
-
-  for (const tagName of tagNamesArray) {
+  if (typeof tagNames === "string") {
     // Find the tag in the array
-    const currentTag = allTags.find((tag) => tag.name === tagName);
+    const currentTag = allTags.find((tag) => tag.name === tagNames);
+
 
     // If the tag is found, add it to the result and continue with children
     if (currentTag) {
-      result.push(currentTag.name);
+      result.add(currentTag.name);
 
       if (currentTag.children) {
         // Recursively find children of the current tag
         for (const child of currentTag.children) {
           getAllChildrenTags(child.name, allTags, result);
+        }
+      }
+    }
+  } else {
+    for (const tagName of tagNames) {
+      // Find the tag in the array
+      const currentTag = allTags.find((tag) => tag.name === tagName);
+
+
+      // If the tag is found, add it to the result and continue with children
+      if (currentTag) {
+        result.add(currentTag.name);
+
+        if (currentTag.children) {
+          // Recursively find children of the current tag
+          for (const child of currentTag.children) {
+            getAllChildrenTags(child.name, allTags, result);
+          }
         }
       }
     }
@@ -443,17 +460,17 @@ export const generateTableData = (
       } else {
         const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
         // Esto indica, si es 1, que gano, si es -1, que pierdo
-        const direction = allChildrenTags.includes(
+        const direction = allChildrenTags.has(
           movement.transaction.fromEntity.tagName,
         )
           ? -movement.direction
           : movement.direction;
-        const selectedEntity = allChildrenTags.includes(
+        const selectedEntity = allChildrenTags.has(
           movement.transaction.fromEntity.tagName,
         )
           ? movement.transaction.fromEntity
           : movement.transaction.toEntity;
-        const otherEntity = allChildrenTags.includes(
+        const otherEntity = allChildrenTags.has(
           movement.transaction.fromEntity.tagName,
         )
           ? movement.transaction.toEntity
@@ -490,3 +507,7 @@ export const generateTableData = (
 
   return tableData;
 };
+
+export function timeout(delay: number) {
+  return new Promise(res => setTimeout(res, delay));
+}

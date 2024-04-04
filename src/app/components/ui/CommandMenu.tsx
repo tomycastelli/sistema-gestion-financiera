@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -182,10 +181,6 @@ const CommandMenu = () => {
               <Icons.person className="mr-2 h-4 w-4" />
               <span>Mi usuario</span>
               <CommandShortcut>⌘U</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => signOut()} value="Logout">
-              <Icons.person className="mr-2 h-4 w-4" />
-              <span>Logout</span>
             </CommandItem>
             {userPermissions?.find(
               (p) =>

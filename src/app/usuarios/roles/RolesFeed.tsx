@@ -1,8 +1,10 @@
 "use client";
 
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import Link from "next/link";
 import { type FC } from "react";
+import { toast } from "sonner";
 import loadingJson from "~/../public/animations/loading.json";
 import { Icons } from "~/app/components/ui/Icons";
 import {
@@ -23,7 +25,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/app/components/ui/card";
-import { toast } from "~/app/components/ui/use-toast";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -42,11 +43,6 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
 
   const { mutateAsync: deleteRole } = api.roles.deleteOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: "Rol eliminado",
-        variant: "success",
-      });
-
       await utils.roles.getAll.cancel();
 
       const prevData = utils.roles.getAll.getData();
@@ -61,16 +57,16 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
     onError(err, newOperation, ctx) {
       utils.roles.getAll.setData(undefined, ctx?.prevData);
 
-      // Doing some ui actions
-      toast({
-        title: "No se pudo eliminar el rol",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error("No se pudo eliminar el rol", {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.roles.getAll.invalidate();
     },
+    onSuccess(data) {
+      toast.success(`Rol ${data?.name} eliminado`)
+    }
   });
 
   return (

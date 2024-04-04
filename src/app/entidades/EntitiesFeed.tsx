@@ -1,6 +1,6 @@
 "use client";
 
-import Lottie from "lottie-react";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
 import {
@@ -34,6 +34,7 @@ import { Switch } from "../components/ui/switch";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
 import EntityOptions from "./EntityOptions";
+import dynamic from "next/dynamic";
 
 interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
@@ -70,8 +71,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       userPermissions?.find(
         (p) =>
           p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          (p.entitiesIds?.includes(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, initialTags).includes(
+          (p.entitiesIds?.has(entity.id) ||
+            getAllChildrenTags(p.entitiesTags, initialTags).has(
               entity.tag.name,
             )),
       )
@@ -95,7 +96,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     }
     return tagFilterMode === "strict"
       ? entity.tag.name === tagFilter
-      : getAllChildrenTags(tagFilter, initialTags).includes(entity.tag.name);
+      : getAllChildrenTags(tagFilter, initialTags).has(entity.tag.name);
   });
 
   return (

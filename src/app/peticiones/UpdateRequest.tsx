@@ -27,7 +27,7 @@ import {
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import { toast } from "../components/ui/use-toast";
+import { toast } from "sonner";
 
 const FormSchema = z.object({
   title: z.string(),
@@ -54,10 +54,6 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
 
   const { mutateAsync: updateAsync } = api.requests.updateOne.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: `Petición ${newOperation.id} guardada`,
-        variant: "success",
-      });
 
       setIsOpen(false);
 
@@ -93,13 +89,14 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
     },
     onError(err) {
       const prevData = utils.requests.getAll.getData(undefined);
-      // Doing some ui actions
-      toast({
-        title: "No se pudo actualizar la petición",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+
+      toast.error("No se pudo actualizar la petición", {
+        description: JSON.stringify(err.message)
+      })
       return { prevData };
+    },
+    onSuccess(data, variables) {
+      toast.success(`Petición ${variables.id} guardada`)
     },
     onSettled() {
       void utils.requests.getAll.invalidate();

@@ -11,6 +11,7 @@ import { shareableLinksRouter } from "./routers/shareableLinks";
 import { tagsRouter } from "./routers/tags";
 import { userPreferencesRouter } from "./routers/userPreferences";
 import { usersRouter } from "./routers/users";
+import { messagesRouter } from "./routers/messages";
 
 /**
  * This is the primary router for your server.
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   requests: requestsRouter,
   files: filesRouter,
   userPreferences: userPreferencesRouter,
+  messages: messagesRouter
 });
 
 // export type definition of API

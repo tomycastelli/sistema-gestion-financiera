@@ -83,7 +83,7 @@ export const movementsRouter = createTRPCRouter({
 
       const tags = await getAllTags(ctx.redis, ctx.db);
       const tagAndChildren = input.entityTag
-        ? getAllChildrenTags(input.entityTag, tags)
+        ? Array.from(getAllChildrenTags(input.entityTag, tags))
         : ["a"];
 
       // Hay que hacer join con transactions para que funcionen estas conditions
@@ -364,13 +364,13 @@ export const movementsRouter = createTRPCRouter({
               p.name === "ACCOUNTS_VISUALIZE" ||
               (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
                 (input.entityId
-                  ? p.entitiesIds?.includes(input.entityId) ||
+                  ? p.entitiesIds?.has(input.entityId) ||
                   (entityTag &&
-                    getAllChildrenTags(p.entitiesTags, tags).includes(
+                    getAllChildrenTags(p.entitiesTags, tags).has(
                       entityTag,
                     ))
                   : input.entityTag
-                    ? getAllChildrenTags(p.entitiesTags, tags).includes(
+                    ? getAllChildrenTags(p.entitiesTags, tags).has(
                       input.entityTag,
                     )
                     : false)),
@@ -415,7 +415,9 @@ export const movementsRouter = createTRPCRouter({
 
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
-        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
+        console.log("Entity tag:", input.entityTag)
+        console.log("All tags:", allTags)
+        const allChildrenTags = Array.from(getAllChildrenTags(input.entityTag, allTags))
 
         const balancesDat = await ctx.db
           .selectDistinctOn([
@@ -578,7 +580,7 @@ export const movementsRouter = createTRPCRouter({
 
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
-        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
+        const allChildrenTags = Array.from(getAllChildrenTags(input.entityTag, allTags));
 
         const balancesData = await ctx.db
           .selectDistinctOn([

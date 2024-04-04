@@ -1,6 +1,7 @@
 "use client";
 
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import Link from "next/link";
 import React, { useState } from "react";
 import loadingJson from "~/../public/animations/loading.json";
@@ -24,13 +25,13 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
   const { data: balances, isLoading } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityId: entity?.id },
-      { enabled: enableQueryId },
+      { enabled: enableQueryId, refetchOnWindowFocus: false, staleTime: 5000 },
     );
 
   const { data: balancesTag, isLoading: isLoadingTag } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       { entityTag: entity.tag.name },
-      { enabled: enableQueryTag },
+      { enabled: enableQueryTag, refetchOnWindowFocus: false, staleTime: 5000 },
     );
 
   return (
@@ -41,7 +42,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
           style={{ borderColor: entity.tag.color ?? undefined }}
         >
           <CardHeader>
-            <HoverCard onOpenChange={(open) => setEnableQueryId(open)}>
+            <HoverCard onOpenChange={setEnableQueryId}>
               <HoverCardTrigger asChild>
                 <CardTitle>
                   <Link
@@ -75,7 +76,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
                 )}
               </HoverCardContent>
             </HoverCard>
-            <HoverCard onOpenChange={(open) => setEnableQueryTag(open)}>
+            <HoverCard onOpenChange={setEnableQueryTag}>
               <HoverCardTrigger asChild>
                 <CardDescription className="text-md">
                   <Link

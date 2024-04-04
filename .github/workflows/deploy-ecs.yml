@@ -2,7 +2,7 @@ name: Pushes NextJS image to ECR and deploys to ECS
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*.*.*-ecs"
 jobs:
   Build:
     name: Build
@@ -68,6 +68,7 @@ jobs:
             S3_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}
             LAMBDA_API_ENDPOINT=${{ secrets.LAMBDA_API_ENDPOINT }}
             LAMBDA_API_KEY=${{ secrets.LAMBDA_API_KEY }}
+            CHAT_URL=${{ secrets.CHAT_URL }}
 
       - name: Deploy to Amazon ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1

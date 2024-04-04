@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   date,
   doublePrecision,
@@ -95,6 +96,45 @@ export const operations = pgTable(
     };
   },
 );
+
+export const chat = pgTable(
+  "Chat",
+  {
+    id: serial("id").primaryKey().notNull(),
+    name: text("name")
+  },
+)
+
+export const chatToUsers = pgTable(
+  "chatToUsers", {
+  chatId: integer("chatId").notNull().references(() => chat.id),
+  userId: text("userId").notNull().references(() => user.id),
+  lastConnection: bigint("lastConnection", { mode: "number" }).notNull().default(0)
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.userId, table.chatId] })
+  }
+}
+)
+
+export const messages = pgTable(
+  "Messages",
+  {
+    id: serial("id").primaryKey().notNull(),
+    chatId: integer("chatId").notNull().references(() => chat.id),
+    userId: text("userId").notNull().references(() => user.id, {
+      onUpdate: "cascade",
+      onDelete: "cascade"
+    }),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+    message: text("message").notNull()
+  },
+  (table) => {
+    return {
+      chatTimestampIdx: index("chat_timestamp_idx").on(table.chatId, table.timestamp)
+    }
+  }
+)
 
 export const transactions = pgTable(
   "Transactions",
@@ -219,7 +259,7 @@ export const entities = pgTable(
 export const oauth_account = pgTable(
   "oauth_account",
   {
-    providerId: text("provider", { enum: ["microsoft"] }).notNull(),
+    providerId: text("provider", { enum: ["microsoft", "google"] }).notNull(),
     providerUserId: text("provider_id").notNull(),
     userId: text("user_id")
       .notNull()
@@ -355,7 +395,7 @@ export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   }),
 }));
 
-export const entitiesManyRelations = relations(entities, ({ many, one }) => ({
+export const entitiesRelations = relations(entities, ({ many, one }) => ({
   transactions: many(transactions),
   balances: many(balances),
   links: many(links),
@@ -365,11 +405,22 @@ export const entitiesManyRelations = relations(entities, ({ many, one }) => ({
   }),
 }));
 
+export const chatRelations = relations(chat, ({ many }) => ({
+  messages: many(messages)
+}))
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  chat: one(chat, {
+    fields: [messages.chatId],
+    references: [chat.id]
+  })
+}))
+
 export const operationManyRelations = relations(operations, ({ many }) => ({
   transactions: many(transactions),
 }));
 
-export const transactionsOneRelations = relations(
+export const transactionsRelations = relations(
   transactions,
   ({ one, many }) => ({
     fromEntity: one(entities, {
@@ -434,7 +485,7 @@ export const transactionsMetadataRelations = relations(
   }),
 );
 
-export const balancesOneRelations = relations(balances, ({ one, many }) => ({
+export const balancesRelations = relations(balances, ({ one, many }) => ({
   selectedEntity: one(entities, {
     fields: [balances.selectedEntityId],
     references: [entities.id],
@@ -457,7 +508,7 @@ export const rolesManyRelations = relations(role, ({ many }) => ({
   users: many(user),
 }));
 
-export const usersOneRelations = relations(user, ({ one, many }) => ({
+export const usersRelations = relations(user, ({ one, many }) => ({
   role: one(role, {
     fields: [user.roleId],
     references: [role.id],

@@ -1,7 +1,7 @@
 "use client";
 
 import moment from "moment";
-import type { User } from "next-auth";
+import type { User } from "lucia";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useState, type FC } from "react";
@@ -33,7 +33,8 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { toast } from "./ui/use-toast";
+import { toast } from "sonner";
+import ShareOperation from "../operaciones/gestion/ShareOperation";
 
 interface OperationProps {
   operation: RouterOutputs["operations"]["getOperations"]["operations"][number];
@@ -62,13 +63,6 @@ const Operation: FC<OperationProps> = ({
   const { mutateAsync: cancelAsync } =
     api.editingOperations.cancelTransaction.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: `Operación ${newOperation.operationId} y ${op.transactions.length
-            } ${op.transactions.length === 1 ? "transacción" : "transacciones"
-            } cancelada${op.transactions.length === 1 ? "" : "s"}`,
-          variant: "success",
-        });
-
         // Doing the Optimistic update
         await utils.operations.getOperations.cancel();
 
@@ -101,29 +95,24 @@ const Operation: FC<OperationProps> = ({
           ctx?.prevData,
         );
 
-        // Doing some ui actions
-        toast({
-          title:
-            "No se pudo anular la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error(`No se pudo elimianr la operación ${newOperation.operationId} y las transacciones relacionadas`, {
+          description: JSON.stringify(err.message)
+        })
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
       },
+      onSuccess(data, variables) {
+        toast.success(`Operación ${variables.operationId} y ${data.length
+          } ${data.length === 1 ? "transacción" : "transacciones"
+          } cancelada${data.length === 1 ? "" : "s"}`)
+      }
     });
 
   const { mutateAsync: validateAsync } =
     api.editingOperations.updateTransactionStatus.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: `${newOperation.transactionIds.length}`,
-          description: "Transacciones actualizadas",
-          variant: "success",
-        });
-
         // Doing the optimistic update
         await utils.operations.getOperations.cancel();
 
@@ -164,30 +153,24 @@ const Operation: FC<OperationProps> = ({
       onError(err) {
         const prevData =
           utils.operations.getOperations.getData(operationsQueryInput);
-        // Doing some ui actions
-        toast({
-          title: "No se pudieron actualizar las transacciones",
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+
+        toast.error("Las transacciones no pudieron ser actualizadas", {
+          description: err.message
+        })
         return { prevData };
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
       },
+      onSuccess(data) {
+        toast.success(`${data.length} transacciones actualizadas`)
+      },
     });
 
   const { mutateAsync: deleteAsync } =
     api.operations.deleteOperation.useMutation({
       async onMutate(newOperation) {
-        toast({
-          title: `Operación ${newOperation.operationId} y ${op.transactions.length
-            } ${op.transactions.length === 1 ? "transacción" : "transacciones"
-            } eliminada${op.transactions.length === 1 ? "" : "s"}`,
-          variant: "success",
-        });
-
         // Doing the Optimistic update
         await utils.operations.getOperations.cancel();
 
@@ -209,17 +192,17 @@ const Operation: FC<OperationProps> = ({
           ctx?.prevData,
         );
 
-        // Doing some ui actions
-        toast({
-          title:
-            "No se pudo eliminar la operación y las transacciones relacionadas",
-          description: `${JSON.stringify(err.message)}`,
-          variant: "destructive",
-        });
+        toast.error(`No se pudo eliminar la operación ${newOperation.operationId} y las transacciones relacionadas`, {
+          description: err.message
+        })
+
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
+      },
+      onSuccess(data, variables) {
+        toast.success(`Operación ${variables.operationId} eliminada`)
       },
     });
 
@@ -295,6 +278,7 @@ const Operation: FC<OperationProps> = ({
           )}
         </CardContent>
         <CardFooter className="flex flex-row justify-end">
+          <ShareOperation operationId={op.id} />
           {op.transactions.filter((tx) => tx.isValidateAllowed).length ===
             op.transactions.length && (
               <AlertDialog>

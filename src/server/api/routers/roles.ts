@@ -36,7 +36,7 @@ export const rolesRouter = createTRPCRouter({
 
     if (hasSpecificRoles) {
       const response = await ctx.db.query.role.findMany({
-        where: inArray(role.name, hasSpecificRoles),
+        where: inArray(role.name, Array.from(hasSpecificRoles)),
         with: {
           users: true,
         },
@@ -88,7 +88,7 @@ export const rolesRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const response = await ctx.db
+        const [response] = await ctx.db
           .insert(role)
           .values({
             name: input.name,
@@ -159,7 +159,7 @@ export const rolesRouter = createTRPCRouter({
           .from(user)
           .where(eq(user.roleId, input.id));
 
-        const response = await ctx.db
+        const [response] = await ctx.db
           .update(role)
           .set({
             name: input.name,

@@ -15,8 +15,8 @@ import {
   FormMessage,
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
-import { toast } from "../components/ui/use-toast";
 import { type User } from "lucia";
+import { toast } from "sonner";
 
 interface MyUserFormProps {
   user: User
@@ -38,12 +38,6 @@ const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
 
   const { mutateAsync } = api.users.changeName.useMutation({
     async onMutate(newOperation) {
-      toast({
-        title: "Nombre de usuario modificado",
-        description: `De ${newOperation.oldName} a ${newOperation.name}`,
-        variant: "success",
-      });
-
       await utils.users.getById.cancel();
 
       const prevData = utils.users.getById.getData();
@@ -56,15 +50,16 @@ const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
       return { prevData };
     },
     onError(err) {
-      toast({
-        title: "No se pudo cambiar el nombre de usuario",
-        description: `${JSON.stringify(err.message)}`,
-        variant: "destructive",
-      });
+      toast.error("No se pudo cambiar el nombre de usuario", {
+        description: err.message
+      })
     },
     onSettled() {
       void utils.users.getById.invalidate();
     },
+    onSuccess(data, variables) {
+      toast.success(`Nombre modificado de ${variables.oldName} a ${variables.name}`)
+    }
   });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {

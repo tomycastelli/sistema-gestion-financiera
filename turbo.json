@@ -1,17 +1,25 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV"],
   "pipeline": {
     "build": {
       "outputs": [".next/**", "!.next/cache/**"],
+      "dependsOn": ["^build"],
       "env": [
         "DATABASE_URL",
-        "NEXTAUTH_URL",
-        "NEXTAUTH_SECRET",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
-        "REDIS_URL"
+        "REDIS_URL",
+        "AZURE_AD_CLIENT_ID",
+        "AZURE_AD_CLIENT_SECRET",
+        "AZURE_AD_TENANT_ID",
+        "S3_PUBLIC_KEY",
+        "S3_SECRET_KEY",
+        "LAMBDA_API_ENDPOINT",
+        "LAMBDA_API_KEY"
       ]
     },
-    "lint": {}
+    "lint": {},
+    "type-check": {}
   }
 }
