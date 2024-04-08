@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/app/components/ui/alert-dialog";
+import { env } from '~/env.mjs'
 
 const FormSchema = z.object({
   messageText: z.string().min(1, {
@@ -114,7 +115,7 @@ const Chat: FC<ChatComponentProps> = ({ initialMessagesHistory, chatId, users, c
     scrollToBottom("smooth")
   }
 
-  const websocketURL = `ws://tomas.local:8080/ws?chatId=${chatId}`
+  const websocketURL = `ws://${env.CHAT_URL}/ws?chatId=${chatId}`
 
   const { readyState } = useWebSocket(websocketURL, {
     onClose: () => void updateLastConnection({ chatId: chatId, userId: currentUser.id, lastConnection: Date.now() }),

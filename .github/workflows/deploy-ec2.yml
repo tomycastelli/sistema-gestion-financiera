@@ -8,9 +8,6 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
 
-    env:
-      REDIS_URL: ${{ secrets.REDIS_URL }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -31,18 +28,38 @@ jobs:
           target: s3://maika-assets/content/
           distribution: EXCKAK1JLK0UE
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build, tag, and push the image to ECR
-        id: build-image
+      - name: Build and push docker image
+      - uses: docker/build-push-action@v5
+        with:
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: REDIS_URL=${{ secrets.REDIS_URL }}
+
+      - name: Trigger the instance script
+        id: trigger-ec2-script
+        uses: peterkimzz/aws-ssm-send-command@master
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: sistema-maika-repository
-          TAG_NAME: ${{ env.RELEASE_VERSION }}
-        run: |
-          docker build \
-            --build-arg REDIS_URL=${REDIS_URL} \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME
+          SISTEMA_MAIKA_IMAGE: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
+
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          instance-ids: ${{ secrets.INSTANCE_ID }}
+
+          working-directory: /home/ubuntu/sistema-maika
+          command: |
+            /bin/sh update-app.sh $SISTEMA_MAIKA_IMAGE
+            docker-compose stop maika-app
+            docker-compose up -d maika-app
+            docker image prune -af
