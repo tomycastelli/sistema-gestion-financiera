@@ -12,6 +12,7 @@ const AccountsTable = async ({
   linkToken,
   entityId,
   entityTag,
+  uiColor
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -19,8 +20,9 @@ const AccountsTable = async ({
   initialTags: RouterOutputs["tags"]["getAll"];
   linkId: number | null;
   linkToken: string | null;
-  entityId: number | null;
-  entityTag: string | null;
+  entityId: number | undefined;
+  entityTag: string | undefined;
+  uiColor: string | undefined
 }) => {
   const user = await getUser();
 
@@ -51,9 +53,10 @@ const AccountsTable = async ({
         selectedTag={entityTag}
         user={user}
         entities={entities}
+        uiColor={uiColor}
       />
       {initialMovements.movements.length > 0 && (
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col">
           <h1 className="text-3xl font-semibold tracking-tighter">
             Movimientos
           </h1>

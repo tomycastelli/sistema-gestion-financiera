@@ -9,7 +9,6 @@ import {
   type ColumnFiltersState,
 } from "@tanstack/react-table";
 
-import { useSearchParams } from "next/navigation";
 import React from "react";
 import { cn } from "~/lib/utils";
 import {
@@ -20,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { useOperationsPageStore } from "~/stores/OperationsPage";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -34,10 +34,7 @@ export function DataTable<TData, TValue>({
     [],
   );
 
-  const searchParams = useSearchParams();
-  const higlightRowId = searchParams.get("row")
-    ? parseInt(searchParams.get("row")!)
-    : null;
+  const { selectedTxForMvs } = useOperationsPageStore()
 
   const table = useReactTable({
     data,
@@ -72,9 +69,9 @@ export function DataTable<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                     </TableHead>
                   );
                 })}
@@ -87,10 +84,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={cn(
-                    row.getValue("id") === higlightRowId
-                      ? "bg-blue-100 hover:bg-blue-200"
-                      : "",
+                  className={cn("hover:bg-blue-200",
+                    typeof selectedTxForMvs === "number" && row.getValue("transactionId") === selectedTxForMvs && "bg-blue-100"
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (

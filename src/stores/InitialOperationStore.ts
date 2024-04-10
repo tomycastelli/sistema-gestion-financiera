@@ -1,6 +1,6 @@
+import moment from "moment";
 import z from "zod";
 import { create } from "zustand";
-import { getCurrentTime } from "~/lib/functions";
 
 export const InitialOperationStoreSchema = z.object({
   opDate: z.date(),
@@ -22,14 +22,14 @@ export const useInitialOperationStore = create<InitialOperationStore>()(
   (set) => ({
     initialOperationStore: {
       opDate: new Date(),
-      opTime: getCurrentTime(),
+      opTime: moment().format("HH:mm"),
       opObservations: "",
     },
     resetInitialOperationStore: () => {
       set(() => ({
         initialOperationStore: {
           opDate: new Date(),
-          opTime: getCurrentTime(),
+          opTime: moment().format("HH:mm"),
           opObservations: "",
         },
       }));

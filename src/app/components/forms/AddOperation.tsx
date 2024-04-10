@@ -258,10 +258,10 @@ const AddOperation = ({
                             className="mr-auto flex flex-row justify-center space-x-1"
                           >
                             <p>
-                              {moment(transaction.date).format("DD-MM-YYYY")}
+                              {transaction.date ? moment(transaction.date).format("DD-MM-YYYY") : moment(initialOperationStore.opDate).format("DD-MM-YYYY")}
                             </p>
                             <span className="text-muted-foreground">
-                              {transaction.time}
+                              {transaction.time ?? initialOperationStore.opTime}
                             </span>
                           </Badge>
                         </div>

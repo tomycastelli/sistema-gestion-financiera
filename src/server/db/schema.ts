@@ -356,7 +356,7 @@ export const movements = pgTable(
       }),
     direction: integer("direction").notNull(),
     type: text("type").notNull(),
-    account: boolean("account").default(false).notNull(),
+    account: boolean("account").notNull(),
     balance: doublePrecision("balance").notNull(),
     balanceId: integer("balanceId")
       .notNull()
@@ -368,8 +368,8 @@ export const movements = pgTable(
   (table) => {
     return {
       transactionIdDirectionIdx: index(
-        "Movements_transactionId_direction_idx",
-      ).on(table.transactionId, table.direction),
+        "Movements_transactionId_account_idx",
+      ).on(table.transactionId, table.account),
     };
   },
 );
@@ -533,6 +533,7 @@ export const requestsOneRelations = relations(requests, ({ one }) => ({
 }));
 
 export const insertTransactionsSchema = createInsertSchema(transactions);
+export const insertMovementsSchema = createInsertSchema(movements);
 
 export const returnedBalancesSchema = createSelectSchema(balances);
 export const returnedMovementsSchema = createSelectSchema(movements);

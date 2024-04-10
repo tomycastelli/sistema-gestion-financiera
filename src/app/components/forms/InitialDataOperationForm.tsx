@@ -5,7 +5,6 @@ import { CalendarIcon } from "lucide-react";
 import moment from "moment";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
-import { getCurrentTime } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import {
   InitialOperationStoreSchema,
@@ -32,7 +31,7 @@ const InitialDataOperationForm = () => {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       opDate: new Date(),
-      opTime: getCurrentTime(),
+      opTime: moment().format("HH:mm"),
     },
   });
 
@@ -44,7 +43,7 @@ const InitialDataOperationForm = () => {
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     setInitialOperationStore({
       opDate: values.opDate,
-      opTime: values.opTime ? values.opTime : getCurrentTime(),
+      opTime: values.opTime ? values.opTime : moment().format("HH:mm"),
       opObservations: values.opObservations,
     });
     setIsInitialOperationSubmitted(true);
@@ -108,8 +107,7 @@ const InitialDataOperationForm = () => {
                 <FormLabel>Tiempo</FormLabel>
                 <FormControl>
                   <Input
-                    defaultValue={getCurrentTime()}
-                    className="w-[72px]"
+                    className="w-[88px]"
                     type="time"
                     {...field}
                   />

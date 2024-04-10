@@ -45,11 +45,12 @@ interface BalancesProps {
   accountType: boolean;
   linkId: number | null;
   linkToken: string | null;
-  selectedEntityId: number | null;
-  selectedTag: string | null;
+  selectedEntityId: number | undefined;
+  selectedTag: string | undefined;
   tags: RouterOutputs["tags"]["getAll"];
   user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
+  uiColor: string | undefined
 }
 
 const Balances: FC<BalancesProps> = ({
@@ -62,6 +63,7 @@ const Balances: FC<BalancesProps> = ({
   tags,
   user,
   entities,
+  uiColor
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
@@ -281,9 +283,6 @@ const Balances: FC<BalancesProps> = ({
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
       onSuccess(newOperation) {
-        toast.success(`Archivo generador exitosamente`, {
-          description: newOperation.filename
-        })
         const link = document.createElement("a");
         link.href = newOperation.downloadUrl;
         link.download = newOperation.filename;
@@ -293,7 +292,7 @@ const Balances: FC<BalancesProps> = ({
         document.body.removeChild(link);
       },
       onError(err) {
-        toast.error("El archivo no pudo ser generado", {
+        toast.error("Error al generar el archivo", {
           description: err.message
         })
       },
@@ -606,26 +605,43 @@ const Balances: FC<BalancesProps> = ({
                 <DropdownMenuLabel>Extensión</DropdownMenuLabel>
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                    onClick={async () => {
-                      await getUrlAsync({
+                    onClick={() => {
+                      const promise = getUrlAsync({
                         entityId: selectedEntityId,
                         entityTag: selectedTag,
                         detailedBalances: detailedBalances,
                         fileType: "pdf",
                       });
+
+                      toast.promise(promise, {
+                        loading: 'Generando archivo...',
+                        success(data) {
+                          return `Archivo generado: ${data.filename}`
+                        },
+                        error() {
+                          return `Error al generar el archivo`
+                        }
+                      })
                     }}
                   >
                     <Icons.pdf className="h-4" />
                     <span>PDF</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={async () => {
-                      await getUrlAsync({
+                    onClick={() => {
+                      const promise = getUrlAsync({
                         entityId: selectedEntityId,
                         entityTag: selectedTag,
                         detailedBalances: detailedBalances,
                         fileType: "csv",
                       });
+
+                      toast.promise(promise, {
+                        loading: 'Generando archivo...',
+                        success(data) {
+                          return `Archivo generado: ${data.filename}`
+                        },
+                      })
                     }}
                   >
                     <Icons.excel className="h-4" />
@@ -645,7 +661,7 @@ const Balances: FC<BalancesProps> = ({
         />
       </div>
       <div className="grid grid-cols-1 gap-3">
-        <div className="grid grid-cols-13 justify-items-center rounded-xl border border-muted-foreground p-2">
+        <div style={{ borderColor: uiColor }} className="grid grid-cols-13 justify-items-center rounded-xl border-2 p-2">
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
           {currencyOrder.map((currency) => (

@@ -6,7 +6,6 @@ import Link from "next/link";
 import React, { useState } from "react";
 import loadingJson from "~/../public/animations/loading.json";
 import { capitalizeFirstLetter } from "~/lib/functions";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import BalanceTotals from "../BalanceTotals";
@@ -38,7 +37,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
     <>
       {entity ? (
         <Card
-          className="flex h-36 border-2 w-36 flex-col shadow-md"
+          className="flex h-36 border-2 w-36 flex-col shadow-md justify-center"
           style={{ borderColor: entity.tag.color ?? undefined }}
         >
           <CardHeader>
@@ -47,10 +46,8 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
                 <CardTitle>
                   <Link
                     prefetch={false}
-                    className={cn(
-                      "flex transition-all hover:scale-110",
-                      entity.name.length <= 15 ? "text-2xl" : "text-[20px]",
-                    )}
+                    className=
+                    "flex transition-all hover:scale-110"
                     href={{
                       pathname: "/cuentas",
                       query: { entidad: entity.id },
@@ -78,7 +75,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
             </HoverCard>
             <HoverCard onOpenChange={setEnableQueryTag}>
               <HoverCardTrigger asChild>
-                <CardDescription className="text-md">
+                <CardDescription>
                   <Link
                     prefetch={false}
                     className="flex transition-all hover:scale-110"

@@ -53,12 +53,12 @@ import { cn } from "~/lib/utils";
 import { toast } from "sonner";
 
 interface AddTagsFormProps {
-  initialTags: RouterOutputs["tags"]["getAll"];
+  tags: RouterOutputs["tags"]["getFiltered"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const AddTagsForm: FC<AddTagsFormProps> = ({
-  initialTags,
+  tags,
   userPermissions,
 }) => {
   enum ActionStatus {
@@ -67,10 +67,6 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
   }
   const [tagToEdit, setTagToEdit] = useState<string | undefined>(undefined)
   const [actionStatus, setActionStatus] = useState<ActionStatus>(ActionStatus.ADD)
-
-  const { data: tags, isSuccess } = api.tags.getFiltered.useQuery(undefined, {
-    initialData: initialTags,
-  });
 
   const FormSchema = z
     .object({
@@ -193,6 +189,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
     } else if (actionStatus === ActionStatus.EDIT && tagToEdit) {
       await editAsync({ name: data.name, parent: data.parent, color: data.color, oldName: tagToEdit })
     }
+    reset({ name: "", parent: undefined, color: undefined })
+    setActionStatus(ActionStatus.ADD)
   }
 
   return (
@@ -263,7 +261,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {isSuccess &&
+                        {
                           tags
                             .map((tag) => (
                               <SelectItem key={tag.name} value={tag.name}>
@@ -310,7 +308,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
         <ScrollArea className="h-40 w-full">
           <div className="grid grid-cols-1 gap-2 pr-6">
             <h1 className="text-2xl font-semibold">Tags</h1>
-            {isSuccess && tags.map((tag, index) => (
+            {tags.map((tag, index) => (
               <div
                 key={index}
                 className="flex flex-row items-center justify-between rounded-xl border-2 p-2"
@@ -334,35 +332,37 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                   }}>
                     <Icons.editing className="w-4 h-4 text-green" />
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="border-transparent"
-                      >
-                        <Icons.cross className="h-4 text-red" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          ¿Seguro que querés borrar el tag?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Si el mismo tiene entidades relacionadas, no podrá ser eliminado
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-red"
-                          onClick={() => removeTag({ name: tag.name })}
+                  {tag.name !== "Operadores" && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="border-transparent"
                         >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <Icons.cross className="h-4 text-red" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            ¿Seguro que querés borrar el tag?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Si el mismo tiene entidades relacionadas, no podrá ser eliminado
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red"
+                            onClick={() => removeTag({ name: tag.name })}
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             ))}

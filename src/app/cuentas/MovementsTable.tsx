@@ -38,12 +38,6 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Label } from "../components/ui/label";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-} from "../components/ui/pagination";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -59,13 +53,14 @@ import {
 import ClientLinkGenerator from "./ClientLinkGenerator";
 import { DataTable } from "./DataTable";
 import { toast } from "sonner";
+import CustomPagination from "../components/CustomPagination";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   tags: RouterOutputs["tags"]["getAll"];
   entities: RouterOutputs["entities"]["getAll"];
-  entityId: number | null;
-  entityTag: string | null;
+  entityId: number | undefined;
+  entityTag: string | undefined;
   pageSize: number;
   user: User | null;
   accountType: boolean;
@@ -135,10 +130,6 @@ const MovementsTable = ({
     api.files.getCurrentAccount.useMutation({
       onSuccess(newOperation) {
         if (newOperation) {
-          toast.success("Archivo generado exitosamente", {
-            description: newOperation.filename
-          })
-
           const link = document.createElement("a");
           link.href = newOperation.downloadUrl;
           link.download = newOperation.filename;
@@ -309,10 +300,7 @@ const MovementsTable = ({
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
               <DropdownMenuItem>
                 <Link
-                  href={{
-                    pathname: `/operaciones/gestion/${movement.operationId}`,
-                    query: { row: row.getValue("id") },
-                  }}
+                  href={`/operaciones/gestion/${movement.operationId}`}
                   className="flex flex-row items-center space-x-1"
                 >
                   <p>Ver operación</p>
@@ -329,8 +317,6 @@ const MovementsTable = ({
       },
     },
   ];
-
-  const lastPage = Math.ceil(data.totalRows / pageSize);
 
   return (
     <div>
@@ -502,8 +488,8 @@ const MovementsTable = ({
               <DropdownMenuLabel>Extensión</DropdownMenuLabel>
               <DropdownMenuGroup>
                 <DropdownMenuItem
-                  onClick={async () => {
-                    await getUrlAsync({
+                  onClick={() => {
+                    const promise = getUrlAsync({
                       account: accountType,
                       entityId: selectedFromEntity
                         ? parseInt(selectedFromEntity)
@@ -515,14 +501,21 @@ const MovementsTable = ({
                       fileType: "pdf",
                       tableData,
                     });
+
+                    toast.promise(promise, {
+                      loading: 'Generando archivo...',
+                      success(data) {
+                        return `Archivo generado: ${data.filename}`
+                      },
+                    })
                   }}
                 >
                   <Icons.pdf className="h-4" />
                   <span>PDF</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={async () => {
-                    await getUrlAsync({
+                  onClick={() => {
+                    const promise = getUrlAsync({
                       account: accountType,
                       entityId: selectedFromEntity
                         ? parseInt(selectedFromEntity)
@@ -534,6 +527,16 @@ const MovementsTable = ({
                       fileType: "csv",
                       tableData,
                     });
+
+                    toast.promise(promise, {
+                      loading: 'Generando archivo...',
+                      success(data) {
+                        return `Archivo generado: ${data.filename}`
+                      },
+                      error() {
+                        return `Error al generar el archivo`
+                      }
+                    })
                   }}
                 >
                   <Icons.excel className="h-4" />
@@ -568,75 +571,7 @@ const MovementsTable = ({
         )}
       </div>
       <div className="mt-4 flex w-fit flex-col items-center justify-start space-y-2">
-        <Pagination>
-          <PaginationContent>
-            {movementsTablePage > 2 && (
-              <PaginationItem>
-                <Button
-                  onClick={() => setMovementsTablePage(1)}
-                  variant="outline"
-                  className={cn(
-                    movementsTablePage === 1 && "border-muted-foreground",
-                  )}
-                >
-                  1
-                </Button>
-              </PaginationItem>
-            )}
-            {movementsTablePage > 3 && (
-              <PaginationItem>
-                <PaginationEllipsis />
-              </PaginationItem>
-            )}
-            {movementsTablePage > 1 && (
-              <PaginationItem>
-                <Button
-                  variant="outline"
-                  onClick={() => setMovementsTablePage(movementsTablePage - 1)}
-                >
-                  {movementsTablePage - 1}
-                </Button>
-              </PaginationItem>
-            )}
-            <PaginationItem>
-              <Button
-                variant="outline"
-                onClick={() => setMovementsTablePage(movementsTablePage)}
-                className="border-muted-foreground"
-              >
-                {movementsTablePage}
-              </Button>
-            </PaginationItem>
-            {movementsTablePage < lastPage && (
-              <PaginationItem>
-                <Button
-                  onClick={() => setMovementsTablePage(movementsTablePage + 1)}
-                  variant="outline"
-                >
-                  {movementsTablePage + 1}
-                </Button>
-              </PaginationItem>
-            )}
-            {movementsTablePage < lastPage - 2 && (
-              <PaginationItem>
-                <PaginationEllipsis />
-              </PaginationItem>
-            )}
-            {movementsTablePage < lastPage - 1 && (
-              <PaginationItem>
-                <Button
-                  onClick={() => setMovementsTablePage(lastPage)}
-                  variant="outline"
-                >
-                  {lastPage}
-                </Button>
-              </PaginationItem>
-            )}
-          </PaginationContent>
-        </Pagination>
-        <p className="text-sm font-light text-muted-foreground">
-          {data.totalRows + " " + "movimientos"}
-        </p>
+        <CustomPagination page={movementsTablePage} changePageState={setMovementsTablePage} itemName="movimientos" pageSize={pageSize} totalCount={data.totalRows} />
       </div>
     </div>
   );

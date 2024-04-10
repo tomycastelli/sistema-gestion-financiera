@@ -29,6 +29,7 @@ import {
   movements,
   operations,
   transactions,
+  transactionsMetadata,
 } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -296,33 +297,36 @@ export const movementsRouter = createTRPCRouter({
               input.entityTag ? entitiesConditions : undefined,
               transactionsConditions,
             ),
-          ).orderBy(desc(movements.id)).prepare("movements_ids_query");
+          ).prepare("movements_ids_query");
 
         const movementsIds = await movementsIdsQuery.execute()
 
         const ids =
           movementsIds.length > 0 ? movementsIds.map((obj) => obj.id) : [0];
 
-        const movementsQuery = transaction.query.movements.findMany({
-          with: {
-            transaction: {
-              with: {
-                operation: true,
-                fromEntity: true,
-                toEntity: true,
-                transactionMetadata: true,
-              },
-            },
-          },
-          where: inArray(movements.id, ids),
-          orderBy: desc(movements.id),
-          offset: sql.placeholder("oOffset"),
-          limit: sql.placeholder("oLimit"),
-        }).prepare("movements_query");
+        const fromEntity = alias(entities, "fromEntity")
+        const toEntity = alias(entities, "toEntity")
 
-        const movementsData = await movementsQuery.execute({ oLimit: input.pageSize, oOffset: (input.pageNumber - 1) * input.pageSize })
+        const movementsQuery = transaction.select().from(movements)
+          .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
+          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+          .where(inArray(movements.id, ids))
+          .orderBy(desc(operations.date), desc(movements.id))
+          .offset(sql.placeholder("queryOffset"))
+          .limit(sql.placeholder("queryLimit")).prepare("movements_query")
 
-        return { movementsQuery: movementsData, totalRows: movementsIds.length };
+        const movementsData = await movementsQuery.execute({
+          queryOffset: (input.pageNumber - 1) * input.pageSize,
+          queryLimit: input.pageSize
+        })
+
+        const nestedData = movementsData.map(obj =>
+          ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! } }))
+
+        return { movementsQuery: nestedData, totalRows: movementsIds.length };
       });
 
       return {

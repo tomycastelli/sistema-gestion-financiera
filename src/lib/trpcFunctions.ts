@@ -7,6 +7,10 @@ import {
   or,
   sql,
   type ExtractTablesWithRelations,
+  lt,
+  isNotNull,
+  isNull,
+  inArray,
 } from "drizzle-orm";
 import { type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -26,8 +30,8 @@ import {
   role,
   transactions,
   type returnedBalancesSchema,
-  type returnedMovementsSchema,
   type returnedTransactionsSchema,
+  type insertMovementsSchema,
 } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
@@ -168,11 +172,18 @@ export const generateMovements = async (
   direction: number,
   type: string,
 ) => {
-  const movementsArray: Omit<z.infer<typeof returnedMovementsSchema>, "id">[] =
-    [];
+  const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
 
+  const changeAmount = movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) * tx.amount
+
+  const mvDate = tx.date ?? tx.operation.date
+
+  const selectedEntityId = tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId
+  const otherEntityId = tx.fromEntityId === selectedEntityId ? tx.toEntityId : tx.fromEntityId
+
+  // Busco el ultimo balance relacionado al movimiento por hacer
   const [balance] = await transaction
-    .select()
+    .select({ id: balances.id, amount: balances.balance, date: balances.date })
     .from(balances)
     .where(
       and(
@@ -180,270 +191,189 @@ export const generateMovements = async (
         eq(balances.currency, tx.currency),
         eq(
           balances.selectedEntityId,
-          tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+          selectedEntityId
         ),
         eq(
           balances.otherEntityId,
-          tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+          otherEntityId,
         ),
       ),
     )
     .orderBy(desc(balances.date))
     .limit(1);
 
-  if (
-    tx.date
-      ? moment(tx.date).isBefore(moment().startOf("day"), "day")
-      : moment(tx.operation.date).isBefore(moment().startOf("day"), "day")
-  ) {
-    const oldDate = tx.date
-      ? moment(tx.date).startOf("day").toDate()
-      : moment(tx.operation.date).startOf("day").toDate();
-
-    // Si la operatoria es antes de hoy, busco el balance de ese dia
-    const [oldBalance] = await transaction
-      .select()
-      .from(balances)
-      .where(
-        and(
-          eq(balances.account, account),
-          eq(balances.currency, tx.currency),
-          eq(balances.date, oldDate),
-          eq(
-            balances.selectedEntityId,
-            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-          ),
-          eq(
-            balances.otherEntityId,
-            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-          ),
-        ),
-      )
-      .limit(1);
-
-    console.log(oldBalance);
-
-    // Le cambio el monto a todos los balances posteriores
-    await transaction
-      .update(balances)
-      .set({
-        balance: sql`${balances.balance} + ${movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-          tx.amount
-          }`,
+  if (!balance) {
+    const [response] = await transaction
+      .insert(balances)
+      .values({
+        selectedEntityId:
+          selectedEntityId,
+        otherEntityId:
+          otherEntityId,
+        account: account,
+        currency: tx.currency,
+        date: moment(mvDate).startOf("day").toDate(),
+        balance: changeAmount,
       })
-      .where(
-        or(
-          oldBalance ? eq(balances.id, oldBalance.id) : undefined,
-          and(
-            eq(balances.account, account),
-            eq(balances.currency, tx.currency),
-            gt(balances.date, oldDate),
-            eq(
-              balances.selectedEntityId,
-              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-            ),
-            eq(
-              balances.otherEntityId,
-              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-            ),
-          ),
-        ),
-      );
+      .returning();
 
-    // Le cambio del monto al balance de los movimientos posteriores tambien
-    await transaction.update(movements).set({
-      balance: sql`${movements.balance} + ${movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-        tx.amount
-        }`,
-    }).where(sql`${movements.balanceId} IN (
-        SELECT ${balances.id}
-        FROM ${balances}
-        WHERE ${oldBalance ? sql`${balances.id} = ${oldBalance.id}` : sql`1=2`}
-        OR (
-            ${balances.account} = ${account}
-            AND ${balances.currency} = ${tx.currency}
-            AND ${balances.date} > ${oldDate.toDateString()}
-            ${tx.fromEntityId < tx.toEntityId
-        ? sql`
-                AND ${balances.selectedEntityId} = ${tx.fromEntityId}
-                AND ${balances.otherEntityId} = ${tx.toEntityId}
-            `
-        : sql`
-                AND ${balances.selectedEntityId} = ${tx.toEntityId}
-                AND ${balances.otherEntityId} = ${tx.fromEntityId}
-            `
-      }
-        )
-      )`);
+    console.log("Not balance ever, starting one completely new", response)
 
-    if (!oldBalance) {
-      // Creo el balance para ese dia si no existe, tomando el monto del anterior y sumandole, asi justifico el gap con haber subido todos los que estan adelante
-
-      // Busco el anterior
-      const [beforeBalance] = await transaction
-        .select()
-        .from(balances)
+    movementsArray.push({
+      transactionId: tx.id,
+      direction,
+      type,
+      account,
+      balance: response!.balance,
+      balanceId: response!.id,
+    });
+  } else {
+    // Si el balance existe
+    if (moment(mvDate).isBefore(balance.date, "day")) {
+      // Si el dia de la tx o op es antes del ultimo balance
+      // Buscare si existe un balance de esa fecha previa y lo actualizo
+      const [oldBalance] = await transaction
+        .update(balances)
+        .set({ balance: sql`${balances.balance} + ${changeAmount}` })
         .where(
           and(
             eq(balances.account, account),
             eq(balances.currency, tx.currency),
-            eq(balances.date, oldDate),
+            eq(balances.date, moment(mvDate).startOf("day").toDate()),
             eq(
               balances.selectedEntityId,
-              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
+              selectedEntityId,
             ),
             eq(
               balances.otherEntityId,
-              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
+              otherEntityId,
             ),
           ),
-        )
-        .orderBy(desc(balances.date))
-        .limit(1);
+        ).returning({ id: balances.id, amount: balances.balance });
 
-      const [response] = await transaction
-        .insert(balances)
-        .values({
-          selectedEntityId:
-            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-          otherEntityId:
-            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-          account: account,
-          currency: tx.currency,
-          date: tx.date
-            ? moment(tx.date).startOf("day").toDate()
-            : moment(tx.operation.date).startOf("day").toDate(),
-          balance: beforeBalance
-            ? beforeBalance.balance +
-            movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) *
-            tx.amount
-            : movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) * tx.amount,
+      if (!oldBalance) {
+        // Si no existe un balance de esa fecha previa, creo uno donde el monto sea el ultimo monto previo a ese mas el cambio
+        const [beforeBalance] = await transaction
+          .select({ amount: balances.balance })
+          .from(balances)
+          .where(
+            and(
+              eq(balances.account, account),
+              eq(balances.currency, tx.currency),
+              lt(balances.date, moment(mvDate).startOf("day").toDate()),
+              eq(
+                balances.selectedEntityId,
+                selectedEntityId,
+              ),
+              eq(
+                balances.otherEntityId,
+                otherEntityId,
+              ),
+            ),
+          )
+          .orderBy(desc(balances.date))
+          .limit(1);
+
+        console.log("Did't found an old balance for this previous date, so using the one before: ", beforeBalance)
+
+        const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, date: moment(mvDate).startOf("day").toDate(), selectedEntityId, otherEntityId, balance: beforeBalance?.amount ? beforeBalance.amount + changeAmount : changeAmount }).returning({ id: balances.id, amount: balances.balance })
+
+        if (newBalance) {
+          console.log("Created a new balance for that previous date: ", newBalance)
+          // Creo un movimiento con el nuevo balance creado
+          movementsArray.push({
+            transactionId: tx.id,
+            direction: direction,
+            account: account,
+            type: type,
+            balance: newBalance.amount,
+            balanceId: newBalance.id
+          })
+        }
+      } else {
+        // Creo un movimiento con el balance cambiado
+        movementsArray.push({
+          transactionId: tx.id,
+          direction,
+          account,
+          type,
+          balance: oldBalance.amount,
+          balanceId: oldBalance.id
         })
-        .returning();
+      }
+
+      // Actualizo todos los balances posteriores a la fecha previa cambiada
+      await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(
+        and(
+          gt(balances.date, moment(mvDate).startOf("day").toDate()),
+          eq(balances.account, account),
+          eq(balances.currency, tx.currency),
+          eq(
+            balances.selectedEntityId,
+            selectedEntityId,
+          ),
+          eq(
+            balances.otherEntityId,
+            otherEntityId,
+          ),
+        )
+      )
+    } else if (moment(mvDate).isSame(balance.date, "day")) {
+      // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
+      await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(eq(balances.id, balance.id))
+
+      console.log("The date already is the same as the newest balance, just updating it")
+
+      // Creo un movimiento con el balance cambiado
       movementsArray.push({
         transactionId: tx.id,
         direction,
-        type,
         account,
-        balance: response!.balance,
-        balanceId: response!.id,
-      });
+        type,
+        balance: balance.amount + changeAmount,
+        balanceId: balance.id
+      })
     } else {
-      movementsArray.push({
-        transactionId: tx.id,
-        direction: direction,
-        type: type,
-        account: account,
-        balance: oldBalance.balance,
-        balanceId: oldBalance.id,
-      });
-    }
-  } else {
-    if (balance) {
-      if (moment(balance.date).isSame(moment(), "day")) {
-        console.log(tx.amount);
-        console.log(
-          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction),
-        );
-        const [response] = await transaction
-          .update(balances)
-          .set({
-            balance: sql`${balances.balance} + ${movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) * tx.amount
-              }`,
-          })
-          .where(eq(balances.id, balance.id))
-          .returning();
+      // Si la fecha de la tx o op es posterior al ultimo balance, creo una nueva
+      const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, selectedEntityId, otherEntityId, date: moment(mvDate).startOf("day").toDate(), balance: balance.amount + changeAmount }).returning({ id: balances.id, amount: balances.balance })
 
+      if (newBalance) {
         movementsArray.push({
           transactionId: tx.id,
-          direction: direction,
-          type: type,
-          account: account,
-          balance: response!.balance,
-          balanceId: response!.id,
-        });
-      } else {
-        console.log(balance.balance);
-        console.log(tx.amount);
-        const balanceNumber =
-          balance.balance +
-          movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-          tx.amount;
-
-        console.log(balanceNumber);
-
-        const [response] = await transaction
-          .insert(balances)
-          .values({
-            selectedEntityId:
-              tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-            otherEntityId:
-              tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-            account: account,
-            currency: tx.currency,
-            date: moment().startOf("day").toDate(),
-            balance: balanceNumber,
-          })
-          .returning();
-
-        movementsArray.push({
-          transactionId: tx.id,
-          direction: direction,
-          type: type,
-          account: account,
-          balance: response!.balance,
-          balanceId: response!.id,
-        });
-      }
-    } else {
-      console.log(tx.amount);
-      console.log(
-        movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
-        tx.amount,
-      );
-      const [response] = await transaction
-        .insert(balances)
-        .values({
-          selectedEntityId:
-            tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId,
-          otherEntityId:
-            tx.fromEntityId < tx.toEntityId ? tx.toEntityId : tx.fromEntityId,
-          account: account,
-          currency: tx.currency,
-          date: moment().startOf("day").toDate(),
-          balance:
-            movementBalanceDirection(
-              tx.fromEntityId,
-              tx.toEntityId,
-              direction,
-            ) * tx.amount,
+          direction,
+          account,
+          type,
+          balance: newBalance.amount,
+          balanceId: newBalance.id
         })
-        .returning();
-
-      movementsArray.push({
-        transactionId: tx.id,
-        direction: direction,
-        type: type,
-        account: account,
-        balance: response!.balance,
-        balanceId: response!.id,
-      });
+      }
     }
   }
 
-  console.log(movementsArray);
+  console.log("Los balances de los movimientos con tx o operacion con fecha mayor a este seran actualizados: ", mvDate.toDateString())
+  const response = await transaction.select({ id: movements.id }).from(movements).leftJoin(transactions, eq(movements.transactionId, transactions.id)).leftJoin(operations, eq(transactions.operationId, operations.id)).leftJoin(balances, eq(movements.balanceId, balances.id)).where(
+    and(
+      eq(movements.account, account),
+      eq(transactions.currency, tx.currency),
+      eq(balances.selectedEntityId, selectedEntityId),
+      eq(balances.otherEntityId, otherEntityId),
+      or(
+        and(
+          isNotNull(transactions.date),
+          gt(transactions.date, mvDate)
+        ),
+        and(
+          isNull(transactions.date),
+          gt(operations.date, mvDate)
+        )
+      )
+    )
+  )
+  const movementsIds = response.length > 0 ? response.map(obj => obj.id) : [0]
+
+  await transaction.update(movements).set({ balance: sql`${movements.balance} + ${changeAmount}` }).where(inArray(movements.id, movementsIds))
+
+  console.log("Creare este movimiento", movementsArray)
 
   const createdMovements = await transaction
     .insert(movements)

@@ -1,14 +1,21 @@
 "use client";
 
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { type FC } from "react";
+import { isDarkEnough } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 
-const TabSwitcher = () => {
+interface TabSwitcherProps {
+  uiColor: string | undefined
+  selectedEntityId: string | undefined
+  selectedTag: string | undefined
+}
+
+const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor, selectedEntityId, selectedTag }) => {
   const searchParams = useSearchParams();
   const selectedTab = searchParams.get("cuenta");
-  const selectedTag = searchParams.get("tag");
-  const selectedEntityId = searchParams.get("entidad");
 
   type QueryParams = {
     cuenta?: string;
@@ -37,13 +44,17 @@ const TabSwitcher = () => {
     resumenQuery.tag = selectedTag;
   }
 
+  const [parent] = useAutoAnimate();
+
   return (
-    <div className="grid grid-cols-3 rounded-xl bg-primary-foreground p-1 text-sm">
+    <div ref={parent} className="grid grid-cols-3 rounded-xl bg-primary-foreground p-1 text-sm">
       <Link
         prefetch={false}
         href={{ pathname: "/cuentas", query: resumenQuery }}
+        style={{ backgroundColor: !selectedTab ? uiColor : undefined }}
         className={cn(
-          !selectedTab && "bg-primary font-semibold text-white",
+          !selectedTab && "font-semibold",
+          !selectedTab && uiColor && isDarkEnough(uiColor) && "text-white",
           "flex items-center justify-center rounded-xl p-2 transition-all hover:opacity-80",
         )}
       >
@@ -55,8 +66,10 @@ const TabSwitcher = () => {
           pathname: "/cuentas",
           query: cashQuery,
         }}
+        style={{ backgroundColor: selectedTab === "caja" ? uiColor : undefined }}
         className={cn(
-          selectedTab === "caja" && "bg-primary font-semibold text-white",
+          selectedTab === "caja" && "font-semibold",
+          selectedTab === "caja" && uiColor && isDarkEnough(uiColor) && "text-white",
           "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
@@ -68,9 +81,11 @@ const TabSwitcher = () => {
           pathname: "/cuentas",
           query: currentAcountQuery,
         }}
+        style={{ backgroundColor: selectedTab === "cuenta_corriente" ? uiColor : undefined }}
         className={cn(
           selectedTab === "cuenta_corriente" &&
-            "bg-primary font-semibold text-white",
+          "font-semibold",
+          selectedTab === "cuenta_corriente" && uiColor && isDarkEnough(uiColor) && "text-white",
           "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >

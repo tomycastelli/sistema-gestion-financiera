@@ -132,7 +132,7 @@ const FlexibleTransactionsForm = ({
               className="grid grid-cols-1 justify-center gap-4 lg:grid-cols-3"
             >
               {entities && (
-                <div className="justify-self-start">
+                <div className="lg:justify-self-start">
                   <FormField
                     control={control}
                     name={`transactions.${index}.fromEntityId`}
@@ -354,7 +354,7 @@ const FlexibleTransactionsForm = ({
                 )}
               </div>
               {entities && (
-                <div className="justify-self-end">
+                <div className="lg:justify-self-end">
                   <FormField
                     control={control}
                     name={`transactions.${index}.toEntityId`}

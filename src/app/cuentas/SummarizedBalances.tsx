@@ -43,8 +43,8 @@ interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
   initialBalancesForCardInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
-  selectedTag: string | null;
-  selectedEntityId: number | null;
+  selectedTag: string | undefined;
+  selectedEntityId: number | undefined;
   tags: RouterOutputs["tags"]["getAll"];
 }
 
@@ -278,7 +278,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                 className={cn(
                   "transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
                   item.currency === selectedCurrency &&
-                    "border-2 border-primary",
+                  "border-2 border-primary",
                 )}
               >
                 <CardHeader>
@@ -317,12 +317,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                 {selectedTimeframe === "day"
                   ? "Diario"
                   : selectedTimeframe === "week"
-                  ? "Semanal"
-                  : selectedTimeframe === "month"
-                  ? "Mensual"
-                  : selectedTimeframe === "year"
-                  ? "Anual"
-                  : ""}
+                    ? "Semanal"
+                    : selectedTimeframe === "month"
+                      ? "Mensual"
+                      : selectedTimeframe === "year"
+                        ? "Anual"
+                        : ""}
               </CardTitle>
               <CardDescription>
                 {selectedCurrency.toUpperCase()}

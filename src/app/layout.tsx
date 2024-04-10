@@ -44,7 +44,7 @@ export default function RootLayout({
           >
             <TRPCReactProvider headers={headers()}>
               <Navbar />
-              <main className="h-full">
+              <main className="h-full mb-6">
                 {children}
                 <Analytics />
                 <Toaster />

@@ -21,7 +21,7 @@ import { toast } from "sonner";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
-  tags: RouterOutputs["tags"]["getAll"]
+  tags: RouterOutputs["tags"]["getFiltered"]
 }
 
 const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {

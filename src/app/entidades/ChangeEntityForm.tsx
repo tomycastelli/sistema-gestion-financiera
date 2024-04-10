@@ -36,7 +36,7 @@ import { toast } from "sonner";
 
 interface ChangeEntityFormProps {
   entity: RouterOutputs["entities"]["getAll"][number];
-  tags: RouterOutputs["tags"]["getAll"]
+  tags: RouterOutputs["tags"]["getFiltered"]
 }
 
 const FormSchema = z.object({

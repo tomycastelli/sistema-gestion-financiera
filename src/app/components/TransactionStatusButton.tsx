@@ -8,6 +8,7 @@ import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import { Icons } from "./ui/Icons";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import { useCallback, useEffect } from "react";
 
 interface TransactionStatusButtonProps {
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -31,7 +32,6 @@ const TransactionStatusButton = ({
 
   const { mutate } = api.editingOperations.updateTransactionStatus.useMutation({
     async onMutate(newOperation) {
-      resetTxIds();
       // Doing the optimistic update
       await utils.operations.getOperations.cancel();
 
@@ -79,8 +79,10 @@ const TransactionStatusButton = ({
       return { prevData };
     },
     onSettled() {
+      resetTxIds();
       void utils.operations.getOperations.invalidate();
       void utils.movements.getMovementsByOpId.invalidate();
+      void utils.movements.getCurrentAccounts.invalidate();
     },
     onSuccess(data) {
       const title = data.length > 1 ? data.length.toString() + "transacciones actualizadas" : "1 transacción actualizada"
@@ -88,26 +90,35 @@ const TransactionStatusButton = ({
     }
   });
 
+
+
+  const handleToast = useCallback(() => {
+    if (txIdsStore.length > 0) {
+      toast.info("Lista de transacciones", {
+        description: txIdsStore.join(", "),
+        action: txIdsStore.length > 0 && {
+          label: "Confirmar transacciones",
+          onClick: () => mutate({ transactionIds: txIdsStore }),
+        }
+      })
+    } else {
+      toast.dismiss()
+    }
+  }, [txIdsStore, mutate])
+
+  useEffect(() => {
+    handleToast();
+  }, [txIdsStore, handleToast]);
+
   return (
     <Button
       disabled={tx.status === Status.confirmed}
       onClick={() => {
-        const txIdAdded = changeTxIds(tx.id, txIdsStore);
-        const updatedTxIdsStore = txIdAdded
-          ? [...txIdsStore, tx.id]
-          : txIdsStore.filter((item) => item !== tx.id);
-        const descriptionWord = txIdAdded ? "Añadida a" : "Eliminada de";
-        toast.info(`Transacción ${tx.id} ${descriptionWord} la cola de confirmación`, {
-          description: updatedTxIdsStore.join(", "),
-          action: {
-            label: "Confirmar transacciones",
-            onClick: () => mutate({ transactionIds: updatedTxIdsStore }),
-          }
-        })
+        changeTxIds(tx.id);
       }}
       className={cn(
         "rounded-full border-2 border-transparent bg-transparent p-2",
-        txIdsStore.includes(tx.id) ? "bg-primary" : "bg-transparent",
+        txIdsStore.includes(tx.id) ? "bg-primary text-white" : "bg-transparent text-black dark:text-white",
       )}
     >
       {tx.status === Status.confirmed ? (
@@ -115,7 +126,7 @@ const TransactionStatusButton = ({
       ) : tx.status === Status.cancelled ? (
         <Icons.valueNone className="h-8 text-green" />
       ) : (
-        <Icons.clock className="h-7 text-black" />
+        <Icons.clock className="h-7" />
       )}
     </Button>
   );

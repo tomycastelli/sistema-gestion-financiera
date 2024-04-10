@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type FC } from "react";
+import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
+import { capitalizeFirstLetter } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -37,19 +37,21 @@ import {
 import { toast } from "sonner";
 
 const FormSchema = z.object({
-  name: z.string(),
-  tag: z.string(),
+  name: z.string().max(20, { message: "El nombre tiene que ser menor a 20 caracteres" }),
+  tag: z.string().min(1),
 });
 
 interface AddEntitiesFormProps {
-  initialTags: RouterOutputs["tags"]["getAll"];
+  tags: RouterOutputs["tags"]["getFiltered"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
-  initialTags,
+  tags,
   userPermissions,
 }) => {
+  const [open, setOpen] = useState<boolean>(false)
+
   const utils = api.useContext();
 
   const { mutateAsync } = api.entities.addOne.useMutation({
@@ -85,29 +87,9 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
       void utils.entities.getAll.invalidate();
     },
     onSuccess(data) {
+      setOpen(false)
+      reset({ name: "", tag: "" })
       toast.success(`Entidad ${data.name} añadida`)
-    }
-  });
-
-  const { data: tags } = api.tags.getAll.useQuery(undefined, {
-    initialData: initialTags,
-  });
-
-  const filteredTags = tags.filter((tag) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          getAllChildrenTags(p.entitiesTags, tags).has(tag.name),
-      )
-    ) {
-      return true;
     }
   });
 
@@ -115,14 +97,14 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
     resolver: zodResolver(FormSchema),
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, reset } = form;
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     await mutateAsync({ name: data.name, tag: data.tag });
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -178,7 +160,7 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {filteredTags.map((tag) => (
+                        {tags.filter(tag => tag.name !== "Operadores").map((tag) => (
                           <SelectItem key={tag.name} value={tag.name}>
                             {capitalizeFirstLetter(tag.name)}
                           </SelectItem>
@@ -192,8 +174,9 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="submit">Añadir</Button>
+                <Button type="button" variant="outline">Cerrar</Button>
               </DialogClose>
+              <Button type="submit">Añadir</Button>
             </DialogFooter>
           </form>
         </Form>

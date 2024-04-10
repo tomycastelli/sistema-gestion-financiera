@@ -6,6 +6,7 @@ import {
   capitalizeFirstLetter,
   createQueryString,
   getInitials,
+  isDarkEnough,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -29,9 +30,12 @@ import {
 interface EntitySwitcherProps {
   entities: RouterOutputs["entities"]["getAll"];
   tags: RouterOutputs["tags"]["getAll"];
+  uiColor: string | undefined
+  selectedEntityObj: RouterOutputs["entities"]["getFiltered"][number] | undefined
+  selectedTagObj: RouterOutputs["tags"]["getFiltered"][number] | undefined
 }
 
-const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
+const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, selectedEntityObj, selectedTagObj }) => {
   const groupedEntities = entities.reduce(
     (acc, entity) => {
       const existingGroup = acc.find((group) => group.tag === entity.tag.name);
@@ -54,10 +58,6 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const selectedTag = searchParams.get("tag");
-  const selectedEntity = searchParams.get("entidad");
-  const parsedEntity = selectedEntity ? parseInt(selectedEntity) : null;
-
   const truncateString = (input: string | undefined, N: number) => {
     if (input === undefined) {
       return undefined;
@@ -76,32 +76,28 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
         <Button
           variant="outline"
           role="combobox"
-          className="flex h-11 flex-shrink justify-between"
+          className="flex h-11 flex-shrink justify-between border-2"
+          style={{ borderColor: uiColor }}
         >
           <Avatar className="mr-2 h-8 w-8">
-            <AvatarFallback className="bg-primary text-white">
-              {selectedTag
-                ? getInitials(selectedTag).toUpperCase()
-                : selectedEntity
-                ? (() => {
-                    const foundEntity = entities.find(
-                      (entity) => entity.id === parsedEntity,
-                    );
-                    return foundEntity ? getInitials(foundEntity.name) : "";
-                  })()
-                : ""}
+            <AvatarFallback style={{ backgroundColor: uiColor }} className={cn(uiColor && isDarkEnough(uiColor) && "text-white")}>
+              {selectedTagObj
+                ? getInitials(selectedTagObj.name).toUpperCase()
+                : selectedEntityObj
+                  ? getInitials(selectedEntityObj.name)
+                  : ""}
             </AvatarFallback>
           </Avatar>
           <p className="text-xl">
             {" "}
-            {selectedTag
-              ? capitalizeFirstLetter(selectedTag)
-              : selectedEntity
-              ? truncateString(
-                  entities.find((entity) => entity.id === parsedEntity)?.name,
+            {selectedTagObj
+              ? capitalizeFirstLetter(selectedTagObj.name)
+              : selectedEntityObj
+                ? truncateString(
+                  selectedEntityObj.name,
                   14,
                 )
-              : "Elegir"}{" "}
+                : "Elegir"}{" "}
           </p>
           <Icons.caretSort className="ml-auto h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -119,13 +115,13 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                   onSelect={() =>
                     router.push(
                       pathname +
-                        "?" +
-                        createQueryString(
-                          searchParams,
-                          "tag",
-                          tag.name,
-                          "entidad",
-                        ),
+                      "?" +
+                      createQueryString(
+                        searchParams,
+                        "tag",
+                        tag.name,
+                        "entidad",
+                      ),
                     )
                   }
                 >
@@ -133,7 +129,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                   <Icons.check
                     className={cn(
                       "ml-auto h-4 w-4",
-                      selectedTag === tag.name ? "opacity-100" : "opacity-0",
+                      selectedTagObj?.name === tag.name ? "opacity-100" : "opacity-0",
                     )}
                   />
                 </CommandItem>
@@ -151,20 +147,20 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                     onSelect={() => {
                       router.push(
                         pathname +
-                          "?" +
-                          createQueryString(
-                            searchParams,
-                            "entidad",
-                            entity.id.toString(),
-                            "tag",
-                          ),
+                        "?" +
+                        createQueryString(
+                          searchParams,
+                          "entidad",
+                          entity.id.toString(),
+                          "tag",
+                        ),
                       );
                     }}
                   >
                     <Avatar className="mr-2">
                       <AvatarFallback
                         className={cn(
-                          parsedEntity === entity.id && "bg-primary text-white",
+                          selectedEntityObj?.id === entity.id && "bg-primary text-white",
                         )}
                       >
                         {getInitials(entity.name)}
@@ -174,7 +170,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags }) => {
                     <Icons.check
                       className={cn(
                         "ml-auto h-4 w-4",
-                        parsedEntity === entity.id
+                        selectedEntityObj?.id === entity.id
                           ? "opacity-100"
                           : "opacity-0",
                       )}

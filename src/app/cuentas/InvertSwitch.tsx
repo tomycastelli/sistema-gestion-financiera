@@ -13,9 +13,10 @@ import { Switch } from "../components/ui/switch";
 
 interface InvertSwitchProps {
   entities: RouterOutputs["entities"]["getAll"];
+  uiColor: string | undefined
 }
 
-const InvertSwitch: FC<InvertSwitchProps> = ({ entities }) => {
+const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
   const { isInverted, setIsInverted } = useCuentasStore();
   const searchParams = useSearchParams();
   const selectedEntityIdString = searchParams.get("entidad");
@@ -43,6 +44,7 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities }) => {
       <HoverCardTrigger className="flex flex-col items-center justify-center space-y-1">
         <p className="text-sm">{!isInverted ? "Normal" : "Invertido"}</p>
         <Switch
+          style={{ backgroundColor: isInverted ? uiColor ?? "blue" : undefined }}
           disabled={isSwitchDisabled}
           checked={isInverted}
           onCheckedChange={(bool) => setIsInverted(bool)}

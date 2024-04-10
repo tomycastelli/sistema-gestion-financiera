@@ -52,6 +52,11 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
 
+  const { data: tags, isSuccess } = api.tags.getFiltered.useQuery(undefined, {
+    initialData: initialTags,
+    refetchOnWindowFocus: false
+  })
+
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
     {
@@ -96,7 +101,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     }
     return tagFilterMode === "strict"
       ? entity.tag.name === tagFilter
-      : getAllChildrenTags(tagFilter, initialTags).has(entity.tag.name);
+      : getAllChildrenTags(tagFilter, tags).has(entity.tag.name);
   });
 
   return (
@@ -168,16 +173,18 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             </HoverCard>
           </div>
         </div>
-        <div className="flex flex-row space-x-4">
-          <AddEntitiesForm
-            initialTags={initialTags}
-            userPermissions={userPermissions}
-          />
-          <AddTagsForm
-            initialTags={initialTags}
-            userPermissions={userPermissions}
-          />
-        </div>
+        {isSuccess && (
+          <div className="flex flex-row space-x-4">
+            <AddEntitiesForm
+              tags={tags}
+              userPermissions={userPermissions}
+            />
+            <AddTagsForm
+              tags={tags}
+              userPermissions={userPermissions}
+            />
+          </div>
+        )}
       </div>
       <div className="flex">
         {isLoading ? (
@@ -193,10 +200,10 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                     className="flex flex-col items-center justify-center space-y-2 self-start"
                   >
                     <EntityCard entity={entity} />
-                    {entity.tag.name !== "user" &&
+                    {isSuccess && entity.tag.name !== "Operadores" &&
                       manageableEntities.find(
                         (item) => item.name === entity.name,
-                      ) && <EntityOptions entity={entity} tags={initialTags} />}
+                      ) && <EntityOptions entity={entity} tags={tags} />}
                   </div>
                 ))}
             </div>

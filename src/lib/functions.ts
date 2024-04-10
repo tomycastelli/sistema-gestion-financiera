@@ -20,15 +20,29 @@ export const capitalizeFirstLetter = (text: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-export const getCurrentTime = () => {
-  const now = new Date();
-  const currentTime = now.toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return currentTime;
-};
+export function isDarkEnough(hexColor: string): boolean {
+  const rgbRegex = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+  const match = rgbRegex.exec(hexColor);
+
+  if (!match) {
+    throw new Error(`Invalid hex color format: ${hexColor}`);
+  }
+
+  const rgb = match.slice(1).map((value) => parseInt(value, 16));
+
+  const getRelativeLuminance = (value: number): number => {
+    return (value / 255) > 0.03928
+      ? Math.pow((value / 255), 2.2)
+      : (value / 255) / 12.92;
+  };
+
+  const relativeLuminance = rgb
+    .map(getRelativeLuminance)
+    .reduce((acc, val) => acc + val, 0) // Sum relative luminance
+    .toFixed(2); // Round to 2 decimal places
+
+  return parseFloat(relativeLuminance) >= 1.0; // Adjust for large text (3:1)
+}
 
 export function formatDateString(dateString: string) {
   const date = new Date(dateString);
