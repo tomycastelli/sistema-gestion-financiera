@@ -35,21 +35,24 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and push docker image
-        uses: docker/build-push-action@v5
-        with:
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: REDIS_URL=${{ secrets.REDIS_URL }}
+       - name: Build, tag, and push the image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: sistema-maika-repository
+          TAG_NAME: ${{ env.RELEASE_VERSION }}
+        run: |
+          docker build \
+            --build-arg REDIS_URL=${REDIS_URL} \
+            --platform=linux/amd64 \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME
 
       - name: Trigger the instance script
         id: trigger-ec2-script
         uses: peterkimzz/aws-ssm-send-command@master
         env:
-          SISTEMA_MAIKA_IMAGE: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
+          SISTEMA_MAIKA_IMAGE: ${{ env.RELEASE_VERSION }}
 
         with:
           aws-region: sa-east-1
