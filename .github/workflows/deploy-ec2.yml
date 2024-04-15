@@ -35,7 +35,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-       - name: Build, tag, and push the image to ECR
+      - name: Build, tag, and push the image to ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -47,22 +47,3 @@ jobs:
             --platform=linux/amd64 \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME
-
-      - name: Trigger the instance script
-        id: trigger-ec2-script
-        uses: peterkimzz/aws-ssm-send-command@master
-        env:
-          SISTEMA_MAIKA_IMAGE: ${{ env.RELEASE_VERSION }}
-
-        with:
-          aws-region: sa-east-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          instance-ids: ${{ secrets.INSTANCE_ID }}
-
-          working-directory: /home/ubuntu/sistema-maika
-          command: |
-            /bin/sh update-app.sh $SISTEMA_MAIKA_IMAGE
-            docker-compose stop maika-app
-            docker-compose up -d maika-app
-            docker image prune -af
