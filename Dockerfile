@@ -1,5 +1,5 @@
 # Install dependencies only when needed
-FROM --platform=linux/arm64/v8 node:20-alpine AS deps
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat python3 py3-pip make g++ && ln -sf python3 /usr/bin/python
 
 WORKDIR /app
