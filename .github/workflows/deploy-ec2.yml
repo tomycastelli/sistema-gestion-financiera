@@ -36,7 +36,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and push docker image
-      - uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v5
         with:
           platforms: linux/arm64
           push: true
