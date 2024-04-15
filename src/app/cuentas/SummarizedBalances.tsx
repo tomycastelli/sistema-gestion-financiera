@@ -31,7 +31,6 @@ import { DataTable } from "./DataTable";
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
-  initialBalancesForCardInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   selectedTag: string | undefined;
   selectedEntityId: number | undefined;
@@ -41,7 +40,6 @@ interface SummarizedBalancesProps {
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalancesForCard,
-  initialBalancesForCardInput,
   initialMovements,
   selectedTag,
   selectedEntityId,
@@ -56,18 +54,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   } = useCuentasStore();
 
   const dayInPast = moment(timeMachineDate).format(dateFormatting.day);
-
-  const { data: balancesForCard, isSuccess } =
-    api.movements.getBalancesByEntitiesForCard.useQuery(
-      {
-        ...initialBalancesForCardInput,
-        dayInPast,
-      },
-      {
-        initialData: initialBalancesForCard,
-        refetchOnWindowFocus: false,
-      },
-    );
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
@@ -230,13 +216,12 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   return (
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
-        {isSuccess && balancesForCard &&
-          balancesForCard
-            .sort(
-              (a, b) =>
-                currenciesOrder.indexOf(a.currency) -
-                currenciesOrder.indexOf(b.currency),
-            )
+        {initialBalancesForCard &&
+          initialBalancesForCard.sort(
+            (a, b) =>
+              currenciesOrder.indexOf(a.currency) -
+              currenciesOrder.indexOf(b.currency),
+          )
             .map((item) => (
               <Card
                 key={item.currency}

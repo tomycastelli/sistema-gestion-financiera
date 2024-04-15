@@ -36,10 +36,6 @@ const CommandMenu = () => {
   );
 
   const router = useRouter();
-  const isMac =
-    typeof window !== "undefined"
-      ? navigator.userAgent.toUpperCase().indexOf("MAC") >= 0
-      : false;
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -90,7 +86,7 @@ const CommandMenu = () => {
       >
         <p className="text-sm">Comandos</p>
         <kbd className="text-md pointer-events-none inline-flex h-7 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-light text-muted-foreground opacity-100">
-          <span>{isMac ? "⌘" : "CTRL"}</span>K
+          <span>⌘</span>K
         </kbd>
       </div>
       <CommandDialog

@@ -7,11 +7,11 @@ import EntitySwitcher from "./EntitySwitcher";
 import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
 import { TimeMachine } from "./TimeMachine";
+import SummarizedBalances from "./SummarizedBalances";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
 const AccountsTab = dynamic(() => import("./AccountsTab"));
-const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), { ssr: false });
 
 const Page = async ({
   searchParams,
@@ -129,12 +129,6 @@ const Page = async ({
                     selectedTag={selectedTagObj?.name}
                     selectedEntityId={selectedEntityObj?.id}
                     initialBalancesForCard={initialBalancesForCard}
-                    initialBalancesForCardInput={{
-                      linkId: initialBalancesInput.linkId,
-                      linkToken: initialBalancesInput.linkToken,
-                      entityId: initialBalancesInput.entityId,
-                      entityTag: initialBalancesInput.entityTag,
-                    }}
                   />
                 </div>
               )}

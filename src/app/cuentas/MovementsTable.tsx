@@ -120,8 +120,6 @@ const MovementsTable = ({
       },
       {
         initialData: initialMovements,
-        refetchOnMount: false,
-        refetchOnReconnect: false,
         refetchOnWindowFocus: false,
       },
     );
