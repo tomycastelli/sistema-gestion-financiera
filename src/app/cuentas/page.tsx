@@ -6,8 +6,8 @@ import { type RouterInputs } from "~/trpc/shared";
 import EntitySwitcher from "./EntitySwitcher";
 import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
-import { TimeMachine } from "./TimeMachine";
 import AccountsTab from "./AccountsTab";
+import TimeMachine from "./TimeMachine";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -29,6 +29,7 @@ const Page = async ({
 
   const linkIdString = searchParams.id as string | null;
   const linkId = linkIdString ? parseInt(linkIdString) : null;
+  const dayInPast = searchParams.dia as string | null
 
   const initialEntities = await api.entities.getFiltered.query({
     permissionName: "ACCOUNTS_VISUALIZE",
@@ -38,7 +39,7 @@ const Page = async ({
   const selectedEntityObj = selectedEntityId ? initialEntities.find(e => e.id === parseInt(selectedEntityId)) : undefined
   const selectedTagObj = selectedTag ? filteredTags.find(t => t.name === selectedTag) : undefined
 
-  const initialBalancesInput = {
+  const initialBalancesInput: RouterInputs["movements"]["getBalancesByEntities"] = {
     entityTag: selectedTagObj?.name,
     entityId: selectedEntityObj?.id,
     account:
@@ -49,6 +50,7 @@ const Page = async ({
           : undefined,
     linkToken: linkToken,
     linkId: linkId,
+    dayInPast: dayInPast ?? undefined
   };
   const initialBalances = await api.movements.getBalancesByEntities.query(
     initialBalancesInput,
@@ -60,6 +62,7 @@ const Page = async ({
       entityTag: initialBalancesInput.entityTag,
       linkId: initialBalancesInput.linkId,
       linkToken: initialBalancesInput.linkToken,
+      dayInPast: dayInPast ?? undefined
     });
 
   const movementsAmount = 5;
@@ -70,6 +73,7 @@ const Page = async ({
     pageNumber: 1,
     entityTag: selectedTag,
     entityId: selectedEntityObj?.id,
+    dayInPast: dayInPast ?? undefined
   };
 
   const initialMovements = await api.movements.getCurrentAccounts.query(

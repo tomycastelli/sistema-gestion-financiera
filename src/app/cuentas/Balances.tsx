@@ -1,7 +1,6 @@
 "use client";
 
 import { type User } from "lucia";
-import moment from "moment";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
@@ -28,8 +27,6 @@ import {
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import BalancesCards from "./BalancesCards";
-import { dateFormatting } from "~/lib/variables";
-import LoadingAnimation from "../components/LoadingAnimation";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -47,8 +44,6 @@ interface BalancesProps {
 const Balances: FC<BalancesProps> = ({
   initialBalances,
   accountType,
-  linkId,
-  linkToken,
   selectedEntityId,
   selectedTag,
   tags,
@@ -70,24 +65,8 @@ const Balances: FC<BalancesProps> = ({
     setDestinationEntityId,
     destinationEntityId,
     isInverted,
-    timeMachineDate,
     setMovementsTablePage
   } = useCuentasStore();
-
-  const {
-    data: balances,
-    isFetching,
-  } = api.movements.getBalancesByEntities.useQuery(
-    {
-      entityId: selectedEntityId,
-      entityTag: selectedTag,
-      account: accountType,
-      linkId: linkId,
-      linkToken: linkToken,
-      dayInPast: moment(timeMachineDate).format(dateFormatting.day),
-    },
-    { initialData: initialBalances, refetchOnWindowFocus: false },
-  );
 
   const transformedBalancesSchema = z.object({
     entity: z.object({
@@ -98,7 +77,7 @@ const Balances: FC<BalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = balances ? balances.reduce(
+  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = initialBalances ? initialBalances.reduce(
     (acc, balance) => {
       if (selectedEntityId) {
         let entityEntry = acc.find(
@@ -182,7 +161,7 @@ const Balances: FC<BalancesProps> = ({
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
   if (selectedEntityId) {
-    detailedBalances = balances ? balances.reduce(
+    detailedBalances = initialBalances ? initialBalances.reduce(
       (acc, balance) => {
         let entityEntry = acc.find(
           (entry) =>
@@ -225,7 +204,7 @@ const Balances: FC<BalancesProps> = ({
       [] as z.infer<typeof transformedBalancesSchema>[],
     ) : [];
   } else if (selectedTag) {
-    detailedBalances = balances ? balances.reduce(
+    detailedBalances = initialBalances ? initialBalances.reduce(
       (acc, balance) => {
         const myPOVEntity = allChildrenTags.includes(
           balance.selectedEntity.tagName,
@@ -353,9 +332,7 @@ const Balances: FC<BalancesProps> = ({
   return (
     <div className="flex flex-col space-y-4">
       <BalancesCards
-        isFetching={isFetching}
         transformedBalances={transformedBalances}
-        isBalanceLoading={isFetching}
         accountType={accountType}
         isInverted={isInverted} />
       <div className="flex flex-row items-end justify-between">
@@ -598,147 +575,140 @@ const Balances: FC<BalancesProps> = ({
             </p>
           ))}
         </div>
-        {!isFetching ? (
-          filteredBalances
-            .sort((a, b) => {
-              const defaultList = accountsLists?.find((list) => list.isDefault);
-              if (defaultList) {
-                const aIndex = defaultList.idList.indexOf(a.entity.id);
-                const bIndex = defaultList.idList.indexOf(b.entity.id);
-                // Check if both objects have valid indices in the orderList
-                if (aIndex !== -1 && bIndex !== -1) {
-                  return aIndex - bIndex;
-                }
-
-                // If only a has a valid index, place it before b
-                if (aIndex !== -1) {
-                  return -1;
-                }
-
-                // If only b has a valid index, place it before a
-                if (bIndex !== -1) {
-                  return 1;
-                }
-
-                // If neither has a valid index, maintain the current order
-                return 0;
-              } else {
-                return 0;
+        {filteredBalances
+          .sort((a, b) => {
+            const defaultList = accountsLists?.find((list) => list.isDefault);
+            if (defaultList) {
+              const aIndex = defaultList.idList.indexOf(a.entity.id);
+              const bIndex = defaultList.idList.indexOf(b.entity.id);
+              // Check if both objects have valid indices in the orderList
+              if (aIndex !== -1 && bIndex !== -1) {
+                return aIndex - bIndex;
               }
-            })
-            .slice(
-              pageSize * (detailedBalancesPage - 1),
-              pageSize * detailedBalancesPage,
-            )
-            .map((item, index) => (
-              <div
-                key={item.entity.id}
-                style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, 10) : lightenColor(uiColor, 5) : undefined }}
-                className={cn(
-                  "grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold",
-                  index % 2 === 0 ? "bg-muted" : "bg-teal-100",
-                )}
-              >
-                {isListSelection ? (
-                  <Button
-                    variant="outline"
-                    className="col-span-1 border-transparent bg-transparent p-2 transition-all hover:bg-transparent"
-                    onClick={() => addIdToAccountList(item.entity.id)}
-                  >
-                    {accountListToAdd.indexOf(item.entity.id) === -1 ? (
-                      <span className="animate-pulse rounded-full bg-yellow p-3"></span>
-                    ) : (
-                      <p className="animate-pulse text-3xl font-semibold text-yellow">
-                        {accountListToAdd.indexOf(item.entity.id) + 1}
-                      </p>
-                    )}
-                  </Button>
-                ) : accountsLists ? (
-                  accountsLists.find((list) => list.isDefault) ? (
-                    accountsLists
-                      .find((list) => list.isDefault)!
-                      .idList.indexOf(item.entity.id) !== -1 ? (
-                      <p className="text-3xl font-semibold text-yellow">
-                        {accountsLists
-                          .find((list) => list.isDefault)!
-                          .idList.indexOf(item.entity.id) + 1}
-                      </p>
-                    ) : (
-                      <p></p>
-                    )
+
+              // If only a has a valid index, place it before b
+              if (aIndex !== -1) {
+                return -1;
+              }
+
+              // If only b has a valid index, place it before a
+              if (bIndex !== -1) {
+                return 1;
+              }
+
+              // If neither has a valid index, maintain the current order
+              return 0;
+            } else {
+              return 0;
+            }
+          })
+          .slice(
+            pageSize * (detailedBalancesPage - 1),
+            pageSize * detailedBalancesPage,
+          )
+          .map((item, index) => (
+            <div
+              key={item.entity.id}
+              style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, 10) : lightenColor(uiColor, 5) : undefined }}
+              className={cn(
+                "grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold",
+                index % 2 === 0 ? "bg-muted" : "bg-teal-100",
+              )}
+            >
+              {isListSelection ? (
+                <Button
+                  variant="outline"
+                  className="col-span-1 border-transparent bg-transparent p-2 transition-all hover:bg-transparent"
+                  onClick={() => addIdToAccountList(item.entity.id)}
+                >
+                  {accountListToAdd.indexOf(item.entity.id) === -1 ? (
+                    <span className="animate-pulse rounded-full bg-yellow p-3"></span>
+                  ) : (
+                    <p className="animate-pulse text-3xl font-semibold text-yellow">
+                      {accountListToAdd.indexOf(item.entity.id) + 1}
+                    </p>
+                  )}
+                </Button>
+              ) : accountsLists ? (
+                accountsLists.find((list) => list.isDefault) ? (
+                  accountsLists
+                    .find((list) => list.isDefault)!
+                    .idList.indexOf(item.entity.id) !== -1 ? (
+                    <p className="text-3xl font-semibold text-yellow">
+                      {accountsLists
+                        .find((list) => list.isDefault)!
+                        .idList.indexOf(item.entity.id) + 1}
+                    </p>
                   ) : (
                     <p></p>
                   )
                 ) : (
                   <p></p>
+                )
+              ) : (
+                <p></p>
+              )}
+              <div
+                onClick={() => {
+                  setSelectedCurrency(undefined);
+                  setDestinationEntityId(item.entity.id);
+                  setMovementsTablePage(1)
+                }}
+                className={cn(
+                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                  !selectedCurrency &&
+                  destinationEntityId === item.entity.id &&
+                  "bg-primary text-white shadow-md",
                 )}
-                <div
-                  onClick={() => {
-                    setSelectedCurrency(undefined);
-                    setDestinationEntityId(item.entity.id);
-                    setMovementsTablePage(1)
-                  }}
-                  className={cn(
-                    "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                    !selectedCurrency &&
-                    destinationEntityId === item.entity.id &&
-                    "bg-primary text-white shadow-md",
-                  )}
-                >
-                  <p>{item.entity.name}</p>
-                </div>
-                {currencyOrder.map((currency) => {
-                  const matchingBalance = item.data.find(
-                    (balance) => balance.currency === currency,
-                  );
-
-                  return matchingBalance ? (
-                    !isFetching ? (
-                      <div
-                        onClick={() => {
-                          if (
-                            selectedCurrency !== currency ||
-                            destinationEntityId !== item.entity.id
-                          ) {
-                            setSelectedCurrency(currency);
-                            setDestinationEntityId(item.entity.id);
-                            setMovementsTablePage(1)
-                          } else {
-                            setSelectedCurrency(undefined);
-                            setDestinationEntityId(undefined);
-                            setMovementsTablePage(1)
-                          }
-                        }}
-                        key={currency}
-                        style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
-                        className={cn(
-                          "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
-                          selectedCurrency === currency &&
-                          destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
-                          "text-white",
-                          selectedCurrency === currency && destinationEntityId === item.entity.id && "shadow-md"
-                        )}
-                      >
-                        <p>
-                          {new Intl.NumberFormat("es-AR").format(
-                            !isInverted
-                              ? matchingBalance.balance
-                              : -matchingBalance.balance,
-                          )}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="col-span-2">Cargando...</p>
-                    )
-                  ) : (
-                    <p className="col-span-2"></p>
-                  );
-                })}
+              >
+                <p>{item.entity.name}</p>
               </div>
-            ))
-        ) : (
-          <LoadingAnimation text="Cargando balances" />
-        )}
+              {currencyOrder.map((currency) => {
+                const matchingBalance = item.data.find(
+                  (balance) => balance.currency === currency,
+                );
+
+                return matchingBalance ? (
+                  <div
+                    onClick={() => {
+                      if (
+                        selectedCurrency !== currency ||
+                        destinationEntityId !== item.entity.id
+                      ) {
+                        setSelectedCurrency(currency);
+                        setDestinationEntityId(item.entity.id);
+                        setMovementsTablePage(1)
+                      } else {
+                        setSelectedCurrency(undefined);
+                        setDestinationEntityId(undefined);
+                        setMovementsTablePage(1)
+                      }
+                    }}
+                    key={currency}
+                    style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
+                    className={cn(
+                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
+                      selectedCurrency === currency &&
+                      destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
+                      "text-white",
+                      selectedCurrency === currency && destinationEntityId === item.entity.id && "shadow-md"
+                    )}
+                  >
+                    <p>
+                      {new Intl.NumberFormat("es-AR").format(
+                        !isInverted
+                          ? matchingBalance.balance
+                          : -matchingBalance.balance,
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="col-span-2"></p>
+                )
+              })}
+            </div>
+          ))
+        }
       </div>
     </div>
   );

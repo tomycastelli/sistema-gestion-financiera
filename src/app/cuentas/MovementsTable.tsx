@@ -3,7 +3,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
-import moment from "moment";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -13,7 +12,7 @@ import {
   isNumeric,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currencies, dateFormatting, mvTypeFormatting } from "~/lib/variables";
+import { currencies, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -84,6 +83,7 @@ const MovementsTable = ({
 
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
+  const timeMachineDate = searchParams.get("dia")
 
   const [selectedFromEntity, setSelectedFromEntity] = useState<string>();
 
@@ -99,7 +99,6 @@ const MovementsTable = ({
     toDate,
     setToDate,
     isInverted,
-    timeMachineDate,
   } = useCuentasStore();
 
   const { data, refetch, isFetching } =
@@ -116,7 +115,7 @@ const MovementsTable = ({
         toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
-        dayInPast: moment(timeMachineDate).format(dateFormatting.day),
+        dayInPast: timeMachineDate ?? undefined,
       },
       {
         initialData: initialMovements,

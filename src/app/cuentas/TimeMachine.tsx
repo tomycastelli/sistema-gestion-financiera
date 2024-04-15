@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import { CalendarIcon } from "lucide-react";
 import moment from "moment";
 import { Button } from "~/app/components/ui/button";
@@ -13,10 +11,39 @@ import {
 } from "~/app/components/ui/popover";
 import { cn } from "~/lib/utils";
 import { dateFormatting } from "~/lib/variables";
-import { useCuentasStore } from "~/stores/cuentasStore";
+import { useEffect, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export function TimeMachine() {
-  const { timeMachineDate, setTimeMachineDate } = useCuentasStore();
+
+const TimeMachine = () => {
+  const searchParams = useSearchParams();
+  const pathname = usePathname()
+
+  const timeMachineDate = searchParams.get("dia") ?? undefined;
+
+  const parsedDate = timeMachineDate ? moment(timeMachineDate, dateFormatting.day).toDate() : undefined
+
+  const router = useRouter()
+
+  const setTimeMachineDate = useCallback((dateInput: Date | undefined) => {
+    const updatedSearchParams = new URLSearchParams(searchParams)
+
+    const dateString = dateInput ? moment(dateInput).format(dateFormatting.day) : undefined
+
+    if (dateString) {
+      updatedSearchParams.set("dia", dateString)
+    } else {
+      updatedSearchParams.delete("dia")
+    }
+
+    router.push(pathname + "?" + updatedSearchParams.toString())
+  }, [router, pathname, searchParams])
+
+  useEffect(() => {
+    if (timeMachineDate) {
+      setTimeMachineDate(moment(timeMachineDate, dateFormatting.day).toDate())
+    }
+  }, [router, timeMachineDate, setTimeMachineDate])
 
   return (
     <Popover>
@@ -29,22 +56,20 @@ export function TimeMachine() {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {timeMachineDate ? (
-            moment(timeMachineDate).format(dateFormatting.day)
-          ) : (
-            <span>Viajar al pasado</span>
-          )}
+          {timeMachineDate ?? "Viajar al pasado"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={timeMachineDate}
+          selected={parsedDate}
           onSelect={setTimeMachineDate}
-          disabled={(date) => date > new Date()}
+          disabled={(date) => date > moment().toDate()}
           initialFocus
         />
       </PopoverContent>
     </Popover>
   );
 }
+
+export default TimeMachine
