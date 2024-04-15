@@ -7,11 +7,11 @@ import EntitySwitcher from "./EntitySwitcher";
 import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
 import { TimeMachine } from "./TimeMachine";
-import SummarizedBalances from "./SummarizedBalances";
+import AccountsTab from "./AccountsTab";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
-const AccountsTab = dynamic(() => import("./AccountsTab"));
+const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), { ssr: false })
 
 const Page = async ({
   searchParams,
@@ -123,6 +123,12 @@ const Page = async ({
               {selectedTab === "resumen" && (
                 <div suppressHydrationWarning={true}>
                   <SummarizedBalances
+                    initialBalancesInput={{
+                      linkToken: linkToken,
+                      linkId: linkId,
+                      entityId: selectedEntityObj?.id,
+                      entityTag: selectedTagObj?.name
+                    }}
                     uiColor={uiColor}
                     tags={filteredTags}
                     initialMovements={initialMovements}

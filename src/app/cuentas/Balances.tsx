@@ -1,7 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { type User } from "lucia";
 import moment from "moment";
 import { useState, type FC } from "react";
@@ -12,7 +10,6 @@ import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import loadingJson from "../../../public/animations/loading.json";
 import CustomPagination from "../components/CustomPagination";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
@@ -32,6 +29,7 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import BalancesCards from "./BalancesCards";
 import { dateFormatting } from "~/lib/variables";
+import LoadingAnimation from "../components/LoadingAnimation";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -604,7 +602,7 @@ const Balances: FC<BalancesProps> = ({
             </p>
           ))}
         </div>
-        {!isFetching && !!filteredBalances ? (
+        {!isFetching ? (
           filteredBalances
             .sort((a, b) => {
               const defaultList = accountsLists?.find((list) => list.isDefault);
@@ -743,7 +741,7 @@ const Balances: FC<BalancesProps> = ({
               </div>
             ))
         ) : (
-          <Lottie animationData={loadingJson} className="h-24" loop={true} />
+          <LoadingAnimation text="Cargando balances" />
         )}
       </div>
     </div>

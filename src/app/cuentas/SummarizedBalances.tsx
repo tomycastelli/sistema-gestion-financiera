@@ -28,9 +28,11 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { DataTable } from "./DataTable";
+import LoadingAnimation from "../components/LoadingAnimation";
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
+  initialBalancesInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   selectedTag: string | undefined;
   selectedEntityId: number | undefined;
@@ -40,6 +42,7 @@ interface SummarizedBalancesProps {
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalancesForCard,
+  initialBalancesInput,
   initialMovements,
   selectedTag,
   selectedEntityId,
@@ -54,6 +57,13 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   } = useCuentasStore();
 
   const dayInPast = moment(timeMachineDate).format(dateFormatting.day);
+
+  initialBalancesInput.dayInPast = dayInPast
+
+  const { data: balancesForCard, isFetching } = api.movements.getBalancesByEntitiesForCard.useQuery(initialBalancesInput, {
+    initialData: initialBalancesForCard,
+    refetchOnWindowFocus: false,
+  })
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
@@ -213,11 +223,13 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     },
   ];
 
+  const safeBalancesForCard = balancesForCard ?? []
+
   return (
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
-        {initialBalancesForCard &&
-          initialBalancesForCard.sort(
+        {!isFetching ?
+          safeBalancesForCard.sort(
             (a, b) =>
               currenciesOrder.indexOf(a.currency) -
               currenciesOrder.indexOf(b.currency),
@@ -256,7 +268,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )) : (<LoadingAnimation text="Cargando balances" />)}
       </div>
       <div className="flex mx-auto">
         {selectedCurrency ? (
