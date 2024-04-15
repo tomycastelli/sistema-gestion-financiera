@@ -397,7 +397,7 @@ export const movementsRouter = createTRPCRouter({
               input.dayInPast
                 ? lte(
                   balances.date,
-                  moment(input.dayInPast, dateFormatting.day).toDate(),
+                  moment(input.dayInPast, dateFormatting.day).startOf("day").toDate(),
                 )
                 : undefined,
             ),
