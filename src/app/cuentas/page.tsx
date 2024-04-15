@@ -122,20 +122,22 @@ const Page = async ({
                 )}
               {selectedTab === "resumen" && (
                 <div suppressHydrationWarning={true}>
-                  <SummarizedBalances
-                    initialBalancesInput={{
-                      linkToken: linkToken,
-                      linkId: linkId,
-                      entityId: selectedEntityObj?.id,
-                      entityTag: selectedTagObj?.name
-                    }}
-                    uiColor={uiColor}
-                    tags={filteredTags}
-                    initialMovements={initialMovements}
-                    selectedTag={selectedTagObj?.name}
-                    selectedEntityId={selectedEntityObj?.id}
-                    initialBalancesForCard={initialBalancesForCard}
-                  />
+                  {initialBalancesForCard && (
+                    <SummarizedBalances
+                      initialBalancesInput={{
+                        linkToken: linkToken,
+                        linkId: linkId,
+                        entityId: selectedEntityObj?.id,
+                        entityTag: selectedTagObj?.name
+                      }}
+                      uiColor={uiColor}
+                      tags={filteredTags}
+                      initialMovements={initialMovements}
+                      selectedTag={selectedTagObj?.name}
+                      selectedEntityId={selectedEntityObj?.id}
+                      initialBalancesForCard={initialBalancesForCard}
+                    />
+                  )}
                 </div>
               )}
             </div>

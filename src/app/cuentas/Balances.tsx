@@ -98,95 +98,91 @@ const Balances: FC<BalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  let transformedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
+  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = balances ? balances.reduce(
+    (acc, balance) => {
+      if (selectedEntityId) {
+        let entityEntry = acc.find(
+          (entry) =>
+            entry.entity.id ===
+            (balance.selectedEntityId === selectedEntityId
+              ? balance.selectedEntityId
+              : balance.otherEntityId),
+        );
 
-  if (balances) {
-    transformedBalances = balances.reduce(
-      (acc, balance) => {
-        if (selectedEntityId) {
-          let entityEntry = acc.find(
-            (entry) =>
-              entry.entity.id ===
-              (balance.selectedEntityId === selectedEntityId
-                ? balance.selectedEntityId
-                : balance.otherEntityId),
-          );
-
-          if (!entityEntry) {
-            entityEntry = {
-              entity:
-                selectedEntityId === balance.selectedEntityId
-                  ? balance.selectedEntity
-                  : balance.otherEntity,
-              data: [],
-            };
-            acc.push(entityEntry);
-          }
-
-          const balanceMultiplier =
-            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-          let dataEntry = entityEntry.data.find(
-            (d) => d.currency === balance.currency,
-          );
-
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0,
-            };
-            entityEntry.data.push(dataEntry);
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier;
-        } else if (selectedTag) {
-          const myPOVEntity = allChildrenTags.includes(
-            balance.selectedEntity.tagName,
-          )
-            ? balance.selectedEntity
-            : balance.otherEntity;
-          let entityEntry = acc.find(
-            (entry) => entry.entity.id === myPOVEntity.id,
-          );
-
-          if (!entityEntry) {
-            entityEntry = {
-              entity: myPOVEntity,
-              data: [],
-            };
-            acc.push(entityEntry);
-          }
-
-          const balanceMultiplier =
-            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-          let dataEntry = entityEntry.data.find(
-            (d) => d.currency === balance.currency,
-          );
-
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0,
-            };
-            entityEntry.data.push(dataEntry);
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier;
+        if (!entityEntry) {
+          entityEntry = {
+            entity:
+              selectedEntityId === balance.selectedEntityId
+                ? balance.selectedEntity
+                : balance.otherEntity,
+            data: [],
+          };
+          acc.push(entityEntry);
         }
 
-        return acc;
-      },
-      [] as z.infer<typeof transformedBalancesSchema>[],
-    );
-  }
+        const balanceMultiplier =
+          entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
+
+        let dataEntry = entityEntry.data.find(
+          (d) => d.currency === balance.currency,
+        );
+
+        if (!dataEntry) {
+          dataEntry = {
+            currency: balance.currency,
+            balance: 0,
+          };
+          entityEntry.data.push(dataEntry);
+        }
+
+        dataEntry.balance += balance.balance * balanceMultiplier;
+      } else if (selectedTag) {
+        const myPOVEntity = allChildrenTags.includes(
+          balance.selectedEntity.tagName,
+        )
+          ? balance.selectedEntity
+          : balance.otherEntity;
+        let entityEntry = acc.find(
+          (entry) => entry.entity.id === myPOVEntity.id,
+        );
+
+        if (!entityEntry) {
+          entityEntry = {
+            entity: myPOVEntity,
+            data: [],
+          };
+          acc.push(entityEntry);
+        }
+
+        const balanceMultiplier =
+          entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
+
+        let dataEntry = entityEntry.data.find(
+          (d) => d.currency === balance.currency,
+        );
+
+        if (!dataEntry) {
+          dataEntry = {
+            currency: balance.currency,
+            balance: 0,
+          };
+          entityEntry.data.push(dataEntry);
+        }
+
+        dataEntry.balance += balance.balance * balanceMultiplier;
+      }
+
+      return acc;
+    },
+    [] as z.infer<typeof transformedBalancesSchema>[],
+  ) : [];
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
-  if (selectedEntityId && balances) {
-    detailedBalances = balances.reduce(
+  if (selectedEntityId) {
+    detailedBalances = balances ? balances.reduce(
       (acc, balance) => {
         let entityEntry = acc.find(
           (entry) =>
@@ -227,9 +223,9 @@ const Balances: FC<BalancesProps> = ({
         return acc;
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
-    );
-  } else if (selectedTag && balances) {
-    detailedBalances = balances.reduce(
+    ) : [];
+  } else if (selectedTag) {
+    detailedBalances = balances ? balances.reduce(
       (acc, balance) => {
         const myPOVEntity = allChildrenTags.includes(
           balance.selectedEntity.tagName,
@@ -268,7 +264,7 @@ const Balances: FC<BalancesProps> = ({
         return acc;
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
-    );
+    ) : [];
   }
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
