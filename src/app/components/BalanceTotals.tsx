@@ -9,7 +9,7 @@ interface BalanceTotalsProps {
 const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
   return (
     <div>
-      {totals!.map((total) => (
+      {totals.map((total) => (
         <div key={total.currency}>
           <h1 className="text-lg font-semibold">
             {total.currency.toUpperCase()}
