@@ -45,18 +45,20 @@ const AccountsTable = async ({
 
   return (
     <div className="flex flex-grow flex-col space-y-8">
-      <Balances
-        tags={initialTags}
-        accountType={accountType}
-        initialBalances={initialBalances}
-        linkId={linkId}
-        linkToken={linkToken}
-        selectedEntityId={entityId}
-        selectedTag={entityTag}
-        user={user}
-        entities={entities}
-        uiColor={uiColor}
-      />
+      <div suppressHydrationWarning={true}>
+        <Balances
+          tags={initialTags}
+          accountType={accountType}
+          initialBalances={initialBalances}
+          linkId={linkId}
+          linkToken={linkToken}
+          selectedEntityId={entityId}
+          selectedTag={entityTag}
+          user={user}
+          entities={entities}
+          uiColor={uiColor}
+        />
+      </div>
       {initialMovements.movements.length > 0 && (
         <div className="flex flex-col">
           <h1 className="text-3xl font-semibold tracking-tighter">

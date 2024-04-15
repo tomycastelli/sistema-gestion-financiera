@@ -121,7 +121,7 @@ const Page = async ({
                   />
                 )}
               {selectedTab === "resumen" && (
-                <div>
+                <div suppressHydrationWarning={true}>
                   <SummarizedBalances
                     uiColor={uiColor}
                     tags={filteredTags}

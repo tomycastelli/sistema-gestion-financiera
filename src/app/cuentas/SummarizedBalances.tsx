@@ -57,7 +57,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
 
   const dayInPast = moment(timeMachineDate).format(dateFormatting.day);
 
-  const { data: balancesForCard } =
+  const { data: balancesForCard, isSuccess } =
     api.movements.getBalancesByEntitiesForCard.useQuery(
       {
         ...initialBalancesForCardInput,
@@ -230,7 +230,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   return (
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
-        {balancesForCard &&
+        {isSuccess && balancesForCard &&
           balancesForCard
             .sort(
               (a, b) =>
