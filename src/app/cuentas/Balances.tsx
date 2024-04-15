@@ -78,7 +78,6 @@ const Balances: FC<BalancesProps> = ({
 
   const {
     data: balances,
-    isLoading: isBalanceLoading,
     isFetching,
   } = api.movements.getBalancesByEntities.useQuery(
     {
@@ -362,7 +361,7 @@ const Balances: FC<BalancesProps> = ({
       <BalancesCards
         isFetching={isFetching}
         transformedBalances={transformedBalances}
-        isBalanceLoading={isBalanceLoading}
+        isBalanceLoading={isFetching}
         accountType={accountType}
         isInverted={isInverted} />
       <div className="flex flex-row items-end justify-between">
@@ -605,7 +604,7 @@ const Balances: FC<BalancesProps> = ({
             </p>
           ))}
         </div>
-        {!isBalanceLoading ? (
+        {!isFetching && !!filteredBalances ? (
           filteredBalances
             .sort((a, b) => {
               const defaultList = accountsLists?.find((list) => list.isDefault);

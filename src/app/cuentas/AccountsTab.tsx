@@ -1,10 +1,8 @@
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterOutputs } from "~/trpc/shared";
-import dynamic from "next/dynamic";
-
-const Balances = dynamic(() => import("./Balances"), { ssr: false });
-const MovementsTable = dynamic(() => import("./MovementsTable"));
+import MovementsTable from "./MovementsTable";
+import Balances from "./Balances";
 
 const AccountsTable = async ({
   initialBalances,
