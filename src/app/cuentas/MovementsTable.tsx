@@ -13,7 +13,7 @@ import {
   isNumeric,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currencies, dateFormatting } from "~/lib/variables";
+import { currencies, dateFormatting, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -184,16 +184,9 @@ const MovementsTable = ({
       accessorKey: "type",
       header: "Detalle",
       cell: ({ row }) => {
-        let type = "";
-        if (row.getValue("type") === "upload") {
-          type = "Carga";
-        } else if (row.getValue("type") === "confirmation") {
-          type = "Confirmación";
-        } else if (row.getValue("type") === "cancellation") {
-          type = "Cancelación";
-        } else {
-          type = row.getValue("type");
-        }
+        const rowType = row.getValue("type")
+        const type = typeof rowType === "string" ? mvTypeFormatting.get(rowType) : ""
+
         const metadata: JSON = row.getValue("metadata");
         const mvId: number = row.getValue("id");
         const txType: string = row.getValue("txType");
@@ -298,19 +291,21 @@ const MovementsTable = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <Link
-                  href={`/operaciones/gestion/${movement.operationId}`}
-                  className="flex flex-row items-center space-x-1"
-                >
+              <Link
+                href={`/operaciones/gestion/${movement.operationId}`}
+              >
+                <DropdownMenuItem>
+
                   <p>Ver operación</p>
-                  <Icons.externalLink className="h-4 text-black" />
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Ver usuario{" "}
-                {/* menu con usuarios que participaron subiendo, confirmando, actualizando */}
-              </DropdownMenuItem>
+                  <Icons.externalLink className="h-4" />
+                </DropdownMenuItem>
+              </Link>
+              <Link href={{ pathname: "/cuentas", query: { entidad: movement.otherEntityId } }}>
+                <DropdownMenuItem>
+                  <p>Ver otra cuenta</p>
+                  <Icons.currentAccount className="h-4" />
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -356,7 +351,7 @@ const MovementsTable = ({
                       {entities
                         .filter(
                           (e) =>
-                            getAllChildrenTags(entityTag, tags).has(
+                            getAllChildrenTags(entityTag, tags).includes(
                               e.tag.name,
                             ) || e.id === entityId,
                         )

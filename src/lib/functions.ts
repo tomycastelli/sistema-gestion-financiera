@@ -3,7 +3,6 @@ import { type ReadonlyURLSearchParams } from "next/navigation";
 import { type z } from "zod";
 import { type returnedBalancesSchema } from "~/server/db/schema";
 import type { RouterOutputs } from "~/trpc/shared";
-import { translations } from "./variables";
 
 export const getInitials = (name: string): string => {
   const words: string[] = name.split(" ");
@@ -15,6 +14,48 @@ export const getInitials = (name: string): string => {
     return `${words[0]?.charAt(0) ?? ""}${words[1]?.charAt(0) ?? ""}`;
   }
 };
+
+export const parseFormattedFloat = (input: string): number => {
+  return parseFloat(input.replace(/\./g, "").replace(",", "."))
+}
+
+export const safeJsonParse = <T>(str: string) => {
+  try {
+    const jsonValue: T = JSON.parse(str);
+
+    return jsonValue;
+  } catch {
+    return undefined;
+  }
+};
+
+export function lightenColor(color: string, lightness: number): string {
+  // Check for valid hex code format
+  if (!color.startsWith("#") || color.length !== 7) {
+    throw new Error("Invalid hex color format. Please use #RRGGBB format.");
+  }
+
+  // Remove the "#" symbol
+  const rgb = color.slice(1);
+
+  // Convert each hex digit (0-F) to integer (0-255) using slice and parseInt
+  const r = parseInt(rgb.substring(0, 2), 16);
+  const g = parseInt(rgb.substring(2, 4), 16);
+  const b = parseInt(rgb.substring(4, 6), 16);
+
+  // Calculate lightening factor (0.0 to 1.0)
+  const lightnessFactor = (100 - lightness) / 100.0;
+
+  // Lighten each color component
+  const newR = Math.floor(Math.max(0, r + (255 - r) * lightnessFactor));
+  const newG = Math.floor(Math.max(0, g + (255 - g) * lightnessFactor));
+  const newB = Math.floor(Math.max(0, b + (255 - b) * lightnessFactor));
+
+  // Convert lightened RGB values back to hex format (0-F)
+  const newHex = `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+
+  return newHex;
+}
 
 export const capitalizeFirstLetter = (text: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -81,10 +122,6 @@ export const paginateArray = <T>(
   const endIndex = startIndex + pageSize;
   return array.slice(startIndex, endIndex);
 };
-
-export function translateWord(word: string): string {
-  return translations[word] ?? word;
-}
 
 type Changes<T> = {
   before: T;
@@ -242,7 +279,7 @@ export function isTagAllowed(
 }
 
 export function getAllChildrenTags(
-  tagNames: Set<string> | string | undefined | null,
+  tagNames: string[] | string | undefined | null,
   allTags: {
     name: string;
     parent: string | null;
@@ -253,10 +290,10 @@ export function getAllChildrenTags(
       color: string | null;
     }[];
   }[],
-  result: Set<string> = new Set<string>(),
-): Set<string> {
+  result: string[] = [],
+): string[] {
   if (!tagNames) {
-    return new Set("")
+    return []
   }
   if (typeof tagNames === "string") {
     // Find the tag in the array
@@ -265,7 +302,7 @@ export function getAllChildrenTags(
 
     // If the tag is found, add it to the result and continue with children
     if (currentTag) {
-      result.add(currentTag.name);
+      result.push(currentTag.name);
 
       if (currentTag.children) {
         // Recursively find children of the current tag
@@ -282,7 +319,7 @@ export function getAllChildrenTags(
 
       // If the tag is found, add it to the result and continue with children
       if (currentTag) {
-        result.add(currentTag.name);
+        result.push(currentTag.name);
 
         if (currentTag.children) {
           // Recursively find children of the current tag
@@ -446,11 +483,9 @@ export const generateTableData = (
 
         return {
           id: movement.id,
-          date: movement.transaction.date
-            ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
-            : moment(movement.transaction.operation.date).format(
-              "DD-MM-YYYY HH:mm",
-            ),
+          date: moment(movement.transaction.operation.date).format(
+            "DD-MM-YYYY HH:mm",
+          ),
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,
           type: movement.type,
@@ -474,17 +509,17 @@ export const generateTableData = (
       } else {
         const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
         // Esto indica, si es 1, que gano, si es -1, que pierdo
-        const direction = allChildrenTags.has(
+        const direction = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
           ? -movement.direction
           : movement.direction;
-        const selectedEntity = allChildrenTags.has(
+        const selectedEntity = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
           ? movement.transaction.fromEntity
           : movement.transaction.toEntity;
-        const otherEntity = allChildrenTags.has(
+        const otherEntity = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
           ? movement.transaction.toEntity
@@ -492,11 +527,9 @@ export const generateTableData = (
 
         return {
           id: movement.id,
-          date: movement.transaction.date
-            ? moment(movement.transaction.date).format("DD-MM-YYYY HH:mm")
-            : moment(movement.transaction.operation.date).format(
-              "DD-MM-YYYY HH:mm",
-            ),
+          date: moment(movement.transaction.operation.date).format(
+            "DD-MM-YYYY HH:mm",
+          ),
           operationId: movement.transaction.operationId,
           observations: movement.transaction.operation.observations,
           type: movement.type,

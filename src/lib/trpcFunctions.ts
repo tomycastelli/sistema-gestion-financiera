@@ -4,13 +4,11 @@ import {
   desc,
   eq,
   gt,
-  or,
   sql,
   type ExtractTablesWithRelations,
   lt,
-  isNotNull,
-  isNull,
   inArray,
+  lte,
 } from "drizzle-orm";
 import { type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -176,7 +174,7 @@ export const generateMovements = async (
 
   const changeAmount = movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) * tx.amount
 
-  const mvDate = tx.date ?? tx.operation.date
+  const mvDate = tx.operation.date
 
   const selectedEntityId = tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId
   const otherEntityId = tx.fromEntityId === selectedEntityId ? tx.toEntityId : tx.fromEntityId
@@ -217,8 +215,6 @@ export const generateMovements = async (
       })
       .returning();
 
-    console.log("Not balance ever, starting one completely new", response)
-
     movementsArray.push({
       transactionId: tx.id,
       direction,
@@ -251,35 +247,33 @@ export const generateMovements = async (
           ),
         ).returning({ id: balances.id, amount: balances.balance });
 
+      // Busco el balance mas reciente previo al que voy a insertar
+      const [beforeBalance] = await transaction
+        .select({ amount: balances.balance })
+        .from(balances)
+        .where(
+          and(
+            eq(balances.account, account),
+            eq(balances.currency, tx.currency),
+            lt(balances.date, moment(mvDate).startOf("day").toDate()),
+            eq(
+              balances.selectedEntityId,
+              selectedEntityId,
+            ),
+            eq(
+              balances.otherEntityId,
+              otherEntityId,
+            ),
+          ),
+        )
+        .orderBy(desc(balances.date))
+        .limit(1);
+
       if (!oldBalance) {
         // Si no existe un balance de esa fecha previa, creo uno donde el monto sea el ultimo monto previo a ese mas el cambio
-        const [beforeBalance] = await transaction
-          .select({ amount: balances.balance })
-          .from(balances)
-          .where(
-            and(
-              eq(balances.account, account),
-              eq(balances.currency, tx.currency),
-              lt(balances.date, moment(mvDate).startOf("day").toDate()),
-              eq(
-                balances.selectedEntityId,
-                selectedEntityId,
-              ),
-              eq(
-                balances.otherEntityId,
-                otherEntityId,
-              ),
-            ),
-          )
-          .orderBy(desc(balances.date))
-          .limit(1);
-
-        console.log("Did't found an old balance for this previous date, so using the one before: ", beforeBalance)
-
-        const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, date: moment(mvDate).startOf("day").toDate(), selectedEntityId, otherEntityId, balance: beforeBalance?.amount ? beforeBalance.amount + changeAmount : changeAmount }).returning({ id: balances.id, amount: balances.balance })
+        const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, date: moment(mvDate).startOf("day").toDate(), selectedEntityId, otherEntityId, balance: beforeBalance ? beforeBalance.amount + changeAmount : changeAmount }).returning({ id: balances.id, amount: balances.balance })
 
         if (newBalance) {
-          console.log("Created a new balance for that previous date: ", newBalance)
           // Creo un movimiento con el nuevo balance creado
           movementsArray.push({
             transactionId: tx.id,
@@ -291,13 +285,24 @@ export const generateMovements = async (
           })
         }
       } else {
+        // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
+        const [movement] = await transaction.select({ amount: movements.balance }).from(movements)
+          .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .where(
+            and(
+              eq(movements.balanceId, oldBalance.id),
+              lte(operations.date, mvDate)
+            )
+          ).orderBy(desc(operations.date)).limit(1)
+
         // Creo un movimiento con el balance cambiado
         movementsArray.push({
           transactionId: tx.id,
           direction,
           account,
           type,
-          balance: oldBalance.amount,
+          balance: movement ? movement.amount + changeAmount : beforeBalance ? beforeBalance.amount + changeAmount : changeAmount,
           balanceId: oldBalance.id
         })
       }
@@ -322,7 +327,16 @@ export const generateMovements = async (
       // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
       await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(eq(balances.id, balance.id))
 
-      console.log("The date already is the same as the newest balance, just updating it")
+      // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
+      const [movement] = await transaction.select({ amount: movements.balance }).from(movements)
+        .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+        .leftJoin(operations, eq(transactions.operationId, operations.id))
+        .where(
+          and(
+            eq(movements.balanceId, balance.id),
+            lte(operations.date, mvDate)
+          )
+        ).orderBy(desc(operations.date)).limit(1)
 
       // Creo un movimiento con el balance cambiado
       movementsArray.push({
@@ -330,7 +344,7 @@ export const generateMovements = async (
         direction,
         account,
         type,
-        balance: balance.amount + changeAmount,
+        balance: movement ? movement.amount + changeAmount : balance.amount + changeAmount,
         balanceId: balance.id
       })
     } else {
@@ -350,37 +364,26 @@ export const generateMovements = async (
     }
   }
 
-  console.log("Los balances de los movimientos con tx o operacion con fecha mayor a este seran actualizados: ", mvDate.toDateString())
+  // Actualizo los movimientos posteriores al que voy a insertar
   const response = await transaction.select({ id: movements.id }).from(movements).leftJoin(transactions, eq(movements.transactionId, transactions.id)).leftJoin(operations, eq(transactions.operationId, operations.id)).leftJoin(balances, eq(movements.balanceId, balances.id)).where(
     and(
       eq(movements.account, account),
       eq(transactions.currency, tx.currency),
       eq(balances.selectedEntityId, selectedEntityId),
       eq(balances.otherEntityId, otherEntityId),
-      or(
-        and(
-          isNotNull(transactions.date),
-          gt(transactions.date, mvDate)
-        ),
-        and(
-          isNull(transactions.date),
-          gt(operations.date, mvDate)
-        )
-      )
+      gt(operations.date, mvDate)
     )
   )
   const movementsIds = response.length > 0 ? response.map(obj => obj.id) : [0]
 
   await transaction.update(movements).set({ balance: sql`${movements.balance} + ${changeAmount}` }).where(inArray(movements.id, movementsIds))
 
-  console.log("Creare este movimiento", movementsArray)
-
-  const createdMovements = await transaction
+  const [createdMovement] = await transaction
     .insert(movements)
     .values(movementsArray)
     .returning();
 
-  return createdMovements;
+  return createdMovement;
 };
 
 export const undoBalances = async (

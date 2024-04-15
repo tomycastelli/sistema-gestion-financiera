@@ -6,7 +6,6 @@ import useSearch from "~/hooks/useSearch";
 import {
   capitalizeFirstLetter,
   getAllChildrenTags,
-  translateWord,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -76,8 +75,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       userPermissions?.find(
         (p) =>
           p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          (p.entitiesIds?.has(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, initialTags).has(
+          (p.entitiesIds?.includes(entity.id) ||
+            getAllChildrenTags(p.entitiesTags, initialTags).includes(
               entity.tag.name,
             )),
       )
@@ -101,7 +100,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     }
     return tagFilterMode === "strict"
       ? entity.tag.name === tagFilter
-      : getAllChildrenTags(tagFilter, tags).has(entity.tag.name);
+      : getAllChildrenTags(tagFilter, tags).includes(entity.tag.name);
   });
 
   return (
@@ -128,7 +127,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                   <SelectItem value="todos">Todos</SelectItem>
                   {initialTags.map((tag) => (
                     <SelectItem key={tag.name} value={tag.name}>
-                      {capitalizeFirstLetter(translateWord(tag.name))}
+                      {capitalizeFirstLetter(tag.name)}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -191,7 +190,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
           <div className="flex flex-col gap-6 items-start">
-            <div className="flex flex-wrap justify-start gap-4">
+            <div className="flex flex-wrap justify-center gap-8">
               {twiceFilteredEntities
                 .slice((page - 1) * pageSize, page * pageSize)
                 .map((entity) => (

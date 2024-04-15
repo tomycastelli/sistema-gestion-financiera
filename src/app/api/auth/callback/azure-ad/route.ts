@@ -86,20 +86,40 @@ export async function GET(request: Request) {
         await tx.insert(tag).values({ name: "Operadores" });
       }
 
-      const userEntity = await tx
-        .insert(entities)
-        .values({
+      const adminsEmails = ["christian@ifc.com.ar", "tomas.castelli@ifc.com.ar"]
+
+      const [existingUserEntity] = await tx.select().from(entities).where(
+        and(
+          eq(entities.name, userFullName),
+          eq(entities.tagName, "Operadores")
+        )
+      )
+      if (!existingUserEntity) {
+        const [userEntity] = await tx
+          .insert(entities)
+          .values({
+            name: userFullName,
+            tagName: "Operadores",
+          })
+          .returning();
+        await tx.insert(user).values({
+          id: userId,
           name: userFullName,
-          tagName: "Operadores",
+          photoUrl: microsoftUser.picture,
+          email: microsoftUser.email,
+          entityId: userEntity!.id,
+          permissions: adminsEmails.includes(microsoftUser.email) ? JSON.stringify([{ "name": "ADMIN" }]) : null
+        });
+      } else {
+        await tx.insert(user).values({
+          id: userId,
+          name: userFullName,
+          photoUrl: microsoftUser.picture,
+          email: microsoftUser.email,
+          entityId: existingUserEntity.id,
+          permissions: adminsEmails.includes(microsoftUser.email) ? JSON.stringify([{ "name": "ADMIN" }]) : null
         })
-        .returning();
-      await tx.insert(user).values({
-        id: userId,
-        name: userFullName,
-        photoUrl: microsoftUser.picture,
-        email: microsoftUser.email,
-        entityId: userEntity[0]!.id,
-      });
+      }
       await tx.insert(oauth_account).values({
         providerId: "microsoft",
         providerUserId: microsoftUser.sub,

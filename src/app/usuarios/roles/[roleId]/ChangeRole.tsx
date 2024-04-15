@@ -51,8 +51,8 @@ const FormSchema = z.object({
     z.object({
       name: z.enum(PermissionsNames),
       active: z.boolean(),
-      entitiesIds: z.set(z.number()),
-      entitiesTags: z.set(z.string()),
+      entitiesIds: z.array(z.number()),
+      entitiesTags: z.array(z.string()),
     }),
   ),
 });
@@ -87,7 +87,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
 
       const prevData = utils.roles.getById.getData();
 
-      utils.roles.getById.setData({ id: role!.id }, (old) => {
+      utils.roles.getById.setData({ id: role?.id ?? 1 }, (old) => {
         return {
           id: role!.id,
           name: newOperation.name,
@@ -100,7 +100,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       return { prevData };
     },
     onError(err, newOperation, ctx) {
-      utils.roles.getById.setData({ id: role!.id }, ctx?.prevData);
+      utils.roles.getById.setData({ id: role?.id ?? 1 }, ctx?.prevData);
 
       toast.error("No se pudo modificar el rol", {
         description: err.message
@@ -115,7 +115,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
   });
 
   // @ts-ignore
-  const permissionsNames: string[] = role!.permissions!.map((obj) => obj.name);
+  const permissionsNames: string[] = role.permissions.map((obj) => obj.name);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -123,35 +123,31 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       name: role!.name,
       color: role!.color!,
       permissions: permissionsData.map((permission) => {
-        if (permissionsNames.includes(permission.name)) {
+        if (permissionsNames.includes(permission.name) && role?.permissions) {
           return {
             name: permission.name,
             active: true,
-            // @ts-ignore
-            entitiesIds: role!.permissions!.find(
-              // @ts-ignore
+            entitiesIds: role.permissions.find(
               (item) => item.name === permission.name,
             )?.entitiesIds
-              ? // @ts-ignore
-              new Set(role!.permissions!.find((item) => item.name === permission.name)
-                ?.entitiesIds)
-              : new Set<number>(),
-            // @ts-ignore
-            entitiesTags: role!.permissions!.find(
-              // @ts-ignore
+              ?
+              role.permissions.find((item) => item.name === permission.name)
+                ?.entitiesIds
+              : [],
+            entitiesTags: role.permissions.find(
               (item) => item.name === permission.name,
             )?.entitiesTags
-              ? // @ts-ignore
-              new Set(role!.permissions!.find((item) => item.name === permission.name)
-                ?.entitiesTags)
-              : new Set<string>(),
+              ?
+              role.permissions.find((item) => item.name === permission.name)
+                ?.entitiesTags
+              : [],
           };
         } else {
           return {
             name: permission.name,
             active: false,
-            entitiesIds: new Set<number>(),
-            entitiesTags: new Set<string>(),
+            entitiesIds: [],
+            entitiesTags: [],
           };
         }
       }),
@@ -170,7 +166,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       (permission) => permission.active === true,
     );
     await mutateAsync({
-      id: role!.id,
+      id: role?.id ?? 1,
       name: values.name,
       color: values.color,
       permissions: addedPermissions,
@@ -265,7 +261,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                   p.name === "USERS_ROLES_MANAGE" ||
                   (p.name === "USERS_ROLES_MANAGE_SOME" &&
                     role &&
-                    p.entitiesTags?.has(role.name)),
+                    p.entitiesTags?.includes(role.name ?? "")),
               )
                 ? false
                 : true
@@ -325,7 +321,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                   )) ||
                                 (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
                                   user?.role?.name &&
-                                  p.entitiesTags?.has(user.role.name)) ||
+                                  p.entitiesTags?.includes(user.role.name)) ||
                                 (p.name ===
                                   "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
                                   loopField.name.startsWith("ENTITIES")),
@@ -380,16 +376,15 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       value={entity.name}
                                       key={entity.id}
                                       onSelect={() => {
-                                        if (!field.value.has(entity.id)) {
+                                        if (!field.value.includes(entity.id)) {
                                           setValue(
                                             `permissions.${index}.entitiesIds`,
-                                            field.value.add(entity.id),
+                                            [...field.value, entity.id],
                                           );
                                         } else {
-                                          field.value.delete(entity.id)
                                           setValue(
                                             `permissions.${index}.entitiesIds`,
-                                            field.value
+                                            field.value.filter(val => val !== entity.id)
                                           );
                                         }
                                       }}
@@ -397,7 +392,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          field.value.has(entity.id)
+                                          field.value.includes(entity.id)
                                             ? "opacity-100"
                                             : "opacity-0",
                                         )}
@@ -467,17 +462,16 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       value={role.name}
                                       onSelect={() => {
                                         if (
-                                          !field.value.has(role.name)
+                                          !field.value.includes(role.name)
                                         ) {
                                           setValue(
                                             `permissions.${index}.entitiesTags`,
-                                            field.value.add(role.name),
+                                            [...field.value, role.name],
                                           );
                                         } else {
-                                          field.value.delete(role.name)
                                           setValue(
                                             `permissions.${index}.entitiesTags`,
-                                            field.value
+                                            field.value.filter(val => val !== role.name)
                                           );
                                         }
                                       }}
@@ -485,7 +479,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          field.value.has(role.name)
+                                          field.value.includes(role.name)
                                             ? "opacity-100"
                                             : "opacity-0",
                                         )}
@@ -498,16 +492,15 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       value={tag.name}
                                       key={tag.name}
                                       onSelect={() => {
-                                        if (!field.value.has(tag.name)) {
+                                        if (!field.value.includes(tag.name)) {
                                           setValue(
                                             `permissions.${index}.entitiesTags`,
-                                            field.value.add(tag.name),
+                                            [...field.value, tag.name],
                                           );
                                         } else {
-                                          field.value.delete(tag.name)
                                           setValue(
                                             `permissions.${index}.entitiesTags`,
-                                            field.value
+                                            field.value.filter(val => val !== tag.name)
                                           );
                                         }
                                       }}
@@ -515,7 +508,7 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          field.value.has(tag.name)
+                                          field.value.includes(tag.name)
                                             ? "opacity-100"
                                             : "opacity-0",
                                         )}

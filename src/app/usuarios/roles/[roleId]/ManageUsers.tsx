@@ -57,9 +57,13 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
   });
 
   const { data: role } = api.roles.getById.useQuery(
-    { id: initialRole!.id },
+    { id: initialRole?.id ?? 1 },
     { initialData: initialRole!, refetchOnWindowFocus: false },
   );
+
+  if (!role) {
+    return (<h1 className="text-2xl font-semibold">No hay rol</h1>)
+  }
 
   const utils = api.useContext();
 
@@ -77,7 +81,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
       const prevData = utils.roles.getById.getData();
 
       utils.roles.getById.setData(
-        { id: role!.id },
+        { id: role?.id ?? 1 },
         // @ts-ignore
         (old) => {
           return {
@@ -85,10 +89,10 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
             name: old!.name,
             color: old!.color,
             permissions: old!.permissions,
-            users: [
-              ...old!.users,
+            users: old?.users ? [
+              ...old.users,
               users.find((user) => user.id === newOperation.userId),
-            ],
+            ] : [],
           };
         },
       );
@@ -96,7 +100,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
       return { prevData };
     },
     onError(err, newOperation, ctx) {
-      utils.roles.getById.setData({ id: role!.id }, ctx?.prevData);
+      utils.roles.getById.setData({ id: role?.id ?? 1 }, ctx?.prevData);
 
       toast.error(`No se pudo añadir al usuario ${newOperation.userId}`, {
         description: err.message
@@ -117,7 +121,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         const prevData = utils.roles.getById.getData();
 
         utils.roles.getById.setData(
-          { id: role!.id },
+          { id: role?.id ?? 1 },
           // @ts-ignore
           (old) => {
             return {
@@ -125,7 +129,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
               name: old!.name,
               color: old!.color,
               permissions: old!.permissions,
-              users: old!.users.filter((user) => user.id !== newOperation.id),
+              users: old?.users ? old.users.filter((user) => user.id !== newOperation.id) : [],
             };
           },
         );
@@ -133,7 +137,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         return { prevData };
       },
       onError(err, newOperation, ctx) {
-        utils.roles.getById.setData({ id: role!.id }, ctx?.prevData);
+        utils.roles.getById.setData({ id: role?.id ?? 1 }, ctx?.prevData);
 
         toast.error(`No se pudo eliminar al usuario ${newOperation.id}`, {
           description: err.message
@@ -148,10 +152,10 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
     });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    await addUserToRole({ userId: values.userId, roleId: role!.id });
+    await addUserToRole({ userId: values.userId, roleId: role?.id ?? 1 });
   };
 
-  const userNamesInRole = role!.users.map((user) => user.name);
+  const userNamesInRole = role.users ? role.users.map((user) => user.name) : [];
 
   return (
     <div className="flex flex-col space-y-4">
@@ -192,7 +196,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         </form>
       </Form>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {role!.users.map((user) => (
+        {role.users && role.users.map((user) => (
           <Card key={user.id}>
             <CardHeader>
               <div className="flex flex-row items-center justify-between">

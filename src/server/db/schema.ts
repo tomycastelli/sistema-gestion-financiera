@@ -147,7 +147,6 @@ export const transactions = pgTable(
         onUpdate: "cascade",
       }),
     type: text("type").notNull(),
-    date: timestamp("date", { mode: "date" }),
     operatorEntityId: integer("operatorEntityId")
       .notNull()
       .references(() => entities.id, {
@@ -178,7 +177,6 @@ export const transactions = pgTable(
         "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx",
       ).on(
         table.operationId,
-        table.date,
         table.fromEntityId,
         table.toEntityId,
         table.currency,

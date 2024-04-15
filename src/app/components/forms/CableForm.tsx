@@ -24,6 +24,7 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
+import { useNumberFormat } from "@react-input/number-format";
 
 const FormSchema = z.object({
   emittingEntity: z.string(),
@@ -154,6 +155,8 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
     reset();
   };
 
+  const inputRef = useNumberFormat({ locales: "es-AR" })
+
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -261,7 +264,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
                   <FormItem>
                     <FormLabel>Monto</FormLabel>
                     <FormControl>
-                      <Input className="w-32" placeholder="$" {...field} />
+                      <Input ref={inputRef} className="w-32" placeholder="$" name={field.name} value={field.value} onChange={field.onChange} />
                     </FormControl>
                   </FormItem>
                 )}

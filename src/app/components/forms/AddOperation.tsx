@@ -4,7 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { type User } from "lucia";
 import moment from "moment";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
@@ -34,6 +34,12 @@ import {
 } from "../ui/tooltip";
 import InitialDataOperationForm from "./InitialDataOperationForm";
 import { toast } from "sonner";
+import CustomPagination from "../CustomPagination";
+import Link from "next/link";
+import { Switch } from "../ui/switch";
+import { Status } from "~/server/db/schema";
+import { currentAccountOnlyTypes } from "~/lib/variables";
+import { Textarea } from "../ui/textarea";
 const CambioForm = dynamic(() => import("./CambioForm"));
 const CableForm = dynamic(() => import("./CableForm"));
 const FlexibleTransactionsForm = dynamic(
@@ -56,8 +62,13 @@ const AddOperation = ({
   initialOperations,
 }: AddOperationProps) => {
   const [parent] = useAutoAnimate();
-  const [tabName, setTabName] = useState("flexible");
+  const [tabName, setTabName] = useState<string>("flexible");
+  const [txsPage, setTxsPage] = useState<number>(1)
+
+  const [confirmationAtUpload, setConfirmationAtUpload] = useState<boolean>(false)
+
   const searchParams = useSearchParams();
+  const router = useRouter()
 
   const selectedOpIdString = searchParams.get("operacion");
   const selectedOpId = selectedOpIdString ? parseInt(selectedOpIdString) : null;
@@ -66,6 +77,7 @@ const AddOperation = ({
 
   const {
     isInitialOperationSubmitted,
+    setInitialOperationStore,
     initialOperationStore,
     resetInitialOperationStore,
     setIsInitialOperationSubmitted,
@@ -81,6 +93,8 @@ const AddOperation = ({
       initialData: initialOperations,
       refetchOnWindowFocus: false,
     });
+
+  const { mutateAsync: updateStatus } = api.editingOperations.updateTransactionStatus.useMutation()
 
   const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
     {
@@ -121,21 +135,18 @@ const AddOperation = ({
         resetTransactionsStore();
         resetInitialOperationStore();
       },
-      onSuccess(data, variables) {
-        const transaccionesCargadas = variables.transactions.length;
-        if (variables.opId) {
-          toast.success(transaccionesCargadas > 1
-            ? transaccionesCargadas.toString() +
-            ` transacciones cargadas a la operación ${variables.opId}`
-            : transaccionesCargadas +
-            ` transaccion cargada a la operación ${variables.opId}`);
-        } else {
-          toast.success(`Operacion y ${transaccionesCargadas > 1
-            ? transaccionesCargadas.toString() + " transacciones cargadas"
-            : transaccionesCargadas + " transaccion cargada"
-            }`);
-        }
-
+      onSuccess(data) {
+        const transaccionesCargadas = data.transactions.length
+        toast.success(transaccionesCargadas > 1
+          ? transaccionesCargadas.toString() +
+          ` transacciones cargadas a la operación ${data.operation?.id}`
+          : transaccionesCargadas +
+          ` transaccion cargada a la operación ${data.operation?.id}`, {
+          action: {
+            label: "Ir a operación",
+            onClick: () => router.push(`/operaciones/gestion/${data.operation?.id}`)
+          }
+        });
       }
     },
   );
@@ -192,16 +203,11 @@ const AddOperation = ({
                     ? "transacción"
                     : "transacciones"}
                 </CardTitle>
-                {initialOperationStore.opObservations && (
-                  <h1 className="text-sm text-muted-foreground">
-                    {initialOperationStore.opObservations}
-                  </h1>
-                )}
               </CardHeader>
               {transactionsStore && (
                 <>
                   <CardContent className="flex flex-col space-y-4" ref={parent}>
-                    {transactionsStore.map((transaction) => (
+                    {transactionsStore.slice((txsPage - 1) * 5, txsPage * 5).map((transaction) => (
                       <div
                         key={transaction.txId}
                         className="flex flex-col space-y-4"
@@ -258,10 +264,10 @@ const AddOperation = ({
                             className="mr-auto flex flex-row justify-center space-x-1"
                           >
                             <p>
-                              {transaction.date ? moment(transaction.date).format("DD-MM-YYYY") : moment(initialOperationStore.opDate).format("DD-MM-YYYY")}
+                              {moment(initialOperationStore.opDate).format("DD-MM-YYYY")}
                             </p>
                             <span className="text-muted-foreground">
-                              {transaction.time ?? initialOperationStore.opTime}
+                              {initialOperationStore.opTime}
                             </span>
                           </Badge>
                         </div>
@@ -289,11 +295,22 @@ const AddOperation = ({
                         <Separator className="mt-1" />
                       </div>
                     ))}
+                    {transactionsStore.length > 5 && (
+                      <CustomPagination
+                        page={txsPage}
+                        pageSize={5}
+                        itemName="transacciones"
+                        totalCount={transactionsStore.length}
+                        changePageState={setTxsPage}
+                      />
+                    )}
+                    <Textarea className="w-full h-16" placeholder="Observaciones..." value={initialOperationStore.opObservations}
+                      onChange={(e) => setInitialOperationStore({ ...initialOperationStore, opObservations: e.target.value })} />
                   </CardContent>
                   <CardFooter className="flex flex-col items-center space-y-2">
                     <Button
                       className="w-full"
-                      disabled={transactionsStore.length > 0 ? false : true}
+                      disabled={transactionsStore.length === 0}
                       onClick={async () => {
                         const [hoursString, minutesString] =
                           initialOperationStore.opTime.split(":");
@@ -307,36 +324,13 @@ const AddOperation = ({
                               : moment().minutes(),
                           })
                           .toDate();
-                        console.log(
-                          moment(initialOperationStore.opDate)
-                            .set({
-                              hour: hoursString
-                                ? parseInt(hoursString)
-                                : moment().hours(),
-                              minute: minutesString
-                                ? parseInt(minutesString)
-                                : moment().minutes(),
-                            })
-                            .toDate(),
-                        );
-                        await mutateAsync({
+                        const response = await mutateAsync({
                           opDate,
                           opObservations: initialOperationStore.opObservations,
                           opId: selectedOpId,
                           transactions: transactionsStore.map(
                             (transaction) => ({
                               type: transaction.type,
-                              date:
-                                transaction.date && transaction.time
-                                  ? moment(
-                                    `${moment(transaction.date).format(
-                                      "YYYY-MM-DD",
-                                    )} ${transaction.time}`,
-                                    "YYYY-MM-DD HH:mm",
-                                  ).toDate()
-                                  : transaction.date
-                                    ? transaction.date
-                                    : undefined,
                               operatorEntityId: transaction.operatorId,
                               fromEntityId: transaction.fromEntityId,
                               toEntityId: transaction.toEntityId,
@@ -347,6 +341,13 @@ const AddOperation = ({
                             }),
                           ),
                         });
+                        if (confirmationAtUpload) {
+                          await updateStatus({
+                            transactionIds: response.transactions
+                              .filter(tx => tx.status === Status.enumValues[2] || !currentAccountOnlyTypes.has(tx.type))
+                              .map(tx => tx.id)
+                          })
+                        }
                       }}
                     >
                       <Icons.addPackage className="mr-2 h-4 w-4" />
@@ -358,6 +359,10 @@ const AddOperation = ({
                         <p>Cargar operación</p>
                       )}
                     </Button>
+                    <div className="flex flex-row gap-x-2 justify-start">
+                      <Switch checked={confirmationAtUpload} onCheckedChange={setConfirmationAtUpload} />
+                      <p className="text-sm text-muted-foreground">Confirmar automáticamente</p>
+                    </div>
                     {transactionsStore.length < 1 && (
                       <p className="text-sm">
                         Añadí una transacción para continuar{" "}
@@ -431,7 +436,16 @@ const AddOperation = ({
             </div>
           )
         ) : (
-          <InitialDataOperationForm />
+          <div className="flex flex-col gap-y-8">
+            <InitialDataOperationForm />
+            <Link href="/operaciones/carga/rapida">
+              <Button className="flex flex-row gap-x-2">
+                <p>Cargar rápida</p>
+                <Icons.json className="h-5 w-5" />
+                <Icons.excel className="h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
       <div className="lg:col-span-1">

@@ -21,6 +21,7 @@ const Page = async ({
   const user = await getUser();
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
+  const selectedEntity = searchParams.entidad;
   const selectedFromEntity = searchParams.origen
   const selectedToEntity = searchParams.destino;
   const selectedCurrency = searchParams.divisa as string;
@@ -39,6 +40,11 @@ const Page = async ({
     page: parseInt(selectedPage),
   };
 
+  if (selectedEntity) {
+    operationsQueryInput.entityId = Array.isArray(selectedEntity) ? selectedEntity.map((str) =>
+      parseInt(str)
+    ) : [parseInt(selectedEntity)]
+  }
   if (selectedFromEntity) {
     operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity) ? selectedFromEntity.map((str) =>
       parseInt(str),

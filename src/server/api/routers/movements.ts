@@ -5,7 +5,6 @@ import {
   eq,
   gte,
   inArray,
-  isNull,
   lte,
   not,
   or,
@@ -13,7 +12,6 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
-import type postgres from "postgres";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
@@ -120,10 +118,35 @@ export const movementsRouter = createTRPCRouter({
             : undefined,
         ),
         input.dayInPast
-          ? or(
+          ? lte(
+            operations.date,
+            moment(input.dayInPast, dateFormatting.day)
+              .set({
+                hour: 23,
+                minute: 59,
+                second: 59,
+                millisecond: 999,
+              })
+              .toDate(),
+          )
+          : undefined,
+        input.fromDate && input.toDate
+          ?
+          and(
+            gte(
+              operations.date,
+              moment(input.fromDate)
+                .set({
+                  hour: 0,
+                  minute: 0,
+                  second: 0,
+                  millisecond: 0,
+                })
+                .toDate(),
+            ),
             lte(
-              transactions.date,
-              moment(input.dayInPast, dateFormatting.day)
+              operations.date,
+              moment(input.toDate)
                 .set({
                   hour: 23,
                   minute: 59,
@@ -132,121 +155,33 @@ export const movementsRouter = createTRPCRouter({
                 })
                 .toDate(),
             ),
-            and(
-              isNull(transactions.date),
-              lte(
-                operations.date,
-                moment(input.dayInPast, dateFormatting.day)
-                  .set({
-                    hour: 23,
-                    minute: 59,
-                    second: 59,
-                    millisecond: 999,
-                  })
-                  .toDate(),
-              ),
-            ),
-          )
-          : undefined,
-        input.fromDate && input.toDate
-          ? or(
-            and(
-              gte(
-                transactions.date,
-                moment(input.fromDate)
-                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                  .toDate(),
-              ),
-              lte(
-                transactions.date,
-                moment(input.toDate)
-                  .set({
-                    hour: 23,
-                    minute: 59,
-                    second: 59,
-                    millisecond: 999,
-                  })
-                  .toDate(),
-              ),
-            ),
-            and(
-              isNull(transactions.date),
-              and(
-                gte(
-                  operations.date,
-                  moment(input.fromDate)
-                    .set({
-                      hour: 0,
-                      minute: 0,
-                      second: 0,
-                      millisecond: 0,
-                    })
-                    .toDate(),
-                ),
-                lte(
-                  operations.date,
-                  moment(input.toDate)
-                    .set({
-                      hour: 23,
-                      minute: 59,
-                      second: 59,
-                      millisecond: 999,
-                    })
-                    .toDate(),
-                ),
-              ),
-            ),
           )
           : undefined,
         input.fromDate && !input.toDate
-          ? or(
-            and(
-              gte(
-                transactions.date,
-                moment(input.fromDate)
-                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                  .toDate(),
-              ),
-              lte(
-                transactions.date,
-                moment(input.fromDate)
-                  .set({
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
-                    millisecond: 0,
-                  })
-                  .add(1, "day")
-                  .toDate(),
-              ),
+          ?
+          and(
+            gte(
+              operations.date,
+              moment(input.fromDate)
+                .set({
+                  hour: 0,
+                  minute: 0,
+                  second: 0,
+                  millisecond: 0,
+                })
+                .toDate(),
             ),
-            and(
-              isNull(transactions.date),
-              and(
-                gte(
-                  operations.date,
-                  moment(input.fromDate)
-                    .set({
-                      hour: 0,
-                      minute: 0,
-                      second: 0,
-                      millisecond: 0,
-                    })
-                    .toDate(),
-                ),
-                lte(
-                  operations.date,
-                  moment(input.fromDate)
-                    .set({
-                      hour: 0,
-                      minute: 0,
-                      second: 0,
-                      millisecond: 0,
-                    })
-                    .add(1, "day")
-                    .toDate(),
-                ),
-              ),
+            lte(
+              operations.date,
+              moment(input.fromDate)
+                .set({
+                  hour: 0,
+                  minute: 0,
+                  second: 0,
+                  millisecond: 0,
+                })
+                .add(1, "day")
+                .toDate(),
             ),
           )
           : undefined,
@@ -368,13 +303,13 @@ export const movementsRouter = createTRPCRouter({
               p.name === "ACCOUNTS_VISUALIZE" ||
               (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
                 (input.entityId
-                  ? p.entitiesIds?.has(input.entityId) ||
+                  ? p.entitiesIds?.includes(input.entityId) ||
                   (entityTag &&
-                    getAllChildrenTags(p.entitiesTags, tags).has(
+                    getAllChildrenTags(p.entitiesTags, tags).includes(
                       entityTag,
                     ))
                   : input.entityTag
-                    ? getAllChildrenTags(p.entitiesTags, tags).has(
+                    ? getAllChildrenTags(p.entitiesTags, tags).includes(
                       input.entityTag,
                     )
                     : false)),
@@ -789,160 +724,6 @@ export const movementsRouter = createTRPCRouter({
           );
 
         return totalBalances;
-      }
-    }),
-
-  getBalancesHistory: protectedProcedure
-    .input(
-      z.object({
-        entityId: z.number().int().optional().nullish(),
-        entityTag: z.string().optional().nullable(),
-        timeRange: z.enum(["day", "week", "month", "year"]),
-        currency: z.string().nullish(),
-        dayInPast: z.string().optional(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      if (!input.currency) {
-        return undefined;
-      }
-      const balancesSchema = z.object({
-        account: z.boolean(),
-        currency: z.string(),
-        datestring: z.string(),
-        balance: z.number(),
-      });
-
-      const transformedBalancesSchema = z.object({
-        datestring: z.string(),
-        cash: z.number(),
-        current_account: z.number(),
-      });
-
-      if (input.entityId) {
-        const statement = sql`
-            SELECT 
-            ${balances.account},
-            ${balances.currency},
-            TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${dateFormatting[input.timeRange]
-          }) AS datestring,
-            SUM(CASE WHEN ${balances.selectedEntityId} = ${input.entityId
-          } THEN balance ELSE -balance END) balance
-            FROM ${balances}
-            WHERE
-            (${balances.selectedEntityId} = ${input.entityId} OR ${balances.otherEntityId
-          } = ${input.entityId})
-            AND ${balances.currency} = ${input.currency}
-            ${input.dayInPast &&
-          sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-          }
-            GROUP BY 
-            ${balances.account},
-            ${balances.currency},
-            datestring;
-          `;
-
-        const res: postgres.RowList<Record<string, unknown>[]> =
-          await ctx.db.execute(statement);
-
-        const balancesData = z.array(balancesSchema).parse(res);
-
-        const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
-          balancesData.reduce(
-            (acc, entry) => {
-              const existingEntry = acc.find(
-                (groupedEntry) => groupedEntry.datestring === entry.datestring,
-              );
-
-              if (existingEntry) {
-                if (entry.account) {
-                  existingEntry.cash = entry.balance;
-                } else {
-                  existingEntry.current_account = entry.balance;
-                }
-              } else {
-                acc.push({
-                  datestring: entry.datestring,
-                  cash: entry.account ? entry.balance : 0,
-                  current_account: entry.account ? 0 : entry.balance,
-                });
-              }
-
-              return acc;
-            },
-            [] as z.infer<typeof transformedBalancesSchema>[],
-          );
-
-        return transformedBalances;
-      } else if (input.entityTag) {
-        const allTags = await getAllTags(ctx.redis, ctx.db);
-        const allChildrenTags = getAllChildrenTags(input.entityTag, allTags);
-
-        const entities1 = alias(entities, "entities1");
-        const entities2 = alias(entities, "entities2");
-
-        const statement = sql`
-        SELECT 
-          ${balances.account},
-          ${balances.currency},
-          TO_CHAR(DATE_TRUNC(${input.timeRange}, ${balances.date}), ${dateFormatting[input.timeRange]
-          },
-          )}) AS datestring,
-          SUM(CASE WHEN ${entities.tagName} IN ${allChildrenTags}, 
-          THEN balance ELSE -balance END) balance
-          FROM ${balances}
-          JOIN ${entities1} ON ${balances.selectedEntityId} = ${entities1.id}
-          JOIN ${entities2} ON ${balances.otherEntityId} = ${entities2.id}
-          WHERE
-            (
-              (${entities1.tagName} IN ${allChildrenTags},
-              )}) AND ${entities2.tagName} NOT IN ${allChildrenTags}
-              OR
-              (${entities2.tagName} IN ${allChildrenTags} AND ${entities1.tagName
-          } NOT IN ${allChildrenTags}
-            )
-            AND ${balances.currency} = ${input.currency}
-            ${input.dayInPast &&
-          sql`AND ${balances.date}::DATE <= TO_DATE(${input.dayInPast}, 'DD-MM-YYYY')`
-          }
-          GROUP BY 
-            ${balances.account},
-            ${balances.currency},
-            datestring;
-        `;
-
-        const res: postgres.RowList<Record<string, unknown>[]> =
-          await ctx.db.execute(statement);
-
-        const balancesData = z.array(balancesSchema).parse(res);
-
-        const transformedBalances: z.infer<typeof transformedBalancesSchema>[] =
-          balancesData.reduce(
-            (acc, entry) => {
-              const existingEntry = acc.find(
-                (groupedEntry) => groupedEntry.datestring === entry.datestring,
-              );
-
-              if (existingEntry) {
-                if (entry.account) {
-                  existingEntry.cash = entry.balance;
-                } else {
-                  existingEntry.current_account = entry.balance;
-                }
-              } else {
-                acc.push({
-                  datestring: entry.datestring,
-                  cash: entry.account ? entry.balance : 0,
-                  current_account: entry.account ? 0 : entry.balance,
-                });
-              }
-
-              return acc;
-            },
-            [] as z.infer<typeof transformedBalancesSchema>[],
-          );
-
-        return transformedBalances;
       }
     }),
   getMovementsByOpId: protectedProcedure

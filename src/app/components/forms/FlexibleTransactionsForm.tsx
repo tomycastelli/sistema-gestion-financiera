@@ -3,11 +3,8 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@radix-ui/react-dropdown-menu";
-import { CalendarIcon } from "lucide-react";
-import moment from "moment";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { cn } from "~/lib/utils";
 import {
   cashAccountOnlyTypes,
   currencies,
@@ -20,7 +17,6 @@ import { type RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
 import { Icons } from "../ui/Icons";
 import { Button } from "../ui/button";
-import { Calendar } from "../ui/calendar";
 import {
   Form,
   FormControl,
@@ -30,10 +26,11 @@ import {
   FormMessage,
 } from "../ui/form";
 import { Input } from "../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
 import { type User } from "lucia";
+import { useNumberFormat } from "@react-input/number-format";
+import { parseFormattedFloat } from "~/lib/functions";
 
 const FormSchema = z.object({
   transactions: z.array(
@@ -46,7 +43,6 @@ const FormSchema = z.object({
       amount: z.string().min(1),
       method: z.string().optional(),
       direction: z.boolean().optional().default(false),
-      date: z.date().optional(),
       time: z.string().optional(),
     }).refine(data => data.fromEntityId !== data.toEntityId, {
       message: "La entidad de origen y la entidad de destino no pueden ser la misma",
@@ -106,10 +102,8 @@ const FlexibleTransactionsForm = ({
           : parseInt(transaction.fromEntityId),
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
-        amount: parseFloat(transaction.amount),
+        amount: parseFormattedFloat(transaction.amount),
         method: transaction.method,
-        date: transaction.date,
-        time: transaction.time,
       }),
     );
 
@@ -117,6 +111,8 @@ const FlexibleTransactionsForm = ({
   };
 
   const [parent] = useAutoAnimate();
+
+  const inputRef = useNumberFormat({ locales: "es-AR" })
 
   return (
     <Form {...form}>
@@ -193,63 +189,6 @@ const FlexibleTransactionsForm = ({
                 <div className="flex flex-row items-end space-x-2">
                   <FormField
                     control={control}
-                    name={`transactions.${index}.date`}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="mb-1">Fecha</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
-                                  !field.value && "text-muted-foreground",
-                                )}
-                              >
-                                {field.value ? (
-                                  moment(field.value).format("DD-MM-YYYY")
-                                ) : (
-                                  <span>Elegir</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date > new Date() ||
-                                date < new Date(new Date().setDate(0))
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name={`transactions.${index}.time`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tiempo</FormLabel>
-                        <FormControl>
-                          <Input className="w-[72px]" type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex flex-row items-end space-x-2">
-                  <FormField
-                    control={control}
                     name={`transactions.${index}.currency`}
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
@@ -271,7 +210,9 @@ const FlexibleTransactionsForm = ({
                       <FormItem>
                         <FormLabel>Monto</FormLabel>
                         <FormControl>
-                          <Input className="w-32" placeholder="$" {...field} />
+                          <Input ref={inputRef} className="w-32" name={field.name} placeholder="$"
+                            value={field.value}
+                            onChange={field.onChange} />
                         </FormControl>
                       </FormItem>
                     )}
@@ -308,6 +249,7 @@ const FlexibleTransactionsForm = ({
                             fieldName={`transactions.${index}.type`}
                             placeholder="Elegir"
                           />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -419,7 +361,6 @@ const FlexibleTransactionsForm = ({
                 <Icons.addPackage className="h-6 text-green" />
               </Button>
             </div>
-
             <Separator className="mb-8" />
           </>
         ))}

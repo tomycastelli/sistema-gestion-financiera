@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
-import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
+import { capitalizeFirstLetter, getAllChildrenTags, isDarkEnough, lightenColor } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
@@ -80,6 +80,7 @@ const Balances: FC<BalancesProps> = ({
     destinationEntityId,
     isInverted,
     timeMachineDate,
+    setMovementsTablePage
   } = useCuentasStore();
 
   const {
@@ -149,7 +150,7 @@ const Balances: FC<BalancesProps> = ({
 
           dataEntry.balance += balance.balance * balanceMultiplier;
         } else if (selectedTag) {
-          const myPOVEntity = allChildrenTags.has(
+          const myPOVEntity = allChildrenTags.includes(
             balance.selectedEntity.tagName,
           )
             ? balance.selectedEntity
@@ -240,7 +241,7 @@ const Balances: FC<BalancesProps> = ({
   } else if (selectedTag && balances) {
     detailedBalances = balances.reduce(
       (acc, balance) => {
-        const myPOVEntity = allChildrenTags.has(
+        const myPOVEntity = allChildrenTags.includes(
           balance.selectedEntity.tagName,
         )
           ? balance.otherEntity
@@ -705,9 +706,10 @@ const Balances: FC<BalancesProps> = ({
             .map((item, index) => (
               <div
                 key={item.entity.id}
+                style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, 10) : lightenColor(uiColor, 5) : undefined }}
                 className={cn(
                   "grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold",
-                  index % 2 === 0 ? "bg-muted" : "bg-muted-foreground",
+                  index % 2 === 0 ? "bg-muted" : "bg-teal-100",
                 )}
               >
                 {isListSelection ? (
@@ -747,6 +749,7 @@ const Balances: FC<BalancesProps> = ({
                   onClick={() => {
                     setSelectedCurrency(undefined);
                     setDestinationEntityId(item.entity.id);
+                    setMovementsTablePage(1)
                   }}
                   className={cn(
                     "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
@@ -772,17 +775,21 @@ const Balances: FC<BalancesProps> = ({
                           ) {
                             setSelectedCurrency(currency);
                             setDestinationEntityId(item.entity.id);
+                            setMovementsTablePage(1)
                           } else {
                             setSelectedCurrency(undefined);
                             setDestinationEntityId(undefined);
+                            setMovementsTablePage(1)
                           }
                         }}
                         key={currency}
+                        style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
                         className={cn(
-                          "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                          "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
                           selectedCurrency === currency &&
-                          destinationEntityId === item.entity.id &&
-                          "bg-primary text-white shadow-md",
+                          destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
+                          "text-white",
+                          selectedCurrency === currency && destinationEntityId === item.entity.id && "shadow-md"
                         )}
                       >
                         <p>

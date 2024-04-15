@@ -35,7 +35,8 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       setIsInverted(false);
       setIsSwitchDisabled(true);
     } else {
-      setIsSwitchDisabled(false);
+      setIsInverted(true)
+      setIsSwitchDisabled(true);
     }
   }, [setIsInverted, selectedEntityId, selectedTag, entities]);
 
@@ -53,17 +54,8 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       <HoverCardContent>
         <p className="font-semibold">Punto de vista</p>
         <p className="text-sm text-gray-700">
-          Se invertirá el punto de vista de la entidad, haciendo que todas las
-          cuentas que tenga con otras sentidades sean presentadas desde el punto
-          de vista de esas otras entidades.
+          La cuenta esta invertida para verlo desde el punto de vista de Maika y no de {selectedEntityId ? entities.find(obj => obj.id === selectedEntityId)?.name : "la otra entidad"}
         </p>
-        {isSwitchDisabled && (
-          <p className="text-sm font-semibold">
-            (*) Si la entidad seleccionada pertence al tag Maika, o el tag Maika
-            está directamente seleccionado, no se puede invertir el punto de
-            vista.
-          </p>
-        )}
       </HoverCardContent>
     </HoverCard>
   );

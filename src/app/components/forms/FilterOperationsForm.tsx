@@ -39,6 +39,7 @@ const FormSchema = z.object({
   transactionType: z.string().optional(),
   transactionDate: z.date().optional(),
   operatorEntityId: z.array(z.string()).optional(),
+  entityId: z.array(z.string()).optional(),
   fromEntityId: z.array(z.string()).optional(),
   toEntityId: z.array(z.string()).optional(),
   currency: z.string().optional(),
@@ -70,6 +71,7 @@ const FilterOperationsForm = ({
   const selectedDateLesser = searchParams.get("diaHasta") ?? undefined;
   const selectedTransactionType = searchParams.get("tipo") ?? undefined;
   const selectedOperator = searchParams.getAll("operador") ?? undefined;
+  const selectedEntity = searchParams.getAll("entidad") ?? undefined;
   const selectedFromEntity = searchParams.getAll("origen") ?? undefined;
   const selectedToEntity = searchParams.getAll("destino") ?? undefined;
   const selectedCurrency = searchParams.get("divisa") ?? undefined;
@@ -94,6 +96,7 @@ const FilterOperationsForm = ({
         : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
+      entityId: selectedEntity,
       fromEntityId: selectedFromEntity,
       toEntityId: selectedToEntity,
       currency: selectedCurrency,
@@ -112,6 +115,7 @@ const FilterOperationsForm = ({
 
   const { control, reset, watch } = form;
 
+  const watchEntityId = watch("entityId");
   const watchFromEntityId = watch("fromEntityId");
   const watchToEntityId = watch("toEntityId");
   const watchCurrency = watch("currency");
@@ -124,6 +128,7 @@ const FilterOperationsForm = ({
   const watchConfirmedUserId = watch("confirmedById");
 
   interface UrlParams {
+    entidad?: typeof watchEntityId;
     origen?: typeof watchFromEntityId;
     destino?: typeof watchToEntityId;
     divisa?: typeof watchCurrency;
@@ -181,6 +186,7 @@ const FilterOperationsForm = ({
 
   useEffect(() => {
     updateUrl({
+      entidad: watchEntityId,
       origen: watchFromEntityId,
       destino: watchToEntityId,
       divisa: watchCurrency,
@@ -210,6 +216,7 @@ const FilterOperationsForm = ({
       confirmadoPor: watchConfirmedUserId,
     });
   }, [
+    watchEntityId,
     watchFromEntityId,
     watchToEntityId,
     watchCurrency,
@@ -226,12 +233,34 @@ const FilterOperationsForm = ({
   return (
     <Form {...form}>
       <form className="flex flex-col space-y-4">
-        <div className="flex flex-row flex-wrap items-start justify-start space-x-4 space-y-6">
+        <div className="flex flex-row flex-wrap items-start justify-start gap-x-4 gap-y-2">
+          <FormField
+            control={control}
+            name="entityId"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Entidad</FormLabel>
+                {entities && (
+                  <CustomSelector
+                    data={entities.map((entity) => ({
+                      value: entity.id.toString(),
+                      label: entity.name,
+                    }))}
+                    field={field}
+                    fieldName="entityId"
+                    placeholder="Elegir"
+                    isMultiSelect={true}
+                  />
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={control}
             name="fromEntityId"
             render={({ field }) => (
-              <FormItem className="mt-6 flex flex-col">
+              <FormItem className="flex flex-col">
                 <FormLabel>Origen</FormLabel>
                 {entities && (
                   <CustomSelector
@@ -317,7 +346,7 @@ const FilterOperationsForm = ({
                 <FormItem className="flex flex-col">
                   <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input className="w-32" placeholder="$" {...field} />
+                    <Input type="number" className="w-32" placeholder="$" {...field} />
                   </FormControl>
                 </FormItem>
               )}
@@ -416,7 +445,7 @@ const FilterOperationsForm = ({
         </div>
         <div className="flex flex-row justify-start">
           <Link href={"/operaciones/gestion"}>
-            <Button variant="outline" onClick={() => reset()}>
+            <Button variant="outline" onClick={() => reset({ amount: "", amountFilterType: "equal" })}>
               Resetear filtros <Icons.undo className="ml-2 h-5" />
             </Button>
           </Link>

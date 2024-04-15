@@ -6,7 +6,7 @@ interface IUseSearchProps<T> {
   keys: string[];
 }
 
-const SCORE_THRESHOLD = 0.5;
+const SCORE_THRESHOLD = 0.4;
 
 export default function useSearch<T>({ dataSet, keys }: IUseSearchProps<T>) {
   const [searchValue, setSearchValue] = useState("");

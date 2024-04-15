@@ -102,6 +102,7 @@ const Operation: FC<OperationProps> = ({
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
+        void utils.movements.getCurrentAccounts.invalidate()
       },
       onSuccess(data, variables) {
         toast.success(`Operación ${variables.operationId} y ${data.length

@@ -11,7 +11,7 @@ interface RoleHeaderProps {
 
 const RoleHeader: FC<RoleHeaderProps> = ({ initialRole }) => {
   const { data: role } = api.roles.getById.useQuery(
-    { id: initialRole!.id },
+    { id: initialRole?.id ?? 1 },
     { initialData: initialRole!, refetchOnWindowFocus: false },
   );
   if (role) {
@@ -27,7 +27,7 @@ const RoleHeader: FC<RoleHeaderProps> = ({ initialRole }) => {
         </p>
         <p className="text-muted-foreground">
           {role.users ? role.users.length : 0}{" "}
-          {role.users.length === 1 ? "usuario" : "usuarios"}
+          {role.users && role.users.length === 1 ? "usuario" : "usuarios"}
         </p>
         <Separator className={`bg-${role.color} mt-2`} />
       </div>

@@ -23,11 +23,11 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
                   balance.amount > 0
                     ? "text-green"
                     : balance.amount < 0
-                    ? "text-red"
-                    : "",
+                      ? "text-red"
+                      : "",
                 )}
               >
-                $ {new Intl.NumberFormat("es-AR").format(balance.amount)}
+                $ {new Intl.NumberFormat("es-AR").format(balance.amount === 0 ? 0 : balance.amount)}
               </p>
             </div>
           ))}

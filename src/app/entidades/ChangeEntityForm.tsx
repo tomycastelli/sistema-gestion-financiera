@@ -54,19 +54,14 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
 
       const prevData = utils.entities.getAll.getData();
 
-      utils.entities.getAll.setData(undefined, (old) => [
-        // @ts-ignore
-        ...old?.map((item) => {
-          if (item.id === entity.id) {
-            return {
-              ...item,
-              name: newOperation.name,
-              tag: newOperation.tag ? newOperation.tag : entity.tag,
-            };
-          }
-          return item;
-        }),
-      ]);
+      utils.entities.getAll.setData(undefined, (old) => {
+        if (!old) {
+          return []
+        }
+        const tagObj = tags.find(t => t.name === newOperation.name)
+        return old.map(obj => obj.id === newOperation.id && tagObj ?
+          ({ id: obj.id, name: newOperation.name, tag: tagObj }) : obj)
+      });
 
       return { prevData };
     },

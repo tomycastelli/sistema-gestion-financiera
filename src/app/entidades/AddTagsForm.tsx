@@ -154,7 +154,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
 
       const prevData = utils.tags.getFiltered.getData();
 
-      utils.tags.getAll.setData(undefined, (old) => old!.map(tag => {
+      utils.tags.getAll.setData(undefined, (old) => old?.map(tag => {
         if (tag.name === newOperation.oldName) {
           return ({ name: newOperation.name ?? newOperation.oldName, parent: newOperation.parent ?? null, color: newOperation.color ?? null, children: tag.children })
         } else {

@@ -26,6 +26,7 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
+import { useNumberFormat } from "@react-input/number-format";
 
 const FormSchema = z.object({
   entityA: z.string().min(1),
@@ -95,6 +96,14 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
   const { addTransactionToStore } = useTransactionsStore();
 
   const exchangeCalculation = useCallback(() => {
+    if (!!watchLockExchange && !!watchLockAmountA) {
+      setValue("lockAmountB", false)
+    } else if (!!watchLockAmountA && !!watchLockAmountB) {
+      setValue("lockExchange", false)
+    } else if (!!watchLockExchange && !!watchLockAmountB) {
+      setValue("lockAmountA", false)
+    }
+
     const isStrongCurrencyA = currencies.find(
       (obj) => obj.value === watchCurrencyA,
     )?.strong;
@@ -261,6 +270,8 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
     });
   };
 
+  const inputRef = useNumberFormat({ locales: "es-AR" })
+
   return (
     <Form {...form}>
       <form
@@ -329,7 +340,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -407,7 +418,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Tipo de cambio</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -517,7 +528,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}

@@ -217,7 +217,7 @@ const Transaction: FC<TransactionProps> = ({
                 user={user}
               />
             )}
-            {tx.isUpdateAllowed && tx.status === Status.enumValues[2] && (
+            {tx.isUpdateAllowed && (
               <UpdateTransaction
                 transaction={tx}
                 operationsQueryInput={operationsQueryInput}

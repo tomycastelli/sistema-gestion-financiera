@@ -36,9 +36,7 @@ export const useInitialOperationStore = create<InitialOperationStore>()(
     },
     isInitialOperationSubmitted: false,
     setInitialOperationStore: (newOperation) => {
-      set(() => {
-        return { initialOperationStore: newOperation };
-      });
+      set(() => ({ initialOperationStore: newOperation }));
     },
     setIsInitialOperationSubmitted: (isSubmitted) => {
       set(() => ({ isInitialOperationSubmitted: isSubmitted }));

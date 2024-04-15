@@ -7,6 +7,13 @@ export const dateFormatting = {
   year: "YYYY",
 };
 
+export const mvTypeFormatting = new Map<string, string>([
+  ["cancellation", "Cancelación"],
+  ["confirmation", "Confirmación"],
+  ["upload", "Carga"]
+
+])
+
 export const colors = [
   {
     label: "Rojo",
@@ -116,9 +123,3 @@ export const operationTypes = [
 
 export const currentAccountOnlyTypes = new Set(["fee", "cuenta corriente", "cable"]);
 export const cashAccountOnlyTypes = new Set(["ingreso", "gasto"]);
-
-export const translations: Record<string, string> = {
-  user: "usuario",
-  client: "cliente",
-  maika: "maika",
-};

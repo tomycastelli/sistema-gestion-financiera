@@ -65,7 +65,7 @@ export const rolesRouter = createTRPCRouter({
           },
         });
 
-        return response;
+        return { ...response, permissions: response?.permissions as z.infer<typeof PermissionSchema> };
       } else {
         return null;
       }

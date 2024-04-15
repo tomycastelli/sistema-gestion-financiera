@@ -125,6 +125,7 @@ const Page = async ({
               {selectedTab === "resumen" && (
                 <div>
                   <SummarizedBalances
+                    uiColor={uiColor}
                     tags={filteredTags}
                     initialMovements={initialMovements}
                     selectedTag={selectedTagObj?.name}

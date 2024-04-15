@@ -5,19 +5,9 @@ import { MoreHorizontal } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
 import { type FC } from "react";
-import {
-  Bar,
-  BarChart,
-  Legend,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { generateTableData } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currenciesOrder, dateFormatting } from "~/lib/variables";
+import { currenciesOrder, dateFormatting, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -46,6 +36,7 @@ interface SummarizedBalancesProps {
   selectedTag: string | undefined;
   selectedEntityId: number | undefined;
   tags: RouterOutputs["tags"]["getAll"];
+  uiColor: string | undefined
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -55,9 +46,9 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   selectedTag,
   selectedEntityId,
   tags,
+  uiColor
 }) => {
   const {
-    selectedTimeframe,
     selectedCurrency,
     setSelectedCurrency,
     isInverted,
@@ -77,14 +68,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
         refetchOnWindowFocus: false,
       },
     );
-
-  const { data: balancesHistory } = api.movements.getBalancesHistory.useQuery({
-    currency: selectedCurrency,
-    timeRange: selectedTimeframe,
-    entityId: selectedEntityId,
-    entityTag: selectedTag,
-    dayInPast,
-  });
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
@@ -131,14 +114,10 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       accessorKey: "type",
       header: "Tipo",
       cell: ({ row }) => {
-        let type = "";
-        if (row.getValue("type") === "upload") {
-          type = "Carga";
+        const rowType = row.getValue("type")
+        if (typeof rowType === "string") {
+          return <p className="font-medium">{mvTypeFormatting.get(rowType)}</p>;
         }
-        if (row.getValue("type") === "confirmation") {
-          type = "Confirmación";
-        }
-        return <p className="font-medium">{type}</p>;
       },
     },
     {
@@ -226,40 +205,27 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem>
-                <Link
-                  prefetch={false}
-                  href={{
-                    pathname: `/operaciones/gestion/${movement.operationId}`,
-                    query: { row: row.getValue("id") },
-                  }}
-                  className="flex flex-row items-center space-x-1"
-                >
+              <Link
+                prefetch={false}
+                href={`/operaciones/gestion/${movement.operationId}`}
+              >
+                <DropdownMenuItem>
                   <p>Ver operación</p>
                   <Icons.externalLink className="h-4 text-black" />
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Ver usuario{" "}
-                {/* menu con usuarios que participaron subiendo, confirmando, actualizando */}
-              </DropdownMenuItem>
+                </DropdownMenuItem>
+              </Link>
+              <Link href={{ pathname: "/cuentas", query: { entidad: movement.otherEntityId } }}>
+                <DropdownMenuItem>
+                  <p>Ver otra cuenta</p>
+                  <Icons.currentAccount className="h-4" />
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
         );
       },
     },
   ];
-
-  // @ts-ignore
-  const renderCleanerText = (value: string) => {
-    return <span>{value.replace(/_/g, " ")}</span>;
-  };
-
-  const renderCleanerTextAndNumber = (value: number, name: string) => {
-    const valueString = new Intl.NumberFormat("es-AR").format(value);
-    const nameString = name.replace(/_/g, " ");
-    return [valueString, nameString];
-  };
 
   return (
     <div className="flex flex-col space-y-8">
@@ -275,10 +241,9 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               <Card
                 key={item.currency}
                 onClick={() => setSelectedCurrency(item.currency)}
+                style={{ borderColor: item.currency === selectedCurrency ? uiColor : undefined }}
                 className={cn(
-                  "transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
-                  item.currency === selectedCurrency &&
-                  "border-2 border-primary",
+                  "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
                 )}
               >
                 <CardHeader>
@@ -298,7 +263,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                           <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
                           <p className="text-xl font-semibold">
                             {new Intl.NumberFormat("es-AR").format(
-                              !isInverted ? balance.amount : -balance.amount,
+                              balance.amount === 0 ? 0 : !isInverted ? balance.amount : -balance.amount,
                             )}
                           </p>
                         </div>
@@ -308,94 +273,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               </Card>
             ))}
       </div>
-      <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
-        {selectedCurrency ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Resumen{" "}
-                {selectedTimeframe === "day"
-                  ? "Diario"
-                  : selectedTimeframe === "week"
-                    ? "Semanal"
-                    : selectedTimeframe === "month"
-                      ? "Mensual"
-                      : selectedTimeframe === "year"
-                        ? "Anual"
-                        : ""}
-              </CardTitle>
-              <CardDescription>
-                {selectedCurrency.toUpperCase()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex h-full w-full items-center justify-center">
-              {balancesHistory && (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={balancesHistory.map((b) => ({
-                      ...b,
-                      Caja: parseFloat(
-                        !isInverted ? b.cash.toFixed(2) : (-b.cash).toFixed(2),
-                      ),
-                      Cuenta_Corriente: parseFloat(
-                        !isInverted
-                          ? b.current_account.toFixed(2)
-                          : (-b.current_account).toFixed(2),
-                      ),
-                    }))}
-                  >
-                    <XAxis
-                      dataKey="datestring"
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <ReferenceLine y={0} stroke="#888888" strokeWidth={1.5} />
-                    <YAxis
-                      stroke="#888888"
-                      width={90}
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `$${value}`}
-                    />
-                    <Tooltip
-                      isAnimationActive={true}
-                      formatter={renderCleanerTextAndNumber}
-                      labelStyle={{ fontWeight: 600 }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      height={72}
-                      formatter={renderCleanerText}
-                    />
-                    <Bar
-                      dataKey="Caja"
-                      fill="#16A149"
-                      radius={[4, 4, 0, 0]}
-                      legendType="circle"
-                      label="Caja"
-                    />
-                    <Bar
-                      dataKey="Cuenta_Corriente"
-                      legendType="circle"
-                      label="Cuenta corriente"
-                      fill="#E87B35"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Elegir divisa</CardTitle>
-            </CardHeader>
-          </Card>
-        )}
+      <div className="flex mx-auto">
         {selectedCurrency ? (
           <Card>
             <CardHeader>

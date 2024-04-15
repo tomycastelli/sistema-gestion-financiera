@@ -38,6 +38,7 @@
     "@radix-ui/react-toggle": "1.0.3",
     "@radix-ui/react-toggle-group": "1.0.4",
     "@radix-ui/react-tooltip": "1.0.7",
+    "@react-input/number-format": "^1.0.24",
     "@supercharge/strings": "2.0.0",
     "@t3-oss/env-nextjs": "0.7.0",
     "@tanstack/react-query": "4.32.6",

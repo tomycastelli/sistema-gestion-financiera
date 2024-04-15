@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "~/lib/utils";
@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -57,7 +56,6 @@ const UpdateTransaction = ({
   entities,
   operationsQueryInput,
 }: UpdateTransactionProps) => {
-  const [differingKeysCount, setDifferingKeysCount] = useState(0);
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -123,11 +121,10 @@ const UpdateTransaction = ({
     },
     onSettled() {
       void utils.operations.getOperations.invalidate();
+      void utils.movements.getMovementsByOpId.invalidate()
     },
     onSuccess(data) {
-      toast.success(`Transacción ${data?.id} editada`, {
-        description: `${differingKeysCount} atributos modificados`
-      })
+      toast.success(`Transacción ${data?.id} editada`)
     },
   });
 
@@ -160,44 +157,6 @@ const UpdateTransaction = ({
   const watchFromEntity = watch("fromEntityId");
   const watchToEntity = watch("toEntityId");
   const watchOperatorEntity = watch("operatorEntityId");
-  const watchCurrency = watch("currency");
-  const watchAmount = watch("amount");
-  const watchMethod = watch("method");
-
-  const watchObject = useMemo(() => {
-    return {
-      fromEntityId: watchFromEntity,
-      toEntityId: watchToEntity,
-      operatorEntityId: watchOperatorEntity,
-      currency: watchCurrency,
-      amount: watchAmount,
-      method: watchMethod,
-    };
-  }, [
-    watchFromEntity,
-    watchToEntity,
-    watchOperatorEntity,
-    watchCurrency,
-    watchAmount,
-    watchMethod,
-  ]);
-
-  useEffect(() => {
-    const countChangedFields = () => {
-      const differingKeys = Object.keys(defaultTxValues).reduce((acc, key) => {
-        return defaultTxValues[
-          key as keyof typeof defaultTxValues
-        ]?.toString() !==
-          watchObject[key as keyof typeof defaultTxValues]?.toString()
-          ? acc + 1
-          : acc;
-      }, 0);
-
-      setDifferingKeysCount(differingKeys);
-    };
-
-    countChangedFields();
-  }, [watchObject, defaultTxValues]);
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     mutate({
@@ -252,9 +211,6 @@ const UpdateTransaction = ({
               </Button>
             </DialogClose>
           </div>
-          <DialogDescription>
-            {tx.date?.toLocaleDateString("es-AR")}
-          </DialogDescription>
         </DialogHeader>
         <div>
           <Form {...form}>
@@ -430,7 +386,6 @@ const UpdateTransaction = ({
               </div>
               <div className="flex w-full items-center justify-end space-x-8">
                 <Button
-                  disabled={differingKeysCount === 0}
                   variant="outline"
                   type="button"
                   onClick={() => reset()}
@@ -441,9 +396,8 @@ const UpdateTransaction = ({
                 <Button
                   className="mt-4"
                   type="submit"
-                  disabled={differingKeysCount === 0}
                 >
-                  Modificar transacción ({differingKeysCount})
+                  Modificar transacción
                 </Button>
               </div>
             </form>

@@ -108,7 +108,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
             <CommandInput placeholder="Buscar entidad..." />
             <CommandEmpty>No se encontraron entidades.</CommandEmpty>
             <CommandGroup heading="Tags">
-              {tags.map((tag) => (
+              {tags.filter(tag => tag.name === "Maika").map((tag) => (
                 <CommandItem
                   key={tag.name}
                   className="text-sm"
@@ -135,7 +135,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
                 </CommandItem>
               ))}
             </CommandGroup>
-            {groupedEntities.map((group) => (
+            {groupedEntities.filter(group => group.tag === "Maika").map((group) => (
               <CommandGroup
                 key={group.tag}
                 heading={capitalizeFirstLetter(group.tag)}

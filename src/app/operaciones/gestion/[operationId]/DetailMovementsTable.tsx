@@ -3,6 +3,7 @@ import moment from "moment";
 import { type FC } from "react";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import { DataTable } from "~/app/cuentas/DataTable";
+import { mvTypeFormatting } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -23,9 +24,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
   })
   const tableData = movements.flatMap((movement) => ({
     id: movement.id,
-    date: movement.transaction.date
-      ? moment(movement.transaction.date).format("DD/MM/YYYY HH:mm:ss")
-      : moment(operationDate).format("DD/MM/YYYY HH:mm:ss"),
+    date: moment(operationDate).format("DD/MM/YYYY HH:mm:ss"),
     transactionId: movement.transactionId,
     cuenta: movement.account ? "Caja" : "Cuenta corriente",
     type: movement.type,
@@ -70,14 +69,10 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
       accessorKey: "type",
       header: "Tipo",
       cell: ({ row }) => {
-        let type = "";
-        if (row.getValue("type") === "upload") {
-          type = "Carga";
+        const rowType = row.getValue("type")
+        if (typeof rowType === "string") {
+          return <p className="font-medium">{mvTypeFormatting.get(rowType)}</p>;
         }
-        if (row.getValue("type") === "confirmation") {
-          type = "Confirmación";
-        }
-        return <p className="font-medium">{type}</p>;
       },
     },
     {
