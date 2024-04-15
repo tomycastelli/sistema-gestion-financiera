@@ -737,28 +737,23 @@ export const movementsRouter = createTRPCRouter({
           .leftJoin(operations, eq(transactions.operationId, operations.id))
           .where(eq(operations.id, input.operationId)).orderBy(desc(movements.id));
 
-        if (movementsIds.length > 0) {
-          return await transaction.query.movements.findMany({
-            where: inArray(
-              movements.id,
-              movementsIds.map((obj) => obj.id),
-            ),
-            with: {
-              transaction: {
-                with: {
-                  fromEntity: true,
-                  toEntity: true,
-                },
+        const mvsIds = movementsIds.length > 0 ? movementsIds.map(mv => mv.id) : [0]
+
+        return await transaction.query.movements.findMany({
+          where: inArray(
+            movements.id,
+            mvsIds,
+          ),
+          with: {
+            transaction: {
+              with: {
+                fromEntity: true,
+                toEntity: true,
               },
             },
-            orderBy: desc(movements.id)
-          });
-        } else {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "There are no movements with this operation",
-          });
-        }
+          },
+          orderBy: desc(movements.id)
+        });
       });
 
       return response;
