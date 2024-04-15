@@ -1,6 +1,6 @@
 {
   "name": "sistema-maika",
-  "version": "0.1.4-2",
+  "version": "v0.1.6-2",
   "private": true,
   "scripts": {
     "build": "next build",

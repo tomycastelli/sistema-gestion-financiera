@@ -23,7 +23,7 @@ const Navbar = async () => {
             Maika.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.1.4-2
+            v0.1.6-2
           </p>
         </div>
         <div className="hidden sm:block">
