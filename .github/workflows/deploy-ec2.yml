@@ -38,13 +38,12 @@ jobs:
       - name: Build and push docker image
         uses: docker/build-push-action@v5
         with:
-          platforms: linux/arm64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/sistema-maika-repository:${{ env.RELEASE_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: REDIS_URL=${{ secrets.REDIS_URL }}
-          platforms: linux/amd64,linux/arm64
 
       - name: Trigger the instance script
         id: trigger-ec2-script
