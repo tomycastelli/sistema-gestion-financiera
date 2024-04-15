@@ -279,6 +279,13 @@ export const movementsRouter = createTRPCRouter({
         linkToken: z.string().optional().nullable(),
         account: z.boolean().optional().nullable(),
         dayInPast: z.string().optional(),
+      }).superRefine((obj, ctx) => {
+        if (!obj.entityId && !obj.entityTag) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Es necesario una entidad o un tag",
+          })
+        }
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -410,7 +417,7 @@ export const movementsRouter = createTRPCRouter({
         }));
 
         return balancesTransformed;
-      } else if (input.entityId) {
+      } else {
         const balancesData = await ctx.db
           .selectDistinctOn([
             balances.selectedEntityId,
@@ -430,8 +437,8 @@ export const movementsRouter = createTRPCRouter({
           .where(
             and(
               or(
-                eq(selectedEntityObject.id, input.entityId),
-                eq(otherEntityObject.id, input.entityId),
+                eq(selectedEntityObject.id, input.entityId ?? 0),
+                eq(otherEntityObject.id, input.entityId ?? 0),
               ),
               typeof input.account === "boolean"
                 ? eq(balances.account, input.account)
@@ -469,6 +476,13 @@ export const movementsRouter = createTRPCRouter({
         linkId: z.number().optional().nullable(),
         linkToken: z.string().optional().nullable(),
         dayInPast: z.string().optional(),
+      }).superRefine((obj, ctx) => {
+        if (!obj.entityId && !obj.entityTag) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Es necesario una entidad o un tag",
+          })
+        }
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -624,7 +638,7 @@ export const movementsRouter = createTRPCRouter({
           );
 
         return totalBalances;
-      } else if (input.entityId) {
+      } else {
         const balancesData = await ctx.db
           .selectDistinctOn([
             balances.selectedEntityId,
@@ -644,8 +658,8 @@ export const movementsRouter = createTRPCRouter({
           .where(
             and(
               or(
-                eq(selectedEntityObject.id, input.entityId),
-                eq(otherEntityObject.id, input.entityId),
+                eq(selectedEntityObject.id, input.entityId ?? 0),
+                eq(otherEntityObject.id, input.entityId ?? 0),
               ),
               input.dayInPast
                 ? lte(

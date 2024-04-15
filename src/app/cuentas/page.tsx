@@ -122,6 +122,7 @@ const Page = async ({
                     initialTags={filteredTags}
                     linkId={linkId}
                     linkToken={linkToken}
+                    dayInPast={dayInPast}
                   />
                 )}
               {selectedTab === "resumen" && (

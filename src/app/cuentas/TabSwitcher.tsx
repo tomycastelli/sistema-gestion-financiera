@@ -4,7 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type FC } from "react";
-import { isDarkEnough } from "~/lib/functions";
+import { createQueryString, isDarkEnough, removeQueryString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 
 interface TabSwitcherProps {
@@ -13,36 +13,10 @@ interface TabSwitcherProps {
   selectedTag: string | undefined
 }
 
-const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor, selectedEntityId, selectedTag }) => {
+const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
   const searchParams = useSearchParams();
+
   const selectedTab = searchParams.get("cuenta");
-
-  type QueryParams = {
-    cuenta?: string;
-    pagina?: string;
-    entidad?: string;
-    tag?: string;
-  };
-
-  const resumenQuery: QueryParams = {};
-
-  const currentAcountQuery: QueryParams = {
-    cuenta: "cuenta_corriente",
-  };
-
-  const cashQuery: QueryParams = {
-    cuenta: "caja",
-  };
-
-  if (selectedEntityId) {
-    currentAcountQuery.entidad = selectedEntityId;
-    cashQuery.entidad = selectedEntityId;
-    resumenQuery.entidad = selectedEntityId;
-  } else if (selectedTag) {
-    currentAcountQuery.tag = selectedTag;
-    cashQuery.tag = selectedTag;
-    resumenQuery.tag = selectedTag;
-  }
 
   const [parent] = useAutoAnimate();
 
@@ -50,7 +24,7 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor, selectedEntityId, selected
     <div ref={parent} className="grid grid-cols-3 rounded-xl bg-primary-foreground p-1 text-sm">
       <Link
         prefetch={false}
-        href={{ pathname: "/cuentas", query: resumenQuery }}
+        href={{ pathname: "/cuentas", query: removeQueryString(searchParams, "cuenta") }}
         style={{ backgroundColor: !selectedTab ? uiColor : undefined }}
         className={cn(
           !selectedTab && "font-semibold",
@@ -64,7 +38,7 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor, selectedEntityId, selected
         prefetch={false}
         href={{
           pathname: "/cuentas",
-          query: cashQuery,
+          query: createQueryString(searchParams, "cuenta", "caja")
         }}
         style={{ backgroundColor: selectedTab === "caja" ? uiColor : undefined }}
         className={cn(
@@ -79,7 +53,7 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor, selectedEntityId, selected
         prefetch={false}
         href={{
           pathname: "/cuentas",
-          query: currentAcountQuery,
+          query: createQueryString(searchParams, "cuenta", "cuenta_corriente"),
         }}
         style={{ backgroundColor: selectedTab === "cuenta_corriente" ? uiColor : undefined }}
         className={cn(

@@ -15,6 +15,7 @@ const AccountsTable = async ({
   linkToken,
   entityId,
   entityTag,
+  dayInPast,
   uiColor
 }: {
   searchParams: Record<string, string | string[] | undefined>;
@@ -25,6 +26,7 @@ const AccountsTable = async ({
   linkToken: string | null;
   entityId: number | undefined;
   entityTag: string | undefined;
+  dayInPast: string | null;
   uiColor: string | undefined
 }) => {
   const user = await getUser();
@@ -42,6 +44,7 @@ const AccountsTable = async ({
     entityId: entityId,
     entityTag: entityTag,
     account: accountType,
+    dayInPast: dayInPast ?? undefined,
   });
 
   return (
