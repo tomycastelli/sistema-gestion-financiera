@@ -354,8 +354,6 @@ export const movementsRouter = createTRPCRouter({
 
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
-        console.log("Entity tag:", input.entityTag)
-        console.log("All tags:", allTags)
         const allChildrenTags = Array.from(getAllChildrenTags(input.entityTag, allTags))
 
         const balancesDat = await ctx.db

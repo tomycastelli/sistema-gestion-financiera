@@ -4,13 +4,11 @@ import dynamic from "next/dynamic";
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { type User } from "lucia";
 import moment from "moment";
-import Link from "next/link";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
-import { capitalizeFirstLetter, getAllChildrenTags, isDarkEnough, lightenColor } from "~/lib/functions";
+import { getAllChildrenTags, isDarkEnough, lightenColor } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -18,13 +16,6 @@ import loadingJson from "../../../public/animations/loading.json";
 import CustomPagination from "../components/CustomPagination";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +30,8 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
+import BalancesCards from "./BalancesCards";
+import { dateFormatting } from "~/lib/variables";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -366,71 +359,12 @@ const Balances: FC<BalancesProps> = ({
 
   return (
     <div className="flex flex-col space-y-4">
-      <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
-      <div className="grid-cols grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {!isBalanceLoading ? (
-          transformedBalances
-            .sort((a, b) => a.entity.name.localeCompare(b.entity.name))
-            .map((item) => (
-              <Card
-                key={item.entity.id}
-                className="min-w-[300px] transition-all hover:scale-105 hover:shadow-md hover:shadow-primary"
-              >
-                <Link
-                  prefetch={false}
-                  href={{
-                    pathname: "/cuentas",
-                    query: {
-                      cuenta: accountType ? "caja" : "cuenta_corriente",
-                      entidad: item.entity.id,
-                    },
-                  }}
-                >
-                  <CardHeader>
-                    <CardTitle>{item.entity.name}</CardTitle>
-                    <CardDescription>
-                      {capitalizeFirstLetter(item.entity.tagName)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col space-y-2">
-                      {item.data
-                        .sort(
-                          (a, b) =>
-                            currenciesOrder.indexOf(a.currency) -
-                            currenciesOrder.indexOf(b.currency),
-                        )
-                        .map((balances) => (
-                          <div
-                            key={balances.currency}
-                            className="grid grid-cols-3"
-                          >
-                            <p className="col-span-1">
-                              {balances.currency.toUpperCase()}
-                            </p>
-                            {!isFetching ? (
-                              <p className="col-span-2 text-xl font-bold">
-                                ${" "}
-                                {new Intl.NumberFormat("es-AR").format(
-                                  !isInverted
-                                    ? balances.balance
-                                    : -balances.balance,
-                                )}
-                              </p>
-                            ) : (
-                              <p>Cargando...</p>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Link>
-              </Card>
-            ))
-        ) : (
-          <Lottie animationData={loadingJson} className="h-24" loop={true} />
-        )}
-      </div>
+      <BalancesCards
+        isFetching={isFetching}
+        transformedBalances={transformedBalances}
+        isBalanceLoading={isBalanceLoading}
+        accountType={accountType}
+        isInverted={isInverted} />
       <div className="flex flex-row items-end justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>

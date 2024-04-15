@@ -30,7 +30,7 @@ const OperationsMenuCard = async () => {
           <h4 className="mb-2 mt-2 text-3xl font-semibold leading-none">
             Entidades
           </h4>
-          {filteredEntities.slice(0, 20).map((entity) => (
+          {filteredEntities.filter(entity => entity.tag.name !== "Operadores").slice(0, 30).map((entity) => (
             <Link
               key={entity.name}
               className={`mb-2 flex flex-row space-x-2 pl-2 text-xl hover:border-l-8 hover:border-primary hover:transition-all`}

@@ -11,8 +11,7 @@ const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
 const AccountsTab = dynamic(() => import("./AccountsTab"));
-const SummarizedBalances = dynamic(() => import("./SummarizedBalances"));
-const TimeRangeSelector = dynamic(() => import("./TimeRangeSelector"));
+const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), { ssr: false });
 
 const Page = async ({
   searchParams,
@@ -100,7 +99,6 @@ const Page = async ({
         {(selectedEntityObj?.id || selectedTagObj?.name) && (
           <div className="flex flex-wrap gap-4">
             <TimeMachine />
-            <TimeRangeSelector />
           </div>
         )}
       </div>
