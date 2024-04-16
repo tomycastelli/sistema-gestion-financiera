@@ -344,7 +344,7 @@ const AddOperation = ({
                         if (confirmationAtUpload) {
                           await updateStatus({
                             transactionIds: response.transactions
-                              .filter(tx => tx.status === Status.enumValues[2] || !currentAccountOnlyTypes.has(tx.type))
+                              .filter(tx => tx.status === Status.enumValues[2] && !currentAccountOnlyTypes.has(tx.type))
                               .map(tx => tx.id)
                           })
                         }
