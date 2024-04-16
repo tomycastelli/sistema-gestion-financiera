@@ -212,21 +212,14 @@ export const messagesRouter = createTRPCRouter({
   }),
 
   sendMessage: protectedProcedure.input(z.object({ chatId: z.number().int(), message: z.string(), timestamp: z.number() })).mutation(async ({ ctx, input }) => {
-    try {
-      const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ userid: ctx.user.id, timestamp: input.timestamp, message: input.message })
-      })
-      return res
-    } catch (error) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Post message request to chat server failed"
-      })
-    }
+    const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ userid: ctx.user.id, timestamp: input.timestamp, message: input.message })
+    })
+    return res
   }),
   deleteMessage: protectedProcedure.input(z.object({ chatId: z.number().int(), message: z.string(), timestamp: z.number() })).mutation(async ({ ctx, input }) => {
     const [response] = await ctx.db.delete(messages).where(and(
@@ -238,22 +231,15 @@ export const messagesRouter = createTRPCRouter({
     if (response) {
       return response
     } else {
-      try {
-        const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ userid: ctx.user.id, timestamp: input.timestamp, message: input.message })
-        })
+      const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userid: ctx.user.id, timestamp: input.timestamp, message: input.message })
+      })
 
-        return res
-      } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Delete message request to the chat server failed"
-        })
-      }
+      return res
     }
   }),
   updateChatLastConnection: protectedProcedure.input(z.object({ chatId: z.number().int(), userId: z.string(), lastConnection: z.number().int() })).mutation(async ({ ctx, input }) => {
