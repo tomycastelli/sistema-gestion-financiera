@@ -213,7 +213,7 @@ export const messagesRouter = createTRPCRouter({
 
   sendMessage: protectedProcedure.input(z.object({ chatId: z.number().int(), message: z.string(), timestamp: z.number() })).mutation(async ({ ctx, input }) => {
     try {
-      const res = await fetch(env.CHAT_URL + `/message?chatId=${input.chatId}`, {
+      const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -239,7 +239,7 @@ export const messagesRouter = createTRPCRouter({
       return response
     } else {
       try {
-        const res = await fetch(env.CHAT_URL + `/message?chatId=${input.chatId}`, {
+        const res = await fetch("https://" + env.CHAT_URL + `/message?chatId=${input.chatId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json"
