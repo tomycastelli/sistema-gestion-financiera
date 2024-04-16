@@ -115,7 +115,7 @@ const Chat: FC<ChatComponentProps> = ({ initialMessagesHistory, chatId, users, c
     scrollToBottom("smooth")
   }
 
-  const websocketURL = `ws://${chatUrl}/ws?chatId=${chatId}`
+  const websocketURL = `wss://${chatUrl}/ws?chatId=${chatId}`
 
   const { readyState } = useWebSocket(websocketURL, {
     onClose: () => void updateLastConnection({ chatId: chatId, userId: currentUser.id, lastConnection: Date.now() }),
