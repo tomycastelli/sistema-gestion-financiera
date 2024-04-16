@@ -199,7 +199,10 @@ export const editingOperationsRouter = createTRPCRouter({
             }
 
             if (transactionData.Transactions.status !== Status.enumValues[2] || currentAccountOnlyTypes.has(transactionData.Transactions.type)) {
-              return
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "This transaction cannot be confirmed"
+              })
             }
             await transaction
               .update(transactions)
