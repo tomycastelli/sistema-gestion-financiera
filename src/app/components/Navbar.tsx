@@ -27,7 +27,9 @@ const Navbar = async () => {
           </p>
         </div>
         <div className="hidden sm:block">
-          <NavMenu />
+          {user && (
+            <NavMenu />
+          )}
         </div>
         {user && (
           <div className="flex flex-row items-center space-x-4">

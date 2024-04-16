@@ -91,7 +91,6 @@ export async function GET(request: Request) {
       const [existingUserEntity] = await tx.select().from(entities).where(
         and(
           eq(entities.name, userFullName),
-          eq(entities.tagName, "Operadores")
         )
       )
       if (!existingUserEntity) {
@@ -108,7 +107,7 @@ export async function GET(request: Request) {
           photoUrl: microsoftUser.picture,
           email: microsoftUser.email,
           entityId: userEntity!.id,
-          permissions: adminsEmails.includes(microsoftUser.email) ? JSON.stringify([{ "name": "ADMIN" }]) : null
+          permissions: adminsEmails.includes(microsoftUser.email) ? [{ name: "ADMIN" }] : null
         });
       } else {
         await tx.insert(user).values({
@@ -117,9 +116,10 @@ export async function GET(request: Request) {
           photoUrl: microsoftUser.picture,
           email: microsoftUser.email,
           entityId: existingUserEntity.id,
-          permissions: adminsEmails.includes(microsoftUser.email) ? JSON.stringify([{ "name": "ADMIN" }]) : null
+          permissions: adminsEmails.includes(microsoftUser.email) ? [{ "name": "ADMIN" }] : null
         })
       }
+
       await tx.insert(oauth_account).values({
         providerId: "microsoft",
         providerUserId: microsoftUser.sub,
@@ -153,8 +153,10 @@ export async function GET(request: Request) {
         status: 500,
       });
     }
-    return new Response(null, {
-      status: 500,
-    });
+    if (e instanceof Error) {
+      return new Response(e.message, {
+        status: 500,
+      });
+    }
   }
 }

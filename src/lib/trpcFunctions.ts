@@ -87,14 +87,15 @@ export const getAllPermissions = async (
       }
     }
     if (roleFound?.permissions) {
+      const permissions = PermissionSchema.parse(roleFound.permissions);
       await redis.set(
         `user_permissions:${user.id}`,
-        JSON.stringify(role.permissions),
+        JSON.stringify(permissions),
         "EX",
         3600,
       );
 
-      return roleFound.permissions as z.infer<typeof PermissionSchema> | null;
+      return permissions
     }
   }
   if (user?.permissions) {
@@ -105,8 +106,9 @@ export const getAllPermissions = async (
       3600,
     );
 
-    return user.permissions as z.infer<typeof PermissionSchema> | null;
+    return user.permissions
   }
+  return []
 };
 
 export const getAllTags = async (

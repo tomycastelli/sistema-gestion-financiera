@@ -85,27 +85,34 @@ export async function GET(request: Request) {
         await tx.insert(tag).values({ name: "Operadores" });
       }
 
-      const [userEntity] = await tx
-        .insert(entities)
-        .values({
-          name: googleUser.name,
-          tagName: "Operadores",
-        })
-        .returning();
+      const [existingEntity] = await tx.select({ id: entities.id }).from(entities)
+        .where(eq(entities.name, googleUser.name))
 
-      if (!userEntity) {
-        return new Response("Could not insert entity", {
-          status: 500,
+      if (!existingEntity) {
+        const [userEntity] = await tx
+          .insert(entities)
+          .values({
+            name: googleUser.name,
+            tagName: "Operadores",
+          })
+          .returning();
+        await tx.insert(user).values({
+          id: userId,
+          name: googleUser.name,
+          photoUrl: googleUser.picture,
+          email: googleUser.email,
+          entityId: userEntity!.id,
         });
+      } else {
+        await tx.insert(user).values({
+          id: userId,
+          name: googleUser.name,
+          photoUrl: googleUser.picture,
+          email: googleUser.email,
+          entityId: existingEntity.id
+        })
       }
 
-      await tx.insert(user).values({
-        id: userId,
-        name: googleUser.name,
-        photoUrl: googleUser.picture,
-        email: googleUser.email,
-        entityId: userEntity.id,
-      });
       await tx.insert(oauth_account).values({
         providerId: "google",
         providerUserId: googleUser.sub,
