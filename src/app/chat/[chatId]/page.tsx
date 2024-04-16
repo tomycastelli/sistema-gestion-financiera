@@ -2,6 +2,7 @@ import { isNumeric } from "~/lib/functions"
 import { getUser } from "~/server/auth"
 import { api } from "~/trpc/server"
 import Chat from "./Chat"
+import { env } from "~/env.mjs"
 
 const Page = async ({ params }: { params: { chatId: string } }) => {
   const user = await getUser()
@@ -15,7 +16,7 @@ const Page = async ({ params }: { params: { chatId: string } }) => {
   const users = await api.users.getAll.query()
 
   return (
-    <Chat initialMessagesHistory={messagesHistory} users={users} currentUser={user} chatId={parseInt(params.chatId)} />
+    <Chat chatUrl={env.CHAT_URL} initialMessagesHistory={messagesHistory} users={users} currentUser={user} chatId={parseInt(params.chatId)} />
   )
 }
 

@@ -34,7 +34,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/app/components/ui/alert-dialog";
-import { env } from '~/env.mjs'
 
 const FormSchema = z.object({
   messageText: z.string().min(1, {
@@ -47,9 +46,10 @@ interface ChatComponentProps {
   chatId: number
   users: RouterOutputs["users"]["getAll"]
   currentUser: User
+  chatUrl: string
 }
 
-const Chat: FC<ChatComponentProps> = ({ initialMessagesHistory, chatId, users, currentUser }) => {
+const Chat: FC<ChatComponentProps> = ({ initialMessagesHistory, chatId, users, currentUser, chatUrl }) => {
   const [historyPage, setHistoryPage] = useState<number>(1)
 
   const [messages, setMessages] = useState<RouterOutputs["messages"]["getChatHistory"]>([])
@@ -115,7 +115,7 @@ const Chat: FC<ChatComponentProps> = ({ initialMessagesHistory, chatId, users, c
     scrollToBottom("smooth")
   }
 
-  const websocketURL = `ws://${env.CHAT_URL}/ws?chatId=${chatId}`
+  const websocketURL = `ws://${chatUrl}/ws?chatId=${chatId}`
 
   const { readyState } = useWebSocket(websocketURL, {
     onClose: () => void updateLastConnection({ chatId: chatId, userId: currentUser.id, lastConnection: Date.now() }),
