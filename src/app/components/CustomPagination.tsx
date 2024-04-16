@@ -1,4 +1,6 @@
-import { type FC } from "react";
+"use client"
+
+import { useState, type FC } from "react";
 import { Button } from "./ui/button";
 import {
   Pagination,
@@ -7,6 +9,11 @@ import {
   PaginationItem,
   PaginationLink,
 } from "./ui/pagination";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Input } from "./ui/input";
+import { useRouter, useSearchParams } from "next/navigation";
+import { isNumeric } from "~/lib/functions";
+import { Icons } from "./ui/Icons";
 
 interface CustomPaginationProps {
   page: number;
@@ -25,7 +32,27 @@ const CustomPagination: FC<CustomPaginationProps> = ({
   pageSize,
   itemName,
 }) => {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const lastPage = Math.ceil(totalCount / pageSize);
+
+  const [inputPage, setInputPage] = useState<string>(page.toString())
+
+  const submitPage = (s: string) => {
+    if (!isNumeric(s) || parseInt(s) < 1) {
+      setInputPage(page.toString())
+      return
+    }
+    const n = parseInt(s) < lastPage ? parseInt(s) : lastPage
+    if (changePageState) {
+      changePageState(n)
+    } else if (pathname) {
+      const updatedParams = new URLSearchParams(searchParams)
+      updatedParams.set("pagina", n.toString())
+      router.push(pathname + "?" + updatedParams.toString())
+    }
+    setInputPage(n.toString())
+  }
 
   return (
     <div className="flex w-fit flex-col items-center space-y-2">
@@ -56,9 +83,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             </PaginationItem>
           )}
           {page > 3 && (
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
+            <CustomElipsis setInputPage={setInputPage} inputPage={inputPage} submitPage={submitPage} />
           )}
           {page > 1 && (
             <PaginationItem>
@@ -129,9 +154,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             </PaginationItem>
           )}
           {page < lastPage - 2 && (
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
+            <CustomElipsis setInputPage={setInputPage} inputPage={inputPage} submitPage={submitPage} />
           )}
           {page < lastPage - 1 && (
             <PaginationItem>
@@ -167,5 +190,31 @@ const CustomPagination: FC<CustomPaginationProps> = ({
     </div>
   );
 };
+
+interface CustomElipsisProps {
+  submitPage: (s: string) => void;
+  inputPage: string;
+  setInputPage: (s: string) => void;
+}
+
+const CustomElipsis: FC<CustomElipsisProps> = ({ submitPage, inputPage, setInputPage }) => {
+  return (
+    <PaginationItem>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="p-0 border-transparent">
+            <PaginationEllipsis />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="flex flex-row gap-x-1 items-center">
+          <Input className="w-16" value={inputPage} onChange={(e) => setInputPage(e.target.value)} />
+          <Button size="sm" variant="outline" onClick={() => submitPage(inputPage)}>
+            <Icons.send className="h-4" />
+          </Button>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </PaginationItem>
+  )
+}
 
 export default CustomPagination;

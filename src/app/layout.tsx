@@ -18,7 +18,7 @@ const inter = Inter({
 
 export const metadata = {
   title: "Maika",
-  description: "El Sitema Maika",
+  description: "El Sistema de Maika",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

@@ -491,7 +491,8 @@ const MovementsTable = ({
                       fromDate: fromDate,
                       toDate: toDate,
                       fileType: "pdf",
-                      tableData,
+                      dayInPast: timeMachineDate ?? undefined,
+                      toEntityId: destinationEntityId
                     });
 
                     toast.promise(promise, {
@@ -517,7 +518,8 @@ const MovementsTable = ({
                       fromDate: fromDate,
                       toDate: toDate,
                       fileType: "csv",
-                      tableData,
+                      dayInPast: timeMachineDate ?? undefined,
+                      toEntityId: destinationEntityId
                     });
 
                     toast.promise(promise, {

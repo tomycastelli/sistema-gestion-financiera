@@ -514,7 +514,7 @@ const Balances: FC<BalancesProps> = ({
                       const promise = getUrlAsync({
                         entityId: selectedEntityId,
                         entityTag: selectedTag,
-                        detailedBalances: detailedBalances,
+                        detailedBalances: filteredBalances,
                         fileType: "pdf",
                       });
 
@@ -537,7 +537,7 @@ const Balances: FC<BalancesProps> = ({
                       const promise = getUrlAsync({
                         entityId: selectedEntityId,
                         entityTag: selectedTag,
-                        detailedBalances: detailedBalances,
+                        detailedBalances: filteredBalances,
                         fileType: "csv",
                       });
 

@@ -4,32 +4,20 @@ import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
-import { getAllEntities } from "~/lib/trpcFunctions";
+import { currentAccountsProcedure, getAllEntities, getAllTags } from "~/lib/trpcFunctions";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
+import { generateTableData } from "~/lib/functions";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
     .input(
       z.object({
-        tableData: z.array(
-          z.object({
-            id: z.number(),
-            date: z.string(),
-            selectedEntity: z.string(),
-            otherEntity: z.string(),
-            type: z.string(),
-            txType: z.string(),
-            currency: z.string(),
-            observations: z.string().nullable(),
-            ingress: z.number(),
-            egress: z.number(),
-            balance: z.number(),
-          }),
-        ),
+        dayInPast: z.string().optional(),
+        toEntityId: z.number().int().optional().nullish(),
         fileType: z.enum(["csv", "pdf"]),
         entityId: z.number().nullish(),
         entityTag: z.string().nullish(),
@@ -40,55 +28,67 @@ export const filesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const data = input.tableData.map((mv) => ({
-        fecha: mv.date,
+      const currentAccount = await currentAccountsProcedure({
+        entityTag: input.entityTag,
+        entityId: input.entityId,
+        currency: input.currency,
+        account: input.account,
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        pageSize: 100000,
+        pageNumber: 1,
+        dayInPast: input.dayInPast,
+        toEntityId: input.toEntityId
+      }, ctx)
+
+      const tags = await getAllTags(ctx.redis, ctx.db)
+
+      const tableData = generateTableData(currentAccount.movementsQuery, input.entityId, input.entityTag, tags)
+
+      const data = tableData.map((mv) => ({
+        fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
         origen: mv.selectedEntity,
         cliente: mv.otherEntity,
-        detalle: `${
-          mv.type === "upload"
-            ? "Carga"
-            : mv.type === "confirmation"
+        detalle: `${mv.type === "upload"
+          ? "Carga"
+          : mv.type === "confirmation"
             ? "Confirmación"
             : "Cancelación"
-        } de ${mv.txType} - Nro ${mv.id}`,
+          } de ${mv.txType} - Nro ${mv.id}`,
         observaciones: mv.observations,
         entrada:
           mv.ingress !== 0
             ? mv.currency.toUpperCase() +
-              " " +
-              new Intl.NumberFormat("es-AR").format(mv.ingress)
+            " " +
+            new Intl.NumberFormat("es-AR").format(mv.ingress)
             : "",
         salida:
           mv.egress !== 0
             ? mv.currency.toUpperCase() +
-              " " +
-              new Intl.NumberFormat("es-AR").format(mv.egress)
+            " " +
+            new Intl.NumberFormat("es-AR").format(mv.egress)
             : "",
         saldo:
           mv.balance !== 0
             ? mv.currency.toUpperCase() +
-              " " +
-              new Intl.NumberFormat("es-AR").format(mv.balance)
+            " " +
+            new Intl.NumberFormat("es-AR").format(mv.balance)
             : "",
       }));
 
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
-      const filename = `${
-        input.account ? "cuenta_corriente" : "caja"
-      }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${
-        input.entityId
+      const filename = `${input.account ? "cuenta_corriente" : "caja"
+        }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${input.entityId
           ? entities.find((e) => e.id === input.entityId)?.name
           : input.entityTag
-      }${
-        input.fromDate
+        }${input.fromDate
           ? `_desde:${moment(input.fromDate).format("DD-MM-YYYY")}`
           : ""
-      }${
-        input.toDate
+        }${input.toDate
           ? `_hasta:${moment(input.toDate).format("DD-MM-YYYY")}`
           : ""
-      }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
+        }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
 
       if (input.fileType === "csv") {
         const csv = unparse(data, { delimiter: "," });
@@ -101,42 +101,45 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const htmlString =
-          `<div class="header-div"><h1 class="title">Cuenta corriente de ${
-            input.entityId
-              ? entities.find((e) => e.id === input.entityId)?.name
-              : input.entityTag
-          }</h1></div>` +
+          `<div class="header-div"><h1 class="title">Cuenta corriente de ${input.entityId
+            ? entities.find((e) => e.id === input.entityId)?.name
+            : input.entityTag
+          } ${input.toEntityId ? "con " + entities.find(e => e.id === input.toEntityId)?.name : ""}</h1></div>` +
           `
           <div class="table">
           <div class="table-header">
             <p>Fecha</p>
             <p>Detalle</p>
             <p>Origen</p>
-            <p>Cliente</p>
+            ${!input.toEntityId ? (
+            "<p>Cliente</p>"
+          ) : ""}
             <p>Observaciones</p>
             <p>Entrada</p>
             <p>Salida</p>
             <p>Saldo</p>
           </div>
             ${data
-              .map(
-                (mv, index) =>
-                  `<div key="${index}" class="table-row">
+            .map(
+              (mv, index) =>
+                `<div key="${index}" class="table-row">
                   <p>${mv.fecha}</p>
                   <p>${mv.detalle}</p>
                   <p>${mv.origen}</p>
-                  <p>${mv.cliente}</p>
+                  ${!input.toEntityId ? (
+                  `<p>${mv.cliente}</p>`
+                ) : ""}
                   <p>${mv.observaciones}</p>
                   <p>${mv.entrada}</p>
                   <p>${mv.salida}</p>
                   <p>${mv.saldo}</p>
                   </div>`,
-              )
-              .join("")}
+            )
+            .join("")}
             </div>`;
 
         const cssString =
-          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
+          `.table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(${input.toEntityId ? "7" : "8"}, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.5rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(${input.toEntityId ? "7" : "8"}, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 400; align-items: center; background-color: hsl(215.4, 16.3%, 78.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 1.5rem; font-weight: 600;}`;
 
         try {
           await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
@@ -194,11 +197,10 @@ export const filesRouter = createTRPCRouter({
       const entities = await getAllEntities(ctx.redis, ctx.db);
       const filename = `saldos_fecha:${moment().format(
         "DD-MM-YYYY-HH:mm:ss",
-      )}_entidad:${
-        input.entityId
-          ? entities.find((e) => e.id === input.entityId)?.name
-          : input.entityTag
-      }.${input.fileType}`;
+      )}_entidad:${input.entityId
+        ? entities.find((e) => e.id === input.entityId)?.name
+        : input.entityTag
+        }.${input.fileType}`;
 
       const formattedBalances = input.detailedBalances.flatMap((balance) => ({
         entidad: balance.entity.name,
@@ -220,10 +222,9 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const htmlString =
-          `<div class="header-div"><h1 class="title">Saldos de ${
-            input.entityId
-              ? entities.find((e) => e.id === input.entityId)?.name
-              : input.entityTag
+          `<div class="header-div"><h1 class="title">Saldos de ${input.entityId
+            ? entities.find((e) => e.id === input.entityId)?.name
+            : input.entityTag
           }</h1></div>` +
           `
           <div class="table">
@@ -236,9 +237,9 @@ export const filesRouter = createTRPCRouter({
             <p>BRL</p>
           </div>
             ${formattedBalances
-              .map(
-                (b, index) =>
-                  `<div key="${index}" class="table-row">
+            .map(
+              (b, index) =>
+                `<div key="${index}" class="table-row">
                   <p>${b.entidad}</p>
                   <p>${new Intl.NumberFormat("es-AR").format(b.ars)}</p>
                   <p>${new Intl.NumberFormat("es-AR").format(b.usd)}</p>
@@ -246,12 +247,12 @@ export const filesRouter = createTRPCRouter({
                   <p>${new Intl.NumberFormat("es-AR").format(b.eur)}</p>
                   <p>${new Intl.NumberFormat("es-AR").format(b.brl)}</p>
                   </div>`,
-              )
-              .join("")}
+            )
+            .join("")}
             </div>`;
 
         const cssString =
-          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
+          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 400; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
 
         try {
           await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
