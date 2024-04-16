@@ -26,7 +26,6 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
-import { useNumberFormat } from "@react-input/number-format";
 
 const FormSchema = z.object({
   entityA: z.string().min(1),
@@ -270,8 +269,6 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
     });
   };
 
-  const inputRef = useNumberFormat({ locales: "es-AR" })
-
   return (
     <Form {...form}>
       <form
@@ -340,7 +337,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
+                        <Input className="w-32" placeholder="$" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -418,7 +415,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Tipo de cambio</FormLabel>
                       <FormControl>
-                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
+                        <Input className="w-32" placeholder="$" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -528,7 +525,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input ref={inputRef} className="w-32" name={field.name} placeholder="$" value={field.value} onChange={field.onChange} />
+                        <Input className="w-32" placeholder="$" {...field} />
                       </FormControl>
                     </FormItem>
                   )}
