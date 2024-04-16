@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { getUser } from "~/server/auth";
-import LinkTree from "./LinkTree";
 import { ThemeToggler } from "./ThemeToggler";
 import UserInfo from "./UserInfo";
 import CommandMenu from "./ui/CommandMenu";
 import { Suspense } from "react";
 import LoadingAnimation from "./LoadingAnimation";
 import ChatsNav from "./ChatsNav";
+import NavMenu from "./NavMenu";
 
 const Navbar = async () => {
   const user = await getUser();
@@ -23,11 +23,11 @@ const Navbar = async () => {
             Maika.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.1.6-2
+            v0.1.1
           </p>
         </div>
         <div className="hidden sm:block">
-          <LinkTree />
+          <NavMenu />
         </div>
         {user && (
           <div className="flex flex-row items-center space-x-4">
