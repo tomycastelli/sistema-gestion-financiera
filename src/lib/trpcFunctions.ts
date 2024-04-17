@@ -305,7 +305,7 @@ export const generateMovements = async (
               eq(movements.balanceId, oldBalance.id),
               lte(operations.date, mvDate)
             )
-          ).orderBy(desc(operations.date)).limit(1)
+          ).orderBy(desc(operations.id)).limit(1)
 
         // Creo un movimiento con el balance cambiado
         movementsArray.push({
