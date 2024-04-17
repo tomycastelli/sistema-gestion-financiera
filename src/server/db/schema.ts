@@ -383,6 +383,11 @@ export const requests = pgTable("Requests", {
   developerMessage: text("developerMessage"),
 });
 
+export const globalSettings = pgTable("GlobalSettings", {
+  name: text("name").primaryKey().notNull(),
+  data: jsonb("data").notNull()
+})
+
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
   children: many(tag, { relationName: "children" }),

@@ -133,7 +133,8 @@ const Page = async ({
                         linkToken: linkToken,
                         linkId: linkId,
                         entityId: selectedEntityObj?.id,
-                        entityTag: selectedTagObj?.name
+                        entityTag: selectedTagObj?.name,
+                        dayInPast: dayInPast ?? undefined
                       }}
                       uiColor={uiColor}
                       tags={filteredTags}
@@ -141,6 +142,7 @@ const Page = async ({
                       selectedTag={selectedTagObj?.name}
                       selectedEntityId={selectedEntityObj?.id}
                       initialBalancesForCard={initialBalancesForCard}
+                      dayInPast={dayInPast ?? undefined}
                     />
                   )}
                 </div>

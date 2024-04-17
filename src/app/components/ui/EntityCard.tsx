@@ -37,7 +37,7 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
     <>
       {entity ? (
         <Card
-          className="flex h-36 border-2 w-36 flex-col shadow-md justify-center"
+          className="flex h-36 border-2 w-36 flex-col shadow-sm hover:shadow-lg hover:border-4 transition-all justify-center"
           style={{ borderColor: entity.tag.color ?? undefined }}
         >
           <CardHeader>

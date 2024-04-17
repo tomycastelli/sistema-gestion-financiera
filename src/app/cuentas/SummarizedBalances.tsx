@@ -2,12 +2,11 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
-import moment from "moment";
 import Link from "next/link";
 import { type FC } from "react";
-import { generateTableData } from "~/lib/functions";
+import { generateTableData, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currenciesOrder, dateFormatting, mvTypeFormatting } from "~/lib/variables";
+import { currenciesOrder, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -28,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { DataTable } from "./DataTable";
+import LoadingAnimation from "../components/LoadingAnimation";
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -36,25 +36,30 @@ interface SummarizedBalancesProps {
   selectedTag: string | undefined;
   selectedEntityId: number | undefined;
   tags: RouterOutputs["tags"]["getAll"];
-  uiColor: string | undefined
+  uiColor: string | undefined;
+  dayInPast: string | undefined
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalancesForCard,
+  initialBalancesInput,
   initialMovements,
   selectedTag,
   selectedEntityId,
   tags,
-  uiColor
+  uiColor,
+  dayInPast
 }) => {
   const {
     selectedCurrency,
     setSelectedCurrency,
     isInverted,
-    timeMachineDate,
   } = useCuentasStore();
 
-  const dayInPast = moment(timeMachineDate).format(dateFormatting.day);
+  const { data: balances, isFetching } = api.movements.getBalancesByEntitiesForCard.useQuery(initialBalancesInput, {
+    initialData: initialBalancesForCard,
+    refetchOnWindowFocus: false
+  })
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
@@ -131,7 +136,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       header: () => <div className="text-right">Entrada</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("ingress"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return amount !== 0 ? (
           <div className="text-right font-medium">
             {" "}
@@ -148,7 +153,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       header: () => <div className="text-right">Salida</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("egress"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return amount !== 0 ? (
           <div className="text-right font-medium">
             {" "}
@@ -165,7 +170,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       header: () => <div className="text-right">Saldo</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("balance"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return (
           <div className="text-right font-medium">
             {" "}
@@ -217,47 +222,50 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   return (
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
-        {initialBalancesForCard &&
-          initialBalancesForCard.sort(
-            (a, b) =>
-              currenciesOrder.indexOf(a.currency) -
-              currenciesOrder.indexOf(b.currency),
-          )
-            .map((item) => (
-              <Card
-                key={item.currency}
-                onClick={() => setSelectedCurrency(item.currency)}
-                style={{ borderColor: item.currency === selectedCurrency ? uiColor : undefined }}
-                className={cn(
-                  "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
-                )}
-              >
-                <CardHeader>
-                  <CardTitle>{item.currency.toUpperCase()}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col space-y-4">
-                    {item.balances
-                      .sort((a, b) =>
-                        a.account === b.account ? 0 : a.account ? 1 : -1,
-                      )
-                      .map((balance) => (
-                        <div
-                          key={balance.amount}
-                          className="flex flex-col space-y-2"
-                        >
-                          <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                          <p className="text-xl font-semibold">
-                            {new Intl.NumberFormat("es-AR").format(
-                              balance.amount === 0 ? 0 : !isInverted ? balance.amount : -balance.amount,
-                            )}
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {!isFetching ? balances.sort(
+          (a, b) =>
+            currenciesOrder.indexOf(a.currency) -
+            currenciesOrder.indexOf(b.currency),
+        )
+          .map((item) => (
+            <Card
+              key={item.currency}
+              onClick={() => setSelectedCurrency(item.currency)}
+              style={{ borderColor: item.currency === selectedCurrency ? uiColor : undefined }}
+              className={cn(
+                "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
+              )}
+            >
+              <CardHeader>
+                <CardTitle>{item.currency.toUpperCase()}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col space-y-4">
+                  {item.balances
+                    .sort((a, b) =>
+                      a.account === b.account ? 0 : a.account ? 1 : -1,
+                    )
+                    .map((balance) => (
+                      <div
+                        key={balance.amount}
+                        className="flex flex-col space-y-2"
+                      >
+                        <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
+                        <p className="text-xl font-semibold">
+                          {numberFormatter(
+                            balance.amount === 0 ? 0 : !isInverted ? balance.amount : -balance.amount,
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )) : (
+          <div className="flex justify-center items-cente lg:col-span-3 col-span-2">
+            <LoadingAnimation size="lg" text="Cargando balances" />
+          </div>
+        )}
       </div>
       <div className="flex mx-auto">
         {selectedCurrency ? (

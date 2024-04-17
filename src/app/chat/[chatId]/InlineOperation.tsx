@@ -4,6 +4,7 @@ import LoadingAnimation from "~/app/components/LoadingAnimation";
 import EntityCard from "~/app/components/ui/EntityCard";
 import { Icons } from "~/app/components/ui/Icons";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/app/components/ui/card";
+import { numberFormatter } from "~/lib/functions";
 import { api } from "~/trpc/react";
 
 interface InlineOperationProps {
@@ -57,7 +58,7 @@ const InlineOperation = ({ operationId }: InlineOperationProps) => {
                         {tx.currency.toUpperCase()}{" "}
                       </p>
                       <p>
-                        {new Intl.NumberFormat("es-AR").format(tx.amount)}
+                        {numberFormatter(tx.amount)}
                       </p>
                       <Icons.arrowRight className="w-8" />
                     </div>

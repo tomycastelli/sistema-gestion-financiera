@@ -6,7 +6,7 @@ import moment from "moment";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { capitalizeFirstLetter } from "~/lib/functions";
+import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
@@ -229,7 +229,7 @@ const AddOperation = ({
                           <div className="flex flex-col items-center justify-self-center">
                             <Icons.arrowRight className="h-6" />
                             <p className="font-semibold">
-                              {new Intl.NumberFormat("es-AR").format(
+                              {numberFormatter(
                                 transaction.amount,
                               )}
                             </p>

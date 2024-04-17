@@ -10,7 +10,7 @@ import {
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
-import { generateTableData } from "~/lib/functions";
+import { generateTableData, numberFormatter } from "~/lib/functions";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -60,19 +60,19 @@ export const filesRouter = createTRPCRouter({
           mv.ingress !== 0
             ? mv.currency.toUpperCase() +
             " " +
-            new Intl.NumberFormat("es-AR").format(mv.ingress)
+            numberFormatter(mv.ingress)
             : "",
         salida:
           mv.egress !== 0
             ? mv.currency.toUpperCase() +
             " " +
-            new Intl.NumberFormat("es-AR").format(mv.egress)
+            numberFormatter(mv.egress)
             : "",
         saldo:
           mv.balance !== 0
             ? mv.currency.toUpperCase() +
             " " +
-            new Intl.NumberFormat("es-AR").format(mv.balance)
+            numberFormatter(mv.balance)
             : "",
       }));
 
@@ -241,11 +241,11 @@ export const filesRouter = createTRPCRouter({
               (b, index) =>
                 `<div key="${index}" class="table-row">
                   <p>${b.entidad}</p>
-                  <p>${new Intl.NumberFormat("es-AR").format(b.ars)}</p>
-                  <p>${new Intl.NumberFormat("es-AR").format(b.usd)}</p>
-                  <p>${new Intl.NumberFormat("es-AR").format(b.usdt)}</p>
-                  <p>${new Intl.NumberFormat("es-AR").format(b.eur)}</p>
-                  <p>${new Intl.NumberFormat("es-AR").format(b.brl)}</p>
+                  <p>${numberFormatter(b.ars)}</p>
+                  <p>${numberFormatter(b.usd)}</p>
+                  <p>${numberFormatter(b.usdt)}</p>
+                  <p>${numberFormatter(b.eur)}</p>
+                  <p>${numberFormatter(b.brl)}</p>
                   </div>`,
             )
             .join("")}

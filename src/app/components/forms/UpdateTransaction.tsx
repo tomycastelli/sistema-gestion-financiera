@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "~/lib/utils";
-import { currencies, paymentMethods } from "~/lib/variables";
+import { currencies } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
@@ -35,6 +35,9 @@ import {
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
 import { toast } from "sonner";
+import { useNumberFormat } from "@react-input/number-format";
+import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
+import { Label } from "../ui/label";
 
 interface UpdateTransactionProps {
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -48,7 +51,6 @@ const FormSchema = z.object({
   operatorEntityId: z.string(),
   currency: z.string(),
   amount: z.string(),
-  method: z.string().optional(),
 });
 
 const UpdateTransaction = ({
@@ -69,9 +71,6 @@ const UpdateTransaction = ({
           newOperation.newTransactionData.operatorEntityId.toString(),
         currency: newOperation.newTransactionData.currency,
         amount: newOperation.newTransactionData.amount.toString(),
-        method: newOperation.newTransactionData.method
-          ? newOperation.newTransactionData.method
-          : undefined,
       });
 
       await utils.operations.getOperations.cancel();
@@ -93,9 +92,6 @@ const UpdateTransaction = ({
                     newOperation.newTransactionData.operatorEntityId,
                   currency: newOperation.newTransactionData.currency,
                   amount: newOperation.newTransactionData.amount,
-                  method: newOperation.newTransactionData.method
-                    ? newOperation.newTransactionData.method
-                    : null,
                 };
               }
               return transaction;
@@ -134,14 +130,12 @@ const UpdateTransaction = ({
       toEntityId: tx.toEntityId.toString(),
       operatorEntityId: tx.operatorEntityId.toString(),
       currency: tx.currency,
-      amount: tx.amount.toString(),
-      method: tx.method ? tx.method : undefined,
+      amount: numberFormatter(tx.amount),
     }),
     [
       tx.amount,
       tx.currency,
       tx.fromEntityId,
-      tx.method,
       tx.operatorEntityId,
       tx.toEntityId,
     ],
@@ -166,20 +160,19 @@ const UpdateTransaction = ({
         toEntityId: parseInt(values.toEntityId),
         operatorEntityId: parseInt(values.operatorEntityId),
         currency: values.currency,
-        amount: parseFloat(values.amount),
-        method: values.method,
+        amount: parseFormattedFloat(values.amount),
       },
       oldTransactionData: {
         fromEntityId: tx.fromEntityId,
         toEntityId: tx.toEntityId,
         operatorEntityId: tx.operatorEntityId,
         currency: tx.currency,
-        amount: tx.amount,
-        method: tx.method ? tx.method : undefined,
+        amount: tx.amount
       },
     });
-
   };
+
+  const inputRef = useNumberFormat({ locales: "es-AR" })
 
   return (
     <Dialog open={isOpen} onOpenChange={() => reset()}>
@@ -218,7 +211,7 @@ const UpdateTransaction = ({
               onSubmit={handleSubmit(onSubmit)}
               className="flex flex-col space-y-2"
             >
-              <div className="grid grid-cols-4">
+              <div className="grid grid-cols-6">
                 <div className="col-span-1 flex flex-row items-center space-x-4">
                   <FormField
                     control={control}
@@ -274,7 +267,7 @@ const UpdateTransaction = ({
                     </HoverCardContent>
                   </HoverCard>
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-5">
                   <div className="grid grid-cols-3">
                     <div className="justify-self-end">
                       <FormField
@@ -304,14 +297,14 @@ const UpdateTransaction = ({
                         )}
                       />
                     </div>
-                    <div className="flex flex-col items-center justify-center space-y-2 justify-self-center">
-                      <div className="flex flex-row items-center justify-center space-x-2">
+                    <div className="flex flex-col items-center justify-center space-y-4 justify-self-center">
+                      <div className="flex flex-col items-center justify-center gap-y-1">
+                        <Label>Divisa</Label>
                         <FormField
                           control={control}
                           name="currency"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Divisa</FormLabel>
                               <CustomSelector
                                 buttonClassName="w-[60px]"
                                 data={currencies}
@@ -322,38 +315,23 @@ const UpdateTransaction = ({
                             </FormItem>
                           )}
                         />
+                      </div>
+                      <div className="flex flex-col items-center justify-center gap-y-1">
+                        <Label>Monto</Label>
                         <FormField
                           control={control}
                           name="amount"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Monto</FormLabel>
                               <FormControl>
-                                <Input
-                                  className="w-32"
-                                  placeholder="$"
-                                  {...field}
-                                />
+                                <Input ref={inputRef} className="w-32" name={field.name} placeholder="$"
+                                  value={field.value}
+                                  onChange={field.onChange} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                       </div>
-                      <FormField
-                        control={control}
-                        name="method"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Método</FormLabel>
-                            <CustomSelector
-                              data={paymentMethods}
-                              field={field}
-                              fieldName="method"
-                              placeholder="Elegir"
-                            />
-                          </FormItem>
-                        )}
-                      />
                     </div>
                     <FormField
                       control={control}

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
 import { Button } from "~/app/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "~/app/components/ui/hover-card";
+import { numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -133,14 +134,14 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities }) => {
                           <div className="flex flex-row items-center space-x-2">
                             <Icons.money className="h-6" />
                             <p className="font-light">
-                              {new Intl.NumberFormat("es-AR").format(
+                              {numberFormatter(
                                 // @ts-ignore
                                 change.before,
                               )}
                             </p>
                             <Icons.chevronRight className="h-4" />
                             <p className="font-semibold">
-                              {new Intl.NumberFormat("es-AR").format(
+                              {numberFormatter(
                                 // @ts-ignore
                                 change.after,
                               )}

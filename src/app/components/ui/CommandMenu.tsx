@@ -61,11 +61,11 @@ const CommandMenu = () => {
       e.preventDefault();
 
       if (e.key === "u") {
-        handleSelect("/usuarios");
+        handleSelect("/preferencias/usuarios");
       } else if (e.key === "p") {
-        handleSelect("/usuarios/permisos");
+        handleSelect("/preferencias/usuarios/permisos");
       } else if (e.key === "r") {
-        handleSelect("/usuarios/roles");
+        handleSelect("/preferencias/usuarios/roles");
       } else if (e.key === "c") {
         handleSelect("/operaciones/carga");
       } else if (e.key === "g") {
@@ -74,6 +74,8 @@ const CommandMenu = () => {
         handleSelect("/logs");
       } else if (e.key === "e") {
         handleSelect("/entidades");
+      } else if (e.key === "l") {
+        handleSelect("/preferencias")
       }
     }
   };
@@ -169,9 +171,17 @@ const CommandMenu = () => {
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Usuarios">
+          <CommandGroup heading="Preferencias">
             <CommandItem
-              onSelect={() => handleSelect("/usuarios")}
+              onSelect={() => handleSelect("/preferencias")}
+              value="Ajustes globales"
+            >
+              <Icons.person className="mr-2 h-4 w-4" />
+              <span>Ajustes globales</span>
+              <CommandShortcut>⌘L</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => handleSelect("/preferencias/usuarios")}
               value="Mi usuario"
             >
               <Icons.person className="mr-2 h-4 w-4" />
@@ -183,7 +193,7 @@ const CommandMenu = () => {
                 p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
             ) && (
                 <CommandItem
-                  onSelect={() => handleSelect("/usuarios/permisos")}
+                  onSelect={() => handleSelect("/preferencias/usuarios/permisos")}
                   value="Permisos"
                 >
                   <Icons.settings className="mr-2 h-4 w-4" />
@@ -195,7 +205,7 @@ const CommandMenu = () => {
               (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
             ) && (
                 <CommandItem
-                  onSelect={() => handleSelect("/usuarios/roles")}
+                  onSelect={() => handleSelect("/preferencias/usuarios/roles")}
                   value="Roles"
                 >
                   <Icons.roles className="mr-2 h-4 w-4" />

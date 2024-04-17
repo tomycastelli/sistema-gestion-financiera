@@ -165,7 +165,7 @@ const Operation: FC<OperationProps> = ({
         void utils.movements.getMovementsByOpId.invalidate()
       },
       onSuccess(data) {
-        toast.success(`${data.length} transacciones actualizadas`)
+        toast.success(data.length.toString() + " " + "transacciones actualizadas")
       },
     });
 

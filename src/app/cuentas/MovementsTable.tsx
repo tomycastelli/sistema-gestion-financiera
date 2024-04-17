@@ -5,11 +5,12 @@ import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   generateTableData,
   getAllChildrenTags,
   isNumeric,
+  numberFormatter,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currencies, mvTypeFormatting } from "~/lib/variables";
@@ -100,6 +101,14 @@ const MovementsTable = ({
     setToDate,
     isInverted,
   } = useCuentasStore();
+
+  useEffect(() => {
+    setDestinationEntityId(undefined)
+    setSelectedCurrency(undefined)
+    setFromDate(undefined)
+    setToDate(undefined)
+    setMovementsTablePage(1)
+  }, [setDestinationEntityId, setSelectedCurrency, setFromDate, setToDate, setMovementsTablePage])
 
   const { data, refetch, isFetching } =
     api.movements.getCurrentAccounts.useQuery(
@@ -227,7 +236,7 @@ const MovementsTable = ({
       header: () => <div className="text-right">Entrada</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("ingress"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return amount !== 0 ? (
           <div className="text-right font-medium">
             {" "}
@@ -244,7 +253,7 @@ const MovementsTable = ({
       header: () => <div className="text-right">Salida</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("egress"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return amount !== 0 ? (
           <div className="text-right font-medium">
             {" "}
@@ -261,7 +270,7 @@ const MovementsTable = ({
       header: () => <div className="text-right">Saldo</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("balance"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return (
           <div className="text-right font-medium">
             {" "}

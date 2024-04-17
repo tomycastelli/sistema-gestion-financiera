@@ -36,6 +36,7 @@ import {
   links,
   entities,
   transactionsMetadata,
+  globalSettings,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
@@ -346,7 +347,7 @@ export const generateMovements = async (
             eq(movements.balanceId, balance.id),
             lte(operations.date, mvDate)
           )
-        ).orderBy(desc(operations.date)).limit(1)
+        ).orderBy(desc(movements.id)).limit(1)
 
       // Creo un movimiento con el balance cambiado
       movementsArray.push({
@@ -730,4 +731,72 @@ export const currentAccountsProcedure = async (
   });
 
   return response
-} 
+}
+
+export const settingEnum = z.enum(["accountingPeriod", "otherSetting"])
+
+const accountingPeriodSchema = z.object({
+  name: z.literal(settingEnum.enum.accountingPeriod),
+  data: z.object({
+    months: z.number().positive().int(),
+    graceDays: z.number().positive().int()
+  })
+})
+
+const otherSettingSchema = z.object({
+  name: z.literal(settingEnum.enum.otherSetting),
+  data: z.object({
+    example: z.boolean()
+  })
+})
+
+export const globalSettingSchema = z.union([
+  accountingPeriodSchema,
+  otherSettingSchema
+])
+
+
+export const getGlobalSettings = async (
+  ctx: Awaited<ReturnType<typeof createTRPCContext>>,
+  setting: z.infer<typeof settingEnum>
+) => {
+  const cachedResponseString = await ctx.redis.get(`globalSetting|${setting}`)
+
+  if (cachedResponseString) {
+    const cachedResponse = globalSettingSchema.safeParse(JSON.parse(cachedResponseString))
+
+    if (!cachedResponse.success) {
+      throw new TRPCError({
+        code: "PARSE_ERROR",
+        message: cachedResponse.error.message
+      })
+    }
+
+    return cachedResponse.data
+  }
+
+  const [response] = await ctx.db.select().from(globalSettings).where(eq(globalSettings.name, setting)).limit(1)
+
+  if (!response) {
+    if (setting === settingEnum.enum.accountingPeriod) {
+      return { name: settingEnum.enum.accountingPeriod, data: { months: 1, graceDays: 10 } }
+    }
+    if (setting === settingEnum.enum.otherSetting) {
+      return { name: settingEnum.enum.otherSetting, data: { example: true } }
+    }
+  }
+
+  const parsedResponse = globalSettingSchema.safeParse(response)
+
+  if (!parsedResponse.success) {
+    throw new TRPCError({
+      code: "PARSE_ERROR",
+      message: parsedResponse.error.message
+    })
+  }
+
+  await ctx.redis.set(`globalSetting|${setting}`, JSON.stringify(parsedResponse.data), "EX", 7200)
+
+  return parsedResponse.data
+
+}

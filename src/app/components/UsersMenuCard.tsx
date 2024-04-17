@@ -8,13 +8,22 @@ const OperationsMenuCard = async () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-4xl">Usuarios</CardTitle>
+        <CardTitle className="text-4xl">Preferencias</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col space-y-4">
           <Link
             prefetch={false}
-            href={"/usuarios"}
+            href={"/preferencias"}
+            className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
+          >
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Ajustes globales
+            </h1>
+          </Link>
+          <Link
+            prefetch={false}
+            href={"/preferencias/usuarios"}
             className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
           >
             <h1 className="text-3xl font-semibold tracking-tight">
@@ -29,7 +38,7 @@ const OperationsMenuCard = async () => {
           ) && (
               <Link
                 prefetch={false}
-                href={"/usuarios/permisos"}
+                href={"/preferencias/usuarios/permisos"}
                 className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
               >
                 <h1 className="text-3xl font-semibold tracking-tight">
@@ -45,7 +54,7 @@ const OperationsMenuCard = async () => {
           ) && (
               <Link
                 prefetch={false}
-                href={"/usuarios/roles"}
+                href={"/preferencias/usuarios/roles"}
                 className="flex p-4 transition-all hover:border-l-8 hover:border-primary"
               >
                 <h1 className="text-3xl font-semibold tracking-tight">Roles</h1>

@@ -30,7 +30,6 @@ export const editingOperationsRouter = createTRPCRouter({
           operatorEntityId: z.number(),
           currency: z.string(),
           amount: z.number(),
-          method: z.string().optional(),
         }),
         oldTransactionData: z.object({
           fromEntityId: z.number(),
@@ -38,7 +37,6 @@ export const editingOperationsRouter = createTRPCRouter({
           operatorEntityId: z.number(),
           currency: z.string(),
           amount: z.number(),
-          method: z.string().optional(),
         }),
       }),
     )
@@ -78,7 +76,6 @@ export const editingOperationsRouter = createTRPCRouter({
             operatorEntityId: input.newTransactionData.operatorEntityId,
             currency: input.newTransactionData.currency,
             amount: input.newTransactionData.amount,
-            method: input.newTransactionData.method,
           })
           .where(eq(transactions.id, input.txId)).returning();
 
@@ -156,10 +153,13 @@ export const editingOperationsRouter = createTRPCRouter({
           await transaction.update(movements)
             .set({ balance: sql`${movements.balance} - ${changedAmount}` })
             .where(inArray(movements.id, mvsIds))
+        }
 
-          // Creo el mismo movimiento pero con la nueva transaccion
+        // Creo el mismo movimiento pero con la nueva transaccion
+        for (const deletedMovement of deletedMovements) {
           await generateMovements(transaction, txForMovement, deletedMovement.account, deletedMovement.direction, deletedMovement.type)
         }
+
 
         return newTransaction
       });

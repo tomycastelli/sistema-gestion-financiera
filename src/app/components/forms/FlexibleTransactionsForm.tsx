@@ -10,7 +10,6 @@ import {
   currencies,
   currentAccountOnlyTypes,
   operationTypes,
-  paymentMethods,
 } from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -25,12 +24,14 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
 import { type User } from "lucia";
 import { useNumberFormat } from "@react-input/number-format";
 import { parseFormattedFloat } from "~/lib/functions";
+import { type MutableRefObject, useRef } from "react";
+import AmountInput from "~/app/operaciones/carga/AmountInput";
+import { Label } from "../ui/label";
 
 const FormSchema = z.object({
   transactions: z.array(
@@ -41,7 +42,6 @@ const FormSchema = z.object({
       operatorId: z.string().min(1),
       currency: z.string().min(1),
       amount: z.string().min(1),
-      method: z.string().optional(),
       direction: z.boolean().optional().default(false),
       time: z.string().optional(),
     }).refine(data => data.fromEntityId !== data.toEntityId, {
@@ -103,7 +103,6 @@ const FlexibleTransactionsForm = ({
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFormattedFloat(transaction.amount),
-        method: transaction.method,
       }),
     );
 
@@ -112,7 +111,15 @@ const FlexibleTransactionsForm = ({
 
   const [parent] = useAutoAnimate();
 
-  const inputRef = useNumberFormat({ locales: "es-AR" })
+  const myRefs = useRef<MutableRefObject<HTMLInputElement | null>[]>([]);
+
+  myRefs.current[0] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[1] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[2] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[3] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[4] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[5] = useNumberFormat({ locales: "es-AR" })
+  myRefs.current[6] = useNumberFormat({ locales: "es-AR" })
 
   return (
     <Form {...form}>
@@ -203,45 +210,16 @@ const FlexibleTransactionsForm = ({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={control}
-                    name={`transactions.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monto</FormLabel>
-                        <FormControl>
-                          <Input ref={inputRef} className="w-32" name={field.name} placeholder="$"
-                            value={field.value}
-                            onChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                  <AmountInput name={`transactions.${index}.amount`} />
                 </div>
                 <div className="flex flex-row space-x-2">
-                  <FormField
-                    control={control}
-                    name={`transactions.${index}.method`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Método</FormLabel>
-                        <CustomSelector
-                          buttonClassName="w-32"
-                          data={paymentMethods}
-                          field={field}
-                          fieldName={`transactions.${index}.method`}
-                          placeholder="Elegir"
-                        />
-                      </FormItem>
-                    )}
-                  />
                   <div className="flex flex-col items-center space-y-1">
+                    <Label>Tipo</Label>
                     <FormField
                       control={control}
                       name={`transactions.${index}.type`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tipo</FormLabel>
                           <CustomSelector
                             buttonClassName="w-36"
                             data={operationTypes}
@@ -353,7 +331,6 @@ const FlexibleTransactionsForm = ({
                     currency: "ars",
                     direction: !!watchTransactions[index]?.direction,
                     operatorId: userEntityId ? userEntityId.toString() : "",
-                    method: "",
                     type: "",
                   })
                 }

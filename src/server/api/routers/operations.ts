@@ -3,11 +3,12 @@ import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import moment from "moment";
 import type postgres from "postgres";
 import { z } from "zod";
-import { getAllChildrenTags } from "~/lib/functions";
+import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 import {
   generateMovements,
   getAllPermissions,
   getAllTags,
+  getGlobalSettings,
   logIO,
   undoBalances,
 } from "~/lib/trpcFunctions";
@@ -249,6 +250,12 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const { data: accountingPeriod } = await getGlobalSettings(ctx, "accountingPeriod") as {
+        name: string; data: { months: number; graceDays: number; }
+      }
+
+      const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+
       const operationsWhere = and(
         input.operationId ? eq(operations.id, input.operationId) : undefined,
         input.opDateIsGreater && !input.opDateIsLesser
@@ -418,6 +425,8 @@ export const operationsRouter = createTRPCRouter({
       const tags = await getAllTags(ctx.redis, ctx.db);
 
       const operationsWithPermissions = response.operationsQuery.map((op) => {
+        const isInPeriod = moment(accountingPeriodDate).isBefore(op.date)
+
         const isVisualizeAllowed = userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_VISUALIZE",
         )
@@ -443,7 +452,7 @@ export const operationsRouter = createTRPCRouter({
             ? true
             : false;
 
-        const isCreateAllowed = userPermissions?.find(
+        const isCreateAllowed = isInPeriod && userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
         )
           ? true
@@ -474,6 +483,7 @@ export const operationsRouter = createTRPCRouter({
           isCreateAllowed,
           transactions: op.transactions.map((tx) => {
             const isCancelAllowed =
+              isInPeriod &&
               tx.status !== "cancelled" &&
               (cashAccountOnlyTypes.has(tx.type) ||
                 tx.type === "pago por cta cte" ||
@@ -501,31 +511,32 @@ export const operationsRouter = createTRPCRouter({
 
             const isDeleteAllowed = false
 
-            const isUpdateAllowed = tx.status !== Status.enumValues[0] &&
-              (moment().isSame(op.date, "month")) &&
-              userPermissions?.find(
-                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
-              )
-              ? true
-              : userPermissions?.find((p) => {
-                const allAllowedTags = getAllChildrenTags(
-                  p.entitiesTags,
-                  tags,
-                );
-                if (
-                  p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                  (p.entitiesIds?.includes(tx.fromEntityId) ||
-                    allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                  (p.entitiesIds?.includes(tx.toEntityId) ||
-                    allAllowedTags.includes(tx.toEntity.tagName))
-                ) {
-                  return true;
-                }
-              })
+            const isUpdateAllowed =
+              isInPeriod &&
+                tx.status !== Status.enumValues[0] &&
+                userPermissions?.find(
+                  (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+                )
                 ? true
-                : false;
+                : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                    (p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                    (p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName))
+                  ) {
+                    return true;
+                  }
+                })
+                  ? true
+                  : false;
 
-            const isValidateAllowed = (moment().isSame(op.date, "month")) && !currentAccountOnlyTypes.has(tx.type) && tx.status === "pending" &&
+            const isValidateAllowed = isInPeriod && !currentAccountOnlyTypes.has(tx.type) && tx.status === "pending" &&
               (userPermissions?.some(
                 (p) =>
                   p.name === "ADMIN" ||

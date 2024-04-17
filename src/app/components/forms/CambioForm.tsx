@@ -7,8 +7,8 @@ import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
 import EntityCard from "~/app/components/ui/EntityCard";
 import { Icons } from "~/app/components/ui/Icons";
-import { isNumeric } from "~/lib/functions";
-import { currencies, paymentMethods } from "~/lib/variables";
+import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
+import { currencies } from "~/lib/variables";
 import {
   useTransactionsStore,
   type SingleTransactionInStoreSchema,
@@ -26,30 +26,20 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
+import { useNumberFormat } from "@react-input/number-format";
+import { Label } from "../ui/label";
 
 const FormSchema = z.object({
   entityA: z.string().min(1),
   entityB: z.string().min(1),
   entityOperator: z.string().min(1),
   currencyA: z.string().min(1),
-  amountA: z
-    .string()
-    .refine((value) => value === undefined || isNumeric(value), {
-      message: "Tiene que ser un valor númerico",
-    }),
+  amountA: z.string().min(1),
   methodA: z.string().optional(),
   currencyB: z.string().min(1),
-  amountB: z
-    .string()
-    .refine((value) => value === undefined || isNumeric(value), {
-      message: "Tiene que ser un valor númerico",
-    }),
+  amountB: z.string().min(1),
   methodB: z.string().optional(),
-  exchangeRate: z
-    .string()
-    .refine((value) => value === undefined || isNumeric(value), {
-      message: "Tiene que ser un valor númerico",
-    }),
+  exchangeRate: z.string().min(1),
   lockExchange: z.boolean().default(true),
   lockAmountA: z.boolean().default(true),
   lockAmountB: z.boolean().default(false),
@@ -76,6 +66,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
       lockAmountA: true,
       lockAmountB: false,
       lockExchange: true,
+      amountA: "",
+      amountB: "",
+      exchangeRate: ""
     },
   });
 
@@ -95,41 +88,33 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
   const { addTransactionToStore } = useTransactionsStore();
 
   const exchangeCalculation = useCallback(() => {
-    if (!!watchLockExchange && !!watchLockAmountA) {
-      setValue("lockAmountB", false)
-    } else if (!!watchLockAmountA && !!watchLockAmountB) {
-      setValue("lockExchange", false)
-    } else if (!!watchLockExchange && !!watchLockAmountB) {
-      setValue("lockAmountA", false)
-    }
-
     const isStrongCurrencyA = currencies.find(
       (obj) => obj.value === watchCurrencyA,
     )?.strong;
     const isStrongCurrencyB = currencies.find(
       (obj) => obj.value === watchCurrencyB,
     )?.strong;
-    const amountA = parseFloat(watchAmountA);
-    const amountB = parseFloat(watchAmountB);
-    const exchangeRate = parseFloat(watchExchangeRate);
+    const amountA = parseFormattedFloat(watchAmountA);
+    const amountB = parseFormattedFloat(watchAmountB);
+    const exchangeRate = parseFormattedFloat(watchExchangeRate);
     if (watchCurrencyA && watchCurrencyB) {
       if (watchLockAmountA && amountA > 0 && watchLockAmountB && amountB > 0) {
         if (!isStrongCurrencyA && isStrongCurrencyB) {
-          setValue("exchangeRate", (amountA / amountB).toFixed(2).toString());
+          setValue("exchangeRate", numberFormatter(amountA / amountB));
         }
         if (isStrongCurrencyA && !isStrongCurrencyB) {
-          setValue("exchangeRate", (amountB / amountA).toFixed(2).toString());
+          setValue("exchangeRate", numberFormatter(amountB / amountA));
         }
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             "exchangeRate",
-            ((amountB / amountA - 1) * 100).toFixed(4).toString(),
+            numberFormatter((amountB / amountA - 1) * 100),
           );
         }
         if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             "exchangeRate",
-            ((amountA / amountB - 1) * 100).toFixed(4).toString(),
+            numberFormatter((amountA / amountB - 1) * 100),
           );
         }
       }
@@ -140,21 +125,21 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         (exchangeRate > 0 || exchangeRate < 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
-          setValue("amountB", (amountA * exchangeRate).toFixed(2).toString());
+          setValue("amountB", numberFormatter(amountA * exchangeRate));
         }
         if (!isStrongCurrencyA && isStrongCurrencyB) {
-          setValue("amountB", (amountA / exchangeRate).toFixed(2).toString());
+          setValue("amountB", numberFormatter(amountA / exchangeRate));
         }
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             "amountB",
-            (amountA / (1 + exchangeRate / 100)).toFixed(4).toString(),
+            numberFormatter(amountA / (1 + exchangeRate / 100)),
           );
         }
         if (watchCurrencyB === "usd" && watchCurrencyA === "usdt") {
           setValue(
             "amountB",
-            (amountA * (1 + exchangeRate / 100)).toFixed(4).toString(),
+            numberFormatter(amountA * (1 + exchangeRate / 100)),
           );
         }
       }
@@ -165,21 +150,21 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         (exchangeRate > 0 || exchangeRate < 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
-          setValue("amountA", (amountB / exchangeRate).toFixed(2).toString());
+          setValue("amountA", numberFormatter(amountB / exchangeRate));
         }
         if (!isStrongCurrencyA && isStrongCurrencyB) {
-          setValue("amountA", (amountB * exchangeRate).toFixed(2).toString());
+          setValue("amountA", numberFormatter(amountB * exchangeRate));
         }
         if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             "amountA",
-            (amountB * (exchangeRate / 100) + 1).toFixed(4).toString(),
+            numberFormatter(amountB * (exchangeRate / 100) + 1),
           );
         }
         if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
           setValue(
             "amountA",
-            ((amountB - 1) * (100 / exchangeRate)).toFixed(4).toString(),
+            numberFormatter((amountB - 1) * (100 / exchangeRate)),
           );
         }
       }
@@ -211,18 +196,6 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         { shouldFocus: true },
       );
     }
-    if (!isNumeric(values.amountA)) {
-      setError("amountA", {
-        type: "validate",
-        message: "El monto solo puede contener numeros",
-      });
-    }
-    if (!isNumeric(values.amountB)) {
-      setError("amountB", {
-        type: "validate",
-        message: "El monto solo puede contener numeros",
-      });
-    }
 
     const transactions: SingleTransactionInStoreSchema[] = [
       {
@@ -233,9 +206,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyB,
         metadata: {
-          exchangeRate: parseFloat(values.exchangeRate),
+          exchangeRate: parseFormattedFloat(values.exchangeRate),
         },
-        amount: parseFloat(values.amountB),
+        amount: parseFormattedFloat(values.amountB)
       },
       {
         txId: 0,
@@ -245,9 +218,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         operatorId: parseInt(values.entityOperator),
         currency: values.currencyA,
         metadata: {
-          exchangeRate: parseFloat(values.exchangeRate),
+          exchangeRate: parseFormattedFloat(values.exchangeRate),
         },
-        amount: parseFloat(values.amountA),
+        amount: parseFormattedFloat(values.amountA),
       },
     ];
 
@@ -268,6 +241,10 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
       lockExchange: true,
     });
   };
+
+  const inputRef1 = useNumberFormat({ locales: "es-AR" })
+  const inputRef2 = useNumberFormat({ locales: "es-AR" })
+  const inputRef3 = useNumberFormat({ locales: "es-AR" })
 
   return (
     <Form {...form}>
@@ -314,12 +291,12 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
             />
             <div className="mt-4 flex flex-col space-y-2">
               <h1 className="mb-2 text-lg font-semibold">Entrada</h1>
+              <Label>Divisa</Label>
               <FormField
                 control={control}
                 name="currencyA"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Divisa</FormLabel>
                     <CustomSelector
                       data={currencies}
                       field={field}
@@ -337,7 +314,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef1} className="w-32" name={field.name} placeholder="$"
+                          value={field.value}
+                          onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -345,7 +324,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                 <div className="flex flex-col space-y-1">
                   <Icons.lock className="h-4 text-slate-900" />
                   <FormField
-                    control={form.control}
+                    control={control}
                     name="lockAmountA"
                     render={({ field }) => (
                       <FormItem>
@@ -360,33 +339,18 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                   />
                 </div>
               </div>
-              <FormField
-                control={control}
-                name="methodA"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Método</FormLabel>
-                    <CustomSelector
-                      data={paymentMethods}
-                      field={field}
-                      fieldName="methodA"
-                      placeholder="Elegir"
-                    />
-                  </FormItem>
-                )}
-              />
             </div>
           </div>
           <div className="justify-self-center">
             <div className="flex h-full flex-col items-center justify-between">
-              <div className="flex flex-col items-center space-y-2">
+              <div className="flex flex-col items-start space-y-2">
+                <FormLabel>Operador</FormLabel>
                 <FormField
                   control={control}
                   name="entityOperator"
                   defaultValue={userEntityId?.toString()}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Operador</FormLabel>
                       {entities ? (
                         <>
                           <CustomSelector
@@ -407,7 +371,7 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                   )}
                 />
               </div>
-              <div className="flex flex-col items-center justify-center space-y-6">
+              <div className="flex flex-col mt-2 items-center justify-center space-y-6">
                 <FormField
                   control={control}
                   name="exchangeRate"
@@ -415,7 +379,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Tipo de cambio</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef2} className="w-32" name={field.name} placeholder="$"
+                          value={field.value}
+                          onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -441,10 +407,10 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
               <div className="flex flex-col items-center space-y-4">
                 <div className="flex flex-row items-center space-x-2">
                   <Icons.arrowLeft className="h-8" />
-                  {!isNaN(parseFloat(watchAmountA)) && (
+                  {!isNaN(parseFormattedFloat(watchAmountA)) && (
                     <h3 className="text-sm">
-                      {new Intl.NumberFormat("es-AR").format(
-                        parseFloat(watchAmountA),
+                      {numberFormatter(
+                        parseFormattedFloat(watchAmountA),
                       )}
                     </h3>
                   )}
@@ -452,10 +418,10 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                 </div>
                 <div className="flex flex-row items-center space-x-2">
                   <h3 className="text-sm">{watchCurrencyB?.toUpperCase()}</h3>
-                  {!isNaN(parseFloat(watchAmountB)) && (
+                  {!isNaN(parseFormattedFloat(watchAmountB)) && (
                     <h3 className="text-sm">
-                      {new Intl.NumberFormat("es-AR").format(
-                        parseFloat(watchAmountB),
+                      {numberFormatter(
+                        parseFormattedFloat(watchAmountB),
                       )}
                     </h3>
                   )}
@@ -502,12 +468,12 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
             />
             <div className="mt-4 flex flex-col space-y-2">
               <h1 className="mb-2 text-lg font-semibold">Salida</h1>
+              <Label>Divisa</Label>
               <FormField
                 control={control}
                 name="currencyB"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Divisa</FormLabel>
                     <CustomSelector
                       data={currencies}
                       field={field}
@@ -525,7 +491,9 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                     <FormItem>
                       <FormLabel>Monto</FormLabel>
                       <FormControl>
-                        <Input className="w-32" placeholder="$" {...field} />
+                        <Input ref={inputRef3} className="w-32" name={field.name} placeholder="$"
+                          value={field.value}
+                          onChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -548,21 +516,6 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
                   />
                 </div>
               </div>
-              <FormField
-                control={control}
-                name="methodB"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Método</FormLabel>
-                    <CustomSelector
-                      data={paymentMethods}
-                      field={field}
-                      fieldName="methodB"
-                      placeholder="Elegir"
-                    />
-                  </FormItem>
-                )}
-              />
             </div>
           </div>
         </div>
@@ -576,3 +529,4 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
 };
 
 export default CambioForm;
+

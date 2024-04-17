@@ -23,6 +23,8 @@ import {
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Textarea } from "../ui/textarea";
+import { api } from "~/trpc/react";
+import { getAccountingPeriodDate } from "~/lib/functions";
 
 const InitialDataOperationForm = () => {
   const FormSchema = InitialOperationStoreSchema;
@@ -36,6 +38,12 @@ const InitialDataOperationForm = () => {
   });
 
   const { handleSubmit, control } = form;
+
+  const { data } = api.globalSettings.get.useQuery({ name: "accountingPeriod" })
+
+  const accountingPeriod = data ? data.data as { months: number; graceDays: number; } : { months: 1, graceDays: 10 }
+
+  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
 
   const { setIsInitialOperationSubmitted, setInitialOperationStore } =
     useInitialOperationStore();
@@ -88,8 +96,8 @@ const InitialDataOperationForm = () => {
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date > new Date() ||
-                        date < new Date(new Date().setDate(0))
+                        date < accountingPeriodDate ||
+                        date > moment().startOf("day").toDate()
                       }
                       initialFocus
                     />

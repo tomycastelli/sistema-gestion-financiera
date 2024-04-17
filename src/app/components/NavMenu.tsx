@@ -31,11 +31,12 @@ const NavMenu = () => {
       ]
     },
     {
-      name: "Usuarios",
+      name: "Preferencias",
       links: [
-        { name: "Mi usuario", description: "Manejar mi usuario", href: "/usuarios" },
-        { name: "Permisos", description: "Modificar los permisos de usuario", href: "/usuarios/permisos" },
-        { name: "Roles", description: "Manejar grupos de usuarios bajo un grupo de permisos", href: "/usuarios/roles" }
+        { name: "Ajustes globales", description: "Ajustes globales del sistema", href: "/preferencias" },
+        { name: "Mi usuario", description: "Manejar mi usuario", href: "/preferencias/usuarios" },
+        { name: "Permisos", description: "Modificar los permisos de usuario", href: "/preferencias/usuarios/permisos" },
+        { name: "Roles", description: "Manejar grupos de usuarios bajo un grupo de permisos", href: "/preferencias/usuarios/roles" }
       ]
     }
   ]

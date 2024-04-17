@@ -4,7 +4,7 @@ import { type FC } from "react";
 import { z } from "zod"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import Link from "next/link";
-import { capitalizeFirstLetter } from "~/lib/functions";
+import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
 import { currenciesOrder } from "~/lib/variables";
 
 const transformedBalancesSchema = z.object({
@@ -69,7 +69,7 @@ const BalancesCards: FC<BalancesCardsProps> = ({ transformedBalances, isInverted
                           </p>
                           <p className="col-span-2 text-xl font-bold">
                             ${" "}
-                            {new Intl.NumberFormat("es-AR").format(
+                            {numberFormatter(
                               !isInverted
                                 ? balances.balance
                                 : -balances.balance,

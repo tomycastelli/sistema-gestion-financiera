@@ -19,6 +19,10 @@ export const parseFormattedFloat = (input: string): number => {
   return parseFloat(input.replace(/\./g, "").replace(",", "."))
 }
 
+export const numberFormatter = (n: number, maximumFractionDigits = 2): string => {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits }).format(n)
+}
+
 export const safeJsonParse = <T>(str: string) => {
   try {
     const jsonValue: T = JSON.parse(str);
@@ -557,4 +561,12 @@ export const generateTableData = (
 
 export function timeout(delay: number) {
   return new Promise(res => setTimeout(res, delay));
+}
+
+export const getAccountingPeriodDate = (months: number, graceDays: number): Date => {
+  if (moment().date() <= graceDays) {
+    return moment().startOf("month").subtract(months, "month").toDate()
+  } else {
+    return moment().startOf("month").subtract(months - 1, "month").toDate()
+  }
 }

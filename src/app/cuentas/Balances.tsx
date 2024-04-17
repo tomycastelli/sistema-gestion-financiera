@@ -4,7 +4,7 @@ import { type User } from "lucia";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
-import { getAllChildrenTags, isDarkEnough, lightenColor } from "~/lib/functions";
+import { getAllChildrenTags, isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
@@ -27,6 +27,7 @@ import {
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import BalancesCards from "./BalancesCards";
+import { useTheme } from "next-themes";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -39,17 +40,21 @@ interface BalancesProps {
   user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined
+  dayInPast: string | undefined
 }
 
 const Balances: FC<BalancesProps> = ({
   initialBalances,
-  accountType,
   selectedEntityId,
   selectedTag,
   tags,
   user,
   entities,
-  uiColor
+  uiColor,
+  linkId,
+  linkToken,
+  accountType,
+  dayInPast
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
@@ -68,6 +73,10 @@ const Balances: FC<BalancesProps> = ({
     setMovementsTablePage
   } = useCuentasStore();
 
+  const { theme } = useTheme();
+
+  const isDark = theme === "dark"
+
   const transformedBalancesSchema = z.object({
     entity: z.object({
       id: z.number().int(),
@@ -77,7 +86,16 @@ const Balances: FC<BalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = initialBalances ? initialBalances.reduce(
+  const { data: balances, isFetching } = api.movements.getBalancesByEntities.useQuery({
+    linkId,
+    account: accountType,
+    entityId: selectedEntityId,
+    dayInPast,
+    entityTag: selectedTag,
+    linkToken
+  }, { initialData: initialBalances, refetchOnWindowFocus: false })
+
+  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = balances.reduce(
     (acc, balance) => {
       if (selectedEntityId) {
         let entityEntry = acc.find(
@@ -153,8 +171,7 @@ const Balances: FC<BalancesProps> = ({
 
       return acc;
     },
-    [] as z.infer<typeof transformedBalancesSchema>[],
-  ) : [];
+    [] as z.infer<typeof transformedBalancesSchema>[])
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
@@ -609,11 +626,8 @@ const Balances: FC<BalancesProps> = ({
           .map((item, index) => (
             <div
               key={item.entity.id}
-              style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, 10) : lightenColor(uiColor, 5) : undefined }}
-              className={cn(
-                "grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold",
-                index % 2 === 0 ? "bg-muted" : "bg-teal-100",
-              )}
+              style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, isDark ? 60 : 20) : lightenColor(uiColor, isDark ? 40 : 10) : undefined }}
+              className="grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
               {isListSelection ? (
                 <Button
@@ -655,7 +669,7 @@ const Balances: FC<BalancesProps> = ({
                   setMovementsTablePage(1)
                 }}
                 className={cn(
-                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary text-black hover:text-white hover:shadow-md",
                   !selectedCurrency &&
                   destinationEntityId === item.entity.id &&
                   "bg-primary text-white shadow-md",
@@ -687,20 +701,25 @@ const Balances: FC<BalancesProps> = ({
                     key={currency}
                     style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
                     className={cn(
-                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
+                      "col-span-2 flex text-black items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
                       selectedCurrency === currency &&
                       destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
                       "text-white",
                       selectedCurrency === currency && destinationEntityId === item.entity.id && "shadow-md"
                     )}
                   >
-                    <p>
-                      {new Intl.NumberFormat("es-AR").format(
-                        !isInverted
-                          ? matchingBalance.balance
-                          : -matchingBalance.balance,
-                      )}
-                    </p>
+                    {!isFetching ? (
+                      <p>
+                        {numberFormatter(
+                          !isInverted
+                            ? matchingBalance.balance
+                            : -matchingBalance.balance,
+                        )}
+                      </p>
+                    ) : (
+                      <p>Cargando...</p>
+                    )}
+
                   </div>
                 ) : (
                   <p className="col-span-2"></p>

@@ -52,6 +52,7 @@ const AccountsTable = async ({
       <div suppressHydrationWarning={true}>
         {initialBalances && (
           <Balances
+            dayInPast={dayInPast ?? undefined}
             tags={initialTags}
             accountType={accountType}
             initialBalances={initialBalances}

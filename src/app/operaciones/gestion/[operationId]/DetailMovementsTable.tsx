@@ -1,8 +1,10 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import moment from "moment";
-import { type FC } from "react";
+import { useState, type FC } from "react";
+import CustomPagination from "~/app/components/CustomPagination";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import { DataTable } from "~/app/cuentas/DataTable";
+import { numberFormatter } from "~/lib/functions";
 import { mvTypeFormatting } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -18,6 +20,9 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
   operationDate,
   operationId
 }) => {
+  const [page, setPage] = useState<number>(1)
+  const pageSize = 12
+
   const { data: movements, isFetching } = api.movements.getMovementsByOpId.useQuery({ operationId }, {
     initialData: initialMovements,
     refetchOnWindowFocus: false
@@ -38,7 +43,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
         : movement.transaction.fromEntity.name,
     currency: movement.transaction.currency,
     amount: movement.transaction.amount,
-  }));
+  })).sort((a, b) => b.transactionId - a.transactionId).slice((page - 1) * pageSize, page * pageSize);
 
   const columns: ColumnDef<(typeof tableData)[number]>[] = [
     {
@@ -85,7 +90,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
       header: () => <div className="text-right">Monto</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("amount"));
-        const formatted = new Intl.NumberFormat("es-AR").format(amount);
+        const formatted = numberFormatter(amount);
         return amount !== 0 ? (
           <div className="text-right font-medium">
             {" "}
@@ -101,10 +106,18 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
 
   return (
     !isFetching ? (
-      <DataTable
-        columns={columns}
-        data={tableData}
-      />
+      <div className="flex flex-col justify-start gap-y-2">
+        <DataTable
+          columns={columns}
+          data={tableData}
+        />
+        <CustomPagination page={page}
+          changePageState={setPage}
+          itemName="movimientos"
+          pageSize={pageSize}
+          totalCount={movements.length}
+        />
+      </div>
     ) : (
       <LoadingAnimation text="Cargando movimientos" />
     )

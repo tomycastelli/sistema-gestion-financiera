@@ -1,6 +1,6 @@
 import type { User } from "lucia";
 import { memo, type FC } from "react";
-import { capitalizeFirstLetter } from "~/lib/functions";
+import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { Status } from "~/server/db/schema";
 import { api } from "~/trpc/react";
@@ -60,17 +60,9 @@ const Transaction: FC<TransactionProps> = ({
                 if (item.id === tx.operationId) {
                   return {
                     ...item,
-                    transactions: item.transactions.flatMap((tx) => {
+                    transactions: item.transactions.map((tx) => {
                       if (tx.id === newOperation.transactionId) {
-                        return [
-                          { ...tx, status: Status.enumValues[0] },
-                          {
-                            ...tx,
-                            fromEntityId: tx.toEntityId,
-                            toEntityId: tx.fromEntityId,
-                            status: Status.enumValues[0],
-                          },
-                        ];
+                        return { ...tx, status: Status.enumValues[0] }
                       } else {
                         return tx;
                       }
@@ -196,7 +188,7 @@ const Transaction: FC<TransactionProps> = ({
               {tx.currency.toUpperCase()}{" "}
             </p>
             <p className="text-lg">
-              {new Intl.NumberFormat("es-AR").format(tx.amount)}
+              {numberFormatter(tx.amount)}
             </p>
           </div>
           <Icons.arrowRight

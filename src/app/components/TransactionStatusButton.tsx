@@ -85,7 +85,7 @@ const TransactionStatusButton = ({
       void utils.movements.getCurrentAccounts.invalidate();
     },
     onSuccess(data) {
-      const title = data.length > 1 ? data.length.toString() + "transacciones actualizadas" : "1 transacción actualizada"
+      const title = data.length > 1 ? data.length.toString() + " transacciones actualizadas" : " 1 transacción actualizada"
       toast.success(title)
     }
   });

@@ -1,6 +1,7 @@
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Separator } from "./ui/separator";
+import { numberFormatter } from "~/lib/functions";
 
 interface BalanceTotalsProps {
   totals: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -27,7 +28,7 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
                       : "",
                 )}
               >
-                $ {new Intl.NumberFormat("es-AR").format(balance.amount === 0 ? 0 : balance.amount)}
+                $ {numberFormatter(balance.amount === 0 ? 0 : balance.amount)}
               </p>
             </div>
           ))}
