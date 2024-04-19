@@ -4,11 +4,10 @@ import { useMemo, useState } from "react";
 interface IUseSearchProps<T> {
   dataSet: T[];
   keys: string[];
+  scoreThreshold?: number;
 }
 
-const SCORE_THRESHOLD = 0.4;
-
-export default function useSearch<T>({ dataSet, keys }: IUseSearchProps<T>) {
+export default function useSearch<T>({ dataSet, keys, scoreThreshold = 0.55 }: IUseSearchProps<T>) {
   const [searchValue, setSearchValue] = useState("");
 
   const fuse = useMemo(() => {
@@ -28,10 +27,10 @@ export default function useSearch<T>({ dataSet, keys }: IUseSearchProps<T>) {
     return searchResults
       .filter(
         (fuseResult) =>
-          fuseResult.score !== undefined && fuseResult.score < SCORE_THRESHOLD,
+          fuseResult.score !== undefined && fuseResult.score < scoreThreshold,
       )
       .map((fuseResult) => fuseResult.item);
-  }, [fuse, searchValue, dataSet]);
+  }, [fuse, searchValue, dataSet, scoreThreshold]);
 
   return {
     searchValue,

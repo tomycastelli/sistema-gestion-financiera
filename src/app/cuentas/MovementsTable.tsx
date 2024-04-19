@@ -10,6 +10,7 @@ import {
   generateTableData,
   isNumeric,
   numberFormatter,
+  truncateString,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currencies, mvTypeFormatting } from "~/lib/variables";
@@ -362,7 +363,7 @@ const MovementsTable = ({
                   )}
                 >
                   {destinationEntityId
-                    ? entities.find((e) => e.id === destinationEntityId)?.name
+                    ? truncateString(entities.find((e) => e.id === destinationEntityId)?.name, 22)
                     : "Elegir"}
                 </Button>
               </PopoverTrigger>

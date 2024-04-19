@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     !storedCodeVerifier ||
     state !== storedState
   ) {
-    return new Response(null, {
+    return new Response("Could not find code and state on cookies", {
       status: 400,
     });
   }

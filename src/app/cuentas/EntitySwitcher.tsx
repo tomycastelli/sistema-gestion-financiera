@@ -7,6 +7,7 @@ import {
   createQueryString,
   getInitials,
   isDarkEnough,
+  truncateString,
 } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -59,17 +60,6 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const truncateString = (input: string | undefined, N: number) => {
-    if (input === undefined) {
-      return undefined;
-    }
-    if (input.length <= N) {
-      return input;
-    } else {
-      const truncatedString = input.substring(0, N);
-      return `${truncatedString}...`;
-    }
-  };
 
   return (
     <Popover>

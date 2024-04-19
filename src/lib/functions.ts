@@ -15,6 +15,19 @@ export const getInitials = (name: string): string => {
   }
 };
 
+export const truncateString = (input: string | undefined, N: number) => {
+  if (input === undefined) {
+    return undefined;
+  }
+  if (input.length <= N) {
+    return input;
+  } else {
+    const truncatedString = input.substring(0, N);
+    return `${truncatedString}...`;
+  }
+};
+
+
 export const parseFormattedFloat = (input: string): number => {
   return parseFloat(input.replace(/\./g, "").replace(",", "."))
 }

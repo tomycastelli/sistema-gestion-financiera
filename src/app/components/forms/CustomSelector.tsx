@@ -14,6 +14,7 @@ import {
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
+import { truncateString } from "~/lib/functions";
 
 interface Data {
   value: string;
@@ -125,7 +126,7 @@ const CustomSelector = ({
                           : "opacity-0",
                       )}
                     />
-                    {obj.label}
+                    {truncateString(obj.label, 22)}
                   </CommandItem>
                 ))}
             </CommandGroup>

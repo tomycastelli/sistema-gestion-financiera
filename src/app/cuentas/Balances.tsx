@@ -238,6 +238,7 @@ const Balances: FC<BalancesProps> = ({
   } = useSearch<(typeof detailedBalances)[0]>({
     dataSet: detailedBalances,
     keys: ["entity.name"],
+    scoreThreshold: 0.55
   });
 
   const {

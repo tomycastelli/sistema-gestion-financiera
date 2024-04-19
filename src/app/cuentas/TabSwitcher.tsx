@@ -3,9 +3,10 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type FC } from "react";
+import { useEffect, type FC } from "react";
 import { createQueryString, isDarkEnough, removeQueryString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { useCuentasStore } from "~/stores/cuentasStore";
 
 interface TabSwitcherProps {
   uiColor: string | undefined
@@ -15,8 +16,18 @@ interface TabSwitcherProps {
 
 const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
   const searchParams = useSearchParams();
+  const { setDestinationEntityId, setToDate, setFromDate, setSelectedCurrency } = useCuentasStore()
 
   const selectedTab = searchParams.get("cuenta");
+
+  useEffect(() => {
+    if (selectedTab) {
+      setDestinationEntityId(undefined)
+      setToDate(undefined)
+      setFromDate(undefined)
+      setSelectedCurrency(undefined)
+    }
+  }, [selectedTab, setDestinationEntityId, setToDate, setFromDate, setSelectedCurrency])
 
   const [parent] = useAutoAnimate();
 
