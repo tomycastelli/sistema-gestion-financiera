@@ -33,9 +33,10 @@ interface EntitySwitcherProps {
   uiColor: string | undefined
   selectedEntityObj: RouterOutputs["entities"]["getFiltered"][number] | undefined
   selectedTagObj: RouterOutputs["tags"]["getFiltered"][number] | undefined
+  mainTags: string[]
 }
 
-const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, selectedEntityObj, selectedTagObj }) => {
+const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, selectedEntityObj, selectedTagObj, mainTags }) => {
   const groupedEntities = entities.reduce(
     (acc, entity) => {
       const existingGroup = acc.find((group) => group.tag === entity.tag.name);
@@ -108,7 +109,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
             <CommandInput placeholder="Buscar entidad..." />
             <CommandEmpty>No se encontraron entidades.</CommandEmpty>
             <CommandGroup heading="Tags">
-              {tags.filter(tag => tag.name === "Maika").map((tag) => (
+              {tags.filter(tag => mainTags.includes(tag.name)).map((tag) => (
                 <CommandItem
                   key={tag.name}
                   className="text-sm"
@@ -135,7 +136,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
                 </CommandItem>
               ))}
             </CommandGroup>
-            {groupedEntities.filter(group => group.tag === "Maika").map((group) => (
+            {groupedEntities.filter(group => mainTags.includes(group.tag)).map((group) => (
               <CommandGroup
                 key={group.tag}
                 heading={capitalizeFirstLetter(group.tag)}

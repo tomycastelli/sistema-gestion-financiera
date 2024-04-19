@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from "./ui/navigation-menu";
+import { type FC } from "react";
 
-const NavMenu = () => {
+interface NavMenuProps {
+  mainTag: string;
+}
+
+const NavMenu: FC<NavMenuProps> = ({ mainTag }) => {
   interface MenuItem {
     name: string;
     links: { name: string; description: string, href: string }[]
@@ -19,8 +24,8 @@ const NavMenu = () => {
     {
       name: "Cuentas",
       links: [
-        { name: "Caja", description: "Las cuentas de caja", href: "/cuentas?tag=Maika&cuenta=caja" },
-        { name: "Cuenta corriente", description: "Las cuentas de cuenta corriente", href: "/cuentas?tag=Maika&cuenta=cuenta_corriente" }
+        { name: "Caja", description: "Las cuentas de caja", href: `/cuentas?tag=${mainTag}&cuenta=caja` },
+        { name: "Cuenta corriente", description: "Las cuentas de cuenta corriente", href: `/cuentas?tag=${mainTag}&cuenta=cuenta_corriente` }
       ]
     },
     {

@@ -23,10 +23,15 @@ import {
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Textarea } from "../ui/textarea";
-import { api } from "~/trpc/react";
 import { getAccountingPeriodDate } from "~/lib/functions";
+import { type RouterOutputs } from "~/trpc/shared";
+import { type FC } from "react";
 
-const InitialDataOperationForm = () => {
+interface InitialDataOperationFormProps {
+  accountingPeriodData: RouterOutputs["globalSettings"]["get"]["data"];
+}
+
+const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({ accountingPeriodData }) => {
   const FormSchema = InitialOperationStoreSchema;
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -39,9 +44,7 @@ const InitialDataOperationForm = () => {
 
   const { handleSubmit, control } = form;
 
-  const { data } = api.globalSettings.get.useQuery({ name: "accountingPeriod" })
-
-  const accountingPeriod = data ? data.data as { months: number; graceDays: number; } : { months: 1, graceDays: 10 }
+  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
 
   const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
 

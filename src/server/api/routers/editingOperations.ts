@@ -6,6 +6,7 @@ import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import {
   Status,
   balances,
+  entities,
   movements,
   operations,
   transactions,
@@ -16,8 +17,8 @@ import {
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
-import moment from "moment";
 import { currentAccountOnlyTypes } from "~/lib/variables";
+import { alias } from "drizzle-orm/pg-core";
 
 export const editingOperationsRouter = createTRPCRouter({
   updateTransactionValues: protectedProcedure
@@ -68,7 +69,7 @@ export const editingOperationsRouter = createTRPCRouter({
           newHistoryJson2 = [changesMade];
         }
 
-        const [newTransaction] = await transaction
+        const [newTxObj] = await transaction
           .update(transactions)
           .set({
             fromEntityId: input.newTransactionData.fromEntityId,
@@ -77,9 +78,9 @@ export const editingOperationsRouter = createTRPCRouter({
             currency: input.newTransactionData.currency,
             amount: input.newTransactionData.amount,
           })
-          .where(eq(transactions.id, input.txId)).returning();
+          .where(eq(transactions.id, input.txId)).returning({ id: transactions.id });
 
-        if (!newTransaction) {
+        if (!newTxObj) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Transaction to update not found"
@@ -93,29 +94,30 @@ export const editingOperationsRouter = createTRPCRouter({
           })
           .where(eq(transactionsMetadata.transactionId, input.txId));
 
-
         // Borro los movimientos relacionados a la transaccion
         const deletedMovements = await transaction.delete(movements).where(
-          eq(movements.transactionId, newTransaction.id)
+          eq(movements.transactionId, newTxObj.id)
         ).returning();
-
-        const [operation] = await transaction.select({ date: operations.date }).from(operations).where(eq(operations.id, newTransaction.operationId))
-        if (!operation) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Couldn't found the operation related to the transaction"
-          })
-        }
-
-        const txForMovement = { ...newTransaction, operation: { date: operation.date } }
 
         for (const deletedMovement of deletedMovements) {
           const changedAmount = movementBalanceDirection(input.oldTransactionData.fromEntityId, input.oldTransactionData.toEntityId, deletedMovement.direction) * input.oldTransactionData.amount
 
-          const selectedEntityId = input.oldTransactionData.fromEntityId < input.oldTransactionData.toEntityId ?
-            input.oldTransactionData.fromEntityId : input.oldTransactionData.toEntityId
-          const otherEntityId = input.oldTransactionData.fromEntityId === selectedEntityId ?
-            input.oldTransactionData.toEntityId : input.oldTransactionData.fromEntityId
+          const [relatedBalance] = await transaction.select().from(balances).where(eq(balances.id, deletedMovement.balanceId))
+
+          const selectedEntityId = relatedBalance!.selectedEntityId!
+          const otherEntityId = relatedBalance!.otherEntityId!
+
+          const balanceQuery = deletedMovement.entitiesMovementId ?
+            relatedBalance!.otherEntityId ? and(
+              eq(balances.otherEntityId, otherEntityId),
+              eq(balances.tagName, relatedBalance!.tagName!)
+            ) : and(
+              eq(balances.selectedEntityId, selectedEntityId),
+              eq(balances.tagName, relatedBalance!.tagName!)
+            ) : and(
+              eq(balances.selectedEntityId, selectedEntityId),
+              eq(balances.otherEntityId, otherEntityId),
+            )
 
           // Retrocedo el balance relacionado a ese movimiento y los posteriores
           await transaction
@@ -127,9 +129,8 @@ export const editingOperationsRouter = createTRPCRouter({
                 and(
                   eq(balances.account, deletedMovement.account),
                   eq(balances.currency, input.oldTransactionData.currency),
-                  eq(balances.selectedEntityId, selectedEntityId),
-                  eq(balances.otherEntityId, otherEntityId),
-                  gt(balances.date, moment(operation.date).startOf("day").toDate())
+                  balanceQuery,
+                  gt(balances.date, relatedBalance!.date)
                 )
               ))
 
@@ -143,25 +144,39 @@ export const editingOperationsRouter = createTRPCRouter({
               and(
                 eq(balances.account, deletedMovement.account),
                 eq(balances.currency, input.oldTransactionData.currency),
-                eq(balances.selectedEntityId, selectedEntityId),
-                eq(balances.otherEntityId, otherEntityId),
-                gt(operations.date, operation.date),
+                balanceQuery,
+                gt(operations.date, relatedBalance!.date),
               ))
 
           const mvsIds = mvsToUpdate.length > 0 ? mvsToUpdate.map(obj => obj.id) : [0]
+
+          console.log("Movimientos posteriores que seran retrotraidos: ", mvsIds)
 
           await transaction.update(movements)
             .set({ balance: sql`${movements.balance} - ${changedAmount}` })
             .where(inArray(movements.id, mvsIds))
         }
 
-        // Creo el mismo movimiento pero con la nueva transaccion
-        for (const deletedMovement of deletedMovements) {
+        const fromEntity = alias(entities, "fromEntity");
+        const toEntity = alias(entities, "toEntity");
+
+        const [newTxResponse] = await transaction.select().from(transactions)
+          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .where(eq(transactions.id, newTxObj.id))
+
+        const txForMovement = { ...newTxResponse!.Transactions, fromEntity: newTxResponse!.fromEntity!, toEntity: newTxResponse!.toEntity!, operation: newTxResponse!.Operations! }
+
+        const filteredMovements = deletedMovements.filter(mv => mv.entitiesMovementId === null)
+
+        // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
+        for (const deletedMovement of filteredMovements) {
           await generateMovements(transaction, txForMovement, deletedMovement.account, deletedMovement.direction, deletedMovement.type)
         }
 
 
-        return newTransaction
+        return newTxResponse!.Transactions
       });
 
       if (response) {
@@ -186,8 +201,14 @@ export const editingOperationsRouter = createTRPCRouter({
       try {
         const response = await ctx.db.transaction(async (transaction) => {
           const confirmedTxs = []
+
+          const fromEntity = alias(entities, "fromEntity");
+          const toEntity = alias(entities, "toEntity");
+
           for (const txId of input.transactionIds) {
             const [transactionData] = await transaction.select().from(transactions)
+              .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
               .leftJoin(operations, eq(transactions.operationId, operations.id))
               .where(eq(transactions.id, txId))
 
@@ -219,7 +240,7 @@ export const editingOperationsRouter = createTRPCRouter({
               })
               .where(eq(transactionsMetadata.transactionId, txId));
 
-            const mappedTransaction = { ...transactionData.Transactions, operation: { date: transactionData.Operations.date } }
+            const mappedTransaction = { ...transactionData.Transactions, operation: { date: transactionData.Operations.date }, fromEntity: transactionData.fromEntity!, toEntity: transactionData.toEntity! }
 
             await generateMovements(transaction, mappedTransaction, false, 1, "confirmation");
             await generateMovements(transaction, mappedTransaction, true, 1, "confirmation");
@@ -266,7 +287,9 @@ export const editingOperationsRouter = createTRPCRouter({
           ),
           with: {
             operation: true,
-            movements: true
+            movements: true,
+            fromEntity: true,
+            toEntity: true
           }
         })
 
@@ -302,7 +325,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
         // Para cancelar, vamos a crear los mismos movimientos con los datos de la transaccion invertidos
         for (const tx of transactionsToCancel) {
-          for (const mv of tx.movements) {
+          for (const mv of tx.movements.filter(m => m.entitiesMovementId === null)) {
             await generateMovements(transaction, tx, mv.account, mv.direction * (-1), "cancellation")
           }
         }

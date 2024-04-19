@@ -20,6 +20,7 @@ export const parseFormattedFloat = (input: string): number => {
 }
 
 export const numberFormatter = (n: number, maximumFractionDigits = 2): string => {
+  if (n === 0) return "0"
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits }).format(n)
 }
 

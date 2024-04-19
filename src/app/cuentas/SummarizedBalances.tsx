@@ -206,12 +206,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                   <Icons.externalLink className="h-4 text-black" />
                 </DropdownMenuItem>
               </Link>
-              <Link href={{ pathname: "/cuentas", query: { entidad: movement.otherEntityId } }}>
-                <DropdownMenuItem>
-                  <p>Ver otra cuenta</p>
-                  <Icons.currentAccount className="h-4" />
-                </DropdownMenuItem>
-              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
         );

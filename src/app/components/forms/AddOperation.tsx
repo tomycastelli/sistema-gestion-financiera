@@ -54,12 +54,16 @@ interface AddOperationProps {
   | RouterOutputs["operations"]["getOperationsByUser"]
   | undefined;
   tags: RouterOutputs["tags"]["getAll"];
+  accountingPeriodData: RouterOutputs["globalSettings"]["get"]["data"];
+  mainTags: string[]
 }
 
 const AddOperation = ({
   initialEntities,
   user,
   initialOperations,
+  accountingPeriodData,
+  mainTags
 }: AddOperationProps) => {
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState<string>("flexible");
@@ -122,7 +126,7 @@ const AddOperation = ({
 
         return { prevData };
       },
-      onError(err, newOperation, ctx) {
+      onError(err, _, ctx) {
         utils.operations.getOperationsByUser.setData(undefined, ctx?.prevData);
 
         toast.error("No se pudo cargar la operación y las transacciones relacionadas", {
@@ -131,9 +135,11 @@ const AddOperation = ({
       },
       onSettled() {
         void utils.operations.getOperationsByUser.invalidate();
+        void utils.movements.getCurrentAccounts.invalidate()
         setIsInitialOperationSubmitted(false);
         resetTransactionsStore();
         resetInitialOperationStore();
+        setConfirmationAtUpload(false)
       },
       onSuccess(data) {
         const transaccionesCargadas = data.transactions.length
@@ -373,7 +379,7 @@ const AddOperation = ({
               )}
             </>
           ) : (
-            <p>Seleccioná una fecha para empezar la operación</p>
+            <p className="p-2 text-lg font-semibold">Seleccioná una fecha para empezar la operación</p>
           )}
         </Card>
       </div>
@@ -406,6 +412,7 @@ const AddOperation = ({
                   className="mx-auto flex flex-col items-center"
                 >
                   <FlexibleTransactionsForm
+                    mainTags={mainTags}
                     isLoading={isEntitiesLoading}
                     entities={entities}
                     user={user}
@@ -413,6 +420,7 @@ const AddOperation = ({
                 </TabsContent>
                 <TabsContent value="cambio">
                   <CambioForm
+                    mainTags={mainTags}
                     entities={entities}
                     user={user}
                     isLoading={isEntitiesLoading}
@@ -420,6 +428,7 @@ const AddOperation = ({
                 </TabsContent>
                 <TabsContent value="cable">
                   <CableForm
+                    mainTags={mainTags}
                     entities={entities}
                     userEntityId={
                       entities
@@ -437,7 +446,7 @@ const AddOperation = ({
           )
         ) : (
           <div className="flex flex-col gap-y-8">
-            <InitialDataOperationForm />
+            <InitialDataOperationForm accountingPeriodData={accountingPeriodData} />
             <Link href="/operaciones/carga/rapida">
               <Button className="flex flex-row gap-x-2">
                 <p>Cargar rápida</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,12 +19,14 @@ import { api } from "~/trpc/react";
 import { Icons } from "./Icons";
 import { Button } from "./button";
 
-const CommandMenu = () => {
+interface CommandMenuProps {
+  mainTags: string[]
+}
+
+const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState<string>();
 
-  const { data: tags, isSuccess: isTagsSuccess } =
-    api.tags.getFiltered.useQuery(undefined, { enabled: open });
   const { data: entities, isSuccess: isEntitiesSuccess } =
     api.entities.getFiltered.useQuery(
       { permissionName: "ACCOUNTS_VISUALIZE" },
@@ -229,26 +231,25 @@ const CommandMenu = () => {
           <CommandSeparator />
           <CommandGroup heading="Cuentas">
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Tags</p>
-            {isTagsSuccess &&
-              tags.map((tag) => (
-                <CommandItem
-                  key={tag.name}
-                  value={tag.name}
-                  onSelect={() =>
-                    handleSelect(
-                      "/cuentas" +
-                      "?" +
-                      createQueryString(undefined, "tag", tag.name),
-                    )
-                  }
-                >
-                  <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
-                  <span>{tag.name}</span>
-                </CommandItem>
-              ))}
+            {mainTags.map((tag) => (
+              <CommandItem
+                key={tag}
+                value={tag}
+                onSelect={() =>
+                  handleSelect(
+                    "/cuentas" +
+                    "?" +
+                    createQueryString(undefined, "tag", tag),
+                  )
+                }
+              >
+                <Icons.tagCurrentAccounts className="mr-2 h-4 w-4" />
+                <span>{tag}</span>
+              </CommandItem>
+            ))}
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Entidades</p>
             {isEntitiesSuccess &&
-              entities.map((entity) => (
+              entities.filter(e => mainTags.includes(e.tag.name)).map((entity) => (
                 <CommandItem
                   key={entity.id}
                   value={entity.name}

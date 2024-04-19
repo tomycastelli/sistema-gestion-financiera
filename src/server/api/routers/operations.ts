@@ -15,6 +15,7 @@ import {
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
   Status,
+  entities,
   movements,
   operations,
   transactions,
@@ -25,6 +26,7 @@ import {
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
+import { alias } from "drizzle-orm/pg-core";
 
 export const operationsRouter = createTRPCRouter({
   insertOperation: protectedLoggedProcedure
@@ -50,6 +52,9 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const fromEntity = alias(entities, "fromEntity");
+      const toEntity = alias(entities, "toEntity");
+
       if (input.opId) {
         const opId = input.opId;
 
@@ -67,7 +72,7 @@ export const operationsRouter = createTRPCRouter({
           }
 
           for (const transactionToInsert of input.transactions) {
-            const insertedTxReturn = await tx
+            const [txIdObj] = await tx
               .insert(transactions)
               .values({
                 ...transactionToInsert,
@@ -77,9 +82,16 @@ export const operationsRouter = createTRPCRouter({
                     transactionToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
-              })
-              .returning();
-            const insertedTx = insertedTxReturn[0]!;
+              }).returning({ id: transactions.id })
+
+
+            const [insertedTxResponse] = await tx.select().from(transactions)
+              .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+              .where(eq(transactions.id, txIdObj!.id))
+
+            const insertedTx = { ...insertedTxResponse!.Transactions, fromEntity: insertedTxResponse!.fromEntity!, toEntity: insertedTxResponse!.toEntity! }
+
             await tx.insert(transactionsMetadata).values({
               transactionId: insertedTx.id,
               uploadedBy: ctx.user.id,
@@ -128,7 +140,7 @@ export const operationsRouter = createTRPCRouter({
             .returning();
 
           for (const txToInsert of input.transactions) {
-            const insertedTxResponse = await tx
+            const [txIdObj] = await tx
               .insert(transactions)
               .values({
                 operationId: op!.id,
@@ -145,9 +157,15 @@ export const operationsRouter = createTRPCRouter({
                     ? "confirmed"
                     : "pending",
               })
-              .returning();
+              .returning({ id: transactions.id });
 
-            const insertedTx = insertedTxResponse[0]!;
+            const [insertedTxResponse] = await tx.select().from(transactions)
+              .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+              .where(eq(transactions.id, txIdObj!.id))
+
+            const insertedTx = { ...insertedTxResponse!.Transactions, fromEntity: insertedTxResponse!.fromEntity!, toEntity: insertedTxResponse!.toEntity! }
+
 
             list.push(insertedTx);
 

@@ -118,9 +118,10 @@ const UpdateTransaction = ({
     onSettled() {
       void utils.operations.getOperations.invalidate();
       void utils.movements.getMovementsByOpId.invalidate()
+      void utils.movements.getCurrentAccounts.invalidate()
     },
     onSuccess(data) {
-      toast.success(`Transacción ${data?.id} editada`)
+      toast.success(`Transacción ${data.id} editada`)
     },
   });
 

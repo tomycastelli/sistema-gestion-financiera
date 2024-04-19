@@ -4,7 +4,7 @@ import { type User } from "lucia";
 import { useState, type FC } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
-import { getAllChildrenTags, isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
+import { isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
@@ -47,7 +47,6 @@ const Balances: FC<BalancesProps> = ({
   initialBalances,
   selectedEntityId,
   selectedTag,
-  tags,
   user,
   entities,
   uiColor,
@@ -58,8 +57,6 @@ const Balances: FC<BalancesProps> = ({
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
-
-  const allChildrenTags = getAllChildrenTags(selectedTag, tags);
 
   const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
   const [isListSelection, setIsListSelection] = useState<boolean>(false);
@@ -95,90 +92,13 @@ const Balances: FC<BalancesProps> = ({
     linkToken
   }, { initialData: initialBalances, refetchOnWindowFocus: false })
 
-  const transformedBalances: z.infer<typeof transformedBalancesSchema>[] = balances.reduce(
-    (acc, balance) => {
-      if (selectedEntityId) {
-        let entityEntry = acc.find(
-          (entry) =>
-            entry.entity.id ===
-            (balance.selectedEntityId === selectedEntityId
-              ? balance.selectedEntityId
-              : balance.otherEntityId),
-        );
-
-        if (!entityEntry) {
-          entityEntry = {
-            entity:
-              selectedEntityId === balance.selectedEntityId
-                ? balance.selectedEntity
-                : balance.otherEntity,
-            data: [],
-          };
-          acc.push(entityEntry);
-        }
-
-        const balanceMultiplier =
-          entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-        let dataEntry = entityEntry.data.find(
-          (d) => d.currency === balance.currency,
-        );
-
-        if (!dataEntry) {
-          dataEntry = {
-            currency: balance.currency,
-            balance: 0,
-          };
-          entityEntry.data.push(dataEntry);
-        }
-
-        dataEntry.balance += balance.balance * balanceMultiplier;
-      } else if (selectedTag) {
-        const myPOVEntity = allChildrenTags.includes(
-          balance.selectedEntity.tagName,
-        )
-          ? balance.selectedEntity
-          : balance.otherEntity;
-        let entityEntry = acc.find(
-          (entry) => entry.entity.id === myPOVEntity.id,
-        );
-
-        if (!entityEntry) {
-          entityEntry = {
-            entity: myPOVEntity,
-            data: [],
-          };
-          acc.push(entityEntry);
-        }
-
-        const balanceMultiplier =
-          entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-        let dataEntry = entityEntry.data.find(
-          (d) => d.currency === balance.currency,
-        );
-
-        if (!dataEntry) {
-          dataEntry = {
-            currency: balance.currency,
-            balance: 0,
-          };
-          entityEntry.data.push(dataEntry);
-        }
-
-        dataEntry.balance += balance.balance * balanceMultiplier;
-      }
-
-      return acc;
-    },
-    [] as z.infer<typeof transformedBalancesSchema>[])
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
   if (selectedEntityId) {
-    detailedBalances = initialBalances ? initialBalances.reduce(
+    detailedBalances = balances.reduce(
       (acc, balance) => {
         let entityEntry = acc.find(
           (entry) =>
@@ -219,18 +139,48 @@ const Balances: FC<BalancesProps> = ({
         return acc;
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
-    ) : [];
+    )
   } else if (selectedTag) {
-    detailedBalances = initialBalances ? initialBalances.reduce(
+    // Quiero que aparezcan dos asientos en el caso de el tag ser el mismo
+    detailedBalances = balances.filter(obj => obj.selectedEntity.tagName !== obj.otherEntity.tagName).reduce(
       (acc, balance) => {
-        const myPOVEntity = allChildrenTags.includes(
-          balance.selectedEntity.tagName,
-        )
+        const myPOVEntity = selectedTag ===
+          balance.selectedEntity.tagName
           ? balance.otherEntity
           : balance.selectedEntity;
         let entityEntry = acc.find(
           (entry) => entry.entity.id === myPOVEntity.id,
         );
+
+        /*
+
+        const myOtherEntity = selectedTag === balance.selectedEntity.tagName ? balance.selectedEntity : balance.otherEntity
+
+        if (myOtherEntity.tagName === myPOVEntity.tagName) {
+          let otherEntityEntry = acc.find(entry => entry.entity.id === myOtherEntity.id)
+
+          if (!otherEntityEntry) {
+            otherEntityEntry = {
+              entity: myOtherEntity,
+              data: []
+            }
+            acc.push(otherEntityEntry);
+          }
+
+          const balanceMultiplier = otherEntityEntry.entity.id === balance.selectedEntityId ? -1 : 1
+
+          let dataEntry = otherEntityEntry.data.find(d => d.currency === balance.currency)
+          if (!dataEntry) {
+            dataEntry = {
+              currency: balance.currency,
+              balance: 0
+            }
+            otherEntityEntry.data.push(dataEntry)
+          }
+
+          dataEntry.balance += balance.balance * balanceMultiplier
+        }
+        */
 
         if (!entityEntry) {
           entityEntry = {
@@ -260,7 +210,7 @@ const Balances: FC<BalancesProps> = ({
         return acc;
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
-    ) : [];
+    )
   }
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
@@ -349,7 +299,9 @@ const Balances: FC<BalancesProps> = ({
   return (
     <div className="flex flex-col space-y-4">
       <BalancesCards
-        transformedBalances={transformedBalances}
+        balances={balances}
+        selectedEntityId={selectedEntityId}
+        selectedTag={selectedTag}
         accountType={accountType}
         isInverted={isInverted} />
       <div className="flex flex-row items-end justify-between">

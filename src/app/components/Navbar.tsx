@@ -7,9 +7,19 @@ import { Suspense } from "react";
 import LoadingAnimation from "./LoadingAnimation";
 import ChatsNav from "./ChatsNav";
 import NavMenu from "./NavMenu";
+import { api } from "~/trpc/server";
+import { getAllChildrenTags } from "~/lib/functions";
 
 const Navbar = async () => {
   const user = await getUser();
+
+  const tags = await api.tags.getAll.query()
+
+  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+
+  const mainTag = mainTagData as { tag: string }
+
+  const mainTags = getAllChildrenTags(mainTag.tag, tags)
 
   return (
     <header className="h-fit w-full py-4 text-foreground">
@@ -28,7 +38,7 @@ const Navbar = async () => {
         </div>
         <div className="hidden sm:block">
           {user && (
-            <NavMenu />
+            <NavMenu mainTag={mainTag.tag} />
           )}
         </div>
         {user && (
@@ -37,7 +47,7 @@ const Navbar = async () => {
               <ChatsNav />
             </Suspense>
             <UserInfo user={user} />
-            <CommandMenu />
+            <CommandMenu mainTags={mainTags} />
             <ThemeToggler />
           </div>
         )}

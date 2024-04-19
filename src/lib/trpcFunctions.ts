@@ -12,6 +12,7 @@ import {
   or,
   not,
   gte,
+  isNull,
 } from "drizzle-orm";
 import { alias, type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -30,13 +31,13 @@ import {
   operations,
   role,
   transactions,
-  type returnedBalancesSchema,
   type returnedTransactionsSchema,
   type insertMovementsSchema,
   links,
   entities,
   transactionsMetadata,
   globalSettings,
+  type returnedBalancesSchema,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
@@ -176,136 +177,177 @@ export const generateMovements = async (
   >,
   tx: z.infer<typeof returnedTransactionsSchema> & {
     operation: { date: Date };
+    fromEntity: { id: number; tagName: string; };
+    toEntity: { id: number; tagName: string };
   },
   account: boolean,
   direction: number,
   type: string,
 ) => {
-  const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
+  const movementsResponse = []
 
   const changeAmount = movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) * tx.amount
 
   const mvDate = tx.operation.date
 
-  const selectedEntityId = tx.fromEntityId < tx.toEntityId ? tx.fromEntityId : tx.toEntityId
-  const otherEntityId = tx.fromEntityId === selectedEntityId ? tx.toEntityId : tx.fromEntityId
+  const selectedEntity = tx.fromEntityId < tx.toEntityId ? tx.fromEntity : tx.toEntity
+  const otherEntity = tx.fromEntityId < tx.toEntityId ? tx.toEntity : tx.fromEntity
 
-  // Busco el ultimo balance relacionado al movimiento por hacer
-  const [balance] = await transaction
-    .select({ id: balances.id, amount: balances.balance, date: balances.date })
-    .from(balances)
-    .where(
-      and(
-        eq(balances.account, account),
-        eq(balances.currency, tx.currency),
-        eq(
-          balances.selectedEntityId,
-          selectedEntityId
+  // Voy a tener que hacer lo mismo tres veces, una para balance entre entidades, otras dos para entidad-tag / tag-entidad
+  for (let index = 0; index < 3; index++) {
+    const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
+
+    const entitiesQuery = index === 0 ? and(
+      eq(balances.selectedEntityId, selectedEntity.id),
+      eq(balances.otherEntityId, otherEntity.id),
+    ) : index === 1 ? and(
+      eq(balances.selectedEntityId, selectedEntity.id),
+      eq(balances.tagName, otherEntity.tagName)
+    ) : index === 2 ? and(
+      eq(balances.otherEntityId, otherEntity.id),
+      eq(balances.tagName, selectedEntity.tagName)
+    ) : undefined
+
+    const balanceEntitiesToInsert = index === 0 ? { selectedEntityId: selectedEntity.id, otherEntityId: otherEntity.id }
+      : index === 1 ? { selectedEntityId: selectedEntity.id, tagName: otherEntity.tagName }
+        : index === 2 ? { otherEntityId: otherEntity.id, tagName: selectedEntity.tagName } : undefined
+
+    // Busco el ultimo balance relacionado al movimiento por hacer
+    const [balance] = await transaction
+      .select({ id: balances.id, amount: balances.balance, date: balances.date })
+      .from(balances)
+      .where(
+        and(
+          eq(balances.account, account),
+          eq(balances.currency, tx.currency),
+          entitiesQuery
         ),
-        eq(
-          balances.otherEntityId,
-          otherEntityId,
-        ),
-      ),
-    )
-    .orderBy(desc(balances.date))
-    .limit(1);
+      )
+      .orderBy(desc(balances.date))
+      .limit(1);
 
-  if (!balance) {
-    const [response] = await transaction
-      .insert(balances)
-      .values({
-        selectedEntityId:
-          selectedEntityId,
-        otherEntityId:
-          otherEntityId,
-        account: account,
-        currency: tx.currency,
-        date: moment(mvDate).startOf("day").toDate(),
-        balance: changeAmount,
-      })
-      .returning();
+    if (!balance) {
+      const [response] = await transaction
+        .insert(balances)
+        .values({
+          ...balanceEntitiesToInsert!,
+          account: account,
+          currency: tx.currency,
+          date: moment(mvDate).startOf("day").toDate(),
+          balance: changeAmount,
+        })
+        .returning();
 
-    movementsArray.push({
-      transactionId: tx.id,
-      direction,
-      type,
-      account,
-      balance: response!.balance,
-      balanceId: response!.id,
-    });
-  } else {
-    // Si el balance existe
-    if (moment(mvDate).isBefore(balance.date, "day")) {
-      // Si el dia de la tx o op es antes del ultimo balance
-      // Buscare si existe un balance de esa fecha previa y lo actualizo
-      const [oldBalance] = await transaction
-        .update(balances)
-        .set({ balance: sql`${balances.balance} + ${changeAmount}` })
-        .where(
-          and(
-            eq(balances.account, account),
-            eq(balances.currency, tx.currency),
-            eq(balances.date, moment(mvDate).startOf("day").toDate()),
-            eq(
-              balances.selectedEntityId,
-              selectedEntityId,
+      movementsArray.push({
+        transactionId: tx.id,
+        direction,
+        type,
+        account,
+        balance: response!.balance,
+        balanceId: response!.id,
+        entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
+      });
+    } else {
+      // Si el balance existe
+      if (moment(mvDate).isBefore(balance.date, "day")) {
+        // Si el dia de la tx o op es antes del ultimo balance
+        // Buscare si existe un balance de esa fecha previa y lo actualizo
+        const [oldBalance] = await transaction
+          .update(balances)
+          .set({ balance: sql`${balances.balance} + ${changeAmount}` })
+          .where(
+            and(
+              eq(balances.account, account),
+              eq(balances.currency, tx.currency),
+              eq(balances.date, moment(mvDate).startOf("day").toDate()),
+              entitiesQuery
             ),
-            eq(
-              balances.otherEntityId,
-              otherEntityId,
-            ),
-          ),
-        ).returning({ id: balances.id, amount: balances.balance });
+          ).returning({ id: balances.id, amount: balances.balance });
 
-      // Busco el balance mas reciente previo al que voy a insertar
-      const [beforeBalance] = await transaction
-        .select({ amount: balances.balance })
-        .from(balances)
-        .where(
-          and(
-            eq(balances.account, account),
-            eq(balances.currency, tx.currency),
-            lt(balances.date, moment(mvDate).startOf("day").toDate()),
-            eq(
-              balances.selectedEntityId,
-              selectedEntityId,
+        // Busco el balance mas reciente previo al que voy a insertar
+        const [beforeBalance] = await transaction
+          .select({ amount: balances.balance })
+          .from(balances)
+          .where(
+            and(
+              eq(balances.account, account),
+              eq(balances.currency, tx.currency),
+              lt(balances.date, moment(mvDate).startOf("day").toDate()),
+              entitiesQuery
             ),
-            eq(
-              balances.otherEntityId,
-              otherEntityId,
-            ),
-          ),
-        )
-        .orderBy(desc(balances.date))
-        .limit(1);
+          )
+          .orderBy(desc(balances.date))
+          .limit(1);
 
-      if (!oldBalance) {
-        // Si no existe un balance de esa fecha previa, creo uno donde el monto sea el ultimo monto previo a ese mas el cambio
-        const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, date: moment(mvDate).startOf("day").toDate(), selectedEntityId, otherEntityId, balance: beforeBalance ? beforeBalance.amount + changeAmount : changeAmount }).returning({ id: balances.id, amount: balances.balance })
+        if (!oldBalance) {
+          // Si no existe un balance de esa fecha previa, creo uno donde el monto sea el ultimo monto previo a ese mas el cambio
+          const [newBalance] = await transaction.insert(balances).values({
+            account,
+            currency: tx.currency,
+            date: moment(mvDate).startOf("day").toDate(),
+            ...balanceEntitiesToInsert!,
+            balance: beforeBalance ? beforeBalance.amount + changeAmount : changeAmount
+          }).returning({ id: balances.id, amount: balances.balance })
 
-        if (newBalance) {
-          // Creo un movimiento con el nuevo balance creado
+          if (newBalance) {
+            // Creo un movimiento con el nuevo balance creado
+            movementsArray.push({
+              transactionId: tx.id,
+              direction: direction,
+              account: account,
+              type: type,
+              balance: newBalance.amount,
+              balanceId: newBalance.id,
+              entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
+            })
+          }
+        } else {
+          // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
+          const [movement] = await transaction.select({ amount: movements.balance }).from(movements)
+            .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+            .leftJoin(operations, eq(transactions.operationId, operations.id))
+            .where(
+              and(
+                eq(movements.balanceId, oldBalance.id),
+                lte(operations.date, mvDate)
+              )
+            ).orderBy(desc(movements.id)).limit(1)
+
+          // Creo un movimiento con el balance cambiado
           movementsArray.push({
             transactionId: tx.id,
-            direction: direction,
-            account: account,
-            type: type,
-            balance: newBalance.amount,
-            balanceId: newBalance.id
+            direction,
+            account,
+            type,
+            balance: movement ? movement.amount + changeAmount : beforeBalance ? beforeBalance.amount + changeAmount : changeAmount,
+            balanceId: oldBalance.id,
+            entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
           })
         }
-      } else {
+
+        // Actualizo todos los balances posteriores a la fecha previa cambiada
+        await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(
+          and(
+            gt(balances.date, moment(mvDate).startOf("day").toDate()),
+            eq(balances.account, account),
+            eq(balances.currency, tx.currency),
+            entitiesQuery
+          )
+        )
+      } else if (moment(mvDate).isSame(balance.date, "day")) {
+        // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
+        await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(eq(balances.id, balance.id))
+
         // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
         const [movement] = await transaction.select({ amount: movements.balance }).from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
           .where(
             and(
-              eq(movements.balanceId, oldBalance.id),
+              eq(movements.balanceId, balance.id),
               lte(operations.date, mvDate)
             )
-          ).orderBy(desc(operations.id)).limit(1)
+          ).orderBy(desc(movements.id)).limit(1)
 
         // Creo un movimiento con el balance cambiado
         movementsArray.push({
@@ -313,88 +355,55 @@ export const generateMovements = async (
           direction,
           account,
           type,
-          balance: movement ? movement.amount + changeAmount : beforeBalance ? beforeBalance.amount + changeAmount : changeAmount,
-          balanceId: oldBalance.id
+          balance: movement ? movement.amount + changeAmount : balance.amount + changeAmount,
+          balanceId: balance.id,
+          entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
         })
-      }
+      } else {
+        // Si la fecha de la tx o op es posterior al ultimo balance, creo una nueva
+        const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, ...balanceEntitiesToInsert!, date: moment(mvDate).startOf("day").toDate(), balance: balance.amount + changeAmount }).returning({ id: balances.id, amount: balances.balance })
 
-      // Actualizo todos los balances posteriores a la fecha previa cambiada
-      await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(
-        and(
-          gt(balances.date, moment(mvDate).startOf("day").toDate()),
-          eq(balances.account, account),
-          eq(balances.currency, tx.currency),
-          eq(
-            balances.selectedEntityId,
-            selectedEntityId,
-          ),
-          eq(
-            balances.otherEntityId,
-            otherEntityId,
-          ),
-        )
-      )
-    } else if (moment(mvDate).isSame(balance.date, "day")) {
-      // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
-      await transaction.update(balances).set({ balance: sql`${balances.balance} + ${changeAmount}` }).where(eq(balances.id, balance.id))
-
-      // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
-      const [movement] = await transaction.select({ amount: movements.balance }).from(movements)
-        .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-        .leftJoin(operations, eq(transactions.operationId, operations.id))
-        .where(
-          and(
-            eq(movements.balanceId, balance.id),
-            lte(operations.date, mvDate)
-          )
-        ).orderBy(desc(movements.id)).limit(1)
-
-      // Creo un movimiento con el balance cambiado
-      movementsArray.push({
-        transactionId: tx.id,
-        direction,
-        account,
-        type,
-        balance: movement ? movement.amount + changeAmount : balance.amount + changeAmount,
-        balanceId: balance.id
-      })
-    } else {
-      // Si la fecha de la tx o op es posterior al ultimo balance, creo una nueva
-      const [newBalance] = await transaction.insert(balances).values({ account, currency: tx.currency, selectedEntityId, otherEntityId, date: moment(mvDate).startOf("day").toDate(), balance: balance.amount + changeAmount }).returning({ id: balances.id, amount: balances.balance })
-
-      if (newBalance) {
-        movementsArray.push({
-          transactionId: tx.id,
-          direction,
-          account,
-          type,
-          balance: newBalance.amount,
-          balanceId: newBalance.id
-        })
+        if (newBalance) {
+          movementsArray.push({
+            transactionId: tx.id,
+            direction,
+            account,
+            type,
+            balance: newBalance.amount,
+            balanceId: newBalance.id,
+            entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
+          })
+        }
       }
     }
+
+    // Actualizo los movimientos posteriores al que voy a insertar
+    const response = await transaction.select({ id: movements.id }).from(movements)
+      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .leftJoin(balances, eq(movements.balanceId, balances.id))
+      .where(
+        and(
+          eq(movements.account, account),
+          eq(transactions.currency, tx.currency),
+          entitiesQuery,
+          gt(operations.date, mvDate)
+        )
+      )
+    const movementsIds = response.length > 0 ? response.map(obj => obj.id) : [0]
+
+    await transaction.update(movements).set({ balance: sql`${movements.balance} + ${changeAmount}` }).where(inArray(movements.id, movementsIds))
+
+    const [createdMovement] = await transaction
+      .insert(movements)
+      .values(movementsArray)
+      .returning();
+
+    movementsResponse.push(createdMovement!)
+
   }
 
-  // Actualizo los movimientos posteriores al que voy a insertar
-  const response = await transaction.select({ id: movements.id }).from(movements).leftJoin(transactions, eq(movements.transactionId, transactions.id)).leftJoin(operations, eq(transactions.operationId, operations.id)).leftJoin(balances, eq(movements.balanceId, balances.id)).where(
-    and(
-      eq(movements.account, account),
-      eq(transactions.currency, tx.currency),
-      eq(balances.selectedEntityId, selectedEntityId),
-      eq(balances.otherEntityId, otherEntityId),
-      gt(operations.date, mvDate)
-    )
-  )
-  const movementsIds = response.length > 0 ? response.map(obj => obj.id) : [0]
-
-  await transaction.update(movements).set({ balance: sql`${movements.balance} + ${changeAmount}` }).where(inArray(movements.id, movementsIds))
-
-  const [createdMovement] = await transaction
-    .insert(movements)
-    .values(movementsArray)
-    .returning();
-
-  return createdMovement;
+  return movementsResponse
 };
 
 export const undoBalances = async (
@@ -512,6 +521,7 @@ const currentAccountsProcedureInput = z.object({
   fromDate: z.date().optional().nullish(),
   toDate: z.date().optional().nullish(),
   dayInPast: z.string().optional(),
+  groupInTag: z.boolean().default(true),
 })
 
 export const currentAccountsProcedure = async (
@@ -545,44 +555,51 @@ export const currentAccountsProcedure = async (
       message: "El usuario no está registrado o el link no es válido",
     });
   }
+  const fromEntityObject = alias(entities, "fromEntityObject");
+  const toEntityObject = alias(entities, "toEntityObject");
 
-  const tags = await getAllTags(ctx.redis, ctx.db);
-  const tagAndChildren = input.entityTag
-    ? Array.from(getAllChildrenTags(input.entityTag, tags))
-    : ["a"];
+  const tags = await getAllTags(ctx.redis, ctx.db)
+  const tagAndChildrenResponse = getAllChildrenTags(input.entityTag, tags)
+  const tagAndChildren = tagAndChildrenResponse.length > 0 ? tagAndChildrenResponse : [""]
 
   // Hay que hacer join con transactions para que funcionen estas conditions
-  const transactionsConditions = and(
-    or(
-      input.entityId
-        ? and(
-          input.currency
-            ? eq(transactions.currency, input.currency)
-            : undefined,
-          or(
-            and(
-              eq(transactions.fromEntityId, input.entityId),
-              input.toEntityId
-                ? eq(transactions.toEntityId, input.toEntityId)
-                : not(eq(transactions.toEntityId, input.entityId)),
-            ),
-            and(
-              eq(transactions.toEntityId, input.entityId),
-              input.toEntityId
-                ? eq(transactions.fromEntityId, input.toEntityId)
-                : not(eq(transactions.fromEntityId, input.entityId)),
-            ),
-          ),
+  const mainConditions = and(
+    input.entityId ? and(
+      input.toEntityId ? or(
+        and(
+          eq(balances.selectedEntityId, input.toEntityId),
+          eq(balances.otherEntityId, input.entityId)
+        ),
+        and(
+          eq(balances.selectedEntityId, input.entityId),
+          eq(balances.otherEntityId, input.toEntityId)
         )
-        : undefined,
-      input.entityTag
-        ? and(
-          input.currency
-            ? eq(transactions.currency, input.currency)
-            : undefined,
-        )
-        : undefined,
-    ),
+      ) : or(
+        eq(balances.selectedEntityId, input.entityId),
+        eq(balances.otherEntityId, input.entityId)
+      ),
+      isNull(movements.entitiesMovementId)
+    ) : undefined,
+    input.entityTag ? and(
+      or(
+        and(
+          inArray(fromEntityObject.tagName, tagAndChildren),
+          input.toEntityId
+            ? eq(toEntityObject.id, input.toEntityId)
+            : not(inArray(toEntityObject.tagName, tagAndChildren)),
+        ),
+        and(
+          input.toEntityId
+            ? eq(fromEntityObject.id, input.toEntityId)
+            : not(inArray(fromEntityObject.tagName, tagAndChildren)),
+          inArray(toEntityObject.tagName, tagAndChildren),
+        ),
+      ),
+      isNull(movements.entitiesMovementId)
+    ) : undefined,
+    input.currency
+      ? eq(transactions.currency, input.currency)
+      : undefined,
     input.dayInPast
       ? lte(
         operations.date,
@@ -653,25 +670,6 @@ export const currentAccountsProcedure = async (
       : undefined,
   );
 
-  // Hay que hacer join con tags en fromEntity y toEntity para que funcionen estas where conditions
-  const fromEntityObject = alias(entities, "fromEntityObject");
-  const toEntityObject = alias(entities, "toEntityObject");
-
-  const entitiesConditions = or(
-    and(
-      inArray(fromEntityObject.tagName, tagAndChildren),
-      input.toEntityId
-        ? eq(toEntityObject.id, input.toEntityId)
-        : not(inArray(toEntityObject.tagName, tagAndChildren)),
-    ),
-    and(
-      input.toEntityId
-        ? eq(fromEntityObject.id, input.toEntityId)
-        : not(inArray(fromEntityObject.tagName, tagAndChildren)),
-      inArray(toEntityObject.tagName, tagAndChildren),
-    ),
-  );
-
   const movementsConditions = and(
     typeof input.account === "boolean"
       ? eq(movements.account, input.account)
@@ -680,33 +678,38 @@ export const currentAccountsProcedure = async (
 
   const response = await ctx.db.transaction(async (transaction) => {
     const movementsIdsQuery = transaction
-      .select({ id: movements.id })
+      .select({
+        id: movements.id,
+      })
       .from(movements)
       .leftJoin(transactions, eq(movements.transactionId, transactions.id))
       .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .leftJoin(balances, eq(movements.balanceId, balances.id))
       .leftJoin(
         fromEntityObject,
-        eq(fromEntityObject.id, transactions.fromEntityId),
+        eq(fromEntityObject.id, balances.selectedEntityId),
       )
       .leftJoin(
         toEntityObject,
-        eq(toEntityObject.id, transactions.toEntityId),
+        eq(toEntityObject.id, balances.otherEntityId),
       )
       .where(
         and(
           movementsConditions,
-          input.entityTag ? entitiesConditions : undefined,
-          transactionsConditions,
+          mainConditions,
         ),
       ).prepare("movements_ids_query");
 
     const movementsIds = await movementsIdsQuery.execute()
 
-    const ids =
-      movementsIds.length > 0 ? movementsIds.map((obj) => obj.id) : [0];
+    if (movementsIds.length === 0) {
+      return { movementsQuery: [], totalRows: 0 }
+    }
 
     const fromEntity = alias(entities, "fromEntity")
     const toEntity = alias(entities, "toEntity")
+
+    const mvIds = movementsIds.map(obj => obj.id)
 
     const movementsQuery = transaction.select().from(movements)
       .leftJoin(transactions, eq(movements.transactionId, transactions.id))
@@ -714,7 +717,8 @@ export const currentAccountsProcedure = async (
       .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
       .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
       .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-      .where(inArray(movements.id, ids))
+      .leftJoin(balances, eq(movements.balanceId, balances.id))
+      .where(inArray(movements.id, mvIds))
       .orderBy(desc(operations.date), desc(movements.id))
       .offset(sql.placeholder("queryOffset"))
       .limit(sql.placeholder("queryLimit")).prepare("movements_query")
@@ -723,6 +727,28 @@ export const currentAccountsProcedure = async (
       queryOffset: (input.pageNumber - 1) * input.pageSize,
       queryLimit: input.pageSize
     })
+
+    if (input.entityTag && input.groupInTag) {
+      // Agarro los movimientos en su version de Tag
+      const ids = movementsData.map(obj => obj.Movements.id)
+
+      const tagBalanceMovements = await transaction.select().from(movements)
+        .leftJoin(balances, eq(movements.balanceId, balances.id))
+        .where(
+          and(
+            inArray(movements.entitiesMovementId, ids),
+            eq(balances.tagName, input.entityTag),
+          ))
+
+      const nestedData = movementsData.map(obj =>
+      ({
+        ...obj.Movements,
+        balance: tagBalanceMovements.find(mv => mv.Movements.entitiesMovementId === obj.Movements.id)?.Movements.balance ?? 0,
+        transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! }
+      }))
+      return { movementsQuery: nestedData, totalRows: movementsIds.length }
+    }
+
 
     const nestedData = movementsData.map(obj =>
       ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! } }))
@@ -733,7 +759,7 @@ export const currentAccountsProcedure = async (
   return response
 }
 
-export const settingEnum = z.enum(["accountingPeriod", "otherSetting"])
+export const settingEnum = z.enum(["accountingPeriod", "mainTag"])
 
 const accountingPeriodSchema = z.object({
   name: z.literal(settingEnum.enum.accountingPeriod),
@@ -743,16 +769,16 @@ const accountingPeriodSchema = z.object({
   })
 })
 
-const otherSettingSchema = z.object({
-  name: z.literal(settingEnum.enum.otherSetting),
+const mainTagSettingSchema = z.object({
+  name: z.literal(settingEnum.enum.mainTag),
   data: z.object({
-    example: z.boolean()
+    tag: z.string()
   })
 })
 
 export const globalSettingSchema = z.union([
   accountingPeriodSchema,
-  otherSettingSchema
+  mainTagSettingSchema
 ])
 
 
@@ -781,8 +807,8 @@ export const getGlobalSettings = async (
     if (setting === settingEnum.enum.accountingPeriod) {
       return { name: settingEnum.enum.accountingPeriod, data: { months: 1, graceDays: 10 } }
     }
-    if (setting === settingEnum.enum.otherSetting) {
-      return { name: settingEnum.enum.otherSetting, data: { example: true } }
+    if (setting === settingEnum.enum.mainTag) {
+      return { name: settingEnum.enum.mainTag, data: { tag: "Maika" } }
     }
   }
 

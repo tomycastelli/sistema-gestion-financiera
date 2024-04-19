@@ -25,6 +25,7 @@ import {
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
 import { useNumberFormat } from "@react-input/number-format";
+import { toast } from "sonner";
 
 const FormSchema = z.object({
   emittingEntity: z.string(),
@@ -47,9 +48,10 @@ const FormSchema = z.object({
 interface CableFormProps {
   userEntityId: string;
   entities: RouterOutputs["entities"]["getAll"];
+  mainTags: string[];
 }
 
-const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
+const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -146,6 +148,14 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities }) => {
         operatorId: parsedOperatorEntity,
       });
     }
+
+    const middleEntityTag = entities.find(e => e.id === parseInt(values.middleEntity))!.tag.name
+
+    if (!mainTags.includes(middleEntityTag)) {
+      toast.error(`La entidad mediadora tiene que pertencer al tag: ${mainTags.join(", ")}`)
+      return
+    }
+
 
     transactions.forEach((transaction) => {
       addTransactionToStore(transaction);

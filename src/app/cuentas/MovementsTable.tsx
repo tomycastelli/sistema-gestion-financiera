@@ -8,7 +8,6 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   generateTableData,
-  getAllChildrenTags,
   isNumeric,
   numberFormatter,
 } from "~/lib/functions";
@@ -54,6 +53,7 @@ import ClientLinkGenerator from "./ClientLinkGenerator";
 import { DataTable } from "./DataTable";
 import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
+import { Switch } from "../components/ui/switch";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -86,7 +86,7 @@ const MovementsTable = ({
   const selectedEntityString = searchParams.get("entidad");
   const timeMachineDate = searchParams.get("dia")
 
-  const [selectedFromEntity, setSelectedFromEntity] = useState<string>();
+  const [groupInTag, setGroupInTag] = useState<boolean>(true)
 
   const {
     movementsTablePage,
@@ -116,8 +116,8 @@ const MovementsTable = ({
         linkId: linkId,
         linkToken: linkToken,
         account: accountType,
-        entityId: selectedFromEntity ? parseInt(selectedFromEntity) : entityId,
-        entityTag: selectedFromEntity ? undefined : entityTag,
+        entityId: entityId,
+        entityTag: entityTag,
         toEntityId: destinationEntityId,
         currency: selectedCurrency,
         fromDate: fromDate,
@@ -125,6 +125,7 @@ const MovementsTable = ({
         pageNumber: movementsTablePage,
         pageSize: pageSize,
         dayInPast: timeMachineDate ?? undefined,
+        groupInTag
       },
       {
         initialData: initialMovements,
@@ -177,6 +178,7 @@ const MovementsTable = ({
       header: "Origen ID",
       filterFn: "equals",
     },
+
     {
       accessorKey: "otherEntity",
       header: "Entidad",
@@ -306,12 +308,6 @@ const MovementsTable = ({
                   <Icons.externalLink className="h-4" />
                 </DropdownMenuItem>
               </Link>
-              <Link href={{ pathname: "/cuentas", query: { entidad: movement.otherEntityId } }}>
-                <DropdownMenuItem>
-                  <p>Ver otra cuenta</p>
-                  <Icons.currentAccount className="h-4" />
-                </DropdownMenuItem>
-              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -323,61 +319,6 @@ const MovementsTable = ({
     <div>
       <div>
         <div className="flex flex-row flex-wrap items-end justify-start gap-4 py-4">
-          {entityTag && (
-            <div className="flex flex-col">
-              <Label className="mb-2">Origen</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className={cn(
-                      "w-[200px] justify-between",
-                      !selectedFromEntity && "text-muted-foreground",
-                    )}
-                  >
-                    {selectedFromEntity
-                      ? entities.find(
-                        (e) => e.id === parseInt(selectedFromEntity),
-                      )?.name
-                      : "Elegir"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Elegir..." />
-                    <CommandEmpty>...</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value="todas"
-                        onSelect={() => setSelectedFromEntity(undefined)}
-                      >
-                        Todas
-                      </CommandItem>
-                      {entities
-                        .filter(
-                          (e) =>
-                            getAllChildrenTags(entityTag, tags).includes(
-                              e.tag.name,
-                            ) || e.id === entityId,
-                        )
-                        .map((entity) => (
-                          <CommandItem
-                            key={entity.id}
-                            value={entity.name}
-                            onSelect={() =>
-                              setSelectedFromEntity(entity.id.toString())
-                            }
-                          >
-                            {entity.name}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
           <div className="flex flex-col">
             <Label className="mb-1">Divisa</Label>
             <Select
@@ -492,10 +433,8 @@ const MovementsTable = ({
                   onClick={() => {
                     const promise = getUrlAsync({
                       account: accountType,
-                      entityId: selectedFromEntity
-                        ? parseInt(selectedFromEntity)
-                        : entityId,
-                      entityTag: selectedFromEntity ? undefined : entityTag,
+                      entityId: entityId,
+                      entityTag: entityTag,
                       currency: selectedCurrency,
                       fromDate: fromDate,
                       toDate: toDate,
@@ -519,10 +458,8 @@ const MovementsTable = ({
                   onClick={() => {
                     const promise = getUrlAsync({
                       account: accountType,
-                      entityId: selectedFromEntity
-                        ? parseInt(selectedFromEntity)
-                        : entityId,
-                      entityTag: selectedFromEntity ? undefined : entityTag,
+                      entityId: entityId,
+                      entityTag: entityTag,
                       currency: selectedCurrency,
                       fromDate: fromDate,
                       toDate: toDate,
@@ -548,6 +485,12 @@ const MovementsTable = ({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          <div className="flex flex-col justify-start gap-y-1">
+            <Label className="mb-2">Agrupar</Label>
+            <Button variant="outline" onClick={() => setGroupInTag(!groupInTag)}>
+              <Switch checked={groupInTag} />
+            </Button>
+          </div>
         </div>
         {!isFetching ? (
           <DataTable

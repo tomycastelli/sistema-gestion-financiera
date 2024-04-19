@@ -32,6 +32,7 @@ import { parseFormattedFloat } from "~/lib/functions";
 import { type MutableRefObject, useRef } from "react";
 import AmountInput from "~/app/operaciones/carga/AmountInput";
 import { Label } from "../ui/label";
+import { toast } from "sonner";
 
 const FormSchema = z.object({
   transactions: z.array(
@@ -44,23 +45,29 @@ const FormSchema = z.object({
       amount: z.string().min(1),
       direction: z.boolean().optional().default(false),
       time: z.string().optional(),
-    }).refine(data => data.fromEntityId !== data.toEntityId, {
-      message: "La entidad de origen y la entidad de destino no pueden ser la misma",
-      path: ['toEntityId']
-    }),
-  ),
-});
-
+    }).superRefine((val, ctx) => {
+      if (val.fromEntityId === val.toEntityId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Las entidades no pueden ser iguales",
+          path: ["fromEntityId", "toEntityId"]
+        })
+      }
+    })
+  )
+})
 interface FlexibleTransactionsFormProps {
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
   isLoading: boolean;
+  mainTags: string[]
 }
 
 const FlexibleTransactionsForm = ({
   user,
   entities,
   isLoading,
+  mainTags
 }: FlexibleTransactionsFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
@@ -91,7 +98,17 @@ const FlexibleTransactionsForm = ({
   const watchTransactions = watch("transactions");
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
-    values.transactions.forEach((transaction) =>
+    values.transactions.forEach((transaction, index) => {
+      const fromTag = entities.find(e => e.id === parseInt(transaction.fromEntityId))!.tag.name
+      const toTag = entities.find(e => e.id === parseInt(transaction.toEntityId))!.tag.name
+
+      if (!mainTags.includes(fromTag) && !mainTags.includes(toTag)) {
+        toast.error(`Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`, {
+          description: "No se pudo cargar la transacción " + (index + 1).toString()
+        })
+        return
+      }
+
       addTransactionToStore({
         type: transaction.type,
         fromEntityId: transaction.direction
@@ -103,10 +120,11 @@ const FlexibleTransactionsForm = ({
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFormattedFloat(transaction.amount),
-      }),
+      })
+    }
     );
 
-    reset();
+    reset({ transactions: [{ amount: "", currency: "ars" }] });
   };
 
   const [parent] = useAutoAnimate();

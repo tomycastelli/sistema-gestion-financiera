@@ -12,19 +12,22 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { getAccountingPeriodDate } from "~/lib/functions";
 import moment from "moment";
+import CustomSelector from "../components/forms/CustomSelector";
 
 const FormSchema = z.object({
   months: z.string(),
-  graceDays: z.string()
+  graceDays: z.string(),
+  mainTag: z.string()
 });
 
 interface SettingsFormProps {
   initialSettings: RouterOutputs["globalSettings"]["getAll"];
   isAdmin: boolean
+  tags: RouterOutputs["tags"]["getAll"]
 }
 
 
-const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
+const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags }) => {
   const utils = api.useContext()
 
   const { data: settings } = api.globalSettings.getAll.useQuery(undefined, {
@@ -49,7 +52,7 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
 
       return { prevData };
     },
-    onError(err, newOperation, ctx) {
+    onError(err, _, ctx) {
       utils.globalSettings.getAll.setData(undefined, ctx?.prevData);
 
       toast.error("No se pudo actualizar la configuración", {
@@ -68,12 +71,17 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
     name: string;
     data: { months: number; graceDays: number; }
   }
+  const mainTag = settings.find(obj => obj.name === "mainTag") as {
+    name: string;
+    data: { tag: string; }
+  }
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       months: accountingPeriod.data.months.toString(),
-      graceDays: accountingPeriod.data.graceDays.toString()
+      graceDays: accountingPeriod.data.graceDays.toString(),
+      mainTag: mainTag.data.tag,
     }
   });
 
@@ -129,6 +137,28 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
           <div className="flex flex-col gap-y-1 justify-start text-sm">
             <p>Inicio del periodo actual: <span className="font-semibold">{moment(accountingPeriodDate).format("DD-MM-YYYY")}</span></p>
             <p>Las operaciones y los balances previos a esta fecha no podrán ser modificados.</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-y-4 justify-start">
+          <h1 className="text-xl">Tag principal</h1>
+          <FormField
+            control={control}
+            name={"mainTag"}
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Tag</FormLabel>
+                <CustomSelector
+                  buttonClassName="w-22"
+                  data={tags.map(t => ({ value: t.name, label: t.name }))}
+                  field={field}
+                  fieldName={"mainTag"}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex flex-col gap-y-1 justify-start text-sm">
+            <p>Las transacciones cargadas tendran que tener una entidad de este Tag participando</p>
           </div>
         </div>
         <Button type="submit" disabled={!isAdmin}>Guardar</Button>

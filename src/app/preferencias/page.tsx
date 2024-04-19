@@ -7,10 +7,12 @@ const Page = async () => {
 
   const isAdmin = !!userPermissions.find(p => p.name === "ADMIN")
 
+  const tags = await api.tags.getAll.query()
+
   return (
     <div className="flex flex-col gap-y-6">
       <h1 className="text-3xl font-semibold tracking-tight">Ajustes globales</h1>
-      <SettingsForm initialSettings={globalSettings} isAdmin={isAdmin} />
+      <SettingsForm tags={tags} initialSettings={globalSettings} isAdmin={isAdmin} />
     </div>
   )
 }

@@ -28,6 +28,7 @@ import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
 import { useNumberFormat } from "@react-input/number-format";
 import { Label } from "../ui/label";
+import { toast } from "sonner";
 
 const FormSchema = z.object({
   entityA: z.string().min(1),
@@ -53,9 +54,10 @@ interface OperationFormProps {
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
   isLoading: boolean;
+  mainTags: string[]
 }
 
-const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
+const CambioForm = ({ user, entities, isLoading, mainTags }: OperationFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
     : undefined;
@@ -195,6 +197,16 @@ const CambioForm = ({ user, entities, isLoading }: OperationFormProps) => {
         },
         { shouldFocus: true },
       );
+    }
+
+    const entityATag = entities.find(e => e.id === parseInt(values.entityA))!.tag.name
+    const entityBTag = entities.find(e => e.id === parseInt(values.entityB))!.tag.name
+
+    console.log("Entidades A y B tags: ", entityBTag, entityATag)
+
+    if (!mainTags.includes(entityATag) && !mainTags.includes(entityBTag)) {
+      toast.error(`Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`)
+      return
     }
 
     const transactions: SingleTransactionInStoreSchema[] = [

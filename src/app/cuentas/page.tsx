@@ -8,6 +8,7 @@ import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
 import AccountsTab from "./AccountsTab";
 import TimeMachine from "./TimeMachine";
+import { getAllChildrenTags } from "~/lib/functions";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -35,6 +36,12 @@ const Page = async ({
     permissionName: "ACCOUNTS_VISUALIZE",
   });
   const filteredTags = await api.tags.getFiltered.query();
+
+  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+
+  const mainTag = mainTagData as { tag: string }
+
+  const mainTags = getAllChildrenTags(mainTag.tag, filteredTags)
 
   const selectedEntityObj = selectedEntityId ? initialEntities.find(e => e.id === parseInt(selectedEntityId)) : undefined
   const selectedTagObj = selectedTag ? filteredTags.find(t => t.name === selectedTag) : undefined
@@ -90,6 +97,7 @@ const Page = async ({
         {user && (
           <div className="flex flex-wrap gap-4">
             <EntitySwitcher
+              mainTags={mainTags}
               uiColor={uiColor}
               selectedEntityObj={selectedEntityObj}
               selectedTagObj={selectedTagObj}
@@ -97,7 +105,6 @@ const Page = async ({
               tags={filteredTags}
             />
             {(selectedEntityObj?.id || selectedTagObj?.name) && <TabSwitcher uiColor={uiColor} selectedEntityId={selectedEntityObj?.id.toString()} selectedTag={selectedTagObj?.name} />}
-            {(selectedEntityObj?.id || selectedTagObj?.name) && <InvertSwitch uiColor={uiColor} entities={initialEntities} />}
           </div>
         )}
         {(selectedEntityObj?.id || selectedTagObj?.name) && (

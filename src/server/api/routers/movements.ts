@@ -5,6 +5,7 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
   lte,
   not,
   or,
@@ -47,6 +48,7 @@ export const movementsRouter = createTRPCRouter({
         fromDate: z.date().optional().nullish(),
         toDate: z.date().optional().nullish(),
         dayInPast: z.string().optional(),
+        groupInTag: z.boolean().default(true)
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -147,10 +149,8 @@ export const movementsRouter = createTRPCRouter({
       const otherEntityObject = alias(entities, "otherEntity");
 
       if (input.entityTag) {
-        const allTags = await getAllTags(ctx.redis, ctx.db);
-        const allChildrenTags = Array.from(getAllChildrenTags(input.entityTag, allTags))
-
-        const balancesDat = await ctx.db
+        // Agarro el ultimo balance de todas las entidades del grupo Maika con otras entidades, pueden ser del mismo grupo
+        const balancesData = await ctx.db
           .selectDistinctOn([
             balances.selectedEntityId,
             balances.otherEntityId,
@@ -168,15 +168,10 @@ export const movementsRouter = createTRPCRouter({
           )
           .where(
             and(
+              isNull(balances.tagName),
               or(
-                and(
-                  inArray(selectedEntityObject.tagName, allChildrenTags),
-                  not(inArray(otherEntityObject.tagName, allChildrenTags)),
-                ),
-                and(
-                  not(inArray(selectedEntityObject.tagName, allChildrenTags)),
-                  inArray(otherEntityObject.tagName, allChildrenTags),
-                ),
+                eq(selectedEntityObject.tagName, input.entityTag),
+                eq(otherEntityObject.tagName, input.entityTag)
               ),
               typeof input.account === "boolean"
                 ? eq(balances.account, input.account)
@@ -197,7 +192,7 @@ export const movementsRouter = createTRPCRouter({
             desc(balances.date),
           );
 
-        const balancesTransformed = balancesDat.map((b) => ({
+        const balancesTransformed = balancesData.map((b) => ({
           ...b.Balances,
           selectedEntity: b.selectedEntity!,
           otherEntity: b.otherEntity!,
@@ -223,6 +218,7 @@ export const movementsRouter = createTRPCRouter({
           )
           .where(
             and(
+              isNull(balances.tagName),
               or(
                 eq(selectedEntityObject.id, input.entityId ?? 0),
                 eq(otherEntityObject.id, input.entityId ?? 0),
@@ -338,6 +334,7 @@ export const movementsRouter = createTRPCRouter({
           )
           .where(
             and(
+              isNull(balances.tagName),
               or(
                 and(
                   inArray(selectedEntityObject.tagName, allChildrenTags),
@@ -444,6 +441,7 @@ export const movementsRouter = createTRPCRouter({
           )
           .where(
             and(
+              isNull(balances.tagName),
               or(
                 eq(selectedEntityObject.id, input.entityId ?? 0),
                 eq(otherEntityObject.id, input.entityId ?? 0),
@@ -534,7 +532,7 @@ export const movementsRouter = createTRPCRouter({
           .from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(eq(operations.id, input.operationId)).orderBy(desc(movements.id));
+          .where(and(eq(operations.id, input.operationId), isNull(movements.entitiesMovementId))).orderBy(desc(movements.id));
 
         const mvsIds = movementsIds.length > 0 ? movementsIds.map(mv => mv.id) : [0]
 

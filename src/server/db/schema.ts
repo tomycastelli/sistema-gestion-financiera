@@ -205,17 +205,19 @@ export const balances = pgTable(
     date: timestamp("date", { mode: "date" }).notNull(),
     balance: doublePrecision("balance").notNull(),
     otherEntityId: integer("otherEntityId")
-      .notNull()
       .references(() => entities.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
     selectedEntityId: integer("selectedEntityId")
-      .notNull()
       .references(() => entities.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    tagName: text("tagName").references(() => tag.name, {
+      onUpdate: "cascade",
+      onDelete: "cascade"
+    }),
     currency: text("currency").notNull(),
   },
   (table) => {
@@ -227,6 +229,7 @@ export const balances = pgTable(
         table.date,
         table.otherEntityId,
         table.selectedEntityId,
+        table.tagName,
         table.currency,
       ),
     };
@@ -356,15 +359,20 @@ export const movements = pgTable(
     type: text("type").notNull(),
     account: boolean("account").notNull(),
     balance: doublePrecision("balance").notNull(),
-    balanceId: integer("balanceId")
-      .notNull()
+    balanceId: integer("balanceId").notNull()
       .references(() => balances.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    entitiesMovementId: integer("entitiesMovementId")
   },
   (table) => {
     return {
+      entitiesMovementReference: foreignKey({
+        columns: [table.entitiesMovementId],
+        foreignColumns: [table.id],
+        name: "entities_movement_fk"
+      }),
       transactionIdDirectionIdx: index(
         "Movements_transactionId_account_idx",
       ).on(table.transactionId, table.account),
@@ -541,3 +549,6 @@ export const insertMovementsSchema = createInsertSchema(movements);
 export const returnedBalancesSchema = createSelectSchema(balances);
 export const returnedMovementsSchema = createSelectSchema(movements);
 export const returnedTransactionsSchema = createSelectSchema(transactions);
+export const returnedOperationsSchema = createSelectSchema(operations)
+export const returnedEntitiesSchema = createSelectSchema(entities)
+export const returnedTransactionsMetadataSchema = createSelectSchema(transactionsMetadata)

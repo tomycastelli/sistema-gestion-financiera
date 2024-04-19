@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { getGlobalSettings, globalSettingSchema, settingEnum } from "~/lib/trpcFunctions";
 import { globalSettings } from "~/server/db/schema";
@@ -9,17 +9,14 @@ export const globalSettingsRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const response = await ctx.db.select().from(globalSettings)
 
-    if (response.length === 0) {
-      return [
-        {
-          name: "accountingPeriod",
-          data: { months: 1, graceDays: 10 }
-        },
-        {
-          name: "otherSetting",
-          data: { example: true }
-        }
-      ]
+    const foundPeriod = response.find(obj => obj.name === "accountingPeriod")
+    const foundMainTag = response.find(obj => obj.name === "mainTag")
+
+    if (!foundPeriod) {
+      response.push({ name: "accountingPeriod", data: { months: 1, graceDays: 10 } })
+    }
+    if (!foundMainTag) {
+      response.push({ name: "mainTag", data: { tag: "Maika" } })
     }
 
     const parsedResponse = globalSettingSchema.array().safeParse(response)
@@ -33,7 +30,7 @@ export const globalSettingsRouter = createTRPCRouter({
 
     return parsedResponse.data
   }),
-  get: protectedProcedure.input(z.object({ name: settingEnum })).query(async ({ ctx, input }) => {
+  get: publicProcedure.input(z.object({ name: settingEnum })).query(async ({ ctx, input }) => {
     const response = await getGlobalSettings(ctx, input.name)
 
     return response

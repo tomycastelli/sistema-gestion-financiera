@@ -25,6 +25,7 @@ export const filesRouter = createTRPCRouter({
         toDate: z.date().optional().nullish(),
         account: z.boolean(),
         currency: z.string().optional().nullish(),
+        groupInTag: z.boolean().default(true)
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -38,7 +39,8 @@ export const filesRouter = createTRPCRouter({
         pageSize: 100000,
         pageNumber: 1,
         dayInPast: input.dayInPast,
-        toEntityId: input.toEntityId
+        toEntityId: input.toEntityId,
+        groupInTag: input.groupInTag
       }, ctx)
 
       const tags = await getAllTags(ctx.redis, ctx.db)
@@ -55,25 +57,10 @@ export const filesRouter = createTRPCRouter({
             ? "Confirmación"
             : "Cancelación"
           } de ${mv.txType} - Nro ${mv.id}`,
-        observaciones: mv.observations,
-        entrada:
-          mv.ingress !== 0
-            ? mv.currency.toUpperCase() +
-            " " +
-            numberFormatter(mv.ingress)
-            : "",
-        salida:
-          mv.egress !== 0
-            ? mv.currency.toUpperCase() +
-            " " +
-            numberFormatter(mv.egress)
-            : "",
-        saldo:
-          mv.balance !== 0
-            ? mv.currency.toUpperCase() +
-            " " +
-            numberFormatter(mv.balance)
-            : "",
+        observaciones: mv.observations ?? "",
+        entrada: mv.ingress === 0 ? "" : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
+        salida: mv.egress === 0 ? "" : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
+        saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance)
       }));
 
       const entities = await getAllEntities(ctx.redis, ctx.db);
@@ -101,45 +88,71 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const htmlString =
-          `<div class="header-div"><h1 class="title">Cuenta corriente de ${input.entityId
+          `<html>
+          <body class="main-container">
+          <div class="header-div">
+            <h1 class="title">Cuenta corriente de ${input.entityId
             ? entities.find((e) => e.id === input.entityId)?.name
             : input.entityTag
-          } ${input.toEntityId ? "con " + entities.find(e => e.id === input.toEntityId)?.name : ""}</h1></div>` +
+          } ${input.toEntityId ? "con " + entities.find(e => e.id === input.toEntityId)?.name : ""}</h1>
+          </div>` +
           `
-          <div class="table">
-          <div class="table-header">
-            <p>Fecha</p>
-            <p>Detalle</p>
-            <p>Origen</p>
+          <div class="table-container">
+          <table class="table">
+          <thead class="table-header">
+            <tr>
+            <th>Fecha</th>
+            <th>Detalle</th>
+            <th>Origen</th>
             ${!input.toEntityId ? (
-            "<p>Cliente</p>"
+            "<th>Cliente</th>"
           ) : ""}
-            <p>Observaciones</p>
-            <p>Entrada</p>
-            <p>Salida</p>
-            <p>Saldo</p>
-          </div>
+            <th>Observaciones</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody class="table-body">
             ${data
             .map(
               (mv, index) =>
-                `<div key="${index}" class="table-row">
-                  <p>${mv.fecha}</p>
-                  <p>${mv.detalle}</p>
-                  <p>${mv.origen}</p>
+                `<tr key="${index}">
+                  <td>${mv.fecha}</td>
+                  <td>${mv.detalle}</td>
+                  <td>${mv.origen}</td>
                   ${!input.toEntityId ? (
-                  `<p>${mv.cliente}</p>`
+                  `<td>${mv.cliente}</td>`
                 ) : ""}
-                  <p>${mv.observaciones}</p>
-                  <p>${mv.entrada}</p>
-                  <p>${mv.salida}</p>
-                  <p>${mv.saldo}</p>
-                  </div>`,
+                  <td>${mv.observaciones}</td>
+                  <td>${mv.entrada}</td>
+                  <td>${mv.salida}</td>
+                  <td>${mv.saldo}</td>
+                  </tr>`,
             )
             .join("")}
-            </div>`;
+            </tbody>
+            </body>
+            </html>`;
 
         const cssString =
-          `.table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(${input.toEntityId ? "7" : "8"}, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.5rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(${input.toEntityId ? "7" : "8"}, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 400; align-items: center; background-color: hsl(215.4, 16.3%, 78.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 1.5rem; font-weight: 600;}`;
+          `.table-container{margin-top: 0.5rem;}
+          .table{width: 100%; border-collapse: collapse;}
+          .table-header{font-size: 1rem; font-weight: 600;}
+          .table th,
+          .table td {
+          border-top: 0.5px solid #000; 
+          border-bottom: 0.5px solid #000
+          padding: 0.75rem; 
+          text-align: right
+          }
+          .table-body{font-size: 0.75rem;}
+          .header-div{width: 100%; text-align: center;} 
+          .title{font-size: 1.5rem; font-weight: 600;}
+          .main-container{
+            font-family: serif;
+            margin: 2rem;
+          }`;
 
         try {
           await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
