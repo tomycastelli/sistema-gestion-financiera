@@ -1,6 +1,7 @@
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import OperationDetails from "./OperationDetails";
+import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 
 export default async function Page({
   params,
@@ -27,10 +28,26 @@ export default async function Page({
     operationId: parseInt(operationId),
   });
 
+  const tags = await api.tags.getAll.query()
+
+  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+
+  const mainTag = mainTagData as { tag: string }
+
+  const mainTags = getAllChildrenTags(mainTag.tag, tags)
+
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
+
+  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
+
+  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+
   return (
     <div>
       {user && (
         <OperationDetails
+          accountingPeriodDate={accountingPeriodDate}
+          mainTags={mainTags}
           initialMovements={initialMovements}
           users={users}
           userPermissions={userPermissions}

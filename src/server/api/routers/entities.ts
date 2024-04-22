@@ -22,12 +22,21 @@ export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const entities = await getAllEntities(ctx.redis, ctx.db);
 
-    return entities;
+    return entities
   }),
 
   getFiltered: protectedProcedure
     .input(z.object({ permissionName: z.enum(PermissionsNames) }))
     .query(async ({ ctx, input }) => {
+      const redisKey = "entities" + "|" + ctx.user.id + "|" + input.permissionName
+      const cachedFilteredString = await ctx.redis.get(redisKey)
+
+      if (cachedFilteredString) {
+        const parsedFilteredEntities: typeof entities = JSON.parse(cachedFilteredString)
+
+        return parsedFilteredEntities
+      }
+
       const userPermissions = await getAllPermissions(
         ctx.redis,
         ctx.user,
@@ -58,6 +67,8 @@ export const entitiesRouter = createTRPCRouter({
           return true;
         }
       });
+
+      await ctx.redis.set(redisKey, JSON.stringify(filteredEntities), "EX", 3600);
 
       return filteredEntities;
     }),

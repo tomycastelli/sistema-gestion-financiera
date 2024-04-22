@@ -2,6 +2,7 @@ import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Separator } from "./ui/separator";
 import { numberFormatter } from "~/lib/functions";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface BalanceTotalsProps {
   totals: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -9,7 +10,7 @@ interface BalanceTotalsProps {
 
 const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
   return (
-    <div>
+    <ScrollArea className="w-full h-full">
       {totals.map((total) => (
         <div key={total.currency}>
           <h1 className="text-lg font-semibold">
@@ -32,10 +33,10 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
               </p>
             </div>
           ))}
-          <Separator className="my-2" />
+          <Separator className="my-1" />
         </div>
       ))}
-    </div>
+    </ScrollArea>
   );
 };
 

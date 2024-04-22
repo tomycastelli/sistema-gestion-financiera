@@ -9,8 +9,6 @@ import {
   getAllPermissions,
   getAllTags,
   getGlobalSettings,
-  logIO,
-  undoBalances,
 } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
@@ -268,7 +266,7 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { data: accountingPeriod } = await getGlobalSettings(ctx, "accountingPeriod") as {
+      const { data: accountingPeriod } = await getGlobalSettings(ctx.redis, ctx.db, "accountingPeriod") as {
         name: string; data: { months: number; graceDays: number; }
       }
 
@@ -276,23 +274,6 @@ export const operationsRouter = createTRPCRouter({
 
       const operationsWhere = and(
         input.operationId ? eq(operations.id, input.operationId) : undefined,
-        input.opDateIsGreater && !input.opDateIsLesser
-          ? and(
-            gte(
-              operations.date,
-              moment(input.opDateIsGreater)
-                .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                .toDate(),
-            ),
-            lte(
-              operations.date,
-              moment(input.opDateIsGreater)
-                .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                .add(1, "day")
-                .toDate(),
-            ),
-          )
-          : undefined,
         input.opDateIsGreater && input.opDateIsLesser
           ? and(
             gte(
@@ -313,7 +294,22 @@ export const operationsRouter = createTRPCRouter({
                 .toDate(),
             ),
           )
-          : undefined,
+          : input.opDateIsGreater ? and(
+            gte(
+              operations.date,
+              moment(input.opDateIsGreater)
+                .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                .toDate(),
+            ),
+            lte(
+              operations.date,
+              moment(input.opDateIsGreater)
+                .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                .add(1, "day")
+                .toDate(),
+            ),
+          )
+            : undefined,
       );
 
       const txMetadataIds: number[] = [0];
@@ -554,7 +550,7 @@ export const operationsRouter = createTRPCRouter({
                   ? true
                   : false;
 
-            const isValidateAllowed = isInPeriod && !currentAccountOnlyTypes.has(tx.type) && tx.status === "pending" &&
+            const isValidateAllowed = isInPeriod && !currentAccountOnlyTypes.has(tx.type) && tx.status === Status.enumValues[2] &&
               (userPermissions?.some(
                 (p) =>
                   p.name === "ADMIN" ||
@@ -587,61 +583,6 @@ export const operationsRouter = createTRPCRouter({
         count: response.idsThatSatisfy.length,
       };
     }),
-  deleteOperation: protectedProcedure
-    .input(z.object({ operationId: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db, undefined, input.operationId);
-
-      const [response] = await ctx.db
-        .delete(operations)
-        .where(eq(operations.id, input.operationId))
-        .returning();
-
-      if (!response) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Could not delete operation",
-        });
-      }
-      await logIO(
-        ctx.dynamodb,
-        ctx.user.id,
-        "Eliminar operación",
-        input,
-        response,
-      );
-
-      return response;
-    }),
-
-  deleteTransaction: protectedProcedure
-    .input(z.object({ transactionId: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      await undoBalances(ctx.db, input.transactionId, undefined);
-
-      const [response] = await ctx.db
-        .delete(transactions)
-        .where(eq(transactions.id, input.transactionId))
-        .returning();
-
-      if (!response) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Could not delete operation",
-        });
-      }
-
-      await logIO(
-        ctx.dynamodb,
-        ctx.user.id,
-        "Eliminar transacciones",
-        input,
-        response,
-      );
-
-      return response;
-    }),
-
   insights: protectedProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {

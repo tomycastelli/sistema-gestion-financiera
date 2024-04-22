@@ -15,8 +15,8 @@ import moment from "moment";
 import CustomSelector from "../components/forms/CustomSelector";
 
 const FormSchema = z.object({
-  months: z.string(),
-  graceDays: z.string(),
+  months: z.string().min(1),
+  graceDays: z.string().refine(str => parseInt(str) >= 0),
   mainTag: z.string()
 });
 
@@ -112,7 +112,7 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
                 </FormControl>
                 <FormDescription>
                   Duración del periodo contable.
-                  Despues de pasado el periodo de una operación, la misma no podrá ser modificada.
+                  Pasado el periodo de una operación, la misma no podrá ser modificada.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -125,10 +125,10 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
               <FormItem>
                 <FormLabel>Días de gracia</FormLabel>
                 <FormControl>
-                  <Input disabled={!isAdmin} type="number" {...field} />
+                  <Input disabled={!isAdmin} type="number" min={0} {...field} />
                 </FormControl>
                 <FormDescription>
-                  Cuantos días, pasado el periodo contable, puede una operación ser modificada.
+                  Cuantos días, pasado el mes, puede una operación ser modificada.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -157,8 +157,8 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
               </FormItem>
             )}
           />
-          <div className="flex flex-col gap-y-1 justify-start text-sm">
-            <p>Las transacciones cargadas tendran que tener una entidad de este Tag participando</p>
+          <div className="flex flex-col justify-start text-sm">
+            <p className="text-muted-foreground">Las transacciones cargadas tendrán que tener una entidad de este Tag participando y serán vistas desde el punto de vista de este Tag.</p>
           </div>
         </div>
         <Button type="submit" disabled={!isAdmin}>Guardar</Button>

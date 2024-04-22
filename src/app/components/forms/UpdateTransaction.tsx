@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { cn } from "~/lib/utils";
 import { currencies } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
@@ -63,7 +62,6 @@ const UpdateTransaction = ({
 
   const { mutate } = api.editingOperations.updateTransactionValues.useMutation({
     async onMutate(newOperation) {
-      setIsOpen(false);
       reset({
         fromEntityId: newOperation.newTransactionData.fromEntityId.toString(),
         toEntityId: newOperation.newTransactionData.toEntityId.toString(),
@@ -121,6 +119,7 @@ const UpdateTransaction = ({
       void utils.movements.getCurrentAccounts.invalidate()
     },
     onSuccess(data) {
+      setIsOpen(false);
       toast.success(`Transacción ${data.id} editada`)
     },
   });
@@ -179,13 +178,13 @@ const UpdateTransaction = ({
     <Dialog open={isOpen} onOpenChange={() => reset()}>
       <DialogTrigger asChild>
         <Button
+          variant="outline"
           type="button"
+          disabled={!tx.isUpdateAllowed}
           onClick={() => setIsOpen(true)}
-          className={cn(
-            "rounded-full border-2 border-transparent bg-transparent p-2 hover:bg-muted",
-          )}
+          className="rounded-full border-2 border-transparent bg-transparent p-2"
         >
-          <Icons.editing className="h-6 text-black" />
+          <Icons.editing className="h-6 text-black dark:text-white" />
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -232,7 +231,7 @@ const UpdateTransaction = ({
                               placeholder="Elegir"
                             />
                             {watchOperatorEntity && (
-                              <EntityCard entity={tx.operatorEntity} />
+                              <EntityCard entity={tx.operatorEntity} disableLinks={true} />
                             )}
                           </>
                         )}
@@ -245,7 +244,6 @@ const UpdateTransaction = ({
                       <Button
                         type="button"
                         variant="link"
-                        className="text-black"
                       >
                         <Icons.info className="h-8" />
                       </Button>
@@ -289,7 +287,7 @@ const UpdateTransaction = ({
                                   placeholder="Elegir"
                                 />
                                 {watchFromEntity && (
-                                  <EntityCard entity={tx.fromEntity} />
+                                  <EntityCard entity={tx.fromEntity} disableLinks={true} />
                                 )}
                               </>
                             )}
@@ -352,7 +350,7 @@ const UpdateTransaction = ({
                                 placeholder="Elegir"
                               />
                               {watchToEntity && (
-                                <EntityCard entity={tx.toEntity} />
+                                <EntityCard entity={tx.toEntity} disableLinks={true} />
                               )}
                             </>
                           )}
@@ -368,7 +366,7 @@ const UpdateTransaction = ({
                   variant="outline"
                   type="button"
                   onClick={() => reset()}
-                  className="mt-4 flex flex-row items-center justify-center space-x-2 p-2 text-black"
+                  className="mt-4 flex flex-row items-center justify-center space-x-2 p-2"
                 >
                   Resetear <Icons.undo className="ml-2 h-8" />
                 </Button>

@@ -37,7 +37,6 @@ import {
   entities,
   transactionsMetadata,
   globalSettings,
-  type returnedBalancesSchema,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
@@ -53,7 +52,7 @@ export const getAllPermissions = async (
     return [];
   }
 
-  const cachedResponseString = await redis.get(`user_permissions:${user.id}`);
+  const cachedResponseString = await redis.get(`user_permissions|${user.id}`);
   if (cachedResponseString) {
     const cachedResponse: z.infer<typeof PermissionSchema> =
       JSON.parse(cachedResponseString);
@@ -72,7 +71,7 @@ export const getAllPermissions = async (
         const merged = mergePermissions(permissions, user.permissions);
 
         await redis.set(
-          `user_permissions:${user.id}`,
+          `user_permissions|${user.id}`,
           JSON.stringify(merged),
           "EX",
           3600,
@@ -91,7 +90,7 @@ export const getAllPermissions = async (
     if (roleFound?.permissions) {
       const permissions = PermissionSchema.parse(roleFound.permissions);
       await redis.set(
-        `user_permissions:${user.id}`,
+        `user_permissions|${user.id}`,
         JSON.stringify(permissions),
         "EX",
         3600,
@@ -102,7 +101,7 @@ export const getAllPermissions = async (
   }
   if (user?.permissions) {
     await redis.set(
-      `user_permissions:${user.id}`,
+      `user_permissions|${user.id}`,
       JSON.stringify(user.permissions),
       "EX",
       3600,
@@ -155,7 +154,7 @@ export const getAllEntities = async (
     columns: {
       id: true,
       name: true,
-    },
+    }
   });
 
   if (!entities)
@@ -164,9 +163,25 @@ export const getAllEntities = async (
       message: "Entities returned empty from database",
     });
 
-  await redis.set("entities", JSON.stringify(entities), "EX", 3600);
+  const mainTag = await getGlobalSettings(redis, db, "mainTag") as { name: string; data: { tag: string; } }
 
-  return entities;
+  const tags = await getAllTags(redis, db)
+
+  const mainTags = getAllChildrenTags(mainTag.data.tag, tags)
+
+  const sortedEntities = entities.sort((a, b) => {
+    if (mainTags.includes(a.tag.name) && !mainTags.includes(b.tag.name)) {
+      return -1
+    } else if (!mainTags.includes(a.tag.name) && mainTags.includes(b.tag.name)) {
+      return 1
+    } else {
+      return 0
+    }
+  })
+
+  await redis.set("entities", JSON.stringify(sortedEntities), "EX", 3600);
+
+  return sortedEntities;
 };
 
 export const generateMovements = async (
@@ -186,7 +201,6 @@ export const generateMovements = async (
 ) => {
   const movementsResponse = []
 
-  const changeAmount = movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) * tx.amount
 
   const mvDate = tx.operation.date
 
@@ -195,22 +209,36 @@ export const generateMovements = async (
 
   // Voy a tener que hacer lo mismo tres veces, una para balance entre entidades, otras dos para entidad-tag / tag-entidad
   for (let index = 0; index < 3; index++) {
+    let changeAmount = 0
+
+    if (index === 0) {
+      // Esto lo uso para calcular direccion el primer caso de from --> to
+      changeAmount = movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) * tx.amount
+    } else if (index === 1) {
+      // Defino que el POV sera el tagName, porque cuando es el To, uso la misma direccion porque es el que recibe
+      changeAmount = tx.amount * direction
+    } else if (index === 2) {
+      // Y cuando es el From, invierto la direccion porque es el que envia
+      changeAmount = tx.amount * direction * (-1)
+    }
+
+
     const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
 
     const entitiesQuery = index === 0 ? and(
       eq(balances.selectedEntityId, selectedEntity.id),
       eq(balances.otherEntityId, otherEntity.id),
     ) : index === 1 ? and(
-      eq(balances.selectedEntityId, selectedEntity.id),
-      eq(balances.tagName, otherEntity.tagName)
+      eq(balances.selectedEntityId, tx.fromEntity.id),
+      eq(balances.tagName, tx.toEntity.tagName)
     ) : index === 2 ? and(
-      eq(balances.otherEntityId, otherEntity.id),
-      eq(balances.tagName, selectedEntity.tagName)
+      eq(balances.selectedEntityId, tx.toEntity.id),
+      eq(balances.tagName, tx.fromEntity.tagName)
     ) : undefined
 
     const balanceEntitiesToInsert = index === 0 ? { selectedEntityId: selectedEntity.id, otherEntityId: otherEntity.id }
-      : index === 1 ? { selectedEntityId: selectedEntity.id, tagName: otherEntity.tagName }
-        : index === 2 ? { otherEntityId: otherEntity.id, tagName: selectedEntity.tagName } : undefined
+      : index === 1 ? { selectedEntityId: tx.fromEntity.id, tagName: tx.toEntity.tagName }
+        : index === 2 ? { selectedEntityId: tx.toEntity.id, tagName: tx.fromEntity.tagName } : undefined
 
     // Busco el ultimo balance relacionado al movimiento por hacer
     const [balance] = await transaction
@@ -406,81 +434,87 @@ export const generateMovements = async (
   return movementsResponse
 };
 
-export const undoBalances = async (
-  db: PostgresJsDatabase<typeof schema>,
-  txId?: number,
-  opId?: number,
+export const undoMovements = async (
+  transaction: PgTransaction<
+    PostgresJsQueryResultHKT,
+    typeof schema,
+    ExtractTablesWithRelations<typeof schema>
+  >,
+  tx: { id: number; fromEntity: { id: number; }; toEntity: { id: number; tagName: string }; amount: number; currency: string; operationId: number; },
 ) => {
-  const balancesArray: z.infer<typeof returnedBalancesSchema>[] = [];
-  if (txId) {
-    const transaction = await db.query.transactions.findFirst({
-      where: eq(transactions.id, txId),
-      with: {
-        movements: true,
-      },
-      columns: {
-        fromEntityId: true,
-        toEntityId: true,
-        amount: true,
-      },
-    });
+  const deletedMovements = await transaction.delete(movements).where(
+    eq(movements.transactionId, tx.id)
+  ).returning();
 
-    if (transaction) {
-      for (const mv of transaction.movements) {
-        const amountModifiedByMovement =
-          movementBalanceDirection(
-            transaction.fromEntityId,
-            transaction.toEntityId,
-            mv.direction,
-          ) * transaction.amount;
+  const [relatedOp] = await transaction.select({ date: operations.date }).from(operations).where(eq(operations.id, tx.operationId))
 
-        const [balance] = await db
-          .update(balances)
-          .set({
-            balance: sql`${balances.balance} - ${amountModifiedByMovement}`,
-          })
-          .where(eq(balances.id, mv.balanceId))
-          .returning();
+  for (const deletedMovement of deletedMovements) {
+    const [relatedBalance] = await transaction.select().from(balances).where(eq(balances.id, deletedMovement.balanceId))
 
-        balancesArray.push(balance!);
-      }
+    let changedAmount = 0
+
+    if (deletedMovement.entitiesMovementId) {
+      // Si el to es el tagName, como es el POV del tagname, tomo la direccion como viene
+      changedAmount = tx.toEntity.tagName === relatedBalance?.tagName ? deletedMovement.direction * tx.amount : deletedMovement.direction * tx.amount * (-1)
+    } else {
+      changedAmount = movementBalanceDirection(tx.fromEntity.id, tx.toEntity.id, deletedMovement.direction) * tx.amount
     }
-  } else if (opId) {
-    const operation = await db.query.operations.findFirst({
-      with: {
-        transactions: {
-          with: {
-            movements: true,
-          },
-        },
-      },
-      where: eq(operations, opId),
-    });
 
-    if (operation) {
-      for (const transaction of operation.transactions) {
-        for (const mv of transaction.movements) {
-          const amountModifiedByMovement =
-            movementBalanceDirection(
-              transaction.fromEntityId,
-              transaction.toEntityId,
-              mv.direction,
-            ) * transaction.amount;
+    const selectedEntityId = relatedBalance!.selectedEntityId!
+    const otherEntityId = relatedBalance!.otherEntityId!
+    const tagName = relatedBalance!.tagName
 
-          const [balance] = await db
-            .update(balances)
-            .set({
-              balance: sql`${balances.balance} - ${amountModifiedByMovement}`,
-            })
-            .where(eq(balances.id, mv.balanceId))
-            .returning();
+    const balanceQuery = deletedMovement.entitiesMovementId ? and(
+      eq(balances.selectedEntityId, selectedEntityId),
+      eq(balances.tagName, tagName ?? "")
+    ) : and(
+      eq(balances.selectedEntityId, selectedEntityId),
+      eq(balances.otherEntityId, otherEntityId)
+    )
 
-          balancesArray.push(balance!);
-        }
-      }
-    }
+    // Retrocedo el balance relacionado a ese movimiento y los posteriores
+    await transaction
+      .update(balances)
+      .set({ balance: sql`${balances.balance} - ${changedAmount}` })
+      .where(
+        or(
+          eq(balances.id, deletedMovement.balanceId),
+          and(
+            eq(balances.account, deletedMovement.account),
+            eq(balances.currency, tx.currency),
+            balanceQuery,
+            gt(balances.date, relatedBalance!.date)
+          )
+        ))
+
+    // Retrocedo el balance de todos los movimientos posteriores
+    const mvsToUpdate = await transaction
+      .select({ id: movements.id }).from(movements)
+      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .leftJoin(balances, eq(movements.balanceId, balances.id))
+      .where(
+        and(
+          eq(balances.account, deletedMovement.account),
+          eq(balances.currency, tx.currency),
+          balanceQuery,
+          or(
+            gt(operations.date, relatedOp!.date),
+            and(
+              eq(operations.date, relatedOp!.date),
+              gt(movements.id, deletedMovement.id)
+            )
+          )
+        ))
+
+    const mvsIds = mvsToUpdate.length > 0 ? mvsToUpdate.map(obj => obj.id) : [0]
+
+    await transaction.update(movements)
+      .set({ balance: sql`${movements.balance} - ${changedAmount}` })
+      .where(inArray(movements.id, mvsIds))
   }
-  return balances;
+
+  return deletedMovements
 };
 
 export const logIO = async (
@@ -743,12 +777,12 @@ export const currentAccountsProcedure = async (
       const nestedData = movementsData.map(obj =>
       ({
         ...obj.Movements,
+        entitiesMovementId: 1,
         balance: tagBalanceMovements.find(mv => mv.Movements.entitiesMovementId === obj.Movements.id)?.Movements.balance ?? 0,
         transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! }
       }))
       return { movementsQuery: nestedData, totalRows: movementsIds.length }
     }
-
 
     const nestedData = movementsData.map(obj =>
       ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! } }))
@@ -765,7 +799,7 @@ const accountingPeriodSchema = z.object({
   name: z.literal(settingEnum.enum.accountingPeriod),
   data: z.object({
     months: z.number().positive().int(),
-    graceDays: z.number().positive().int()
+    graceDays: z.number().int().refine(n => n >= 0)
   })
 })
 
@@ -783,10 +817,11 @@ export const globalSettingSchema = z.union([
 
 
 export const getGlobalSettings = async (
-  ctx: Awaited<ReturnType<typeof createTRPCContext>>,
+  redis: Redis,
+  db: PostgresJsDatabase<typeof schema>,
   setting: z.infer<typeof settingEnum>
 ) => {
-  const cachedResponseString = await ctx.redis.get(`globalSetting|${setting}`)
+  const cachedResponseString = await redis.get(`globalSetting|${setting}`)
 
   if (cachedResponseString) {
     const cachedResponse = globalSettingSchema.safeParse(JSON.parse(cachedResponseString))
@@ -801,7 +836,7 @@ export const getGlobalSettings = async (
     return cachedResponse.data
   }
 
-  const [response] = await ctx.db.select().from(globalSettings).where(eq(globalSettings.name, setting)).limit(1)
+  const [response] = await db.select().from(globalSettings).where(eq(globalSettings.name, setting)).limit(1)
 
   if (!response) {
     if (setting === settingEnum.enum.accountingPeriod) {
@@ -821,7 +856,7 @@ export const getGlobalSettings = async (
     })
   }
 
-  await ctx.redis.set(`globalSetting|${setting}`, JSON.stringify(parsedResponse.data), "EX", 7200)
+  await redis.set(`globalSetting|${setting}`, JSON.stringify(parsedResponse.data), "EX", 7200)
 
   return parsedResponse.data
 

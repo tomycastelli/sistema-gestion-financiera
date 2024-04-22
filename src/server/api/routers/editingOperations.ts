@@ -1,13 +1,11 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { findDifferences, movementBalanceDirection } from "~/lib/functions";
-import { generateMovements, logIO } from "~/lib/trpcFunctions";
+import { findDifferences } from "~/lib/functions";
+import { generateMovements, getAllEntities, logIO, undoMovements } from "~/lib/trpcFunctions";
 import {
   Status,
-  balances,
   entities,
-  movements,
   operations,
   transactions,
   transactionsMetadata,
@@ -78,7 +76,7 @@ export const editingOperationsRouter = createTRPCRouter({
             currency: input.newTransactionData.currency,
             amount: input.newTransactionData.amount,
           })
-          .where(eq(transactions.id, input.txId)).returning({ id: transactions.id });
+          .where(eq(transactions.id, input.txId)).returning({ id: transactions.id, operationId: transactions.operationId });
 
         if (!newTxObj) {
           throw new TRPCError({
@@ -94,68 +92,18 @@ export const editingOperationsRouter = createTRPCRouter({
           })
           .where(eq(transactionsMetadata.transactionId, input.txId));
 
-        // Borro los movimientos relacionados a la transaccion
-        const deletedMovements = await transaction.delete(movements).where(
-          eq(movements.transactionId, newTxObj.id)
-        ).returning();
+        const entitiesData = await getAllEntities(ctx.redis, ctx.db)
 
-        for (const deletedMovement of deletedMovements) {
-          const changedAmount = movementBalanceDirection(input.oldTransactionData.fromEntityId, input.oldTransactionData.toEntityId, deletedMovement.direction) * input.oldTransactionData.amount
+        const toEntityObj = entitiesData.find(e => e.id === input.oldTransactionData.toEntityId)
 
-          const [relatedBalance] = await transaction.select().from(balances).where(eq(balances.id, deletedMovement.balanceId))
-
-          const selectedEntityId = relatedBalance!.selectedEntityId!
-          const otherEntityId = relatedBalance!.otherEntityId!
-
-          const balanceQuery = deletedMovement.entitiesMovementId ?
-            relatedBalance!.otherEntityId ? and(
-              eq(balances.otherEntityId, otherEntityId),
-              eq(balances.tagName, relatedBalance!.tagName!)
-            ) : and(
-              eq(balances.selectedEntityId, selectedEntityId),
-              eq(balances.tagName, relatedBalance!.tagName!)
-            ) : and(
-              eq(balances.selectedEntityId, selectedEntityId),
-              eq(balances.otherEntityId, otherEntityId),
-            )
-
-          // Retrocedo el balance relacionado a ese movimiento y los posteriores
-          await transaction
-            .update(balances)
-            .set({ balance: sql`${balances.balance} - ${changedAmount}` })
-            .where(
-              or(
-                eq(balances.id, deletedMovement.balanceId),
-                and(
-                  eq(balances.account, deletedMovement.account),
-                  eq(balances.currency, input.oldTransactionData.currency),
-                  balanceQuery,
-                  gt(balances.date, relatedBalance!.date)
-                )
-              ))
-
-          // Retrocedo el balance de todos los movimientos posteriores
-          const mvsToUpdate = await transaction
-            .select({ id: movements.id }).from(movements)
-            .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-            .leftJoin(operations, eq(transactions.operationId, operations.id))
-            .leftJoin(balances, eq(movements.balanceId, balances.id))
-            .where(
-              and(
-                eq(balances.account, deletedMovement.account),
-                eq(balances.currency, input.oldTransactionData.currency),
-                balanceQuery,
-                gt(operations.date, relatedBalance!.date),
-              ))
-
-          const mvsIds = mvsToUpdate.length > 0 ? mvsToUpdate.map(obj => obj.id) : [0]
-
-          console.log("Movimientos posteriores que seran retrotraidos: ", mvsIds)
-
-          await transaction.update(movements)
-            .set({ balance: sql`${movements.balance} - ${changedAmount}` })
-            .where(inArray(movements.id, mvsIds))
+        if (!toEntityObj) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`
+          })
         }
+
+        const deletedMovements = await undoMovements(transaction, { id: newTxObj.id, fromEntity: { id: input.oldTransactionData.fromEntityId }, toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name }, currency: input.oldTransactionData.currency, amount: input.oldTransactionData.amount, operationId: newTxObj.operationId })
 
         const fromEntity = alias(entities, "fromEntity");
         const toEntity = alias(entities, "toEntity");
@@ -343,4 +291,35 @@ export const editingOperationsRouter = createTRPCRouter({
 
       return response;
     }),
+  changeOpData: protectedProcedure.input(z.object({
+    opId: z.number(),
+    opObservations: z.string().optional(),
+    oldOpDate: z.date(),
+    opDate: z.date()
+  })).mutation(async ({ ctx, input }) => {
+    const response = await ctx.db.transaction(async (transaction) => {
+      const [updatedOperation] = await transaction.update(operations)
+        .set({ observations: input.opObservations, date: input.opDate }).where(eq(operations.id, input.opId)).returning()
+
+      if (input.oldOpDate.valueOf() !== input.opDate.valueOf()) {
+        const fromEntity = alias(entities, "fromEntity")
+        const toEntity = alias(entities, "toEntity")
+        const relatedTxs = await transaction.select().from(transactions)
+          .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+          .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+          .where(eq(transactions.operationId, input.opId))
+
+        for (const relatedTx of relatedTxs) {
+          const deletedMvs = await undoMovements(transaction, { ...relatedTx.Transactions, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity! })
+          for (const deletedMv of deletedMvs) {
+            await generateMovements(transaction, { ...relatedTx.Transactions, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity!, operation: { date: input.opDate } }, deletedMv.account, deletedMv.direction, deletedMv.type)
+          }
+        }
+      }
+
+      return updatedOperation
+    })
+
+    return response
+  })
 });

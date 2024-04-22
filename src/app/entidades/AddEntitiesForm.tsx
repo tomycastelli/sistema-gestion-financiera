@@ -121,7 +121,7 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
           }
         >
           <p>Añadir entidad</p>
-          <Icons.person className="h-4 text-black" />
+          <Icons.person className="h-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>

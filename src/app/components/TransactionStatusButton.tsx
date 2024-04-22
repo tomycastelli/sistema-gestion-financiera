@@ -93,7 +93,7 @@ const TransactionStatusButton = ({
 
 
   const handleToast = useCallback(() => {
-    if (txIdsStore.length > 0) {
+    if (!txIdsStore.includes(tx.id)) {
       toast.info("Lista de transacciones", {
         description: txIdsStore.join(", "),
         action: txIdsStore.length > 0 && {
@@ -104,7 +104,7 @@ const TransactionStatusButton = ({
     } else {
       toast.dismiss()
     }
-  }, [txIdsStore, mutate])
+  }, [txIdsStore, mutate, tx.id])
 
   useEffect(() => {
     handleToast();

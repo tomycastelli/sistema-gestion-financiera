@@ -41,7 +41,7 @@ const InlineOperation = ({ operationId }: InlineOperationProps) => {
                   </Link>
                 </CardTitle>
                 <CardDescription className="text-lg">
-                  {moment(operation.date).format("DD-MM-YYYY HH:mm:ss")}
+                  {moment(operation.date).format("DD-MM-YYYY HH:mm")}
                 </CardDescription>
                 <CardDescription className="text-md">
                   {operation.observations}

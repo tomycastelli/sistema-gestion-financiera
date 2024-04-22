@@ -5,46 +5,14 @@ import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMe
 import { type FC } from "react";
 
 interface NavMenuProps {
-  mainTag: string;
-}
-
-const NavMenu: FC<NavMenuProps> = ({ mainTag }) => {
-  interface MenuItem {
+  menuItems: {
     name: string;
     links: { name: string; description: string, href: string }[]
-  }
-  const menuItems: MenuItem[] = [
-    {
-      name: "Operaciones",
-      links: [
-        { name: "Carga", description: "Ingresar operaciones", href: "/operaciones/carga" },
-        { name: "Gestión", description: "Visualizar, cancelar, confirmar y modificar operaciones", href: "/operaciones/gestion?pagina=1" }
-      ]
-    },
-    {
-      name: "Cuentas",
-      links: [
-        { name: "Caja", description: "Las cuentas de caja", href: `/cuentas?tag=${mainTag}&cuenta=caja` },
-        { name: "Cuenta corriente", description: "Las cuentas de cuenta corriente", href: `/cuentas?tag=${mainTag}&cuenta=cuenta_corriente` }
-      ]
-    },
-    {
-      name: "Entidades",
-      links: [
-        { name: "Gestión", description: "Crear, editar o eliminar Entidades y Tags", href: "/entidades" },
-        { name: "Gráfico", description: "Visualizar el arbol de Tags", href: "/entidades/grafico" }
-      ]
-    },
-    {
-      name: "Preferencias",
-      links: [
-        { name: "Ajustes globales", description: "Ajustes globales del sistema", href: "/preferencias" },
-        { name: "Mi usuario", description: "Manejar mi usuario", href: "/preferencias/usuarios" },
-        { name: "Permisos", description: "Modificar los permisos de usuario", href: "/preferencias/usuarios/permisos" },
-        { name: "Roles", description: "Manejar grupos de usuarios bajo un grupo de permisos", href: "/preferencias/usuarios/roles" }
-      ]
-    }
-  ]
+  }[]
+}
+
+const NavMenu: FC<NavMenuProps> = ({ menuItems }) => {
+
 
   return (
     <NavigationMenu>
@@ -56,7 +24,7 @@ const NavMenu: FC<NavMenuProps> = ({ mainTag }) => {
               <ul className="flex w-[300px] gap-y-2 p-4 md:w-[400px] flex-col lg:w-[500px]">
                 {item.links.map(link => (
                   <li key={link.name}>
-                    <Link href={link.href} className="flex flex-col justify-start p-2 rounded-xl transition-all hover:bg-gray-100">
+                    <Link href={link.href} className="flex flex-col justify-start p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800">
                       <h2 className="text-sm font-medium leading-none">{link.name}</h2>
                       <p className="line-clamp-2 font-light text-sm leading-snug text-muted-foreground">
                         {link.description}

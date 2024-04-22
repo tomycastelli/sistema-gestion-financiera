@@ -3,7 +3,7 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { type FC } from "react";
+import { useEffect, type FC } from "react";
 import { generateTableData, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currenciesOrder, mvTypeFormatting } from "~/lib/variables";
@@ -34,10 +34,11 @@ interface SummarizedBalancesProps {
   initialBalancesInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   selectedTag: string | undefined;
-  selectedEntityId: number | undefined;
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
   tags: RouterOutputs["tags"]["getAll"];
   uiColor: string | undefined;
   dayInPast: string | undefined
+  mainTags: string[]
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -45,16 +46,34 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalancesInput,
   initialMovements,
   selectedTag,
-  selectedEntityId,
+  selectedEntity,
   tags,
   uiColor,
-  dayInPast
+  dayInPast,
+  mainTags
 }) => {
   const {
     selectedCurrency,
     setSelectedCurrency,
     isInverted,
+    setIsInverted,
   } = useCuentasStore();
+
+  useEffect(() => {
+    if (selectedTag) {
+      if (mainTags.includes(selectedTag)) {
+        setIsInverted(false)
+      } else {
+        setIsInverted(true)
+      }
+    } else if (selectedEntity) {
+      if (mainTags.includes(selectedEntity.tag.name)) {
+        setIsInverted(false)
+      } else {
+        setIsInverted(true)
+      }
+    }
+  }, [mainTags, selectedEntity, selectedTag, setIsInverted])
 
   const { data: balances, isFetching } = api.movements.getBalancesByEntitiesForCard.useQuery(initialBalancesInput, {
     initialData: initialBalancesForCard,
@@ -66,7 +85,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
     pageSize: 5,
     pageNumber: 1,
     entityTag: selectedTag,
-    entityId: selectedEntityId,
+    entityId: selectedEntity?.id,
   };
 
   queryInput.dayInPast = dayInPast;
@@ -79,7 +98,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
 
   const tableData = generateTableData(
     movements.movements,
-    selectedEntityId,
+    selectedEntity?.id,
     selectedTag,
     tags,
   );
@@ -203,7 +222,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               >
                 <DropdownMenuItem>
                   <p>Ver operación</p>
-                  <Icons.externalLink className="h-4 text-black" />
+                  <Icons.externalLink className="h-4" />
                 </DropdownMenuItem>
               </Link>
             </DropdownMenuContent>

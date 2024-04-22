@@ -123,9 +123,13 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
+        const keys = await ctx.redis.keys(`entities|` + "*")
+        await ctx.redis.del(keys)
+
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {
-          pipeline.del(`user_permissions:${user.id}`);
+          pipeline.del(`user_permissions|${user.id}`);
+
         });
 
         await pipeline.exec();
@@ -169,9 +173,12 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
+        const keys = await ctx.redis.keys(`entities|` + "*")
+        await ctx.redis.del(keys)
+
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {
-          pipeline.del(`user_permissions:${user.id}`);
+          pipeline.del(`user_permissions|${user.id}`);
         });
 
         await pipeline.exec();

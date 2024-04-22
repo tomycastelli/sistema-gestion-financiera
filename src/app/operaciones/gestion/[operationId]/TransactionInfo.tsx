@@ -13,6 +13,7 @@ interface TransactionInfoProps {
   tx: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number]
   users: RouterOutputs["users"]["getAll"]
   entities: RouterOutputs["entities"]["getAll"]
+  isInFeed: boolean
 }
 
 const ChangeData = z.object({
@@ -27,10 +28,11 @@ const ChangeObject = z.object({
   changedBy: z.string(),
 });
 
-const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities }) => {
+const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFeed }) => {
   const { selectedTxForMvs, setSelectedTxForMvs } = useOperationsPageStore()
 
   const onInfoClick = () => {
+    if (isInFeed) return
     if (selectedTxForMvs === tx.id) {
       setSelectedTxForMvs(undefined)
     } else {
@@ -46,7 +48,9 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities }) => {
         </Button>
       </HoverCardTrigger>
       <HoverCardContent className="items-center flex flex-col space-y-1 px-4">
-        <p className="text-sm w-full text-center">Clickeá para resaltar los movimientos relacionados a la transacción</p>
+        {!isInFeed && (
+          <p className="text-sm w-full text-center">Clickeá para resaltar los movimientos relacionados a la transacción</p>
+        )}
         {
           // @ts-ignore
           tx.transactionMetadata?.metadata &&

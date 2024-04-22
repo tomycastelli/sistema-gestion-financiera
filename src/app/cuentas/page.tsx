@@ -4,7 +4,6 @@ import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
 import EntitySwitcher from "./EntitySwitcher";
-import InvertSwitch from "./InvertSwitch";
 import TabSwitcher from "./TabSwitcher";
 import AccountsTab from "./AccountsTab";
 import TimeMachine from "./TimeMachine";
@@ -120,8 +119,9 @@ const Page = async ({
               {(selectedTab === "cuenta_corriente" ||
                 selectedTab === "caja") && (
                   <AccountsTab
+                    mainTags={mainTags}
                     uiColor={uiColor}
-                    entityId={selectedEntityObj?.id}
+                    selectedEntity={selectedEntityObj}
                     entityTag={selectedTagObj?.name}
                     accountType={selectedTab === "caja" ? true : false}
                     searchParams={searchParams}
@@ -136,6 +136,7 @@ const Page = async ({
                 <div suppressHydrationWarning={true}>
                   {initialBalancesForCard && (
                     <SummarizedBalances
+                      mainTags={mainTags}
                       initialBalancesInput={{
                         linkToken: linkToken,
                         linkId: linkId,
@@ -147,7 +148,7 @@ const Page = async ({
                       tags={filteredTags}
                       initialMovements={initialMovements}
                       selectedTag={selectedTagObj?.name}
-                      selectedEntityId={selectedEntityObj?.id}
+                      selectedEntity={selectedEntityObj}
                       initialBalancesForCard={initialBalancesForCard}
                       dayInPast={dayInPast ?? undefined}
                     />

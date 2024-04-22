@@ -27,9 +27,7 @@ import {
 import { Switch } from "../ui/switch";
 import CustomSelector from "./CustomSelector";
 import { type User } from "lucia";
-import { useNumberFormat } from "@react-input/number-format";
 import { parseFormattedFloat } from "~/lib/functions";
-import { type MutableRefObject, useRef } from "react";
 import AmountInput from "~/app/operaciones/carga/AmountInput";
 import { Label } from "../ui/label";
 import { toast } from "sonner";
@@ -103,8 +101,8 @@ const FlexibleTransactionsForm = ({
       const toTag = entities.find(e => e.id === parseInt(transaction.toEntityId))!.tag.name
 
       if (!mainTags.includes(fromTag) && !mainTags.includes(toTag)) {
-        toast.error(`Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`, {
-          description: "No se pudo cargar la transacción " + (index + 1).toString()
+        toast.error(`Transacción ${index + 1}`, {
+          description: `Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`
         })
         return
       }
@@ -128,16 +126,6 @@ const FlexibleTransactionsForm = ({
   };
 
   const [parent] = useAutoAnimate();
-
-  const myRefs = useRef<MutableRefObject<HTMLInputElement | null>[]>([]);
-
-  myRefs.current[0] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[1] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[2] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[3] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[4] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[5] = useNumberFormat({ locales: "es-AR" })
-  myRefs.current[6] = useNumberFormat({ locales: "es-AR" })
 
   return (
     <Form {...form}>
@@ -172,6 +160,7 @@ const FlexibleTransactionsForm = ({
                         />
                         {watchTransactions[index]?.fromEntityId && (
                           <EntityCard
+                            disableLinks={true}
                             className="w-[150px]"
                             entity={
                               entities.find(
@@ -311,6 +300,7 @@ const FlexibleTransactionsForm = ({
                         />
                         {watchTransactions[index]?.toEntityId && (
                           <EntityCard
+                            disableLinks={true}
                             className="w-[150px]"
                             entity={
                               entities.find(

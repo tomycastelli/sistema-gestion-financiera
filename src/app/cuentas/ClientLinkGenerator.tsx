@@ -147,7 +147,7 @@ const ClientLinkGenerator = ({
                   >
                     <p className="text-slate-300">
                       {link.id}{" "}
-                      <span className="ml-2 font-semibold text-black">
+                      <span className="ml-2 font-semibold">
                         {moment(link.expiration).format("DD-MM-YY HH:mm")}
                       </span>{" "}
                     </p>

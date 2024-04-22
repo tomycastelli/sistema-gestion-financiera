@@ -526,12 +526,15 @@ export const generateTableData = (
         };
       } else {
         const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
+        // Si existe movement.entitiesMovementId, el pov es el tagname
+
         // Esto indica, si es 1, que gano, si es -1, que pierdo
         const direction = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
           ? -movement.direction
           : movement.direction;
+
         const selectedEntity = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
@@ -562,10 +565,7 @@ export const generateTableData = (
           status: movement.transaction.status,
           txType: movement.transaction.type,
           metadata: movement.transaction.transactionMetadata?.metadata,
-          balance:
-            selectedEntity.id < otherEntity.id
-              ? movement.balance
-              : -movement.balance,
+          balance: !!movement.entitiesMovementId || selectedEntity.id < otherEntity.id ? movement.balance : -movement.balance
         };
       }
     })

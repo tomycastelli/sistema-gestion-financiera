@@ -8,9 +8,11 @@ import { useNumberFormat } from "@react-input/number-format";
 
 interface AmountInputProps {
   name: string;
+  label?: string;
+  placeholder?: string;
 }
 
-const AmountInput: FC<AmountInputProps> = ({ name }) => {
+const AmountInput: FC<AmountInputProps> = ({ name, label, placeholder }) => {
   const { control } = useFormContext();
 
   const inputRef = useNumberFormat({ locales: "es-AR" })
@@ -21,11 +23,11 @@ const AmountInput: FC<AmountInputProps> = ({ name }) => {
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Monto</FormLabel>
+          <FormLabel>{label ?? "Monto"}</FormLabel>
           <FormControl>
             <Input
               ref={inputRef}
-              className="w-32" name={field.name} placeholder="$"
+              className="w-32" name={field.name} placeholder={placeholder ?? "$"}
               value={field.value}
               onChange={field.onChange} />
           </FormControl>

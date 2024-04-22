@@ -191,6 +191,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                     />
                     {watchEmittingEntity && (
                       <EntityCard
+                        disableLinks={true}
                         entity={
                           entities.find(
                             (obj) => obj.id.toString() === watchEmittingEntity,
@@ -276,7 +277,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                   <FormLabel>Entidad Intermediadora</FormLabel>
                   <>
                     <CustomSelector
-                      data={entities.map((entity) => ({
+                      data={entities.filter(e => mainTags.includes(e.tag.name)).map((entity) => ({
                         value: entity.id.toString(),
                         label: entity.name,
                       }))}
@@ -286,6 +287,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                     />
                     {watchMiddleEntity && (
                       <EntityCard
+                        disableLinks={true}
                         entity={
                           entities.find(
                             (obj) => obj.id.toString() === watchMiddleEntity,
@@ -337,6 +339,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                     />
                     {watchReceivingEntity && (
                       <EntityCard
+                        disableLinks={true}
                         entity={
                           entities.find(
                             (obj) => obj.id.toString() === watchReceivingEntity,

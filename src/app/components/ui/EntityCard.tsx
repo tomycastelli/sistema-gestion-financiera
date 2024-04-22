@@ -11,13 +11,15 @@ import { type RouterOutputs } from "~/trpc/shared";
 import BalanceTotals from "../BalanceTotals";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
+import { cn } from "~/lib/utils";
 
 interface EntityCardProps {
   entity: RouterOutputs["entities"]["getAll"][number];
   className?: string;
+  disableLinks?: boolean
 }
 
-const EntityCard = React.memo(({ entity }: EntityCardProps) => {
+const EntityCard = React.memo(({ entity, disableLinks = false, className }: EntityCardProps) => {
   const [enableQueryId, setEnableQueryId] = useState<boolean>(false);
   const [enableQueryTag, setEnableQueryTag] = useState<boolean>(false);
 
@@ -37,27 +39,30 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
     <>
       {entity ? (
         <Card
-          className="flex h-36 border-2 w-36 flex-col shadow-sm hover:shadow-lg hover:border-4 transition-all justify-center"
+          className={cn("flex h-36 border-2 w-36 flex-col shadow-sm hover:shadow-lg hover:border-4 transition-all justify-center", className)}
           style={{ borderColor: entity.tag.color ?? undefined }}
         >
           <CardHeader>
             <HoverCard onOpenChange={setEnableQueryId}>
               <HoverCardTrigger asChild>
                 <CardTitle>
-                  <Link
-                    prefetch={false}
-                    className=
-                    "flex transition-all hover:scale-110"
-                    href={{
-                      pathname: "/cuentas",
-                      query: { entidad: entity.id },
-                    }}
-                  >
-                    {entity.name}
-                  </Link>
+                  {!disableLinks ? (
+                    <Link
+                      prefetch={false}
+                      className={cn("flex transition-all hover:scale-110", entity.name.length > 14 ? "text-lg" : "text-2xl")}
+                      href={{
+                        pathname: "/cuentas",
+                        query: { entidad: entity.id },
+                      }}
+                    >
+                      {entity.name}
+                    </Link>
+                  ) : (
+                    <span className={cn(entity.name.length > 14 ? "text-lg" : "text-2xl")}>{entity.name}</span>
+                  )}
                 </CardTitle>
               </HoverCardTrigger>
-              <HoverCardContent className="w-80">
+              <HoverCardContent className="w-80 h-56">
                 {!isLoading ? (
                   balances ? (
                     <BalanceTotals totals={balances} />
@@ -76,16 +81,20 @@ const EntityCard = React.memo(({ entity }: EntityCardProps) => {
             <HoverCard onOpenChange={setEnableQueryTag}>
               <HoverCardTrigger asChild>
                 <CardDescription>
-                  <Link
-                    prefetch={false}
-                    className="flex transition-all hover:scale-110"
-                    href={{
-                      pathname: "/cuentas",
-                      query: { tag: entity.tag.name },
-                    }}
-                  >
-                    {capitalizeFirstLetter(entity.tag.name)}
-                  </Link>
+                  {!disableLinks ? (
+                    <Link
+                      prefetch={false}
+                      className="flex transition-all hover:scale-110"
+                      href={{
+                        pathname: "/cuentas",
+                        query: { tag: entity.tag.name },
+                      }}
+                    >
+                      {capitalizeFirstLetter(entity.tag.name)}
+                    </Link>
+                  ) : (
+                    <span>{capitalizeFirstLetter(entity.tag.name)}</span>
+                  )}
                 </CardDescription>
               </HoverCardTrigger>
               <HoverCardContent className="w-80">

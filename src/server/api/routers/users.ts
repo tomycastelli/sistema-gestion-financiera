@@ -120,7 +120,11 @@ export const usersRouter = createTRPCRouter({
           .where(eq(user.id, input.id))
           .returning();
 
-        await ctx.redis.del(`user_permissions:${input.id}`);
+        await ctx.redis.del(`user_permissions|${input.id}`);
+
+        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
+        await ctx.redis.del(keys)
+
         return response;
       } else {
         return null;
@@ -156,7 +160,10 @@ export const usersRouter = createTRPCRouter({
           .where(eq(user.id, input.id))
           .returning();
 
-        await ctx.redis.del(`user_permissions:${input.id}`);
+        await ctx.redis.del(`user_permissions|${input.id}`);
+
+        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
+        await ctx.redis.del(keys)
 
         return response;
       } else {
@@ -183,7 +190,10 @@ export const usersRouter = createTRPCRouter({
           .where(eq(user.id, input.userId))
           .returning();
 
-        await ctx.redis.del(`user_permissions:${input.userId}`);
+        await ctx.redis.del(`user_permissions|${input.userId}`);
+
+        const keys = await ctx.redis.keys(`entities|${input.userId}` + "*")
+        await ctx.redis.del(keys)
 
         return response;
       } else {
@@ -210,7 +220,10 @@ export const usersRouter = createTRPCRouter({
           .where(eq(user.id, input.id))
           .returning();
 
-        await ctx.redis.del(`user_permissions:${input.id}`);
+        await ctx.redis.del(`user_permissions|${input.id}`);
+
+        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
+        await ctx.redis.del(keys)
 
         return response;
       } else {

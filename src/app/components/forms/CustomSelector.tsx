@@ -44,7 +44,7 @@ const CustomSelector = ({
   const { setValue } = useFormContext();
 
   return data ? (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -64,9 +64,9 @@ const CustomSelector = ({
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0">
         <Command>
-          <CommandInput placeholder="Buscar..." />
+          <CommandInput autoComplete="off" placeholder="Buscar..." />
           <CommandEmpty>...</CommandEmpty>
-          <ScrollArea className="h-62 w-48 rounded-md">
+          <ScrollArea className="h-44 w-48 rounded-md">
             <CommandGroup>
               {data
                 .sort((a, b) => {

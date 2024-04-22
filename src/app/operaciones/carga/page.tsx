@@ -1,5 +1,5 @@
 import AddOperation from "~/app/components/forms/AddOperation";
-import { getAllChildrenTags } from "~/lib/functions";
+import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 
@@ -16,19 +16,24 @@ const Page = async () => {
 
   const tags = await api.tags.getAll.query();
 
-  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
   const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
 
   const mainTag = mainTagData as { tag: string; }
 
   const mainTags = getAllChildrenTags(mainTag.tag, tags)
 
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
+
+  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
+
+  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+
   return (
     <div className="h-full">
       {user && (
         <AddOperation
           mainTags={mainTags}
-          accountingPeriodData={accountingPeriodData}
+          accountingPeriodDate={accountingPeriodDate}
           tags={tags}
           userPermissions={userPermissions}
           initialEntities={initialEntities}

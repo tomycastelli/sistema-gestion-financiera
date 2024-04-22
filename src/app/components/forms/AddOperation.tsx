@@ -54,7 +54,7 @@ interface AddOperationProps {
   | RouterOutputs["operations"]["getOperationsByUser"]
   | undefined;
   tags: RouterOutputs["tags"]["getAll"];
-  accountingPeriodData: RouterOutputs["globalSettings"]["get"]["data"];
+  accountingPeriodDate: Date
   mainTags: string[]
 }
 
@@ -62,14 +62,12 @@ const AddOperation = ({
   initialEntities,
   user,
   initialOperations,
-  accountingPeriodData,
+  accountingPeriodDate,
   mainTags
 }: AddOperationProps) => {
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState<string>("flexible");
   const [txsPage, setTxsPage] = useState<number>(1)
-
-  const [confirmationAtUpload, setConfirmationAtUpload] = useState<boolean>(false)
 
   const searchParams = useSearchParams();
   const router = useRouter()
@@ -90,6 +88,10 @@ const AddOperation = ({
     transactionsStore,
     removeTransactionFromStore,
     resetTransactionsStore,
+    confirmationAtUpload,
+    setConfirmationAtUpload,
+    resetConfirmationAtUpload,
+    removeConfirmationAtUpload
   } = useTransactionsStore();
 
   const { data: operations, isLoading: isOperationsLoading } =
@@ -139,7 +141,7 @@ const AddOperation = ({
         setIsInitialOperationSubmitted(false);
         resetTransactionsStore();
         resetInitialOperationStore();
-        setConfirmationAtUpload(false)
+        resetConfirmationAtUpload()
       },
       onSuccess(data) {
         const transaccionesCargadas = data.transactions.length
@@ -213,7 +215,7 @@ const AddOperation = ({
               {transactionsStore && (
                 <>
                   <CardContent className="flex flex-col space-y-4" ref={parent}>
-                    {transactionsStore.slice((txsPage - 1) * 5, txsPage * 5).map((transaction) => (
+                    {transactionsStore.slice((txsPage - 1) * 4, txsPage * 4).map((transaction, index) => (
                       <div
                         key={transaction.txId}
                         className="flex flex-col space-y-4"
@@ -290,27 +292,36 @@ const AddOperation = ({
                           </div>
 
                           <Button
-                            onClick={() =>
+                            onClick={() => {
                               removeTransactionFromStore(transaction.txId)
-                            }
+                              removeConfirmationAtUpload(index)
+                            }}
                             className="bg-transparent p-1 hover:scale-125 hover:bg-transparent"
                           >
                             <Icons.removePackage className="h-6 text-red" />
                           </Button>
                         </div>
+                        {transaction.type === "cambio" && (
+                          <div className="flex flex-row gap-x-2 items-center justify-center">
+                            <Switch
+                              checked={confirmationAtUpload.includes(index)}
+                              onCheckedChange={() => setConfirmationAtUpload(index)} />
+                            <p className="font-light text-muted-foreground text-sm">Confirmar</p>
+                          </div>
+                        )}
                         <Separator className="mt-1" />
                       </div>
                     ))}
-                    {transactionsStore.length > 5 && (
+                    {transactionsStore.length > 4 && (
                       <CustomPagination
                         page={txsPage}
-                        pageSize={5}
+                        pageSize={4}
                         itemName="transacciones"
                         totalCount={transactionsStore.length}
                         changePageState={setTxsPage}
                       />
                     )}
-                    <Textarea className="w-full h-16" placeholder="Observaciones..." value={initialOperationStore.opObservations}
+                    <Textarea className="w-full h-16 resize-none" placeholder="Observaciones..." value={initialOperationStore.opObservations}
                       onChange={(e) => setInitialOperationStore({ ...initialOperationStore, opObservations: e.target.value })} />
                   </CardContent>
                   <CardFooter className="flex flex-col items-center space-y-2">
@@ -318,18 +329,11 @@ const AddOperation = ({
                       className="w-full"
                       disabled={transactionsStore.length === 0}
                       onClick={async () => {
-                        const [hoursString, minutesString] =
-                          initialOperationStore.opTime.split(":");
-                        const opDate = moment(initialOperationStore.opDate)
-                          .set({
-                            hour: hoursString
-                              ? parseInt(hoursString)
-                              : moment().hours(),
-                            minute: minutesString
-                              ? parseInt(minutesString)
-                              : moment().minutes(),
-                          })
-                          .toDate();
+                        const opDate = moment(
+                          moment(initialOperationStore.opDate).format("DD-MM-YYYY") + initialOperationStore.opTime,
+                          "DD-MM-YYYY HH:mm"
+                        ).toDate()
+
                         const response = await mutateAsync({
                           opDate,
                           opObservations: initialOperationStore.opObservations,
@@ -347,10 +351,13 @@ const AddOperation = ({
                             }),
                           ),
                         });
-                        if (confirmationAtUpload) {
+                        if (confirmationAtUpload.length > 0) {
                           await updateStatus({
                             transactionIds: response.transactions
-                              .filter(tx => tx.status === Status.enumValues[2] && !currentAccountOnlyTypes.has(tx.type))
+                              .filter((tx, idx) =>
+                                tx.status === Status.enumValues[2] &&
+                                !currentAccountOnlyTypes.has(tx.type)
+                                && confirmationAtUpload.includes(idx))
                               .map(tx => tx.id)
                           })
                         }
@@ -365,10 +372,6 @@ const AddOperation = ({
                         <p>Cargar operación</p>
                       )}
                     </Button>
-                    <div className="flex flex-row gap-x-2 justify-start">
-                      <Switch checked={confirmationAtUpload} onCheckedChange={setConfirmationAtUpload} />
-                      <p className="text-sm text-muted-foreground">Confirmar automáticamente</p>
-                    </div>
                     {transactionsStore.length < 1 && (
                       <p className="text-sm">
                         Añadí una transacción para continuar{" "}
@@ -446,7 +449,7 @@ const AddOperation = ({
           )
         ) : (
           <div className="flex flex-col gap-y-8">
-            <InitialDataOperationForm accountingPeriodData={accountingPeriodData} />
+            <InitialDataOperationForm accountingPeriodDate={accountingPeriodDate} />
             <Link href="/operaciones/carga/rapida">
               <Button className="flex flex-row gap-x-2">
                 <p>Cargar rápida</p>

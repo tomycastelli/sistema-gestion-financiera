@@ -13,21 +13,23 @@ const AccountsTable = async ({
   initialTags,
   linkId,
   linkToken,
-  entityId,
+  selectedEntity,
   entityTag,
   dayInPast,
-  uiColor
+  uiColor,
+  mainTags
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
   accountType: boolean;
   initialTags: RouterOutputs["tags"]["getAll"];
   linkId: number | null;
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
   linkToken: string | null;
-  entityId: number | undefined;
   entityTag: string | undefined;
   dayInPast: string | null;
   uiColor: string | undefined
+  mainTags: string[]
 }) => {
   const user = await getUser();
 
@@ -38,10 +40,10 @@ const AccountsTable = async ({
   const initialMovements = await api.movements.getCurrentAccounts.query({
     linkId: linkId,
     linkToken: linkToken,
-    sharedEntityId: entityId,
+    sharedEntityId: selectedEntity?.id,
     pageSize: pageSize,
     pageNumber: 1,
-    entityId: entityId,
+    entityId: selectedEntity?.id,
     entityTag: entityTag,
     account: accountType,
     dayInPast: dayInPast ?? undefined,
@@ -52,13 +54,14 @@ const AccountsTable = async ({
       <div suppressHydrationWarning={true}>
         {initialBalances && (
           <Balances
+            mainTags={mainTags}
             dayInPast={dayInPast ?? undefined}
             tags={initialTags}
             accountType={accountType}
             initialBalances={initialBalances}
             linkId={linkId}
             linkToken={linkToken}
-            selectedEntityId={entityId}
+            selectedEntity={selectedEntity}
             selectedTag={entityTag}
             user={user}
             entities={entities}
@@ -81,7 +84,7 @@ const AccountsTable = async ({
             pageSize={pageSize}
             initialMovements={initialMovements}
             entityTag={entityTag}
-            entityId={entityId}
+            entityId={selectedEntity?.id}
           />
         </div>
       )}

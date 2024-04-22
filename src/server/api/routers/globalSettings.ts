@@ -31,7 +31,7 @@ export const globalSettingsRouter = createTRPCRouter({
     return parsedResponse.data
   }),
   get: publicProcedure.input(z.object({ name: settingEnum })).query(async ({ ctx, input }) => {
-    const response = await getGlobalSettings(ctx, input.name)
+    const response = await getGlobalSettings(ctx.redis, ctx.db, input.name)
 
     return response
   }),

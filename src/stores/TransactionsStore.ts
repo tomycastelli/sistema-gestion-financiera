@@ -27,6 +27,10 @@ interface OperationStore {
     transaction: Omit<SingleTransactionInStoreSchema, "txId">,
   ) => void;
   removeTransactionFromStore: (txId: number) => void;
+  confirmationAtUpload: number[];
+  setConfirmationAtUpload: (txId: number) => void;
+  resetConfirmationAtUpload: () => void;
+  removeConfirmationAtUpload: (txId: number) => void;
 }
 
 export const useTransactionsStore = create<OperationStore>((set) => ({
@@ -56,10 +60,27 @@ export const useTransactionsStore = create<OperationStore>((set) => ({
     set((state) => {
       const newStore = state.transactionsStore.filter(
         (transaction) => transaction.txId !== txId,
-      );
+      ).map(transaction => transaction.txId > txId ? { ...transaction, txId: transaction.txId - 1 } : transaction)
       return {
         transactionsStore: newStore,
       };
     });
   },
+  confirmationAtUpload: [],
+  setConfirmationAtUpload: (txId) => {
+    set((state) => {
+      if (state.confirmationAtUpload.includes(txId)) {
+        return { confirmationAtUpload: state.confirmationAtUpload.filter(n => n !== txId) }
+      } else {
+        return { confirmationAtUpload: [...state.confirmationAtUpload, txId] }
+      }
+    })
+  },
+  resetConfirmationAtUpload: () => set({ confirmationAtUpload: [] }),
+  removeConfirmationAtUpload: (txId) => {
+    set((state) => {
+      const newData = state.confirmationAtUpload.filter(n => n !== txId)
+      return { confirmationAtUpload: newData }
+    })
+  }
 }));

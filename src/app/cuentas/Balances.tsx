@@ -1,7 +1,7 @@
 "use client";
 
 import { type User } from "lucia";
-import { useState, type FC } from "react";
+import { useState, type FC, useEffect } from "react";
 import { z } from "zod";
 import useSearch from "~/hooks/useSearch";
 import { isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
@@ -34,18 +34,19 @@ interface BalancesProps {
   accountType: boolean;
   linkId: number | null;
   linkToken: string | null;
-  selectedEntityId: number | undefined;
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
   selectedTag: string | undefined;
   tags: RouterOutputs["tags"]["getAll"];
   user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined
   dayInPast: string | undefined
+  mainTags: string[]
 }
 
 const Balances: FC<BalancesProps> = ({
   initialBalances,
-  selectedEntityId,
+  selectedEntity,
   selectedTag,
   user,
   entities,
@@ -53,7 +54,8 @@ const Balances: FC<BalancesProps> = ({
   linkId,
   linkToken,
   accountType,
-  dayInPast
+  dayInPast,
+  mainTags
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
@@ -67,8 +69,25 @@ const Balances: FC<BalancesProps> = ({
     setDestinationEntityId,
     destinationEntityId,
     isInverted,
+    setIsInverted,
     setMovementsTablePage
   } = useCuentasStore();
+
+  useEffect(() => {
+    if (selectedTag) {
+      if (mainTags.includes(selectedTag)) {
+        setIsInverted(false)
+      } else {
+        setIsInverted(true)
+      }
+    } else if (selectedEntity) {
+      if (mainTags.includes(selectedEntity.tag.name)) {
+        setIsInverted(false)
+      } else {
+        setIsInverted(true)
+      }
+    }
+  }, [mainTags, selectedEntity, selectedTag, setIsInverted])
 
   const { theme } = useTheme();
 
@@ -86,7 +105,7 @@ const Balances: FC<BalancesProps> = ({
   const { data: balances, isFetching } = api.movements.getBalancesByEntities.useQuery({
     linkId,
     account: accountType,
-    entityId: selectedEntityId,
+    entityId: selectedEntity?.id,
     dayInPast,
     entityTag: selectedTag,
     linkToken
@@ -97,13 +116,13 @@ const Balances: FC<BalancesProps> = ({
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
-  if (selectedEntityId) {
+  if (selectedEntity?.id) {
     detailedBalances = balances.reduce(
       (acc, balance) => {
         let entityEntry = acc.find(
           (entry) =>
             entry.entity.id ===
-            (balance.selectedEntityId === selectedEntityId
+            (balance.selectedEntity?.id === selectedEntity.id
               ? balance.otherEntity.id
               : balance.selectedEntity.id),
         );
@@ -111,7 +130,7 @@ const Balances: FC<BalancesProps> = ({
         if (!entityEntry) {
           entityEntry = {
             entity:
-              balance.selectedEntityId === selectedEntityId
+              balance.selectedEntity?.id === selectedEntity.id
                 ? balance.otherEntity
                 : balance.selectedEntity,
             data: [],
@@ -120,7 +139,7 @@ const Balances: FC<BalancesProps> = ({
         }
 
         const balanceMultiplier =
-          entityEntry.entity.id === balance.selectedEntityId ? -1 : 1;
+          entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
 
         let dataEntry = entityEntry.data.find(
           (d) => d.currency === balance.currency,
@@ -167,7 +186,7 @@ const Balances: FC<BalancesProps> = ({
             acc.push(otherEntityEntry);
           }
 
-          const balanceMultiplier = otherEntityEntry.entity.id === balance.selectedEntityId ? -1 : 1
+          const balanceMultiplier = otherEntityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1
 
           let dataEntry = otherEntityEntry.data.find(d => d.currency === balance.currency)
           if (!dataEntry) {
@@ -191,7 +210,7 @@ const Balances: FC<BalancesProps> = ({
         }
 
         const balanceMultiplier =
-          entityEntry.entity.id === balance.selectedEntityId ? -1 : 1;
+          entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
 
         let dataEntry = entityEntry.data.find(
           (d) => d.currency === balance.currency,
@@ -301,7 +320,7 @@ const Balances: FC<BalancesProps> = ({
     <div className="flex flex-col space-y-4">
       <BalancesCards
         balances={balances}
-        selectedEntityId={selectedEntityId}
+        selectedEntityId={selectedEntity?.id}
         selectedTag={selectedTag}
         accountType={accountType}
         isInverted={isInverted} />
@@ -482,7 +501,7 @@ const Balances: FC<BalancesProps> = ({
                   <DropdownMenuItem
                     onClick={() => {
                       const promise = getUrlAsync({
-                        entityId: selectedEntityId,
+                        entityId: selectedEntity?.id,
                         entityTag: selectedTag,
                         detailedBalances: filteredBalances,
                         fileType: "pdf",
@@ -505,7 +524,7 @@ const Balances: FC<BalancesProps> = ({
                   <DropdownMenuItem
                     onClick={() => {
                       const promise = getUrlAsync({
-                        entityId: selectedEntityId,
+                        entityId: selectedEntity?.id,
                         entityTag: selectedTag,
                         detailedBalances: filteredBalances,
                         fileType: "csv",
