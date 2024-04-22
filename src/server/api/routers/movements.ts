@@ -553,6 +553,8 @@ export const movementsRouter = createTRPCRouter({
         });
       });
 
+      console.log(response)
+
       return response;
     }),
 });

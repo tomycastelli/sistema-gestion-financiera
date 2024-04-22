@@ -27,6 +27,9 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
     initialData: initialMovements,
     refetchOnWindowFocus: false
   })
+
+  console.log(movements)
+
   const tableData = movements.flatMap((movement) => ({
     id: movement.id,
     date: moment(operationDate).format("DD/MM/YYYY HH:mm"),

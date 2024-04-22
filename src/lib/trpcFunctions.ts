@@ -440,13 +440,11 @@ export const undoMovements = async (
     typeof schema,
     ExtractTablesWithRelations<typeof schema>
   >,
-  tx: { id: number; fromEntity: { id: number; }; toEntity: { id: number; tagName: string }; amount: number; currency: string; operationId: number; },
+  tx: { id: number; fromEntity: { id: number; }; toEntity: { id: number; tagName: string }; amount: number; currency: string; operation: { date: Date } },
 ) => {
   const deletedMovements = await transaction.delete(movements).where(
     eq(movements.transactionId, tx.id)
   ).returning();
-
-  const [relatedOp] = await transaction.select({ date: operations.date }).from(operations).where(eq(operations.id, tx.operationId))
 
   for (const deletedMovement of deletedMovements) {
     const [relatedBalance] = await transaction.select().from(balances).where(eq(balances.id, deletedMovement.balanceId))
@@ -499,9 +497,9 @@ export const undoMovements = async (
           eq(balances.currency, tx.currency),
           balanceQuery,
           or(
-            gt(operations.date, relatedOp!.date),
+            gt(operations.date, tx.operation.date),
             and(
-              eq(operations.date, relatedOp!.date),
+              eq(operations.date, tx.operation.date),
               gt(movements.id, deletedMovement.id)
             )
           )

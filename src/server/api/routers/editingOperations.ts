@@ -103,7 +103,9 @@ export const editingOperationsRouter = createTRPCRouter({
           })
         }
 
-        const deletedMovements = await undoMovements(transaction, { id: newTxObj.id, fromEntity: { id: input.oldTransactionData.fromEntityId }, toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name }, currency: input.oldTransactionData.currency, amount: input.oldTransactionData.amount, operationId: newTxObj.operationId })
+        const [opData] = await transaction.select().from(operations).where(eq(operations.id, newTxObj.operationId))
+
+        const deletedMovements = await undoMovements(transaction, { id: newTxObj.id, fromEntity: { id: input.oldTransactionData.fromEntityId }, toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name }, currency: input.oldTransactionData.currency, amount: input.oldTransactionData.amount, operation: { date: opData!.date } })
 
         const fromEntity = alias(entities, "fromEntity");
         const toEntity = alias(entities, "toEntity");
@@ -310,8 +312,11 @@ export const editingOperationsRouter = createTRPCRouter({
           .where(eq(transactions.operationId, input.opId))
 
         for (const relatedTx of relatedTxs) {
-          const deletedMvs = await undoMovements(transaction, { ...relatedTx.Transactions, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity! })
-          for (const deletedMv of deletedMvs) {
+          const deletedMvs = await undoMovements(transaction, { ...relatedTx.Transactions, operation: { date: input.oldOpDate }, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity! })
+
+          const filteredMovements = deletedMvs.filter(mv => mv.entitiesMovementId === null)
+
+          for (const deletedMv of filteredMovements) {
             await generateMovements(transaction, { ...relatedTx.Transactions, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity!, operation: { date: input.opDate } }, deletedMv.account, deletedMv.direction, deletedMv.type)
           }
         }
