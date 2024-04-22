@@ -56,7 +56,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { opObservations: opObservations ?? undefined, opDate }
+    defaultValues: { opObservations: opObservations ?? undefined, opDate, opTime: moment(opDate).format("HH:mm") }
   });
 
   const { mutateAsync } = api.editingOperations.changeOpData.useMutation({

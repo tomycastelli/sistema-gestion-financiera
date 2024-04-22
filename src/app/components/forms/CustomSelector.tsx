@@ -58,7 +58,7 @@ const CustomSelector = ({
           {isLoading
             ? "Cargando..."
             : field.value
-              ? Array.isArray(field.value) ? field.value.length > 1 ? field.value.length + " " + "elementos" : data.find(d => d.value === field.value[0])?.label : data.find(d => d.value === field.value)?.label
+              ? Array.isArray(field.value) ? field.value.length > 1 ? field.value.length + " " + "elementos" : truncateString(data.find(d => d.value === field.value[0])?.label, 15) : truncateString(data.find(d => d.value === field.value)?.label, 15)
               : placeholder}
         </Button>
       </PopoverTrigger>
@@ -126,7 +126,7 @@ const CustomSelector = ({
                           : "opacity-0",
                       )}
                     />
-                    {truncateString(obj.label, 22)}
+                    {truncateString(obj.label, 40)}
                   </CommandItem>
                 ))}
             </CommandGroup>
