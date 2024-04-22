@@ -3,7 +3,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -55,6 +54,7 @@ import { DataTable } from "./DataTable";
 import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
+import OperationDrawer from "../components/OperationDrawer";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -67,6 +67,9 @@ interface CuentasTableProps {
   accountType: boolean;
   linkId: number | null;
   linkToken: string | null;
+  mainTags: string[];
+  users: RouterOutputs["users"]["getAll"]
+  accountingPeriodDate: Date
 }
 
 const MovementsTable = ({
@@ -80,6 +83,9 @@ const MovementsTable = ({
   accountType,
   linkId,
   linkToken,
+  mainTags,
+  users,
+  accountingPeriodDate
 }: CuentasTableProps) => {
   const utils = api.useContext();
 
@@ -290,8 +296,8 @@ const MovementsTable = ({
       cell: ({ row }) => {
         const movement = row.original;
 
-        return (
-          <DropdownMenu>
+        if (user) return (
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
@@ -300,15 +306,17 @@ const MovementsTable = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <Link
-                href={`/operaciones/gestion/${movement.operationId}`}
-              >
-                <DropdownMenuItem>
+              <OperationDrawer
+                entities={entities}
+                user={user}
+                opId={movement.operationId}
+                accountingPeriodDate={accountingPeriodDate}
+                mainTags={mainTags} users={users}>
+                <Button variant="outline" className="">
 
-                  <p>Ver operación</p>
-                  <Icons.externalLink className="h-4" />
-                </DropdownMenuItem>
-              </Link>
+                  <p>Operación {numberFormatter(movement.operationId)}</p>
+                </Button>
+              </OperationDrawer>
             </DropdownMenuContent>
           </DropdownMenu>
         );

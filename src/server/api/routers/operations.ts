@@ -9,6 +9,7 @@ import {
   getAllPermissions,
   getAllTags,
   getGlobalSettings,
+  logIO
 } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
@@ -127,7 +128,6 @@ export const operationsRouter = createTRPCRouter({
           return { operation, transactions: list };
         });
 
-        await ctx.redis.del(`user_operations:${ctx.user.id}`);
         return response;
       } else {
         const response = await ctx.db.transaction(async (tx) => {
@@ -203,10 +203,6 @@ export const operationsRouter = createTRPCRouter({
           return { operation: op!, transactions: list };
         });
 
-        /*
-
-        await ctx.redis.del(`user_operations:${ctx.user.id}`);
-
         await logIO(
           ctx.dynamodb,
           ctx.user.id,
@@ -214,8 +210,6 @@ export const operationsRouter = createTRPCRouter({
           input,
           response,
         );
-
-      */
 
         return response;
       }

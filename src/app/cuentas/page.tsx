@@ -7,7 +7,7 @@ import EntitySwitcher from "./EntitySwitcher";
 import TabSwitcher from "./TabSwitcher";
 import AccountsTab from "./AccountsTab";
 import TimeMachine from "./TimeMachine";
-import { getAllChildrenTags } from "~/lib/functions";
+import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -34,6 +34,9 @@ const Page = async ({
   const initialEntities = await api.entities.getFiltered.query({
     permissionName: "ACCOUNTS_VISUALIZE",
   });
+
+  const users = await api.users.getAll.query()
+
   const filteredTags = await api.tags.getFiltered.query();
 
   const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
@@ -88,6 +91,12 @@ const Page = async ({
 
   const uiColor = selectedEntityObj ? selectedEntityObj.tag.color ?? undefined : selectedTagObj ? selectedTagObj.color ?? undefined : undefined
 
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
+
+  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
+
+  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+
   return (
     <div>
       <div className="flex w-full flex-row justify-between space-x-8 border-b-2 pb-4"
@@ -119,6 +128,8 @@ const Page = async ({
               {(selectedTab === "cuenta_corriente" ||
                 selectedTab === "caja") && (
                   <AccountsTab
+                    users={users}
+                    accountingPeriodDate={accountingPeriodDate}
                     mainTags={mainTags}
                     uiColor={uiColor}
                     selectedEntity={selectedEntityObj}

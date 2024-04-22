@@ -117,7 +117,7 @@ const Page = async ({
 
   return (
     <div className="flex w-full flex-col">
-      <h1 className="text-4xl font-bold tracking-tighter">Operaciones</h1>
+      <h1 className="text-4xl font-bold tracking-tighter mb-8">Operaciones</h1>
       {user && (
         <>
           <div className="flex flex-col justify-start">

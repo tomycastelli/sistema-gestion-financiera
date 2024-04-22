@@ -7,10 +7,11 @@ import { memo, useState } from "react";
 import CustomPagination from "~/app/components/CustomPagination";
 import OperationButtons from "./OperationButtons";
 import { type User } from "lucia";
-import Link from "next/link";
 import { Status } from "~/server/db/schema";
 import { cn } from "~/lib/utils";
 import { numberFormatter } from "~/lib/functions";
+import OperationDrawer from "~/app/components/OperationDrawer";
+import { Button } from "~/app/components/ui/button";
 
 interface Operation2Props {
   op: RouterOutputs["operations"]["getOperations"]["operations"][number];
@@ -41,9 +42,20 @@ const Operation = memo(({ op, mainTags, operationsQueryInput, user, isInFeed, en
     >
       <div className="flex w-full justify-between items-start">
         <div className="flex flex-col gap-y-1">
-          <Link href={`/operaciones/gestion/${op.id}`} className="hover:scale-105 transition-all">
+          {isInFeed ? (
+            <OperationDrawer
+              entities={entities}
+              user={user}
+              opId={op.id}
+              accountingPeriodDate={accountingPeriodDate}
+              mainTags={mainTags} users={users}>
+              <Button className="hover:scale-105 transition-all focus-visible:ring-transparent border-transparent p-0 w-min" variant="outline">
+                <h1 className="font-semibold text-2xl text-muted-foreground">Operación <span className="text-black dark:text-white">{numberFormatter(op.id)}</span></h1>
+              </Button>
+            </OperationDrawer>
+          ) : (
             <h1 className="font-semibold text-2xl text-muted-foreground">Operación <span className="text-black dark:text-white">{numberFormatter(op.id)}</span></h1>
-          </Link>
+          )}
           <h2 className="font-light text-lg text-muted-foreground">{moment(op.date).format("DD-MM-YYYY HH:mm")}</h2>
           <p className="text-lg font-light">{op.observations}</p>
         </div>

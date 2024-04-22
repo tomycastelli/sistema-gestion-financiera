@@ -17,7 +17,9 @@ const AccountsTable = async ({
   entityTag,
   dayInPast,
   uiColor,
-  mainTags
+  mainTags,
+  users,
+  accountingPeriodDate
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -30,6 +32,8 @@ const AccountsTable = async ({
   dayInPast: string | null;
   uiColor: string | undefined
   mainTags: string[]
+  users: RouterOutputs["users"]["getAll"]
+  accountingPeriodDate: Date
 }) => {
   const user = await getUser();
 
@@ -75,6 +79,9 @@ const AccountsTable = async ({
             Movimientos
           </h1>
           <MovementsTable
+            mainTags={mainTags}
+            users={users}
+            accountingPeriodDate={accountingPeriodDate}
             entities={entities}
             linkId={linkId}
             linkToken={linkToken}
