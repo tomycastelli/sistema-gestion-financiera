@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
 import OperationDrawer from "../components/OperationDrawer";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -379,27 +380,29 @@ const MovementsTable = ({
                 <Command>
                   <CommandInput placeholder="Elegir..." />
                   <CommandEmpty>...</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value="todas"
-                      onSelect={() => setDestinationEntityId(undefined)}
-                    >
-                      Todas
-                    </CommandItem>
-                    {entities
-                      .filter(
-                        (e) => e.id !== entityId && e.tag.name !== entityTag,
-                      )
-                      .map((entity) => (
-                        <CommandItem
-                          key={entity.id}
-                          value={entity.name}
-                          onSelect={() => setDestinationEntityId(entity.id)}
-                        >
-                          {entity.name}
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
+                  <ScrollArea className="h-44 w-48 rounded-md">
+                    <CommandGroup>
+                      <CommandItem
+                        value="todas"
+                        onSelect={() => setDestinationEntityId(undefined)}
+                      >
+                        Todas
+                      </CommandItem>
+                      {entities
+                        .filter(
+                          (e) => e.id !== entityId && e.tag.name !== entityTag,
+                        )
+                        .map((entity) => (
+                          <CommandItem
+                            key={entity.id}
+                            value={entity.name}
+                            onSelect={() => setDestinationEntityId(entity.id)}
+                          >
+                            {entity.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </ScrollArea>
                 </Command>
               </PopoverContent>
             </Popover>
