@@ -117,6 +117,8 @@ const UpdateTransaction = ({
       void utils.operations.getOperations.invalidate();
       void utils.movements.getMovementsByOpId.invalidate()
       void utils.movements.getCurrentAccounts.invalidate()
+      void utils.movements.getBalancesByEntities.invalidate()
+      void utils.movements.getBalancesByEntitiesForCard.invalidate()
     },
     onSuccess(data) {
       setIsOpen(false);
@@ -252,7 +254,7 @@ const UpdateTransaction = ({
                       <p>
                         Cargado por:{" "}
                         <span>
-                          {tx.transactionMetadata?.uploadedByUser.name}
+                          {tx.transactionMetadata?.uploadedByUser?.name}
                         </span>{" "}
                       </p>
                       {tx.transactionMetadata?.confirmedByUser && (

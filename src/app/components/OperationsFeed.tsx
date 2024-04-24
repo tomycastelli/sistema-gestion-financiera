@@ -102,8 +102,11 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
     onSettled() {
       resetTxIds();
       void utils.operations.getOperations.invalidate();
-      void utils.movements.getMovementsByOpId.invalidate();
-      void utils.movements.getCurrentAccounts.invalidate();
+      void utils.movements.getMovementsByOpId.invalidate()
+      void utils.movements.getCurrentAccounts.invalidate()
+      void utils.movements.getBalancesByEntities.invalidate()
+      void utils.movements.getBalancesByEntitiesForCard.invalidate()
+
     },
     onSuccess(data) {
       const title = data.length > 1 ? data.length.toString() + " transacciones actualizadas" : " 1 transacción actualizada"

@@ -107,7 +107,6 @@ export const filesRouter = createTRPCRouter({
             ${!input.toEntityId ? (
             "<th>Cliente</th>"
           ) : ""}
-            <th>Observaciones</th>
             <th>Entrada</th>
             <th>Salida</th>
             <th>Saldo</th>
@@ -119,12 +118,14 @@ export const filesRouter = createTRPCRouter({
               (mv, index) =>
                 `<tr key="${index}">
                   <td>${mv.fecha}</td>
-                  <td>${mv.detalle}</td>
+                  <td>
+                    <p>${mv.detalle}</p>
+                    <p class="observations-text">${mv.observaciones}</p>
+                  </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? (
                   `<td>${mv.cliente}</td>`
                 ) : ""}
-                  <td>${mv.observaciones}</td>
                   <td>${mv.entrada}</td>
                   <td>${mv.salida}</td>
                   <td>${mv.saldo}</td>
@@ -138,13 +139,17 @@ export const filesRouter = createTRPCRouter({
         const cssString =
           `.table-container{margin-top: 0.5rem;}
           .table{width: 100%; border-collapse: collapse;}
-          .table-header{font-size: 1rem; font-weight: 600;}
+          .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
           .table th,
           .table td {
           border-top: 0.5px solid #000; 
           border-bottom: 0.5px solid #000
           padding: 0.75rem; 
           text-align: right
+          }
+          .observations-text{
+            font-size: 0.75rem;
+            font-weight: 200;
           }
           .table-body{font-size: 0.75rem;}
           .header-div{width: 100%; text-align: center;} 
@@ -265,7 +270,7 @@ export const filesRouter = createTRPCRouter({
             </div>`;
 
         const cssString =
-          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 0.75rem; font-weight: 400; align-items: center; background-color: hsl(215.4, 16.3%, 66.9%);} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
+          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 1rem; font-weight: 600; align-items: center;} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
 
         try {
           await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {

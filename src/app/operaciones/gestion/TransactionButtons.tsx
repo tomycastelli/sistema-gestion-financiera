@@ -96,7 +96,10 @@ const TransactionButtons: FC<TransactionButtonsProps> = ({ tx, isInFeed, operati
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
-        void utils.movements.getMovementsByOpId.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate()
+        void utils.movements.getCurrentAccounts.invalidate()
+        void utils.movements.getBalancesByEntities.invalidate()
+        void utils.movements.getBalancesByEntitiesForCard.invalidate()
       },
       onSuccess(_, variables) {
         toast.success(`Transacción ${variables.transactionId} anulada`)
@@ -115,8 +118,8 @@ const TransactionButtons: FC<TransactionButtonsProps> = ({ tx, isInFeed, operati
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se creará una transacción y movimientos para anular la
-              transacción actual
+              Se crearán movimientos para anular la
+              transacción
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

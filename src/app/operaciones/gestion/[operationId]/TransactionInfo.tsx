@@ -60,7 +60,7 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
               Cambio:{" "}
               <span className="font-semibold">
                 {// @ts-ignore
-                  tx.transactionMetadata?.metadata.exchangeRate.toString()}
+                  tx.transactionMetadata.metadata.exchangeRate.toString()}
               </span>
             </p>
           )
@@ -81,14 +81,14 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
         {tx.transactionMetadata?.confirmedByUser && (
           <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
             <p className="font-semibold">
-              {moment(tx.transactionMetadata.confirmedDate).format(
+              {moment(tx.transactionMetadata?.confirmedDate).format(
                 "DD-MM-YYYY HH:mm:ss",
               )}
             </p>
             <p>
               Confirmado por:{" "}
               <span className="font-semibold">
-                {tx.transactionMetadata?.confirmedByUser?.name}
+                {tx.transactionMetadata.confirmedByUser?.name}
               </span>{" "}
             </p>
           </div>
@@ -96,14 +96,14 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
         {tx.transactionMetadata?.cancelledByUser?.name && (
           <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
             <p className="font-semibold">
-              {moment(tx.transactionMetadata.cancelledDate).format(
+              {moment(tx.transactionMetadata?.cancelledDate).format(
                 "DD-MM-YYYY HH:mm:ss",
               )}
             </p>
             <p>
               Cancelado por:{" "}
               <span className="font-semibold">
-                {tx.transactionMetadata?.cancelledByUser.name}
+                {tx.transactionMetadata?.cancelledByUser?.name}
               </span>{" "}
             </p>
           </div>

@@ -552,3 +552,5 @@ export const returnedTransactionsSchema = createSelectSchema(transactions);
 export const returnedOperationsSchema = createSelectSchema(operations)
 export const returnedEntitiesSchema = createSelectSchema(entities)
 export const returnedTransactionsMetadataSchema = createSelectSchema(transactionsMetadata)
+export const returnedUserSchema = createSelectSchema(user)
+export const returnedTagSchema = createSelectSchema(tag)
