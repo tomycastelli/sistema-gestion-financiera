@@ -100,30 +100,18 @@ export const operationsRouter = createTRPCRouter({
 
             list.push(insertedTx);
 
-            if (
-              cashAccountOnlyTypes.has(insertedTx.type) ||
-              insertedTx.type === "pago por cta cte"
-            ) {
-              await generateMovements(
-                tx,
-                { ...insertedTx, operation: operation },
-                true,
-                1,
-                "upload",
-              );
-            }
-            if (
-              !cashAccountOnlyTypes.has(insertedTx.type) ||
-              insertedTx.type === "pago por cta cte"
-            ) {
-              await generateMovements(
-                tx,
-                { ...insertedTx, operation: operation },
-                false,
-                -1,
-                "upload",
-              );
-            }
+            const txForMovement = { ...insertedTx, operation }
+
+            if (cashAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, true, 1, "upload")
+            } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, false, 1, "upload")
+            } else if (insertedTx.type === "pago por cta cte") {
+              await generateMovements(tx, txForMovement, false, 1, "upload")
+              await generateMovements(tx, txForMovement, true, 1, "upload")
+            } else if (insertedTx.type === "cambio") (
+              await generateMovements(tx, txForMovement, false, -1, "upload")
+            )
           }
           return { operation, transactions: list };
         });
@@ -164,9 +152,6 @@ export const operationsRouter = createTRPCRouter({
 
             const insertedTx = { ...insertedTxResponse!.Transactions, fromEntity: insertedTxResponse!.fromEntity!, toEntity: insertedTxResponse!.toEntity! }
 
-
-            list.push(insertedTx);
-
             await tx.insert(transactionsMetadata).values({
               transactionId: insertedTx.id,
               uploadedBy: ctx.user.id,
@@ -174,30 +159,20 @@ export const operationsRouter = createTRPCRouter({
               metadata: txToInsert.metadata,
             });
 
-            if (
-              cashAccountOnlyTypes.has(insertedTx.type) ||
-              insertedTx.type === "pago por cta cte"
-            ) {
-              await generateMovements(
-                tx,
-                { ...insertedTx, operation: { date: op!.date } },
-                true,
-                1,
-                "upload",
-              );
-            }
-            if (
-              !cashAccountOnlyTypes.has(insertedTx.type) ||
-              insertedTx.type === "pago por cta cte"
-            ) {
-              await generateMovements(
-                tx,
-                { ...insertedTx, operation: { date: op!.date } },
-                false,
-                -1,
-                "upload",
-              );
-            }
+            list.push(insertedTx);
+
+            const txForMovement = { ...insertedTx, operation: { date: op!.date } }
+
+            if (cashAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, true, 1, "upload")
+            } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, false, 1, "upload")
+            } else if (insertedTx.type === "pago por cta cte") {
+              await generateMovements(tx, txForMovement, false, 1, "upload")
+              await generateMovements(tx, txForMovement, true, 1, "upload")
+            } else if (insertedTx.type === "cambio") (
+              await generateMovements(tx, txForMovement, false, -1, "upload")
+            )
           }
 
           return { operation: op!, transactions: list };
@@ -460,7 +435,7 @@ export const operationsRouter = createTRPCRouter({
             ? true
             : false;
 
-        const isCreateAllowed = isInPeriod && userPermissions?.find(
+        const isCreateAllowed = isInPeriod && !op.transactions.find(tx => tx.status === Status.enumValues[0]) && userPermissions?.find(
           (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
         )
           ? true
@@ -544,7 +519,7 @@ export const operationsRouter = createTRPCRouter({
                   ? true
                   : false;
 
-            const isValidateAllowed = isInPeriod && !currentAccountOnlyTypes.has(tx.type) && tx.status === Status.enumValues[2] &&
+            const isValidateAllowed = isInPeriod && tx.type === "cambio" && tx.status === Status.enumValues[2] &&
               (userPermissions?.some(
                 (p) =>
                   p.name === "ADMIN" ||

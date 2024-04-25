@@ -28,10 +28,13 @@ const Page = async () => {
 
   const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
 
+  const users = await api.users.getAll.query()
+
   return (
     <div className="h-full">
       {user && (
         <AddOperation
+          users={users}
           mainTags={mainTags}
           accountingPeriodDate={accountingPeriodDate}
           tags={tags}

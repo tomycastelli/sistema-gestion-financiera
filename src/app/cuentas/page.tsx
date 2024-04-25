@@ -147,6 +147,10 @@ const Page = async ({
                 <div suppressHydrationWarning={true}>
                   {initialBalancesForCard && (
                     <SummarizedBalances
+                      accountingPeriodDate={accountingPeriodDate}
+                      entities={initialEntities}
+                      user={user}
+                      users={users}
                       mainTags={mainTags}
                       initialBalancesInput={{
                         linkToken: linkToken,

@@ -181,7 +181,7 @@ const OperationButtons: FC<OperationButtonsProps> = ({ op, operationsQueryInput,
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() =>
                   validateAsync({
@@ -208,7 +208,7 @@ const OperationButtons: FC<OperationButtonsProps> = ({ op, operationsQueryInput,
               </AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setInitialOperationStore({
@@ -238,17 +238,16 @@ const OperationButtons: FC<OperationButtonsProps> = ({ op, operationsQueryInput,
             <AlertDialogHeader>
               <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se crearán {op.transactions.length} transacciones y sus
-                movimientos para anular las transacciones actuales
+                Se crearán movimientos invertidos para anular las transacciones actuales
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => cancelAsync({ operationId: op.id })}
                 className="bg-red"
               >
-                Anular
+                Cancelar
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

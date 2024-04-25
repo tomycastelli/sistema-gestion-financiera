@@ -2,7 +2,6 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
-import Link from "next/link";
 import { useEffect, type FC } from "react";
 import { generateTableData, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
@@ -10,7 +9,6 @@ import { currenciesOrder, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
-import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -22,12 +20,13 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { DataTable } from "./DataTable";
 import LoadingAnimation from "../components/LoadingAnimation";
+import OperationDrawer from "../components/OperationDrawer";
+import { type User } from "lucia";
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -39,6 +38,10 @@ interface SummarizedBalancesProps {
   uiColor: string | undefined;
   dayInPast: string | undefined
   mainTags: string[]
+  entities: RouterOutputs["entities"]["getAll"];
+  user: User | null;
+  users: RouterOutputs["users"]["getAll"]
+  accountingPeriodDate: Date
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -50,7 +53,11 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   tags,
   uiColor,
   dayInPast,
-  mainTags
+  mainTags,
+  entities,
+  user,
+  users,
+  accountingPeriodDate
 }) => {
   const {
     selectedCurrency,
@@ -206,28 +213,31 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       cell: ({ row }) => {
         const movement = row.original;
 
-        return (
-          <DropdownMenu>
+        if (user) return (
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Abrir menú</span>
+                <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <Link
-                prefetch={false}
-                href={`/operaciones/gestion/${movement.operationId}`}
-              >
-                <DropdownMenuItem>
-                  <p>Ver operación</p>
-                  <Icons.externalLink className="h-4" />
-                </DropdownMenuItem>
-              </Link>
+              <OperationDrawer
+                entities={entities}
+                user={user}
+                opId={movement.operationId}
+                accountingPeriodDate={accountingPeriodDate}
+                mainTags={mainTags} users={users}>
+                <Button variant="outline" className="">
+
+                  <p>Operación {numberFormatter(movement.operationId)}</p>
+                </Button>
+              </OperationDrawer>
             </DropdownMenuContent>
           </DropdownMenu>
         );
+
       },
     },
   ];

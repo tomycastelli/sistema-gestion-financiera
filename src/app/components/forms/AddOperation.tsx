@@ -4,7 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { type User } from "lucia";
 import moment from "moment";
 import dynamic from "next/dynamic";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
 import { useInitialOperationStore } from "~/stores/InitialOperationStore";
@@ -40,6 +40,8 @@ import { Switch } from "../ui/switch";
 import { Status } from "~/server/db/schema";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import { Textarea } from "../ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { ScrollArea } from "../ui/scroll-area";
 const CambioForm = dynamic(() => import("./CambioForm"));
 const CableForm = dynamic(() => import("./CableForm"));
 const FlexibleTransactionsForm = dynamic(
@@ -56,6 +58,7 @@ interface AddOperationProps {
   tags: RouterOutputs["tags"]["getAll"];
   accountingPeriodDate: Date
   mainTags: string[]
+  users: RouterOutputs["users"]["getAll"]
 }
 
 const AddOperation = ({
@@ -63,14 +66,14 @@ const AddOperation = ({
   user,
   initialOperations,
   accountingPeriodDate,
-  mainTags
+  mainTags,
+  users
 }: AddOperationProps) => {
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState<string>("flexible");
   const [txsPage, setTxsPage] = useState<number>(1)
 
   const searchParams = useSearchParams();
-  const router = useRouter()
 
   const selectedOpIdString = searchParams.get("operacion");
   const selectedOpId = selectedOpIdString ? parseInt(selectedOpIdString) : null;
@@ -149,12 +152,8 @@ const AddOperation = ({
           ? transaccionesCargadas.toString() +
           ` transacciones cargadas a la operación ${data.operation?.id}`
           : transaccionesCargadas +
-          ` transaccion cargada a la operación ${data.operation?.id}`, {
-          action: {
-            label: "Ir a operación",
-            onClick: () => router.push(`/operaciones/gestion/${data.operation?.id}`)
-          }
-        });
+          ` transaccion cargada a la operación ${data.operation?.id}`
+        );
       }
     },
   );
@@ -168,6 +167,25 @@ const AddOperation = ({
     );
 
   const tabs = ["flexible", "cambio", "cable"];
+
+  const transactionInfo = [
+    {
+      title: "Cambio",
+      description: "La transacción generá un movimiento en Cuenta Corriente con dirección contraria. Al confirmar, se anula la Cuenta Corriente y se generará un movimiento en Caja con la misma dirección.",
+    },
+    {
+      title: "Cable, Fee, Cuenta corriente",
+      description: "La transacción generará un movimiento en Cuenta Corriente con la misma dirección."
+    },
+    {
+      title: "Ingreso, Gasto",
+      description: "La transacción generará un movimiento en Caja con la misma dirección"
+    },
+    {
+      title: "Pago por cuenta corriente",
+      description: "La transacción generará dos movimientos con la misma dirección, uno en Cuenta Corriente y otro en Caja"
+    }
+  ]
 
   return (
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
@@ -377,6 +395,24 @@ const AddOperation = ({
                         Añadí una transacción para continuar{" "}
                       </p>
                     )}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex flex-row gap-x-2 justify-center items-center">
+                          <Icons.info className="h-5" />
+                          <p>Tipos de transacción</p>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent side="bottom" className="w-52 h-80">
+                        <ScrollArea className="w-full h-full flex flex-col justify-start">
+                          {transactionInfo.map(info => (
+                            <div key={info.title} className="flex flex-col mb-2 justify-start">
+                              <p className="text-md font-semibold">{info.title}</p>
+                              <p className="text-md text-start font-light">{info.description}</p>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
                   </CardFooter>
                 </>
               )}
@@ -462,6 +498,11 @@ const AddOperation = ({
       </div>
       <div className="lg:col-span-1">
         <UploadedUserOperations
+          user={user}
+          entities={entities}
+          mainTags={mainTags}
+          users={users}
+          accountingPeriodDate={accountingPeriodDate}
           operations={operations}
           ref={parent}
           isLoading={isOperationsLoading}

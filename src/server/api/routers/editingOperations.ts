@@ -233,7 +233,6 @@ export const editingOperationsRouter = createTRPCRouter({
             input.operationId
               ? eq(transactions.operationId, input.operationId)
               : undefined,
-
           ),
           with: {
             operation: true,

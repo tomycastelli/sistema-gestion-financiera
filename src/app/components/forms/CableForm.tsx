@@ -112,11 +112,11 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
         txId: 0,
         type: "fee",
         fromEntityId:
-          parsedEmittingFee > 0
+          parsedEmittingFee < 0
             ? parsedEmittingEntity
             : parsedMiddleEntity,
         toEntityId:
-          parsedEmittingFee < 0
+          parsedEmittingFee > 0
             ? parsedEmittingEntity
             : parsedMiddleEntity,
         currency: values.currency,
@@ -134,11 +134,11 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
         txId: 0,
         type: "fee",
         fromEntityId:
-          parsedReceivingFee < 0
+          parsedReceivingFee > 0
             ? parsedReceivingEntity
             : parsedMiddleEntity,
         toEntityId:
-          parsedReceivingFee > 0
+          parsedReceivingFee < 0
             ? parsedReceivingEntity
             : parsedMiddleEntity,
         currency: values.currency,

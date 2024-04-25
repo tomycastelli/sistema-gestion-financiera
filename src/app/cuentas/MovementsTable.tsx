@@ -301,7 +301,7 @@ const MovementsTable = ({
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Abrir menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -313,7 +313,7 @@ const MovementsTable = ({
                 opId={movement.operationId}
                 accountingPeriodDate={accountingPeriodDate}
                 mainTags={mainTags} users={users}>
-                <Button variant="outline" className="">
+                <Button variant="outline">
 
                   <p>Operación {numberFormatter(movement.operationId)}</p>
                 </Button>

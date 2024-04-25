@@ -64,7 +64,7 @@ const Transaction = memo(({ tx, mainTags, operationsQueryInput, entities, isInFe
           </p>
         </div>
         <div className="col-span-1 flex lg:justify-end justify-center items-center">
-          <TransactionButtons tx={tx} operationsQueryInput={operationsQueryInput} entities={entities} isInFeed={isInFeed} />
+          <TransactionButtons tx={tx} operationsQueryInput={operationsQueryInput} entities={entities} />
         </div>
       </div>
     </div>
