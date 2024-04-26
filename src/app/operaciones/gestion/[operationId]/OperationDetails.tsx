@@ -165,8 +165,8 @@ const OperationDetails: FC<OperationDetailsProps> = ({
                 Movimientos
               </h1>
               <DetailMovementsTable
+                movements={initialMovements}
                 operationDate={data.operations[0].date}
-                initialMovements={initialMovements}
                 operationId={parseInt(operationId)}
               />
             </div>
