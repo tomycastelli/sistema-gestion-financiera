@@ -162,11 +162,13 @@ const FilterOperationsForm = ({
           if (currentValue.length > 0) {
             currentValue.forEach(() => {
               updatedSearchParams.delete(paramName);
+              updatedSearchParams.set("pagina", "1")
             });
           }
         } else {
           if (!arraysEqual(currentValue, paramValue)) {
             updatedSearchParams.delete(paramName);
+            updatedSearchParams.set("pagina", "1")
             if (Array.isArray(paramValue)) {
               paramValue.forEach(value => {
                 updatedSearchParams.append(paramName, value);

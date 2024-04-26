@@ -485,11 +485,8 @@ export const generateTableData = (
   const tableData = movements
     .map((movement) => {
       if (entityId) {
-        // Esto indica, si es 1, que gano, si es -1, que pierdo
-        const direction =
-          entityId === movement.transaction.fromEntityId
-            ? -movement.direction
-            : movement.direction;
+        const direction = movementBalanceDirection(movement.transaction.fromEntityId, movement.transaction.toEntityId, movement.direction)
+
         const selectedEntity =
           entityId === movement.transaction.fromEntityId
             ? movement.transaction.fromEntity
@@ -515,7 +512,6 @@ export const generateTableData = (
           currency: movement.transaction.currency,
           ingress: direction === 1 ? movement.transaction.amount : 0,
           egress: direction === -1 ? movement.transaction.amount : 0,
-          method: movement.transaction.method,
           status: movement.transaction.status,
           txType: movement.transaction.type,
           metadata: movement.transaction.transactionMetadata?.metadata,
@@ -527,14 +523,6 @@ export const generateTableData = (
       } else {
         const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
         // Si existe movement.entitiesMovementId, el pov es el tagname
-
-        // Esto indica, si es 1, que gano, si es -1, que pierdo
-        const direction = allChildrenTags.includes(
-          movement.transaction.fromEntity.tagName,
-        )
-          ? -movement.direction
-          : movement.direction;
-
         const selectedEntity = allChildrenTags.includes(
           movement.transaction.fromEntity.tagName,
         )
@@ -545,6 +533,11 @@ export const generateTableData = (
         )
           ? movement.transaction.toEntity
           : movement.transaction.fromEntity;
+
+        // Si movement.direction es 1, hago caso al flujo de from a to de la transaccion
+        // Si movement.direction es -1, invierto eso
+        // Como identifico que el to es el e
+        const direction = movement.entitiesMovementId ? selectedEntity.id === movement.transaction.toEntityId ? movement.direction : (-1) * movement.direction : movementBalanceDirection(movement.transaction.fromEntityId, movement.transaction.toEntityId, movement.direction)
 
         return {
           id: movement.id,
@@ -561,11 +554,10 @@ export const generateTableData = (
           currency: movement.transaction.currency,
           ingress: direction === 1 ? movement.transaction.amount : 0,
           egress: direction === -1 ? movement.transaction.amount : 0,
-          method: movement.transaction.method,
           status: movement.transaction.status,
           txType: movement.transaction.type,
           metadata: movement.transaction.transactionMetadata?.metadata,
-          balance: !!movement.entitiesMovementId || selectedEntity.id < otherEntity.id ? movement.balance : -movement.balance
+          balance: (!!movement.entitiesMovementId || selectedEntity.id < otherEntity.id) ? movement.balance : -movement.balance
         };
       }
     })

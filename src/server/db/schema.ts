@@ -167,7 +167,6 @@ export const transactions = pgTable(
       }),
     currency: text("currency").notNull(),
     amount: doublePrecision("amount").notNull(),
-    method: text("method"),
     observations: text("observations"),
     status: Status("status").default("pending").notNull(),
   },

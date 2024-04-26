@@ -2,31 +2,23 @@ import { type ColumnDef } from "@tanstack/react-table";
 import moment from "moment";
 import { useState, type FC } from "react";
 import CustomPagination from "~/app/components/CustomPagination";
-import LoadingAnimation from "~/app/components/LoadingAnimation";
 import { DataTable } from "~/app/cuentas/DataTable";
 import { numberFormatter } from "~/lib/functions";
 import { mvTypeFormatting } from "~/lib/variables";
-import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface DetailMovementsTableProps {
   operationDate: RouterOutputs["operations"]["getOperations"]["operations"][number]["date"];
-  initialMovements: RouterOutputs["movements"]["getMovementsByOpId"];
+  movements: RouterOutputs["movements"]["getMovementsByOpId"];
   operationId: number
 }
 
 const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
-  initialMovements,
+  movements,
   operationDate,
-  operationId
 }) => {
   const [page, setPage] = useState<number>(1)
   const pageSize = 12
-
-  const { data: movements, isFetching } = api.movements.getMovementsByOpId.useQuery({ operationId }, {
-    initialData: initialMovements,
-    refetchOnWindowFocus: false
-  })
 
   const tableData = movements.flatMap((movement) => ({
     id: movement.id,
@@ -106,23 +98,19 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
   ];
 
   return (
-    !isFetching ? (
-      <div className="flex flex-col justify-start gap-y-2">
-        <DataTable
-          columns={columns}
-          data={tableData}
-        />
-        <CustomPagination page={page}
-          changePageState={setPage}
-          itemName="movimientos"
-          pageSize={pageSize}
-          totalCount={movements.length}
-        />
-      </div>
-    ) : (
-      <LoadingAnimation text="Cargando movimientos" />
-    )
-  );
+    <div className="flex flex-col justify-start gap-y-2">
+      <DataTable
+        columns={columns}
+        data={tableData}
+      />
+      <CustomPagination page={page}
+        changePageState={setPage}
+        itemName="movimientos"
+        pageSize={pageSize}
+        totalCount={movements.length}
+      />
+    </div>
+  )
 };
 
 export default DetailMovementsTable;

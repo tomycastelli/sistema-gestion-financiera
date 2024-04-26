@@ -10,7 +10,7 @@ const Page = async () => {
 
   const user = await getUser();
 
-  const operations = await api.operations.getOperationsByUser.query();
+  const operations = await api.operations.getOperations.query({ limit: 5, page: 1, uploadedById: user!.id });
 
   const userPermissions = await api.users.getAllPermissions.query();
 

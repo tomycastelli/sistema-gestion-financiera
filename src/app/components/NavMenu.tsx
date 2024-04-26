@@ -24,7 +24,7 @@ const NavMenu: FC<NavMenuProps> = ({ menuItems }) => {
               <ul className="flex w-[300px] gap-y-2 p-4 md:w-[400px] flex-col lg:w-[500px]">
                 {item.links.map(link => (
                   <li key={link.name}>
-                    <Link href={link.href} className="flex flex-col justify-start p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Link href={link.href} className="flex flex-col justify-start p-2 rounded-md transition-all hover:bg-gray-100 dark:hover:bg-gray-800">
                       <h2 className="text-sm font-medium leading-none">{link.name}</h2>
                       <p className="line-clamp-2 font-light text-sm leading-snug text-muted-foreground">
                         {link.description}

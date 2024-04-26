@@ -74,7 +74,7 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
           <p>
             Cargado por:{" "}
             <span className="font-semibold">
-              {tx.transactionMetadata?.uploadedByUser.name}
+              {tx.transactionMetadata?.uploadedByUser?.name}
             </span>{" "}
           </p>
         </div>

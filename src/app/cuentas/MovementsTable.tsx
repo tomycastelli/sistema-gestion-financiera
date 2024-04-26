@@ -56,6 +56,7 @@ import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
 import OperationDrawer from "../components/OperationDrawer";
 import { ScrollArea } from "../components/ui/scroll-area";
+import moment from "moment";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -311,6 +312,7 @@ const MovementsTable = ({
                 entities={entities}
                 user={user}
                 opId={movement.operationId}
+                opDate={moment(movement.date, "DD-MM-YYYY HH:mm").toDate()}
                 accountingPeriodDate={accountingPeriodDate}
                 mainTags={mainTags} users={users}>
                 <Button variant="outline">

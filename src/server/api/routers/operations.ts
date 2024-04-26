@@ -17,8 +17,16 @@ import {
   entities,
   movements,
   operations,
+  returnedEntitiesSchema,
+  returnedOperationsSchema,
+  returnedTagSchema,
+  returnedTransactionsMetadataSchema,
+  returnedTransactionsSchema,
+  returnedUserSchema,
+  tag,
   transactions,
   transactionsMetadata,
+  user,
 } from "~/server/db/schema";
 import {
   createTRPCRouter,
@@ -136,7 +144,6 @@ export const operationsRouter = createTRPCRouter({
                 toEntityId: txToInsert.toEntityId,
                 currency: txToInsert.currency,
                 amount: txToInsert.amount,
-                method: txToInsert.method,
                 status:
                   cashAccountOnlyTypes.has(txToInsert.type) ||
                     txToInsert.type === "pago por cta cte"
@@ -326,7 +333,6 @@ export const operationsRouter = createTRPCRouter({
           )
           : undefined,
         input.currency ? eq(transactions.currency, input.currency) : undefined,
-        input.method ? eq(transactions.method, input.method) : undefined,
         input.status ? eq(transactions.status, input.status) : undefined,
         input.amount ? eq(transactions.amount, input.amount) : undefined,
         input.amountIsGreater
@@ -341,63 +347,123 @@ export const operationsRouter = createTRPCRouter({
       );
 
       const response = await ctx.db.transaction(async (transaction) => {
-        const idsThatSatisfyQuery = transaction
-          .selectDistinct({ id: operations.id })
+        const query = transaction
+          .selectDistinct({ operationId: transactions.operationId })
+          .from(transactions)
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .where(and(transactionsWhere, operationsWhere))
+          .orderBy(desc(transactions.operationId))
+          .limit(sql.placeholder("queryLimit"))
+          .offset(sql.placeholder("queryOffset"))
+
+        const fromEntity = alias(entities, "fromEntity")
+        const toEntity = alias(entities, "toEntity")
+        const operatorEntity = alias(entities, "operatorEntity")
+
+        const fromTag = alias(tag, "fromTag")
+        const toTag = alias(tag, "toTag")
+        const operatorTag = alias(tag, "operatorTag")
+
+        const uploadedByUser = alias(user, "uploadedByUser")
+        const confirmedByUser = alias(user, "confirmedByUser")
+        const cancelledByUser = alias(user, "cancelledByUser")
+
+        const mainQuery = transaction.select()
           .from(operations)
           .leftJoin(transactions, eq(operations.id, transactions.operationId))
-          .where(and(operationsWhere, transactionsWhere)).prepare("ids_that_satisfy_query");
+          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+          .leftJoin(fromTag, eq(fromEntity.tagName, fromTag.name))
+          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+          .leftJoin(toTag, eq(toEntity.tagName, toTag.name))
+          .leftJoin(operatorEntity, eq(transactions.operatorEntityId, operatorEntity.id))
+          .leftJoin(operatorTag, eq(operatorEntity.tagName, operatorTag.name))
+          .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
+          .leftJoin(uploadedByUser, eq(transactionsMetadata.uploadedBy, uploadedByUser.id))
+          .leftJoin(confirmedByUser, eq(transactionsMetadata.confirmedBy, confirmedByUser.id))
+          .leftJoin(cancelledByUser, eq(transactionsMetadata.cancelledBy, cancelledByUser.id))
+          .where(inArray(operations.id, query)).orderBy(desc(operations.id)).prepare("operations_query")
 
-        const idsThatSatisfy = await idsThatSatisfyQuery.execute()
-        const operationsIds = idsThatSatisfy.length > 0
-          ? idsThatSatisfy.map((obj) => obj.id)
-          : [0]
+        const operationsData = await mainQuery.execute({ queryLimit: input.limit, queryOffset: (input.page - 1) * input.limit })
 
+        const nestedOperationType = returnedOperationsSchema.extend({
+          transactions: returnedTransactionsSchema.extend({
+            fromEntity: returnedEntitiesSchema.extend({
+              tag: returnedTagSchema
+            }),
+            toEntity: returnedEntitiesSchema.extend({
+              tag: returnedTagSchema
+            }),
+            operatorEntity: returnedEntitiesSchema.extend({
+              tag: returnedTagSchema
+            }),
+            transactionMetadata: returnedTransactionsMetadataSchema.extend({
+              history: z.unknown(),
+              metadata: z.unknown(),
+              uploadedByUser: returnedUserSchema.extend({
+                permissions: z.unknown()
+              }),
+              confirmedByUser: returnedUserSchema.extend({
+                permissions: z.unknown()
+              }),
+              cancelledByUser: returnedUserSchema.extend({
+                permissions: z.unknown()
+              }),
+            })
+          }).array()
+        })
 
-        const operationsPreparedQuery = transaction.query.operations
-          .findMany({
-            where: inArray(
-              operations.id,
-              operationsIds,
-            ),
-            with: {
-              transactions: {
-                with: {
-                  transactionMetadata: {
-                    with: {
-                      uploadedByUser: true,
-                      confirmedByUser: true,
-                      cancelledByUser: true,
-                    },
-                  },
-                  fromEntity: {
-                    with: {
-                      tag: true,
-                    },
-                  },
-                  toEntity: {
-                    with: {
-                      tag: true,
-                    },
-                  },
-                  operatorEntity: {
-                    with: {
-                      tag: true,
-                    },
-                  },
+        const nestedOperations = operationsData.reduce((acc, operation) => {
+          const existingOperation = acc.find(storedOp => storedOp.id === operation.Operations.id)
+
+          if (!existingOperation) {
+            const newOperation = {
+              ...operation.Operations,
+              transactions: [{
+                ...operation.Transactions!,
+                transactionMetadata: {
+                  ...operation.TransactionsMetadata!,
+                  uploadedByUser: operation.uploadedByUser!,
+                  confirmedByUser: operation.confirmedByUser!,
+                  cancelledByUser: operation.cancelledByUser!
                 },
-              },
-            },
-            limit: sql.placeholder("oLimit"),
-            offset: sql.placeholder("oOffset"),
-            orderBy: desc(operations.id),
-          })
-          .prepare("operations_query");
+                fromEntity: { ...operation.fromEntity!, tag: operation.fromTag! },
+                toEntity: { ...operation.toEntity!, tag: operation.toTag! },
+                operatorEntity: { ...operation.operatorEntity!, tag: operation.operatorTag! },
+              }]
+            }
 
-        const operationsQuery = await operationsPreparedQuery.execute({
-          oLimit: input.limit,
-          oOffset: (input.page - 1) * input.limit,
-        });
-        return { operationsQuery, idsThatSatisfy }
+            acc.push(newOperation)
+          } else {
+            const newTransaction = {
+              ...operation.Transactions!,
+              transactionMetadata: {
+                ...operation.TransactionsMetadata!,
+                uploadedByUser: operation.uploadedByUser!,
+                confirmedByUser: operation.confirmedByUser!,
+                cancelledByUser: operation.cancelledByUser!
+              },
+              fromEntity: { ...operation.fromEntity!, tag: operation.fromTag! },
+              toEntity: { ...operation.toEntity!, tag: operation.toTag! },
+              operatorEntity: { ...operation.operatorEntity!, tag: operation.operatorTag! },
+            }
+
+            existingOperation.transactions.push(newTransaction)
+          }
+
+          return acc
+        }, [] as z.infer<typeof nestedOperationType>[])
+
+        const countTransactionsQuery = transaction
+          .selectDistinct({ operationId: transactions.operationId })
+          .from(transactions)
+          .where(transactionsWhere)
+          .orderBy(desc(transactions.operationId))
+
+        const [countQuery] = await transaction.select({ count: count(operations.id) })
+          .from(operations)
+          .where(and(operationsWhere, inArray(operations.id, countTransactionsQuery)))
+
+        return { operationsQuery: nestedOperations, idsThatSatisfy: countQuery!.count }
       })
 
       const userPermissions = await getAllPermissions(
@@ -549,7 +615,7 @@ export const operationsRouter = createTRPCRouter({
 
       return {
         operations: operationsWithPermissions,
-        count: response.idsThatSatisfy.length,
+        count: response.idsThatSatisfy,
       };
     }),
   insights: protectedProcedure

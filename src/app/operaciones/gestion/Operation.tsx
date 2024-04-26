@@ -13,7 +13,7 @@ import { numberFormatter } from "~/lib/functions";
 import OperationDrawer from "~/app/components/OperationDrawer";
 import { Button } from "~/app/components/ui/button";
 
-interface Operation2Props {
+interface OperationProps {
   op: RouterOutputs["operations"]["getOperations"]["operations"][number];
   mainTags: string[]
   operationsQueryInput: RouterInputs["operations"]["getOperations"]
@@ -24,7 +24,7 @@ interface Operation2Props {
   accountingPeriodDate: Date
 }
 
-const Operation = memo(({ op, mainTags, operationsQueryInput, user, isInFeed, entities, users, accountingPeriodDate }: Operation2Props) => {
+const Operation = memo(({ op, mainTags, operationsQueryInput, user, isInFeed, entities, users, accountingPeriodDate }: OperationProps) => {
   const pageSize = 8
   const [page, setPage] = useState<number>(1)
 
@@ -46,7 +46,7 @@ const Operation = memo(({ op, mainTags, operationsQueryInput, user, isInFeed, en
             <OperationDrawer
               entities={entities}
               user={user}
-              opId={op.id}
+              op={op}
               accountingPeriodDate={accountingPeriodDate}
               mainTags={mainTags} users={users}>
               <Button className="hover:scale-105 transition-all focus-visible:ring-transparent border-transparent p-0 w-min" variant="outline">

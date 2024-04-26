@@ -13,6 +13,7 @@ import {
   not,
   gte,
   isNull,
+  count,
 } from "drizzle-orm";
 import { alias, type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -201,7 +202,6 @@ export const generateMovements = async (
 ) => {
   const movementsResponse = []
 
-
   const mvDate = tx.operation.date
 
   const selectedEntity = tx.fromEntityId < tx.toEntityId ? tx.fromEntity : tx.toEntity
@@ -221,7 +221,6 @@ export const generateMovements = async (
       // Y cuando es el From, invierto la direccion porque es el que envia
       changeAmount = tx.amount * direction * (-1)
     }
-
 
     const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
 
@@ -587,12 +586,13 @@ export const currentAccountsProcedure = async (
       message: "El usuario no está registrado o el link no es válido",
     });
   }
-  const fromEntityObject = alias(entities, "fromEntityObject");
-  const toEntityObject = alias(entities, "toEntityObject");
 
   const tags = await getAllTags(ctx.redis, ctx.db)
   const tagAndChildrenResponse = getAllChildrenTags(input.entityTag, tags)
   const tagAndChildren = tagAndChildrenResponse.length > 0 ? tagAndChildrenResponse : [""]
+
+  const fromEntity = alias(entities, "fromEntity")
+  const toEntity = alias(entities, "toEntity")
 
   // Hay que hacer join con transactions para que funcionen estas conditions
   const mainConditions = and(
@@ -615,16 +615,16 @@ export const currentAccountsProcedure = async (
     input.entityTag ? and(
       or(
         and(
-          inArray(fromEntityObject.tagName, tagAndChildren),
+          inArray(fromEntity.tagName, tagAndChildren),
           input.toEntityId
-            ? eq(toEntityObject.id, input.toEntityId)
-            : not(inArray(toEntityObject.tagName, tagAndChildren)),
+            ? eq(toEntity.id, input.toEntityId)
+            : not(inArray(toEntity.tagName, tagAndChildren)),
         ),
         and(
           input.toEntityId
-            ? eq(fromEntityObject.id, input.toEntityId)
-            : not(inArray(fromEntityObject.tagName, tagAndChildren)),
-          inArray(toEntityObject.tagName, tagAndChildren),
+            ? eq(fromEntity.id, input.toEntityId)
+            : not(inArray(fromEntity.tagName, tagAndChildren)),
+          inArray(toEntity.tagName, tagAndChildren),
         ),
       ),
       isNull(movements.entitiesMovementId)
@@ -709,48 +709,32 @@ export const currentAccountsProcedure = async (
   );
 
   const response = await ctx.db.transaction(async (transaction) => {
-    const movementsIdsQuery = transaction
-      .select({
-        id: movements.id,
-      })
+    const movementsCountQuery = transaction.select({ count: count() })
+      .from(movements)
+      .leftJoin(balances, eq(movements.balanceId, balances.id))
+      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
+      .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .where(and(movementsConditions, mainConditions)).prepare("movements_count")
+
+    const [movementsCount] = await movementsCountQuery.execute()
+
+    const movementsQuery = transaction
+      .select()
       .from(movements)
       .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
       .leftJoin(operations, eq(transactions.operationId, operations.id))
       .leftJoin(balances, eq(movements.balanceId, balances.id))
-      .leftJoin(
-        fromEntityObject,
-        eq(fromEntityObject.id, balances.selectedEntityId),
-      )
-      .leftJoin(
-        toEntityObject,
-        eq(toEntityObject.id, balances.otherEntityId),
-      )
+      .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
+      .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
       .where(
         and(
           movementsConditions,
           mainConditions,
         ),
-      ).prepare("movements_ids_query");
-
-    const movementsIds = await movementsIdsQuery.execute()
-
-    if (movementsIds.length === 0) {
-      return { movementsQuery: [], totalRows: 0 }
-    }
-
-    const fromEntity = alias(entities, "fromEntity")
-    const toEntity = alias(entities, "toEntity")
-
-    const mvIds = movementsIds.map(obj => obj.id)
-
-    const movementsQuery = transaction.select().from(movements)
-      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-      .leftJoin(operations, eq(transactions.operationId, operations.id))
-      .leftJoin(transactionsMetadata, eq(transactions.id, transactionsMetadata.transactionId))
-      .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-      .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-      .leftJoin(balances, eq(movements.balanceId, balances.id))
-      .where(inArray(movements.id, mvIds))
+      )
       .orderBy(desc(operations.date), desc(movements.id))
       .offset(sql.placeholder("queryOffset"))
       .limit(sql.placeholder("queryLimit")).prepare("movements_query")
@@ -779,13 +763,13 @@ export const currentAccountsProcedure = async (
         balance: tagBalanceMovements.find(mv => mv.Movements.entitiesMovementId === obj.Movements.id)?.Movements.balance ?? 0,
         transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! }
       }))
-      return { movementsQuery: nestedData, totalRows: movementsIds.length }
+      return { movementsQuery: nestedData, totalRows: movementsCount!.count }
     }
 
     const nestedData = movementsData.map(obj =>
       ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! } }))
 
-    return { movementsQuery: nestedData, totalRows: movementsIds.length };
+    return { movementsQuery: nestedData, totalRows: movementsCount!.count };
   });
 
   return response

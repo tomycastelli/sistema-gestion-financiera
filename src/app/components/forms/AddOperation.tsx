@@ -52,9 +52,7 @@ interface AddOperationProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
   user: User;
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
-  initialOperations:
-  | RouterOutputs["operations"]["getOperationsByUser"]
-  | undefined;
+  initialOperations: RouterOutputs["operations"]["getOperations"]
   tags: RouterOutputs["tags"]["getAll"];
   accountingPeriodDate: Date
   mainTags: string[]
@@ -97,49 +95,25 @@ const AddOperation = ({
     removeConfirmationAtUpload
   } = useTransactionsStore();
 
-  const { data: operations, isLoading: isOperationsLoading } =
-    api.operations.getOperationsByUser.useQuery(undefined, {
-      initialData: initialOperations,
-      refetchOnWindowFocus: false,
-    });
-
   const { mutateAsync: updateStatus } = api.editingOperations.updateTransactionStatus.useMutation()
 
   const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
     {
-      async onMutate(newOperation) {
+      async onMutate() {
         // Doing the Optimistic update
-        await utils.operations.getOperationsByUser.cancel();
+        await utils.operations.getOperations.cancel();
 
-        const prevData = utils.operations.getOperationsByUser.getData();
-
-        const fakeNewData: RouterOutputs["operations"]["getOperationsByUser"][number] =
-        {
-          id: 0,
-          date: newOperation.opDate,
-          observations: newOperation.opObservations
-            ? newOperation.opObservations
-            : "",
-          transactionsCount: newOperation.transactions.length,
-        };
-
-        utils.operations.getOperationsByUser.setData(undefined, (old) => [
-          fakeNewData,
-          // @ts-ignore
-          ...old,
-        ]);
+        const prevData = utils.operations.getOperations.getData();
 
         return { prevData };
       },
-      onError(err, _, ctx) {
-        utils.operations.getOperationsByUser.setData(undefined, ctx?.prevData);
-
+      onError(err) {
         toast.error("No se pudo cargar la operación y las transacciones relacionadas", {
           description: err.message
         })
       },
       onSettled() {
-        void utils.operations.getOperationsByUser.invalidate();
+        void utils.operations.getOperations.invalidate();
         void utils.movements.getCurrentAccounts.invalidate()
         setIsInitialOperationSubmitted(false);
         resetTransactionsStore();
@@ -503,9 +477,8 @@ const AddOperation = ({
           mainTags={mainTags}
           users={users}
           accountingPeriodDate={accountingPeriodDate}
-          operations={operations}
+          operationsData={initialOperations}
           ref={parent}
-          isLoading={isOperationsLoading}
         />
       </div>
     </div>
