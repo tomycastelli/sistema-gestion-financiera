@@ -196,7 +196,7 @@ const MovementsTable = ({
         const rowType = row.getValue("type")
         const type = typeof rowType === "string" ? mvTypeFormatting.get(rowType) : ""
 
-        const metadata: JSON = row.getValue("metadata");
+        const metadata: JSON | null = row.getValue("metadata");
         const mvId: number = row.getValue("id");
         const txType: string = row.getValue("txType");
         const observations: string = row.getValue("observations");

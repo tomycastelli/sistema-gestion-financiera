@@ -782,7 +782,7 @@ export const currentAccountsProcedure = async (
       ({
         ...obj.Movements!,
         balance: tagBalanceMovements.find(mv => mv.entitiesMovementId === obj.Movements!.id)!.balance,
-        transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! }
+        transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! }
       })).map(mv => {
         // Mi POV es la entidad que pertenece al tag
         const selectedEntity = mv.transaction.fromEntity.tagName === input.entityTag ? mv.transaction.fromEntity : mv.transaction.toEntity
@@ -802,7 +802,7 @@ export const currentAccountsProcedure = async (
           txType: mv.transaction.type,
           account: mv.account,
           currency: mv.transaction.currency,
-          metadata: mv.transaction.transactionMetadata.metadata ?? null,
+          metadata: mv.transaction.transactionMetadata?.metadata,
           observations: mv.transaction.operation.observations,
           selectedEntity: selectedEntity.name,
           selectedEntityId: selectedEntity.id,
@@ -818,7 +818,7 @@ export const currentAccountsProcedure = async (
     }
 
     const nestedData = movementsData.map(obj =>
-      ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! } })).map(mv => {
+      ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! } })).map(mv => {
         let selectedEntity = { id: 0, name: "", tagName: "" }
         let otherEntity = { id: 0, name: "", tagName: "" }
         if (mv.id === 10) {
@@ -846,7 +846,7 @@ export const currentAccountsProcedure = async (
           txType: mv.transaction.type,
           account: mv.account,
           currency: mv.transaction.currency,
-          metadata: mv.transaction.transactionMetadata.metadata ?? null,
+          metadata: mv.transaction.transactionMetadata?.metadata,
           observations: mv.transaction.operation.observations,
           selectedEntity: selectedEntity.name,
           selectedEntityId: selectedEntity.id,
