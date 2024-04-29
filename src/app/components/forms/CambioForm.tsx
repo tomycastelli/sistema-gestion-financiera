@@ -361,7 +361,7 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
             <div className="flex flex-row items-end space-x-2">
               <AmountInput name={`transactions.${index}.amountA`} />
               <div className="flex flex-col space-y-1">
-                <Icons.lock className="h-4 text-slate-900" />
+                <Icons.lock className="h-4 text-slate-900 dark:text-slate-100" />
                 <FormField
                   control={control}
                   name={`transactions.${index}.lockAmountA`}
@@ -411,7 +411,7 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
                 }
                 name={`transactions.${index}.exchangeRate`} label="Tipo de cambio" />
               <div className="flex flex-row items-center justify-center space-x-1">
-                <Icons.lock className="h-4 text-slate-900" />
+                <Icons.lock className="h-4 text-slate-900 dark:text-slate-100" />
                 <FormField
                   control={control}
                   name={`transactions.${index}.lockExchange`}
@@ -504,7 +504,7 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
             <div className="flex flex-row items-end space-x-2">
               <AmountInput name={`transactions.${index}.amountB`} />
               <div className="flex flex-col space-y-1">
-                <Icons.lock className="h-4 text-slate-900" />
+                <Icons.lock className="h-4 text-slate-900 dark:text-slate-100" />
                 <FormField
                   control={control}
                   name={`transactions.${index}.lockAmountB`}

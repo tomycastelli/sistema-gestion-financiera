@@ -3,13 +3,14 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, type FC } from "react";
-import { generateTableData, numberFormatter } from "~/lib/functions";
+import { numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currenciesOrder, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import { Button } from "../components/ui/button";
+import dynamic from 'next/dynamic'
 import {
   Card,
   CardContent,
@@ -25,7 +26,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { DataTable } from "./DataTable";
 import LoadingAnimation from "../components/LoadingAnimation";
-import OperationDrawer from "../components/OperationDrawer";
+const OperationDrawer = dynamic(() => import("../components/OperationDrawer"))
 import { type User } from "lucia";
 
 interface SummarizedBalancesProps {
@@ -50,7 +51,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialMovements,
   selectedTag,
   selectedEntity,
-  tags,
   uiColor,
   dayInPast,
   mainTags,
@@ -103,14 +103,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       refetchOnWindowFocus: false,
     });
 
-  const tableData = generateTableData(
-    movements.movements,
-    selectedEntity?.id,
-    selectedTag,
-    tags,
-  );
-
-  const columns: ColumnDef<(typeof tableData)[number]>[] = [
+  const columns: ColumnDef<(typeof movements.movements)[number]>[] = [
     {
       accessorKey: "id",
       header: "ID",
@@ -167,7 +160,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {movements.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -184,7 +177,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {movements.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -201,7 +194,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {movements.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -305,7 +298,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
               ) : movements.totalRows > 0 ? (
                 <DataTable
                   columns={columns}
-                  data={tableData.map((row) => {
+                  data={movements.movements.map((row) => {
                     if (!isInverted) {
                       return row;
                     } else {

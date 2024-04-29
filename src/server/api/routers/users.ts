@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { PermissionSchema } from "~/lib/permissionsTypes";
-import { getAllPermissions } from "~/lib/trpcFunctions";
+import { deletePattern, getAllPermissions } from "~/lib/trpcFunctions";
 import { entities, user } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -37,7 +37,7 @@ export const usersRouter = createTRPCRouter({
       });
 
       if (response) {
-        await ctx.redis.del("entities");
+        await deletePattern(ctx.redis, "entities|*")
       }
       return response;
     }),
@@ -121,9 +121,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-
-        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         return response;
       } else {
@@ -161,9 +159,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-
-        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         return response;
       } else {
@@ -191,9 +187,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.userId}`);
-
-        const keys = await ctx.redis.keys(`entities|${input.userId}` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         return response;
       } else {
@@ -221,9 +215,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-
-        const keys = await ctx.redis.keys(`entities|${input.id}` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         return response;
       } else {

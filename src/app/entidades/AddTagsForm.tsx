@@ -211,7 +211,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
           }
         >
           <p>Añadir tag</p>
-          <Icons.tag className="h-4 text-black" />
+          <Icons.tag className="h-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>

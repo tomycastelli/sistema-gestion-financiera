@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
 import { PermissionsNames } from "~/lib/permissionsTypes";
 import {
+  deletePattern,
   getAllEntities,
   getAllPermissions,
   getAllTags,
@@ -109,7 +110,8 @@ export const entitiesRouter = createTRPCRouter({
 
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
 
-      await ctx.redis.del("entities");
+      await deletePattern(ctx.redis, "entities*")
+
       return response;
     }),
   deleteOne: protectedLoggedProcedure
@@ -158,7 +160,7 @@ export const entitiesRouter = createTRPCRouter({
           response,
         );
 
-        await ctx.redis.del("entities");
+        await deletePattern(ctx.redis, "entities*")
 
         return response;
       } else {
@@ -211,7 +213,7 @@ export const entitiesRouter = createTRPCRouter({
         response,
       );
 
-      await ctx.redis.del("entities");
+      await deletePattern(ctx.redis, "entities*")
 
       return response;
     }),

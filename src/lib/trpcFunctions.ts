@@ -506,6 +506,9 @@ export const undoMovements = async (
 
     const mvsIds = mvsToUpdate.length > 0 ? mvsToUpdate.map(obj => obj.id) : [0]
 
+    console.log("Deleted mv id: ", deletedMovement.id)
+    console.log("Movement ids: ", mvsIds)
+
     await transaction.update(movements)
       .set({ balance: sql`${movements.balance} - ${changedAmount}` })
       .where(inArray(movements.id, mvsIds))
@@ -744,30 +747,117 @@ export const currentAccountsProcedure = async (
       queryLimit: input.pageSize
     })
 
+    const tableDataType = z.object({
+      id: z.number(),
+      date: z.string(),
+      operationId: z.number(),
+      observations: z.string().nullish(),
+      type: z.string(),
+      account: z.boolean(),
+      currency: z.string(),
+      txType: z.string(),
+      metadata: z.unknown(),
+      selectedEntityId: z.number(),
+      selectedEntity: z.string(),
+      otherEntityId: z.number(),
+      otherEntity: z.string(),
+      ingress: z.number(),
+      egress: z.number(),
+      balance: z.number()
+    })
+
     if (input.entityTag && input.groupInTag) {
       // Agarro los movimientos en su version de Tag
       const ids = movementsData.map(obj => obj.Movements.id)
 
-      const tagBalanceMovements = await transaction.select().from(movements)
+      const tagBalanceMovements = await transaction.select({ entitiesMovementId: movements.entitiesMovementId, balance: movements.balance }).from(movements)
         .leftJoin(balances, eq(movements.balanceId, balances.id))
         .where(
           and(
-            inArray(movements.entitiesMovementId, ids),
+            inArray(movements.entitiesMovementId, ids.length > 0 ? ids : [0]),
             eq(balances.tagName, input.entityTag),
           ))
 
       const nestedData = movementsData.map(obj =>
       ({
-        ...obj.Movements,
-        entitiesMovementId: 1,
-        balance: tagBalanceMovements.find(mv => mv.Movements.entitiesMovementId === obj.Movements.id)?.Movements.balance ?? 0,
-        transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! }
-      }))
+        ...obj.Movements!,
+        balance: tagBalanceMovements.find(mv => mv.entitiesMovementId === obj.Movements!.id)!.balance,
+        transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! }
+      })).map(mv => {
+        // Mi POV es la entidad que pertenece al tag
+        const selectedEntity = mv.transaction.fromEntity.tagName === input.entityTag ? mv.transaction.fromEntity : mv.transaction.toEntity
+        const otherEntity = mv.transaction.fromEntity.tagName === input.entityTag ? mv.transaction.toEntity : mv.transaction.fromEntity
+
+        // Es una entrada si al generar el movimiento, este sumo al balance del Tag con la entidad
+        const direction = mv.transaction.toEntity.tagName === input.entityTag ? mv.direction : -mv.direction
+        // El balance es del punto de vista del tag
+
+        const tableData: z.infer<typeof tableDataType> = {
+          id: mv.id,
+          date: moment(mv.transaction.operation.date).format(
+            "DD-MM-YYYY HH:mm",
+          ),
+          operationId: mv.transaction.operationId,
+          type: mv.type,
+          txType: mv.transaction.type,
+          account: mv.account,
+          currency: mv.transaction.currency,
+          metadata: mv.transaction.transactionMetadata.metadata,
+          observations: mv.transaction.operation.observations,
+          selectedEntity: selectedEntity.name,
+          selectedEntityId: selectedEntity.id,
+          otherEntity: otherEntity.name,
+          otherEntityId: otherEntity.id,
+          ingress: direction === 1 ? mv.transaction.amount : 0,
+          egress: direction === -1 ? mv.transaction.amount : 0,
+          balance: mv.balance
+        }
+        return tableData
+      })
       return { movementsQuery: nestedData, totalRows: movementsCount!.count }
     }
 
     const nestedData = movementsData.map(obj =>
-      ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!, toEntity: obj.toEntity! } }))
+      ({ ...obj.Movements, transaction: { ...obj.Transactions!, transactionMetadata: obj.TransactionsMetadata!, operation: obj.Operations!, fromEntity: obj.fromEntity!.id === obj.Transactions!.fromEntityId ? obj.fromEntity! : obj.toEntity!, toEntity: obj.toEntity!.id === obj.Transactions!.toEntityId ? obj.toEntity! : obj.fromEntity! } })).map(mv => {
+        let selectedEntity = { id: 0, name: "", tagName: "" }
+        let otherEntity = { id: 0, name: "", tagName: "" }
+        if (mv.id === 10) {
+          console.log("Movement 10: ", mv)
+        }
+        if (input.entityId) {
+          // Mi POV es la entidad del input
+          selectedEntity = mv.transaction.fromEntity.id === input.entityId ? mv.transaction.fromEntity : mv.transaction.toEntity
+          otherEntity = mv.transaction.fromEntity.id === input.entityId ? mv.transaction.toEntity : mv.transaction.fromEntity
+        } else if (input.entityTag) {
+          selectedEntity = mv.transaction.fromEntity.tagName === input.entityTag ? mv.transaction.fromEntity : mv.transaction.toEntity
+          otherEntity = mv.transaction.fromEntity.tagName === input.entityTag ? mv.transaction.toEntity : mv.transaction.fromEntity
+        }
+
+        const balanceDirection = movementBalanceDirection(mv.transaction.fromEntityId, mv.transaction.toEntityId, mv.direction)
+        const direction = selectedEntity.id < otherEntity.id ? balanceDirection : -balanceDirection
+
+        const tableData: z.infer<typeof tableDataType> = {
+          id: mv.id,
+          date: moment(mv.transaction.operation.date).format(
+            "DD-MM-YYYY HH:mm",
+          ),
+          operationId: mv.transaction.operationId,
+          type: mv.type,
+          txType: mv.transaction.type,
+          account: mv.account,
+          currency: mv.transaction.currency,
+          metadata: mv.transaction.transactionMetadata.metadata,
+          observations: mv.transaction.operation.observations,
+          selectedEntity: selectedEntity.name,
+          selectedEntityId: selectedEntity.id,
+          otherEntity: otherEntity.name,
+          otherEntityId: otherEntity.id,
+          ingress: direction === 1 ? mv.transaction.amount : 0,
+          egress: direction === -1 ? mv.transaction.amount : 0,
+          balance: selectedEntity.id < otherEntity.id ? mv.balance : -mv.balance
+        }
+        return tableData
+      })
 
     return { movementsQuery: nestedData, totalRows: movementsCount!.count };
   });
@@ -842,4 +932,10 @@ export const getGlobalSettings = async (
 
   return parsedResponse.data
 
+}
+
+export const deletePattern = async (redis: Redis, pattern: string) => {
+  const keys = await redis.keys(pattern)
+
+  await redis.del(keys)
 }

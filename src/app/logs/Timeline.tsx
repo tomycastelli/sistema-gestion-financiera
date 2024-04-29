@@ -84,7 +84,7 @@ const Timeline: FC<TimelineProps> = ({ users }) => {
           onClick={() => handleFetchPreviousPage()}
           disabled={page === 0}
         >
-          <Icons.chevronLeft className="h-5 w-5 text-black dark:text-white" />
+          <Icons.chevronLeft className="h-5 w-5" />
         </Button>
         <p className="text-xl">{page + 1}</p>
         <Button
@@ -92,7 +92,7 @@ const Timeline: FC<TimelineProps> = ({ users }) => {
           onClick={() => handleFetchNextPage()}
           disabled={dataToRender && dataToRender.count === 0}
         >
-          <Icons.chevronRight className="h-5 w-5 text-black dark:text-white" />
+          <Icons.chevronRight className="h-5 w-5" />
         </Button>
       </div>
     </div>

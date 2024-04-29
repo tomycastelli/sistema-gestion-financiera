@@ -23,7 +23,8 @@ import { Icons } from '~/app/components/ui/Icons';
 import { useInitialOperationStore } from '~/stores/InitialOperationStore';
 import { useRouter } from 'next/navigation';
 import moment from 'moment';
-import UpdateOperation from './UpdateOperation';
+import dynamic from "next/dynamic";
+const UpdateOperation = dynamic(() => import("./UpdateOperation"))
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '~/app/components/ui/collapsible';
 
 interface OperationButtonsProps {
@@ -84,6 +85,8 @@ const OperationButtons: FC<OperationButtonsProps> = ({ op, operationsQueryInput,
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
         void utils.movements.getCurrentAccounts.invalidate()
+        void utils.movements.getBalancesByEntities.invalidate()
+        void utils.movements.getBalancesByEntitiesForCard.invalidate()
       },
       onSuccess(data, variables) {
         toast.success(`Operación ${variables.operationId} y ${data.length
@@ -144,6 +147,9 @@ const OperationButtons: FC<OperationButtonsProps> = ({ op, operationsQueryInput,
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate()
+        void utils.movements.getCurrentAccounts.invalidate()
+        void utils.movements.getBalancesByEntities.invalidate()
+        void utils.movements.getBalancesByEntitiesForCard.invalidate()
       },
       onSuccess(data) {
         toast.success(data.length.toString() + " " + "transacciones actualizadas")

@@ -10,7 +10,8 @@ import { type User } from "lucia";
 import { Status } from "~/server/db/schema";
 import { cn } from "~/lib/utils";
 import { numberFormatter } from "~/lib/functions";
-import OperationDrawer from "~/app/components/OperationDrawer";
+import dynamic from "next/dynamic";
+const OperationDrawer = dynamic(() => import("~/app/components/OperationDrawer"))
 import { Button } from "~/app/components/ui/button";
 
 interface OperationProps {

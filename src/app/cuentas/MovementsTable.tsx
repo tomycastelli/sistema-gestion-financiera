@@ -6,7 +6,6 @@ import { MoreHorizontal } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  generateTableData,
   isNumeric,
   numberFormatter,
   truncateString,
@@ -41,6 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/ui/popover";
+import dynamic from 'next/dynamic'
 import {
   Select,
   SelectContent,
@@ -54,7 +54,7 @@ import { DataTable } from "./DataTable";
 import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
-import OperationDrawer from "../components/OperationDrawer";
+const OperationDrawer = dynamic(() => import("../components/OperationDrawer"))
 import { ScrollArea } from "../components/ui/scroll-area";
 import moment from "moment";
 
@@ -76,7 +76,6 @@ interface CuentasTableProps {
 
 const MovementsTable = ({
   initialMovements,
-  tags,
   entities,
   entityId,
   entityTag,
@@ -162,14 +161,7 @@ const MovementsTable = ({
       },
     });
 
-  const tableData = generateTableData(
-    data.movements,
-    entityId,
-    entityTag,
-    tags,
-  );
-
-  const columns: ColumnDef<(typeof tableData)[number]>[] = [
+  const columns: ColumnDef<(typeof data.movements)[number]>[] = [
     {
       accessorKey: "id",
       header: "ID",
@@ -252,7 +244,7 @@ const MovementsTable = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {data.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -269,7 +261,7 @@ const MovementsTable = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {data.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -286,7 +278,7 @@ const MovementsTable = ({
           <div className="text-right font-medium">
             {" "}
             <span className="font-light text-muted-foreground">
-              {tableData[row.index]!.currency.toUpperCase()}
+              {data.movements[row.index]!.currency.toUpperCase()}
             </span>{" "}
             {formatted}
           </div>
@@ -499,17 +491,19 @@ const MovementsTable = ({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="flex flex-col justify-start gap-y-1">
-            <Label className="mb-2">Agrupar</Label>
-            <Button variant="outline" onClick={() => setGroupInTag(!groupInTag)}>
-              <Switch checked={groupInTag} />
-            </Button>
-          </div>
+          {entityTag && (
+            <div className="flex flex-col justify-start gap-y-1">
+              <Label className="mb-2">Agrupar</Label>
+              <Button variant="outline" onClick={() => setGroupInTag(!groupInTag)}>
+                <Switch checked={groupInTag} />
+              </Button>
+            </div>
+          )}
         </div>
         {!isFetching ? (
           <DataTable
             columns={columns}
-            data={tableData.map((row) => {
+            data={data.movements.map((row) => {
               if (!isInverted) {
                 return row;
               } else {

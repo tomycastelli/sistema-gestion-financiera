@@ -2,7 +2,6 @@ import moment from "moment";
 import { type ReadonlyURLSearchParams } from "next/navigation";
 import { type z } from "zod";
 import { type returnedBalancesSchema } from "~/server/db/schema";
-import type { RouterOutputs } from "~/trpc/shared";
 
 export const getInitials = (name: string): string => {
   const words: string[] = name.split(" ");
@@ -474,95 +473,6 @@ export const calculateBeforeAmount = (
     (total, balance) => total + balance.balance,
     0,
   );
-};
-
-export const generateTableData = (
-  movements: RouterOutputs["movements"]["getCurrentAccounts"]["movements"],
-  entityId: number | undefined | null,
-  entityTag: string | undefined | null,
-  allTags: RouterOutputs["tags"]["getAll"] | undefined | null,
-) => {
-  const tableData = movements
-    .map((movement) => {
-      if (entityId) {
-        const direction = movementBalanceDirection(movement.transaction.fromEntityId, movement.transaction.toEntityId, movement.direction)
-
-        const selectedEntity =
-          entityId === movement.transaction.fromEntityId
-            ? movement.transaction.fromEntity
-            : movement.transaction.toEntity;
-        const otherEntity =
-          entityId === movement.transaction.fromEntityId
-            ? movement.transaction.toEntity
-            : movement.transaction.fromEntity;
-
-        return {
-          id: movement.id,
-          date: moment(movement.transaction.operation.date).format(
-            "DD-MM-YYYY HH:mm",
-          ),
-          operationId: movement.transaction.operationId,
-          observations: movement.transaction.operation.observations,
-          type: movement.type,
-          account: movement.account,
-          otherEntityId: otherEntity.id,
-          otherEntity: otherEntity.name,
-          selectedEntityId: selectedEntity.id,
-          selectedEntity: selectedEntity.name,
-          currency: movement.transaction.currency,
-          ingress: direction === 1 ? movement.transaction.amount : 0,
-          egress: direction === -1 ? movement.transaction.amount : 0,
-          status: movement.transaction.status,
-          txType: movement.transaction.type,
-          metadata: movement.transaction.transactionMetadata?.metadata,
-          balance:
-            selectedEntity.id < otherEntity.id
-              ? movement.balance
-              : -movement.balance,
-        };
-      } else {
-        const allChildrenTags = getAllChildrenTags(entityTag, allTags!);
-        // Si existe movement.entitiesMovementId, el pov es el tagname
-        const selectedEntity = allChildrenTags.includes(
-          movement.transaction.fromEntity.tagName,
-        )
-          ? movement.transaction.fromEntity
-          : movement.transaction.toEntity;
-        const otherEntity = allChildrenTags.includes(
-          movement.transaction.fromEntity.tagName,
-        )
-          ? movement.transaction.toEntity
-          : movement.transaction.fromEntity;
-
-        // Si movement.direction es 1, hago caso al flujo de from a to de la transaccion
-        // Si movement.direction es -1, invierto eso
-        // Como identifico que el to es el e
-        const direction = movement.entitiesMovementId ? selectedEntity.id === movement.transaction.toEntityId ? movement.direction : (-1) * movement.direction : movementBalanceDirection(movement.transaction.fromEntityId, movement.transaction.toEntityId, movement.direction)
-
-        return {
-          id: movement.id,
-          date: moment(movement.transaction.operation.date).format(
-            "DD-MM-YYYY HH:mm",
-          ),
-          operationId: movement.transaction.operationId,
-          observations: movement.transaction.operation.observations,
-          type: movement.type,
-          otherEntityId: otherEntity.id,
-          otherEntity: otherEntity.name,
-          selectedEntityId: selectedEntity.id,
-          selectedEntity: selectedEntity.name,
-          currency: movement.transaction.currency,
-          ingress: direction === 1 ? movement.transaction.amount : 0,
-          egress: direction === -1 ? movement.transaction.amount : 0,
-          status: movement.transaction.status,
-          txType: movement.transaction.type,
-          metadata: movement.transaction.transactionMetadata?.metadata,
-          balance: (!!movement.entitiesMovementId || selectedEntity.id < otherEntity.id) ? movement.balance : -movement.balance
-        };
-      }
-    })
-
-  return tableData;
 };
 
 export function timeout(delay: number) {

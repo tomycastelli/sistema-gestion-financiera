@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getAllChildrenTags } from "~/lib/functions";
-import { getAllPermissions, getAllTags, logIO } from "~/lib/trpcFunctions";
+import { deletePattern, getAllPermissions, getAllTags, logIO } from "~/lib/trpcFunctions";
 import { tag } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -41,7 +41,7 @@ export const tagsRouter = createTRPCRouter({
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir tag", input, response);
 
       await ctx.redis.del("tags");
-      await ctx.redis.del("entities")
+      await deletePattern(ctx.redis, "entities*")
 
       return response;
     }),
@@ -68,7 +68,7 @@ export const tagsRouter = createTRPCRouter({
     }
 
     await ctx.redis.del("tags")
-    await ctx.redis.del("entities")
+    await deletePattern(ctx.redis, "entities*")
 
     return response
   }),
@@ -101,7 +101,7 @@ export const tagsRouter = createTRPCRouter({
       await logIO(ctx.dynamodb, ctx.user.id, "Eliminar tag", input, response);
 
       await ctx.redis.del("tags");
-      await ctx.redis.del("entities")
+      await deletePattern(ctx.redis, "entities*")
 
       return response;
     }),

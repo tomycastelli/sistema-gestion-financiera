@@ -1,6 +1,7 @@
 "use client"
 import { type FC } from "react";
-import UpdateTransaction from "~/app/components/forms/UpdateTransaction";
+import dynamic from "next/dynamic";
+const UpdateTransaction = dynamic(() => import("~/app/components/forms/UpdateTransaction"))
 import { Icons } from "~/app/components/ui/Icons";
 import { Button } from "~/app/components/ui/button";
 import { cn } from "~/lib/utils";

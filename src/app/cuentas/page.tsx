@@ -97,7 +97,7 @@ const Page = async ({
 
   const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
 
-  return (
+  return mainTags.includes(selectedTag ?? "") || mainTags.includes(selectedEntityObj?.tag.name ?? "") ? (
     <div>
       <div className="flex w-full flex-row justify-between space-x-8 border-b-2 pb-4"
         style={{ borderColor: uiColor }}
@@ -185,7 +185,7 @@ const Page = async ({
         )}
       </Suspense>
     </div>
-  );
+  ) : (<p>La entidad seleccionada no pertenece al tag: {mainTags.join(", ")}</p>);
 };
 
 export default Page;

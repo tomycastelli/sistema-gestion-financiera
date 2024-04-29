@@ -171,36 +171,6 @@ const Balances: FC<BalancesProps> = ({
           (entry) => entry.entity.id === myPOVEntity.id,
         );
 
-        /*
-
-        const myOtherEntity = selectedTag === balance.selectedEntity.tagName ? balance.selectedEntity : balance.otherEntity
-
-        if (myOtherEntity.tagName === myPOVEntity.tagName) {
-          let otherEntityEntry = acc.find(entry => entry.entity.id === myOtherEntity.id)
-
-          if (!otherEntityEntry) {
-            otherEntityEntry = {
-              entity: myOtherEntity,
-              data: []
-            }
-            acc.push(otherEntityEntry);
-          }
-
-          const balanceMultiplier = otherEntityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1
-
-          let dataEntry = otherEntityEntry.data.find(d => d.currency === balance.currency)
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0
-            }
-            otherEntityEntry.data.push(dataEntry)
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier
-        }
-        */
-
         if (!entityEntry) {
           entityEntry = {
             entity: myPOVEntity,
@@ -641,7 +611,7 @@ const Balances: FC<BalancesProps> = ({
                   setMovementsTablePage(1)
                 }}
                 className={cn(
-                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary text-black hover:text-white hover:shadow-md",
+                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                   !selectedCurrency &&
                   destinationEntityId === item.entity.id &&
                   "bg-primary text-white shadow-md",
@@ -673,11 +643,11 @@ const Balances: FC<BalancesProps> = ({
                     key={currency}
                     style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
                     className={cn(
-                      "col-span-2 flex text-black items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
+                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                       selectedCurrency === currency &&
                       destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
-                      "text-white",
-                      selectedCurrency === currency && destinationEntityId === item.entity.id && "shadow-md"
+                      "bg-primary text-white shadow-md",
+                      selectedCurrency === currency && destinationEntityId === item.entity.id && "bg-primary text-white shadow-md"
                     )}
                   >
                     {!isFetching ? (

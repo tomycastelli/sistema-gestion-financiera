@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { PermissionSchema } from "~/lib/permissionsTypes";
-import { getAllPermissions } from "~/lib/trpcFunctions";
+import { deletePattern, getAllPermissions } from "~/lib/trpcFunctions";
 import { role, user } from "~/server/db/schema";
 import {
   createTRPCRouter,
@@ -123,13 +123,11 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
-        const keys = await ctx.redis.keys(`entities|` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {
           pipeline.del(`user_permissions|${user.id}`);
-
         });
 
         await pipeline.exec();
@@ -173,8 +171,7 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
-        const keys = await ctx.redis.keys(`entities|` + "*")
-        await ctx.redis.del(keys)
+        await deletePattern(ctx.redis, "entities|*")
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {

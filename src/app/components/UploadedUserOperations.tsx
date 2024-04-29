@@ -2,6 +2,7 @@
 
 import moment from "moment";
 import { forwardRef } from "react";
+import dynamic from 'next/dynamic'
 import type { RouterOutputs } from "~/trpc/shared";
 import {
   Card,
@@ -10,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import OperationDrawer from "./OperationDrawer";
+const OperationDrawer = dynamic(() => import("./OperationDrawer"))
 import { Button } from "./ui/button";
 import { numberFormatter } from "~/lib/functions";
 import { type User } from "lucia";

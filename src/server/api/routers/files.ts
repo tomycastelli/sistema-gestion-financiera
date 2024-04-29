@@ -4,13 +4,13 @@ import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
-import { currentAccountsProcedure, getAllEntities, getAllTags } from "~/lib/trpcFunctions";
+import { currentAccountsProcedure, getAllEntities } from "~/lib/trpcFunctions";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
-import { generateTableData, numberFormatter } from "~/lib/functions";
+import { numberFormatter } from "~/lib/functions";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -29,7 +29,7 @@ export const filesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const currentAccount = await currentAccountsProcedure({
+      const { movementsQuery: tableData } = await currentAccountsProcedure({
         entityTag: input.entityTag,
         entityId: input.entityId,
         currency: input.currency,
@@ -42,10 +42,6 @@ export const filesRouter = createTRPCRouter({
         toEntityId: input.toEntityId,
         groupInTag: input.groupInTag
       }, ctx)
-
-      const tags = await getAllTags(ctx.redis, ctx.db)
-
-      const tableData = generateTableData(currentAccount.movementsQuery, input.entityId, input.entityTag, tags)
 
       const data = tableData.map((mv) => ({
         fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
