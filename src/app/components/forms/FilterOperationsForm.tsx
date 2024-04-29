@@ -166,15 +166,17 @@ const FilterOperationsForm = ({
             });
           }
         } else {
-          if (!arraysEqual(currentValue, paramValue)) {
-            updatedSearchParams.delete(paramName);
-            updatedSearchParams.set("pagina", "1")
-            if (Array.isArray(paramValue)) {
+          if (Array.isArray(paramValue)) {
+            if (!arraysEqual(currentValue, paramValue)) {
               paramValue.forEach(value => {
                 updatedSearchParams.append(paramName, value);
+                updatedSearchParams.set("pagina", "1")
               });
-            } else {
+            }
+          } else {
+            if (currentValue[0] !== paramValue) {
               updatedSearchParams.set(paramName, paramValue);
+              updatedSearchParams.set("pagina", "1")
             }
           }
         }

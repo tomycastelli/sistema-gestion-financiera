@@ -34,7 +34,15 @@ const CustomPagination: FC<CustomPaginationProps> = ({
 }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  console.log("Search params: ", searchParams.toString())
   const lastPage = Math.ceil(totalCount / pageSize);
+
+
+  const createPageLink = (n: number): string => {
+    const updatedParams = new URLSearchParams(searchParams)
+    updatedParams.set("pagina", n.toString())
+    return pathname + "?" + updatedParams.toString()
+  }
 
   const [inputPage, setInputPage] = useState<string>(page.toString())
 
@@ -47,9 +55,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
     if (changePageState) {
       changePageState(n)
     } else if (pathname) {
-      const updatedParams = new URLSearchParams(searchParams)
-      updatedParams.set("pagina", n.toString())
-      router.push(pathname + "?" + updatedParams.toString())
+      router.push(createPageLink(n))
     }
     setInputPage(n.toString())
   }
@@ -62,10 +68,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             <PaginationItem>
               {pathname ? (
                 <PaginationLink
-                  href={{
-                    pathname: pathname,
-                    query: { pagina: 1 },
-                  }}
+                  href={createPageLink(1)}
                   isActive={page === 1}
                 >
                   1
@@ -89,10 +92,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             <PaginationItem>
               {pathname ? (
                 <PaginationLink
-                  href={{
-                    pathname: pathname,
-                    query: { pagina: page - 1 },
-                  }}
+                  href={createPageLink(page - 1)}
                 >
                   {page - 1}
                 </PaginationLink>
@@ -111,10 +111,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
           <PaginationItem>
             {pathname ? (
               <PaginationLink
-                href={{
-                  pathname: pathname,
-                  query: { pagina: page },
-                }}
+                href={createPageLink(page)}
                 isActive
               >
                 {page}
@@ -134,10 +131,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             <PaginationItem>
               {pathname ? (
                 <PaginationLink
-                  href={{
-                    pathname: pathname,
-                    query: { pagina: page + 1 },
-                  }}
+                  href={createPageLink(page + 1)}
                 >
                   {page + 1}
                 </PaginationLink>
@@ -160,12 +154,7 @@ const CustomPagination: FC<CustomPaginationProps> = ({
             <PaginationItem>
               {pathname ? (
                 <PaginationLink
-                  href={{
-                    pathname: pathname,
-                    query: {
-                      pagina: lastPage,
-                    },
-                  }}
+                  href={createPageLink(lastPage)}
                   isActive={page === lastPage}
                 >
                   {lastPage}
