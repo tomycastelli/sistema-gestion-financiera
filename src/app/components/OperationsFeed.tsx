@@ -121,7 +121,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   useEffect(() => {
     if (firstRender) return
     if (txIdsStore.length > 0) {
-      toast.info("Lista de transacciones REAL", {
+      toast.info("Lista de transacciones", {
         description: txIdsStore.join(", "),
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
