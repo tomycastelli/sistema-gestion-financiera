@@ -29,10 +29,10 @@ import {
   operations,
   transactions,
 } from "~/server/db/schema";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, publicLoggedProcedure, publicProcedure } from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
-  getCurrentAccounts: publicProcedure
+  getCurrentAccounts: publicLoggedProcedure
     .input(
       z.object({
         linkId: z.number().int().optional().nullable(),

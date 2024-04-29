@@ -13,13 +13,12 @@ import {
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
-  protectedProcedure,
 } from "../trpc";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import { alias } from "drizzle-orm/pg-core";
 
 export const editingOperationsRouter = createTRPCRouter({
-  updateTransactionValues: protectedProcedure
+  updateTransactionValues: protectedLoggedProcedure
     .input(
       z.object({
         txId: z.number().int(),
@@ -292,7 +291,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
       return response;
     }),
-  changeOpData: protectedProcedure.input(z.object({
+  changeOpData: protectedLoggedProcedure.input(z.object({
     opId: z.number(),
     opObservations: z.string().optional(),
     oldOpDate: z.date(),

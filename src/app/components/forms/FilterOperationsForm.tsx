@@ -168,9 +168,10 @@ const FilterOperationsForm = ({
         } else {
           if (Array.isArray(paramValue)) {
             if (!arraysEqual(currentValue, paramValue)) {
+              updatedSearchParams.delete(paramName)
+              updatedSearchParams.set("pagina", "1")
               paramValue.forEach(value => {
                 updatedSearchParams.append(paramName, value);
-                updatedSearchParams.set("pagina", "1")
               });
             }
           } else {
