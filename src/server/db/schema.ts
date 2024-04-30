@@ -2,8 +2,8 @@ import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  customType,
   date,
-  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -136,6 +136,15 @@ export const messages = pgTable(
   }
 )
 
+const decimalNumber = customType<{ data: number }>({
+  dataType() {
+    return 'decimal(16, 4)';
+  },
+  fromDriver(value) {
+    return Number(value);
+  },
+});
+
 export const transactions = pgTable(
   "Transactions",
   {
@@ -166,7 +175,7 @@ export const transactions = pgTable(
         onUpdate: "cascade",
       }),
     currency: text("currency").notNull(),
-    amount: doublePrecision("amount").notNull(),
+    amount: decimalNumber("amount").notNull(),
     observations: text("observations"),
     status: Status("status").default("pending").notNull(),
   },
@@ -202,7 +211,7 @@ export const balances = pgTable(
     id: serial("id").primaryKey().notNull(),
     account: boolean("account").notNull(),
     date: timestamp("date", { mode: "date" }).notNull(),
-    balance: doublePrecision("balance").notNull(),
+    balance: decimalNumber("balance").notNull(),
     otherEntityId: integer("otherEntityId")
       .references(() => entities.id, {
         onDelete: "cascade",
@@ -357,7 +366,7 @@ export const movements = pgTable(
     direction: integer("direction").notNull(),
     type: text("type").notNull(),
     account: boolean("account").notNull(),
-    balance: doublePrecision("balance").notNull(),
+    balance: decimalNumber("balance").notNull(),
     balanceId: integer("balanceId").notNull()
       .references(() => balances.id, {
         onDelete: "cascade",
