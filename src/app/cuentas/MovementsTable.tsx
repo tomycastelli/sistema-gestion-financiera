@@ -205,9 +205,9 @@ const MovementsTable = ({
           <>
             <p className="font-medium">{`${type} de ${txType} - Mto ${mvId} ${
               // @ts-ignore
-              metadata && isNumeric(metadata.exchangeRate)
+              metadata && isNumeric(metadata.exchange_rate)
                 ? // @ts-ignore
-                `- $${metadata.exchangeRate}`
+                `- $${metadata.exchange_rate}`
                 : ""
               }`}</p>
             <p className="text-sm font-light text-muted-foreground">

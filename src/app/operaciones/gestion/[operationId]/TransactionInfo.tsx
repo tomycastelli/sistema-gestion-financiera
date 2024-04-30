@@ -23,9 +23,9 @@ const ChangeData = z.object({
 });
 
 const ChangeObject = z.object({
-  changeData: z.array(ChangeData),
-  changeDate: z.string(), // Assuming changeDate is a string, adjust if it has a different type
-  changedBy: z.string(),
+  change_data: z.array(ChangeData),
+  change_date: z.string(), // Assuming changeDate is a string, adjust if it has a different type
+  changed_by: z.string(),
 });
 
 const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFeed }) => {
@@ -55,12 +55,12 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
           // @ts-ignore
           tx.transactionMetadata?.metadata &&
           // @ts-ignore
-          tx.transactionMetadata.metadata.exchangeRate && (
+          tx.transactionMetadata.metadata.exchange_rate && (
             <p className="rounded-xl border border-muted-foreground p-2 shadow-md">
               Cambio:{" "}
               <span className="font-semibold">
                 {// @ts-ignore
-                  tx.transactionMetadata.metadata.exchangeRate.toString()}
+                  tx.transactionMetadata.metadata.exchange_rate.toString()}
               </span>
             </p>
           )
@@ -122,17 +122,17 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
               })
               .map((item: z.infer<typeof ChangeObject>) => (
                 <div
-                  key={item.changeDate}
+                  key={item.change_date}
                   className="rounded-xl border border-muted-foreground p-2 shadow-md"
                 >
                   <h2 className="text-md font-semibold">
-                    {new Date(item.changeDate).toLocaleString("es-AR")}
+                    {new Date(item.change_date).toLocaleString("es-AR")}
                   </h2>
                   <h3 className="text-md">
-                    {users.find((u) => u.id === item.changedBy)?.name}
+                    {users.find((u) => u.id === item.changed_by)?.name}
                   </h3>
                   <div className="mt-2 flex flex-col space-y-1">
-                    {item.changeData.map((change) => (
+                    {item.change_data.map((change) => (
                       <div key={change.key}>
                         {change.key === "amount" && (
                           <div className="flex flex-row items-center space-x-2">

@@ -52,7 +52,7 @@ export const operationsRouter = createTRPCRouter({
             amount: z.number().positive(),
             method: z.string().optional(),
             metadata: z
-              .object({ exchangeRate: z.number().optional() })
+              .object({ exchange_rate: z.number().optional() })
               .optional(),
           }),
         ),

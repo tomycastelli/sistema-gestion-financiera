@@ -506,9 +506,6 @@ export const undoMovements = async (
 
     const mvsIds = mvsToUpdate.length > 0 ? mvsToUpdate.map(obj => obj.id) : [0]
 
-    console.log("Deleted mv id: ", deletedMovement.id)
-    console.log("Movement ids: ", mvsIds)
-
     await transaction.update(movements)
       .set({ balance: sql`${movements.balance} - ${changedAmount}` })
       .where(inArray(movements.id, mvsIds))

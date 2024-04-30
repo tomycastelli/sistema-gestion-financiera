@@ -150,9 +150,9 @@ export const findDifferences = <T>(
   newObject: T,
   changedById: string,
 ): {
-  changeData: Array<Changes<T[keyof T] & { key: string }>>;
-  changeDate: string;
-  changedBy: string;
+  change_data: Array<Changes<T[keyof T] & { key: string }>>;
+  change_date: string;
+  changed_by: string;
 } => {
   const changes: Array<Changes<T[keyof T] & { key: string }>> = [];
   for (const key in newObject) {
@@ -165,9 +165,9 @@ export const findDifferences = <T>(
     }
   }
   return {
-    changeData: changes,
-    changeDate: new Date().toISOString(),
-    changedBy: changedById,
+    change_data: changes,
+    change_date: new Date().toISOString(),
+    changed_by: changedById,
   };
 };
 

@@ -127,7 +127,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
           operatorId: parseInt(value.entityOperator),
           currency: value.currencyA,
           metadata: {
-            exchangeRate: parseFormattedFloat(value.exchangeRate),
+            exchange_rate: parseFormattedFloat(value.exchangeRate),
           },
           amount: parseFormattedFloat(value.amountA),
         },
