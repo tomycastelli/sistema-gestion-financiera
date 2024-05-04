@@ -1,6 +1,6 @@
 # Sistema Maika
 
-Esta es la aplicación web de Maika. Usando el stack T3:
+Web application for Maika (financial services). Using the T3 stack:
 
 - [NextJS 14](https://nextjs.org/)
 - [TRPC](https://trpc.io)
@@ -14,7 +14,7 @@ Esta es la aplicación web de Maika. Usando el stack T3:
 - DynamoDB
 - AWS Lambda (para generación de PDFs)
 
-Es un monorepo donde backend y el frontend se encuentran conectados mediante TRPC y el modelo de backend que NextJS tiene desde la versión 13. Esto permite un tipado automático entre frontend y backend.
+It's a monorepo where backend and frontend are deeply integrated, using TRPC and the backend model NextJS offers since the app directory update (version 13).
 
-## Despliegue
-La aplicación es containerizada con el Dockerfile en un CI/CD pipeline de Github Actions, luego la imagen generada es subida a un repositorio de ECR y tageada de acuerdo al Tag del repositorio de la forma v*.*.* (ejemplo v0.4.5)
+## Deployment
+The application is containerized with the Dockerfile in a Github Actions CI/CD pipeline. Then it is uploaded to an ECR repository and tagged according to the pushed Tag from the repository. The image is then retrieved by an ECS service and with a Elastic Load Balancer (ELB), exposed to the internet.
