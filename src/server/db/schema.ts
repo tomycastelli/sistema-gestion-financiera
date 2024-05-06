@@ -18,6 +18,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
 
 export const Status = pgEnum("Status", ["cancelled", "confirmed", "pending"]);
 export const requestStatus = pgEnum("RequestStatus", [
@@ -551,12 +552,12 @@ export const requestsOneRelations = relations(requests, ({ one }) => ({
   }),
 }));
 
-export const insertTransactionsSchema = createInsertSchema(transactions);
-export const insertMovementsSchema = createInsertSchema(movements);
+export const insertTransactionsSchema = createInsertSchema(transactions).extend({ amount: z.number() });
+export const insertMovementsSchema = createInsertSchema(movements).extend({ balance: z.number() });
 
-export const returnedBalancesSchema = createSelectSchema(balances);
-export const returnedMovementsSchema = createSelectSchema(movements);
-export const returnedTransactionsSchema = createSelectSchema(transactions);
+export const returnedBalancesSchema = createSelectSchema(balances).extend({ balance: z.number() });
+export const returnedMovementsSchema = createSelectSchema(movements).extend({ balance: z.number() });
+export const returnedTransactionsSchema = createSelectSchema(transactions).extend({ amount: z.number() });
 export const returnedOperationsSchema = createSelectSchema(operations)
 export const returnedEntitiesSchema = createSelectSchema(entities)
 export const returnedTransactionsMetadataSchema = createSelectSchema(transactionsMetadata)
