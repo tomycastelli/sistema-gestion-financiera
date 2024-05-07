@@ -13,7 +13,7 @@ import {
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface OperationsMenuBarChartProps {
-  data: RouterOutputs["operations"]["insights"]["monthCount"];
+  data: RouterOutputs["operations"]["userUploaded"]["monthCount"];
 }
 
 const OperationsMenuBarChart: FC<OperationsMenuBarChartProps> = ({ data }) => {

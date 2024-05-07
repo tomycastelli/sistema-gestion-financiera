@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, avg, count, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import moment from "moment";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -618,7 +618,7 @@ export const operationsRouter = createTRPCRouter({
         count: response.idsThatSatisfy,
       };
     }),
-  insights: protectedProcedure
+  userUploaded: protectedProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
       const monthCountSchema = z.array(
@@ -687,4 +687,56 @@ export const operationsRouter = createTRPCRouter({
 
       return response;
     }),
-});
+  insights: protectedProcedure.input(z.object({
+    entityId: z.number().optional().nullish(),
+    entityTag: z.string().optional().nullish(),
+    type: z.enum(["exchangeRate"])
+  }).superRefine((obj, ctx) => {
+    if (!obj.entityId && !obj.entityTag) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Es necesario una entidad o un tag",
+      })
+    }
+  })
+  ).query(async ({ ctx, input }) => {
+    switch (input.type) {
+      case "exchangeRate":
+        const fromEntity = alias(entities, "fromEntity")
+        const toEntity = alias(entities, "toEntity")
+
+        const [exchangeAvg] = await ctx.db
+          .select({ average: avg(sql`AVG(CAST(${transactionsMetadata.metadata} ->> 'exchange_rate' AS FLOAT))`) })
+          .from(transactionsMetadata)
+          .leftJoin(transactions, eq(transactions.id, transactionsMetadata.transactionId))
+          .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+          .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+          .leftJoin(operations, eq(operations.id, transactions.operationId))
+          .where(and(
+            isNotNull(sql`${transactionsMetadata.metadata} ->> 'exchange_rate'`),
+            input.entityId ? or(
+              eq(fromEntity.id, input.entityId),
+              eq(toEntity.id, input.entityId)
+            ) : input.entityTag ?
+              or(
+                eq(fromEntity.tagName, input.entityTag),
+                eq(toEntity.tagName, input.entityTag)
+              ) : undefined
+          ))
+
+        if (exchangeAvg?.average) {
+          return parseFloat(exchangeAvg.average)
+        } else {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Exchange rate average not found"
+          })
+        }
+      default:
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Requires a type input"
+        })
+    }
+  })
+})

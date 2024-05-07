@@ -4,7 +4,7 @@ import OperationsMenuBarChart from "./OperationsMenuBarChart";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 const OperationsMenuCard = async ({ userId }: { userId: string }) => {
-  const insights = await api.operations.insights.query({ userId: userId });
+  const userUploadedOps = await api.operations.userUploaded.query({ userId: userId });
 
   return (
     <Card>
@@ -28,7 +28,7 @@ const OperationsMenuCard = async ({ userId }: { userId: string }) => {
             <h1 className="text-3xl font-semibold tracking-tight">Gestión</h1>
           </Link>
           <div className="flex h-full w-full flex-col space-y-2">
-            <OperationsMenuBarChart data={insights.monthCount} />
+            <OperationsMenuBarChart data={userUploadedOps.monthCount} />
             <h1 className="ml-auto text-lg font-semibold">
               Cargadas los últimos 7 días
             </h1>

@@ -58,7 +58,7 @@
     "clsx": "2.0.0",
     "cmdk": "0.2.0",
     "date-fns": "2.30.0",
-    "drizzle-orm": "^0.30.2",
+    "drizzle-orm": "^0.30.10",
     "drizzle-zod": "^0.5.1",
     "esbuild": "0.18.9",
     "fuse.js": "7.0.0",
