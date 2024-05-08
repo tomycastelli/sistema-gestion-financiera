@@ -44,13 +44,14 @@ export const operationsRouter = createTRPCRouter({
         opId: z.number().int().optional().nullable(),
         transactions: z.array(
           z.object({
+            formId: z.number().int(),
             type: z.string(),
             operatorEntityId: z.number().int(),
             fromEntityId: z.number().int(),
             toEntityId: z.number().int(),
             currency: z.string(),
             amount: z.number().positive(),
-            method: z.string().optional(),
+            relatedTransactionId: z.number().int().optional(),
             metadata: z
               .object({ exchange_rate: z.number().optional() })
               .optional(),
@@ -59,6 +60,9 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Un map del tipo txFormId-insertedTxId donde txFormId es el id temporal generado en el form
+      // Y el insertedTxId es el id generado por la base de datos
+      const relatedTxIdMap = new Map<number, number>()
       const fromEntity = alias(entities, "fromEntity");
       const toEntity = alias(entities, "toEntity");
 
@@ -78,19 +82,20 @@ export const operationsRouter = createTRPCRouter({
             });
           }
 
-          for (const transactionToInsert of input.transactions) {
+          for (const txToInsert of input.transactions) {
             const [txIdObj] = await tx
               .insert(transactions)
               .values({
-                ...transactionToInsert,
+                ...txToInsert,
                 operationId: opId,
                 status:
-                  cashAccountOnlyTypes.has(transactionToInsert.type) ||
-                    transactionToInsert.type === "pago por cta cte"
+                  cashAccountOnlyTypes.has(txToInsert.type) ||
+                    txToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
               }).returning({ id: transactions.id })
 
+            relatedTxIdMap.set(txToInsert.formId, txIdObj!.id)
 
             const [insertedTxResponse] = await tx.select().from(transactions)
               .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
@@ -98,13 +103,6 @@ export const operationsRouter = createTRPCRouter({
               .where(eq(transactions.id, txIdObj!.id))
 
             const insertedTx = { ...insertedTxResponse!.Transactions, fromEntity: insertedTxResponse!.fromEntity!, toEntity: insertedTxResponse!.toEntity! }
-
-            await tx.insert(transactionsMetadata).values({
-              transactionId: insertedTx.id,
-              uploadedBy: ctx.user.id,
-              uploadedDate: new Date(),
-              metadata: transactionToInsert.metadata,
-            });
 
             list.push(insertedTx);
 
@@ -152,19 +150,14 @@ export const operationsRouter = createTRPCRouter({
               })
               .returning({ id: transactions.id });
 
+            relatedTxIdMap.set(txToInsert.formId, txIdObj!.id)
+
             const [insertedTxResponse] = await tx.select().from(transactions)
               .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
               .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
               .where(eq(transactions.id, txIdObj!.id))
 
             const insertedTx = { ...insertedTxResponse!.Transactions, fromEntity: insertedTxResponse!.fromEntity!, toEntity: insertedTxResponse!.toEntity! }
-
-            await tx.insert(transactionsMetadata).values({
-              transactionId: insertedTx.id,
-              uploadedBy: ctx.user.id,
-              uploadedDate: new Date(),
-              metadata: txToInsert.metadata,
-            });
 
             list.push(insertedTx);
 
@@ -181,6 +174,17 @@ export const operationsRouter = createTRPCRouter({
               await generateMovements(tx, txForMovement, false, -1, "upload")
             )
           }
+
+          const txMetadataToInsert = input.transactions.map(txToInsert => ({
+            transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+            uploadedBy: ctx.user.id,
+            uploadedDate: new Date(),
+            metadata: txToInsert.metadata,
+            relatedTransactionId: txToInsert.relatedTransactionId ? relatedTxIdMap.get(txToInsert.relatedTransactionId) : undefined
+          }))
+
+          await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+
 
           return { operation: op!, transactions: list };
         });
@@ -633,15 +637,15 @@ export const operationsRouter = createTRPCRouter({
       DATE_TRUNC('day', ${operations.date} AT TIME ZONE 'UTC') as "day",
       COUNT(DISTINCT ${operations.id}) as "operationsCount",
       COUNT(DISTINCT ${transactions.id}) as "transactionsCount"
-    FROM
-      ${operations}
+      FROM
+        ${operations}
       LEFT JOIN ${transactions} ON ${operations.id} = ${transactions.operationId}
-    WHERE
-      ${operations.date} >= NOW() - INTERVAL '7 days'
-    GROUP BY
-      DATE_TRUNC('day', ${operations.date} AT TIME ZONE 'UTC')
-    ORDER BY
-      "day" ASC;`;
+      WHERE
+        ${operations.date} >= NOW() - INTERVAL '7 days'
+      GROUP BY
+        DATE_TRUNC('day', ${operations.date} AT TIME ZONE 'UTC')
+      ORDER BY
+        "day" ASC;`;
 
       const res: postgres.RowList<Record<string, unknown>[]> =
         await ctx.db.execute(statement);

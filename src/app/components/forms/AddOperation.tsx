@@ -137,6 +137,7 @@ const AddOperation = ({
       { permissionName: "OPERATIONS_CREATE" },
       {
         initialData: initialEntities,
+        refetchOnWindowFocus: false,
       },
     );
 
@@ -236,10 +237,6 @@ const AddOperation = ({
                             <p className="font-medium leading-none text-muted-foreground">
                               {transaction.currency.toUpperCase()}
                             </p>
-                            <p className="mt-1 font-medium leading-none text-muted-foreground">
-                              {transaction.method &&
-                                capitalizeFirstLetter(transaction.method)}
-                            </p>
                           </div>
                           <Badge
                             className="justify-self-center"
@@ -332,14 +329,15 @@ const AddOperation = ({
                           opId: selectedOpId,
                           transactions: transactionsStore.map(
                             (transaction) => ({
+                              formId: transaction.txId,
                               type: transaction.type,
                               operatorEntityId: transaction.operatorId,
                               fromEntityId: transaction.fromEntityId,
                               toEntityId: transaction.toEntityId,
                               currency: transaction.currency,
                               amount: transaction.amount,
-                              method: transaction.method,
                               metadata: transaction.metadata,
+                              relatedTransactionId: transaction.relatedTxId
                             }),
                           ),
                         });

@@ -36,6 +36,11 @@ export const transactionsMetadata = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    relatedTransactionId: integer("relatedTransactionId")
+      .references(() => transactions.id, {
+        onDelete: "set null",
+        onUpdate: "no action"
+      }),
     uploadedBy: text("uploadedBy")
       .notNull()
       .references(() => user.id, { onDelete: "restrict", onUpdate: "cascade" }),
@@ -139,7 +144,7 @@ export const messages = pgTable(
 
 const decimalNumber = customType<{ data: number }>({
   dataType() {
-    return 'decimal(16, 4)';
+    return 'numeric(16, 4)';
   },
   fromDriver(value) {
     return Number(value);

@@ -246,7 +246,13 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           .map((item) => (
             <Card
               key={item.currency}
-              onClick={() => setSelectedCurrency(item.currency)}
+              onClick={() => {
+                if (selectedCurrency !== item.currency) {
+                  setSelectedCurrency(item.currency)
+                } else {
+                  setSelectedCurrency(undefined)
+                }
+              }}
               style={{ borderColor: item.currency === selectedCurrency ? uiColor : undefined }}
               className={cn(
                 "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
@@ -283,9 +289,9 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           </div>
         )}
       </div>
-      <div className="flex mx-auto">
+      <div className="flex">
         {selectedCurrency ? (
-          <Card>
+          <Card className="w-full">
             <CardHeader>
               <CardTitle>Movimientos recientes</CardTitle>
               <CardDescription>

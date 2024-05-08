@@ -10,7 +10,7 @@ const TransactionsStoreSchema = z.array(
     operatorId: z.number().int(),
     currency: z.string(),
     amount: z.number(),
-    method: z.string().optional(),
+    relatedTxId: z.number().int().optional(),
     metadata: z.object({ exchange_rate: z.number().optional() }).optional(),
     status: z.boolean().default(false).optional(),
   }),
@@ -24,7 +24,7 @@ interface OperationStore {
   transactionsStore: SingleTransactionInStoreSchema[];
   resetTransactionsStore: () => void;
   addTransactionToStore: (
-    transaction: Omit<SingleTransactionInStoreSchema, "txId">,
+    transaction: SingleTransactionInStoreSchema,
   ) => void;
   removeTransactionFromStore: (txId: number) => void;
   confirmationAtUpload: number[];
@@ -40,17 +40,8 @@ export const useTransactionsStore = create<OperationStore>((set) => ({
       transactionsStore: [],
     }));
   },
-  addTransactionToStore: (transaction) => {
+  addTransactionToStore: (newTransaction) => {
     set((state) => {
-      const lastTxId =
-        state.transactionsStore.length > 0
-          ? state.transactionsStore[state.transactionsStore.length - 1]?.txId ??
-          0
-          : 0;
-      const newTransaction = {
-        ...transaction,
-        txId: lastTxId + 1,
-      };
       return {
         transactionsStore: [...state.transactionsStore, newTransaction],
       };

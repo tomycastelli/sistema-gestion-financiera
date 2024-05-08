@@ -11,7 +11,6 @@ export const mvTypeFormatting = new Map<string, string>([
   ["cancellation", "Cancelación"],
   ["confirmation", "Confirmación"],
   ["upload", "Carga"]
-
 ])
 
 export const colors = [

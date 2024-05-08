@@ -91,11 +91,15 @@ const FlexibleTransactionsForm = ({
     name: "transactions",
   });
 
-  const { addTransactionToStore } = useTransactionsStore();
+  const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const watchTransactions = watch("transactions");
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
+    const greatestId = transactionsStore.reduce((maxId, currentObject) => {
+      return Math.max(maxId, currentObject.txId);
+    }, 0);
+
     values.transactions.forEach((transaction, index) => {
       const fromTag = entities.find(e => e.id === parseInt(transaction.fromEntityId))!.tag.name
       const toTag = entities.find(e => e.id === parseInt(transaction.toEntityId))!.tag.name
@@ -108,6 +112,7 @@ const FlexibleTransactionsForm = ({
       }
 
       addTransactionToStore({
+        txId: greatestId + index + 1,
         type: transaction.type,
         fromEntityId: transaction.direction
           ? parseInt(transaction.fromEntityId)

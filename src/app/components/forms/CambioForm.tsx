@@ -10,6 +10,7 @@ import { Icons } from "~/app/components/ui/Icons";
 import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { currencies } from "~/lib/variables";
 import {
+  type SingleTransactionInStoreSchema,
   useTransactionsStore,
 } from "~/stores/TransactionsStore";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -83,7 +84,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
     name: "transactions",
   });
 
-  const { addTransactionToStore } = useTransactionsStore()
+  const { addTransactionToStore, transactionsStore } = useTransactionsStore()
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     for (const [index, value] of values.transactions.entries()) {
@@ -108,19 +109,26 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
         return
       }
 
-      const transactions = [
+      const latestId = transactionsStore.reduce((maxId, currentObj) => {
+        return Math.max(maxId, currentObj.txId)
+      }, 0)
+
+      const transactions: SingleTransactionInStoreSchema[] = [
         {
+          txId: latestId + 1,
           type: "cambio",
           fromEntityId: parseInt(value.entityA),
           toEntityId: parseInt(value.entityB),
           operatorId: parseInt(value.entityOperator),
           currency: value.currencyB,
           metadata: {
-            exchangeRate: parseFormattedFloat(value.exchangeRate),
+            exchange_rate: parseFormattedFloat(value.exchangeRate),
           },
-          amount: parseFormattedFloat(value.amountB)
+          amount: parseFormattedFloat(value.amountB),
+          relatedTxId: latestId + 2
         },
         {
+          txId: latestId + 2,
           type: "cambio",
           fromEntityId: parseInt(value.entityB),
           toEntityId: parseInt(value.entityA),
@@ -130,6 +138,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
             exchange_rate: parseFormattedFloat(value.exchangeRate),
           },
           amount: parseFormattedFloat(value.amountA),
+          relatedTxId: latestId + 1
         },
       ];
 

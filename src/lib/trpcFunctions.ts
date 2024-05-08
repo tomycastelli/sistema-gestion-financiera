@@ -253,6 +253,21 @@ export const generateMovements = async (
       .orderBy(desc(balances.date))
       .limit(1);
 
+    // Busco el balance mas reciente previo al que voy a insertar
+    const [beforeBalance] = await transaction
+      .select({ amount: balances.balance })
+      .from(balances)
+      .where(
+        and(
+          eq(balances.account, account),
+          eq(balances.currency, tx.currency),
+          lt(balances.date, moment(mvDate).startOf("day").toDate()),
+          entitiesQuery
+        ),
+      )
+      .orderBy(desc(balances.date))
+      .limit(1);
+
     if (!balance) {
       const [response] = await transaction
         .insert(balances)
@@ -290,21 +305,6 @@ export const generateMovements = async (
               entitiesQuery
             ),
           ).returning({ id: balances.id, amount: balances.balance });
-
-        // Busco el balance mas reciente previo al que voy a insertar
-        const [beforeBalance] = await transaction
-          .select({ amount: balances.balance })
-          .from(balances)
-          .where(
-            and(
-              eq(balances.account, account),
-              eq(balances.currency, tx.currency),
-              lt(balances.date, moment(mvDate).startOf("day").toDate()),
-              entitiesQuery
-            ),
-          )
-          .orderBy(desc(balances.date))
-          .limit(1);
 
         if (!oldBalance) {
           // Si no existe un balance de esa fecha previa, creo uno donde el monto sea el ultimo monto previo a ese mas el cambio
@@ -382,7 +382,7 @@ export const generateMovements = async (
           direction,
           account,
           type,
-          balance: movement ? movement.amount + changeAmount : balance.amount + changeAmount,
+          balance: movement ? movement.amount + changeAmount : beforeBalance ? beforeBalance.amount + changeAmount : changeAmount,
           balanceId: balance.id,
           entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null
         })
@@ -819,7 +819,6 @@ export const currentAccountsProcedure = async (
         let selectedEntity = { id: 0, name: "", tagName: "" }
         let otherEntity = { id: 0, name: "", tagName: "" }
         if (mv.id === 10) {
-          console.log("Movement 10: ", mv)
         }
         if (input.entityId) {
           // Mi POV es la entidad del input
@@ -933,6 +932,7 @@ export const getGlobalSettings = async (
 
 export const deletePattern = async (redis: Redis, pattern: string) => {
   const keys = await redis.keys(pattern)
-
-  await redis.del(keys)
+  if (keys.length > 0) {
+    await redis.del(keys)
+  }
 }

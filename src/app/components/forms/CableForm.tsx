@@ -72,7 +72,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
   const parsedWatchEmittingFee = watchEmittingFee ? parseFormattedFloat(watchEmittingFee) : undefined
   const parsedWatchReceivingFee = watchReceivingFee ? parseFormattedFloat(watchReceivingFee) : undefined
 
-  const { addTransactionToStore } = useTransactionsStore();
+  const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     const parsedAmount = parseFormattedFloat(values.amount)
@@ -84,24 +84,30 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
     const parsedOperatorEntity = parseInt(values.operatorEntity)
     const parsedReceivingEntity = parseInt(values.receivingEntity)
 
+    const greatestId = transactionsStore.reduce((maxId, currentObject) => {
+      return Math.max(maxId, currentObject.txId);
+    }, 0);
+
     const transactions: SingleTransactionInStoreSchema[] = [
       {
-        txId: 0,
+        txId: greatestId + 1,
         type: "cable",
         fromEntityId: parsedEmittingEntity,
         toEntityId: parsedMiddleEntity,
         currency: values.currency,
         amount: parsedAmount,
         operatorId: parsedOperatorEntity,
+        relatedTxId: greatestId + 2,
       },
       {
-        txId: 0,
+        txId: greatestId + 2,
         type: "cable",
         fromEntityId: parsedMiddleEntity,
         toEntityId: parsedReceivingEntity,
         currency: values.currency,
         amount: parsedAmount,
         operatorId: parsedOperatorEntity,
+        relatedTxId: greatestId + 1,
       },
     ];
     if (
@@ -109,7 +115,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
       parsedEmittingFee !== 0
     ) {
       transactions.push({
-        txId: 0,
+        txId: greatestId + 3,
         type: "fee",
         fromEntityId:
           parsedEmittingFee < 0
@@ -124,6 +130,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
           (parsedAmount * parsedEmittingFee) / 100,
         ),
         operatorId: parseInt(values.operatorEntity),
+        relatedTxId: greatestId + 1,
       });
     }
     if (
@@ -131,7 +138,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
       parsedReceivingFee !== 0
     ) {
       transactions.push({
-        txId: 0,
+        txId: greatestId + 4,
         type: "fee",
         fromEntityId:
           parsedReceivingFee > 0
@@ -146,6 +153,7 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
           (parsedAmount * parsedReceivingFee) / 100,
         ),
         operatorId: parsedOperatorEntity,
+        relatedTxId: greatestId + 2,
       });
     }
 
