@@ -220,7 +220,7 @@ const AddOperation = ({
                 <>
                   <CardContent className="flex flex-col space-y-4" ref={parent}>
                     {transactionsStore
-                      .slice((txsPage - 1) * 4, txsPage * 4)
+                      .slice((txsPage - 1) * 2, txsPage * 2)
                       .map((transaction, index) => (
                         <div
                           key={transaction.txId}
@@ -321,10 +321,10 @@ const AddOperation = ({
                           <Separator className="mt-1" />
                         </div>
                       ))}
-                    {transactionsStore.length > 4 && (
+                    {transactionsStore.length > 2 && (
                       <CustomPagination
                         page={txsPage}
-                        pageSize={4}
+                        pageSize={2}
                         itemName="transacciones"
                         totalCount={transactionsStore.length}
                         changePageState={setTxsPage}
