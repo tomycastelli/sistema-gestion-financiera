@@ -23,14 +23,13 @@ export type SingleTransactionInStoreSchema = z.infer<
 interface OperationStore {
   transactionsStore: SingleTransactionInStoreSchema[];
   resetTransactionsStore: () => void;
-  addTransactionToStore: (
-    transaction: SingleTransactionInStoreSchema,
-  ) => void;
+  addTransactionToStore: (transaction: SingleTransactionInStoreSchema) => void;
   removeTransactionFromStore: (txId: number) => void;
   confirmationAtUpload: number[];
   setConfirmationAtUpload: (txId: number) => void;
   resetConfirmationAtUpload: () => void;
   removeConfirmationAtUpload: (txId: number) => void;
+  setAllConfirmationAtUpload: (bool: boolean) => void;
 }
 
 export const useTransactionsStore = create<OperationStore>((set) => ({
@@ -49,9 +48,13 @@ export const useTransactionsStore = create<OperationStore>((set) => ({
   },
   removeTransactionFromStore: (txId) => {
     set((state) => {
-      const newStore = state.transactionsStore.filter(
-        (transaction) => transaction.txId !== txId,
-      ).map(transaction => transaction.txId > txId ? { ...transaction, txId: transaction.txId - 1 } : transaction)
+      const newStore = state.transactionsStore
+        .filter((transaction) => transaction.txId !== txId)
+        .map((transaction) =>
+          transaction.txId > txId
+            ? { ...transaction, txId: transaction.txId - 1 }
+            : transaction,
+        );
       return {
         transactionsStore: newStore,
       };
@@ -61,17 +64,34 @@ export const useTransactionsStore = create<OperationStore>((set) => ({
   setConfirmationAtUpload: (txId) => {
     set((state) => {
       if (state.confirmationAtUpload.includes(txId)) {
-        return { confirmationAtUpload: state.confirmationAtUpload.filter(n => n !== txId) }
+        return {
+          confirmationAtUpload: state.confirmationAtUpload.filter(
+            (n) => n !== txId,
+          ),
+        };
       } else {
-        return { confirmationAtUpload: [...state.confirmationAtUpload, txId] }
+        return { confirmationAtUpload: [...state.confirmationAtUpload, txId] };
       }
-    })
+    });
+  },
+  setAllConfirmationAtUpload: (bool) => {
+    set((state) => {
+      if (bool) {
+        const cambioIds = state.transactionsStore
+          .filter((tx) => tx.type === "cambio")
+          .map((tx) => tx.txId);
+        console.log("Confirmation at upload ids: ", cambioIds);
+        return { confirmationAtUpload: cambioIds };
+      } else {
+        return { confirmationAtUpload: [] };
+      }
+    });
   },
   resetConfirmationAtUpload: () => set({ confirmationAtUpload: [] }),
   removeConfirmationAtUpload: (txId) => {
     set((state) => {
-      const newData = state.confirmationAtUpload.filter(n => n !== txId)
-      return { confirmationAtUpload: newData }
-    })
-  }
+      const newData = state.confirmationAtUpload.filter((n) => n !== txId);
+      return { confirmationAtUpload: newData };
+    });
+  },
 }));
