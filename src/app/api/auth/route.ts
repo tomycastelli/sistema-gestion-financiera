@@ -7,10 +7,11 @@ export const dynamic = "force-dynamic"; // defaults to auto
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const provider = requestUrl.searchParams.get("provider");
-  if (provider === "microsoft") {
-    const state = generateState();
-    const codeVerifier = generateCodeVerifier();
 
+  const state = generateState();
+  const codeVerifier = generateCodeVerifier();
+
+  if (provider === "microsoft") {
     const url: URL = await microsoft.createAuthorizationURL(
       state,
       codeVerifier,
@@ -40,9 +41,6 @@ export async function GET(request: Request) {
       },
     });
   } else if (provider === "google") {
-    const state = generateState();
-    const codeVerifier = generateCodeVerifier();
-
     const url: URL = await google.createAuthorizationURL(
       state,
       codeVerifier,

@@ -43,7 +43,7 @@ const Kanban: FC<KanbanProps> = ({
       const prevData = utils.requests.getAll.getData(undefined);
 
       utils.requests.getAll.setData(undefined, (old) =>
-        old ? [...old.filter((r) => r.id !== newOperation.id)] : [],
+        old ? old.filter((r) => r.id !== newOperation.id) : [],
       );
 
       return { prevData };

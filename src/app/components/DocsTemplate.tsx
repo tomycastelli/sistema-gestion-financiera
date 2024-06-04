@@ -72,7 +72,7 @@ const DocsTemplate = (props: MDXRemoteProps) => {
   return (
     <MDXRemote
       {...props}
-      components={{ ...components, ...(props.components || {}) }}
+      components={{ ...components, ...props.components }}
     />
   );
 };

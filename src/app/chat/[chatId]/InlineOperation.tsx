@@ -26,8 +26,8 @@ const InlineOperation = ({ operationId }: InlineOperationProps) => {
   return (
     !isLoading ? (
       isSuccess ? (
-        !!operation ? (
-          !!operation.isVisualizeAllowed ? (
+        operation ? (
+          operation.isVisualizeAllowed ? (
             <Card className="w-[500px]">
               <CardHeader>
                 <CardTitle>

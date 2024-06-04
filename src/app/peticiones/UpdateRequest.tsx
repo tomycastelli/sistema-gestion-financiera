@@ -68,20 +68,19 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
 
       utils.requests.getAll.setData(undefined, (old) =>
         old
-          ? [
-            ...old.map((r) => {
-              if (r.id === newOperation.id) {
-                return {
-                  ...r,
-                  id: r.id,
-                  title: newOperation.title,
-                  content: newOperation.content,
-                };
-              } else {
-                return r;
-              }
-            }),
-          ]
+          ?
+          old.map((r) => {
+            if (r.id === newOperation.id) {
+              return {
+                ...r,
+                id: r.id,
+                title: newOperation.title,
+                content: newOperation.content,
+              };
+            } else {
+              return r;
+            }
+          })
           : [],
       );
 
@@ -95,7 +94,7 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
       })
       return { prevData };
     },
-    onSuccess(data, variables) {
+    onSuccess(_, variables) {
       toast.success(`Petición ${variables.id} guardada`)
     },
     onSettled() {

@@ -35,10 +35,9 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
 
       const prevData = utils.entities.getAll.getData();
 
-      utils.entities.getAll.setData(undefined, (old) => [
-        // @ts-ignore
-        ...old.filter((item) => item.id !== entity.id),
-      ]);
+      utils.entities.getAll.setData(undefined, (old) =>
+        old?.filter((item) => item.id !== entity.id),
+      );
 
       return { prevData };
     },

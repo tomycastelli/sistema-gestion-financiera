@@ -664,7 +664,7 @@ const Balances: FC<BalancesProps> = ({
 
                   </div>
                 ) : (
-                  <p className="col-span-2"></p>
+                  <p className="col-span-2" key={currency}></p>
                 )
               })}
             </div>

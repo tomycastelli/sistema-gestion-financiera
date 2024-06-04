@@ -140,7 +140,7 @@ const FlexibleTransactionsForm = ({
         ref={parent}
       >
         {fields.map((field, index) => (
-          <>
+          <div key={index}>
             <div
               key={field.id}
               className="grid grid-cols-1 justify-center gap-4 lg:grid-cols-3"
@@ -323,7 +323,7 @@ const FlexibleTransactionsForm = ({
                 </div>
               )}
             </div>
-            <div className="mt-4 flex flex-row justify-center space-x-8">
+            <div className="mt-4 flex flex-row justify-center space-x-8" key={index}>
               {index > 0 && (
                 <Button
                   type="button"
@@ -351,8 +351,8 @@ const FlexibleTransactionsForm = ({
                 <Icons.addPackage className="h-6 text-green" />
               </Button>
             </div>
-            <Separator className="mb-8" />
-          </>
+            <Separator key={index} className="mb-8" />
+          </div>
         ))}
         <Button type="submit" className="mx-auto mt-6">
           <Icons.addPackage className="mr-2 h-5" />

@@ -356,7 +356,7 @@ const AddOperation = ({
                       <Icons.addPackage className="mr-2 h-4 w-4" />
                       {isLoading ? (
                         <p>Cargando...</p>
-                      ) : !!selectedOpId ? (
+                      ) : selectedOpId ? (
                         <p>Cargar a la operación {selectedOpId} </p>
                       ) : (
                         <p>Cargar operación</p>

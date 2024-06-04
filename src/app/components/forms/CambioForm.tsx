@@ -87,7 +87,9 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
   const { addTransactionToStore, transactionsStore } = useTransactionsStore()
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
-    for (const [index, value] of values.transactions.entries()) {
+    const temporalTxStore: SingleTransactionInStoreSchema[] = []
+    console.log("Values: ", values.transactions)
+    values.transactions.forEach((value, index) => {
       if (value.entityA === value.entityB) {
         setError(
           `transactions.${index}.entityB`,
@@ -113,9 +115,12 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
         return Math.max(maxId, currentObj.txId)
       }, 0)
 
+      console.log("HERE --- LatestID: ", latestId)
+      console.log("HERE --- Index: ", index)
+
       const transactions: SingleTransactionInStoreSchema[] = [
         {
-          txId: latestId + 1,
+          txId: latestId + 1 + (index * 2),
           type: "cambio",
           fromEntityId: parseInt(value.entityA),
           toEntityId: parseInt(value.entityB),
@@ -125,10 +130,10 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
             exchange_rate: parseFormattedFloat(value.exchangeRate),
           },
           amount: parseFormattedFloat(value.amountB),
-          relatedTxId: latestId + 2
+          relatedTxId: latestId + 2 + (index * 2)
         },
         {
-          txId: latestId + 2,
+          txId: latestId + 2 + (index * 2),
           type: "cambio",
           fromEntityId: parseInt(value.entityB),
           toEntityId: parseInt(value.entityA),
@@ -138,27 +143,30 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
             exchange_rate: parseFormattedFloat(value.exchangeRate),
           },
           amount: parseFormattedFloat(value.amountA),
-          relatedTxId: latestId + 1
+          relatedTxId: latestId + 1 + (index * 2)
         },
       ];
 
-      transactions.forEach((transaction) => {
-        addTransactionToStore(transaction);
-      });
+      temporalTxStore.push(...transactions)
+    })
 
-      reset({
-        transactions: [{
-          currencyA: "",
-          currencyB: "",
-          amountA: "",
-          amountB: "",
-          exchangeRate: "",
-          lockAmountA: true,
-          lockAmountB: false,
-          lockExchange: true,
-        }]
-      });
-    }
+    temporalTxStore.forEach((transaction) => {
+      addTransactionToStore(transaction);
+    });
+
+    reset({
+      transactions: [{
+        currencyA: "",
+        currencyB: "",
+        amountA: "",
+        amountB: "",
+        exchangeRate: "",
+        lockAmountA: true,
+        lockAmountB: false,
+        lockExchange: true,
+      }]
+    });
+
   };
 
   const [parent] = useAutoAnimate();
@@ -253,7 +261,7 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
         watchLockAmountA &&
         amountA > 0 &&
         watchLockExchange &&
-        (exchangeRate > 0 || exchangeRate < 0)
+        (exchangeRate !== 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
           setValue(`transactions.${index}.amountB`, numberFormatter(amountA * exchangeRate));
@@ -278,7 +286,7 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
         watchLockAmountB &&
         amountB > 0 &&
         watchLockExchange &&
-        (exchangeRate > 0 || exchangeRate < 0)
+        (exchangeRate !== 0)
       ) {
         if (isStrongCurrencyA && !isStrongCurrencyB) {
           setValue(`transactions.${index}.amountA`, numberFormatter(amountB / exchangeRate));
@@ -545,8 +553,8 @@ const CambioPair = ({ index, entities, form, userEntityId, append, remove }: Cam
           currencyB: "",
           direction: true,
           entityOperator: watch(`transactions.${index}.entityOperator`),
-          entityA: watch(`transactions.${index}.entityB`),
-          entityB: watch(`transactions.${index}.entityA`)
+          entityA: watch(`transactions.${index}.entityA`),
+          entityB: watch(`transactions.${index}.entityB`)
         })}>
           <Icons.addPackage className="text-green h-5" />
         </Button>

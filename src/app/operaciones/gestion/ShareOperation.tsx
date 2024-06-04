@@ -14,13 +14,14 @@ interface ShareOperationProps {
 
 const ShareOperation: FC<ShareOperationProps> = ({ operationId }) => {
   const { data: chats, isLoading, isSuccess } = api.messages.getUserChats.useQuery(undefined, {
+    staleTime: 60 * 1000,
     refetchOnMount: false,
     refetchOnReconnect: false,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
   })
 
   const { mutateAsync: sendMessage } = api.messages.sendMessage.useMutation({
-    onSuccess(data, variables) {
+    onSuccess(_, variables) {
       toast.success(`Operación ${operationId} compartida al chat ${variables.chatId}`)
     },
   })

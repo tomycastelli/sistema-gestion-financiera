@@ -60,7 +60,9 @@ export async function GET(request: Request) {
     });
 
     if (existingUser) {
+      // Esto se hace en el backend
       const session = await lucia.createSession(existingUser.userId, {});
+      // Esto se hace server-side en el front
       const sessionCookie = lucia.createSessionCookie(session.id);
 
       return new Response(null, {

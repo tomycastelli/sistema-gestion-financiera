@@ -17,6 +17,9 @@ jobs:
       - name: Set tag env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
+      - name: Lint project
+        run: npx --yes oxlint --nextjs-plugin --deny-warnings
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
