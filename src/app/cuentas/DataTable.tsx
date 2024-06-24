@@ -84,8 +84,8 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={cn("hover:bg-blue-200",
-                    typeof selectedTxForMvs === "number" && row.getValue("transactionId") === selectedTxForMvs && "bg-blue-100"
+                  className={cn("hover:bg-blue-200 dark:hover:bg-blue-900",
+                    typeof selectedTxForMvs === "number" && row.getValue("transactionId") === selectedTxForMvs && "bg-blue-200 dark:bg-blue-900"
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
