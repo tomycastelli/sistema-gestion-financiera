@@ -303,22 +303,22 @@ const CambioPair = ({
             numberFormatter(amountB / amountA),
           );
         }
-        if (
-          watchCurrencyA === "usd" &&
-          (watchCurrencyB === "usdt" || watchCurrencyB === "usd")
-        ) {
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter((amountB / amountA - 1) * 100),
           );
         }
-        if (
-          (watchCurrencyA === "usdt" || watchCurrencyA === "usd") &&
-          watchCurrencyB === "usd"
-        ) {
+        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter((amountA / amountB - 1) * 100),
+          );
+        }
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
+          setValue(
+            `transactions.${index}.exchangeRate`,
+            numberFormatter((amountB / amountA - 1) * 100),
           );
         }
       }
@@ -340,19 +340,13 @@ const CambioPair = ({
             numberFormatter(amountA / exchangeRate),
           );
         }
-        if (
-          watchCurrencyA === "usd" &&
-          (watchCurrencyB === "usdt" || watchCurrencyB === "usd")
-        ) {
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA / (1 + exchangeRate / 100)),
           );
         }
-        if (
-          watchCurrencyB === "usd" &&
-          (watchCurrencyA === "usdt" || watchCurrencyA === "usd")
-        ) {
+        if (watchCurrencyB === "usd" && watchCurrencyA === "usdt") {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA * (1 + exchangeRate / 100)),
@@ -377,19 +371,13 @@ const CambioPair = ({
             numberFormatter(amountB * exchangeRate),
           );
         }
-        if (
-          (watchCurrencyA === "usdt" || watchCurrencyA === "usd") &&
-          watchCurrencyB === "usd"
-        ) {
+        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter(amountB * (exchangeRate / 100) + 1),
           );
         }
-        if (
-          (watchCurrencyB === "usdt" || watchCurrencyB === "usd") &&
-          watchCurrencyA === "usd"
-        ) {
+        if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter((amountB - 1) * (100 / exchangeRate)),
