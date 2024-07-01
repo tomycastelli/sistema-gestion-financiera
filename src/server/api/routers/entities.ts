@@ -23,19 +23,21 @@ export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const entities = await getAllEntities(ctx.redis, ctx.db);
 
-    return entities
+    return entities;
   }),
 
   getFiltered: protectedProcedure
     .input(z.object({ permissionName: z.enum(PermissionsNames) }))
     .query(async ({ ctx, input }) => {
-      const redisKey = "entities" + "|" + ctx.user.id + "|" + input.permissionName
-      const cachedFilteredString = await ctx.redis.get(redisKey)
+      const redisKey =
+        "entities" + "|" + ctx.user.id + "|" + input.permissionName;
+      const cachedFilteredString = await ctx.redis.get(redisKey);
 
       if (cachedFilteredString) {
-        const parsedFilteredEntities: typeof entities = JSON.parse(cachedFilteredString)
+        const parsedFilteredEntities: typeof entities =
+          JSON.parse(cachedFilteredString);
 
-        return parsedFilteredEntities
+        return parsedFilteredEntities;
       }
 
       const userPermissions = await getAllPermissions(
@@ -69,7 +71,12 @@ export const entitiesRouter = createTRPCRouter({
         }
       });
 
-      await ctx.redis.set(redisKey, JSON.stringify(filteredEntities), "EX", 3600);
+      await ctx.redis.set(
+        redisKey,
+        JSON.stringify(filteredEntities),
+        "EX",
+        3600,
+      );
 
       return filteredEntities;
     }),
@@ -82,15 +89,25 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
-      const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && getAllChildrenTags(p.entitiesTags, tags).includes(input.tag)))
+      const userPermissions = await getAllPermissions(
+        ctx.redis,
+        ctx.user,
+        ctx.db,
+      );
+      const tags = await getAllTags(ctx.redis, ctx.db);
+      const hasPermissions = userPermissions?.map(
+        (p) =>
+          p.name === "ADMIN" ||
+          p.name === "ENTITIES_MANAGE" ||
+          (p.name === "ENTITIES_MANAGE_SOME" &&
+            getAllChildrenTags(p.entitiesTags, tags).includes(input.tag)),
+      );
 
       if (!hasPermissions) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "El usuario no tiene los permisos suficientes."
-        })
+          message: "El usuario no tiene los permisos suficientes.",
+        });
       }
 
       const [response] = await ctx.db
@@ -110,22 +127,33 @@ export const entitiesRouter = createTRPCRouter({
 
       await logIO(ctx.dynamodb, ctx.user.id, "Añadir entidad", input, response);
 
-      await deletePattern(ctx.redis, "entities*")
+      await deletePattern(ctx.redis, "entities*");
 
       return response;
     }),
   deleteOne: protectedLoggedProcedure
     .input(z.object({ entityId: z.number().int(), tag: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
-      const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag) || p.entitiesIds?.includes(input.entityId))))
+      const userPermissions = await getAllPermissions(
+        ctx.redis,
+        ctx.user,
+        ctx.db,
+      );
+      const tags = await getAllTags(ctx.redis, ctx.db);
+      const hasPermissions = userPermissions?.map(
+        (p) =>
+          p.name === "ADMIN" ||
+          p.name === "ENTITIES_MANAGE" ||
+          (p.name === "ENTITIES_MANAGE_SOME" &&
+            (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag) ||
+              p.entitiesIds?.includes(input.entityId))),
+      );
 
       if (!hasPermissions) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "El usuario no tiene los permisos suficientes."
-        })
+          message: "El usuario no tiene los permisos suficientes.",
+        });
       }
 
       const [transactionId] = await ctx.db
@@ -160,7 +188,7 @@ export const entitiesRouter = createTRPCRouter({
           response,
         );
 
-        await deletePattern(ctx.redis, "entities*")
+        await deletePattern(ctx.redis, "entities*");
 
         return response;
       } else {
@@ -179,15 +207,28 @@ export const entitiesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userPermissions = await getAllPermissions(ctx.redis, ctx.user, ctx.db)
-      const tags = await getAllTags(ctx.redis, ctx.db)
-      const hasPermissions = userPermissions?.map(p => p.name === "ADMIN" || p.name === "ENTITIES_MANAGE" || (p.name === "ENTITIES_MANAGE_SOME" && (getAllChildrenTags(p.entitiesTags, tags).includes(input.tag ?? "") || p.entitiesIds?.includes(input.id))))
+      const userPermissions = await getAllPermissions(
+        ctx.redis,
+        ctx.user,
+        ctx.db,
+      );
+      const tags = await getAllTags(ctx.redis, ctx.db);
+      const hasPermissions = userPermissions?.map(
+        (p) =>
+          p.name === "ADMIN" ||
+          p.name === "ENTITIES_MANAGE" ||
+          (p.name === "ENTITIES_MANAGE_SOME" &&
+            (getAllChildrenTags(p.entitiesTags, tags).includes(
+              input.tag ?? "",
+            ) ||
+              p.entitiesIds?.includes(input.id))),
+      );
 
       if (!hasPermissions) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "El usuario no tiene los permisos suficientes."
-        })
+          message: "El usuario no tiene los permisos suficientes.",
+        });
       }
 
       const [response] = await ctx.db
@@ -213,7 +254,7 @@ export const entitiesRouter = createTRPCRouter({
         response,
       );
 
-      await deletePattern(ctx.redis, "entities*")
+      await deletePattern(ctx.redis, "entities*");
 
       return response;
     }),

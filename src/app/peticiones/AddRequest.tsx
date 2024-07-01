@@ -33,7 +33,7 @@ const FormSchema = z.object({
 });
 
 interface AddRequestProps {
-  user: User
+  user: User;
 }
 
 const AddRequest: FC<AddRequestProps> = ({ user }) => {
@@ -61,17 +61,17 @@ const AddRequest: FC<AddRequestProps> = ({ user }) => {
       utils.requests.getAll.setData(undefined, (old) =>
         old
           ? [
-            ...old,
-            {
-              id: 0,
-              uploadedBy: user.id,
-              uploadedByUser: { name: user.name },
-              title: newOperation.title,
-              content: newOperation.content,
-              status: "pending",
-              developerMessage: "",
-            },
-          ]
+              ...old,
+              {
+                id: 0,
+                uploadedBy: user.id,
+                uploadedByUser: { name: user.name },
+                title: newOperation.title,
+                content: newOperation.content,
+                status: "pending",
+                developerMessage: "",
+              },
+            ]
           : [],
       );
 
@@ -81,16 +81,16 @@ const AddRequest: FC<AddRequestProps> = ({ user }) => {
       const prevData = utils.requests.getAll.getData(undefined);
       // Doing some ui actions
       toast.error("No se pudo añadir la petición", {
-        description: err.message
-      })
+        description: err.message,
+      });
       return { prevData };
     },
     onSettled() {
       void utils.requests.getAll.invalidate();
     },
     onSuccess() {
-      toast.success("Petición añadida")
-    }
+      toast.success("Petición añadida");
+    },
   });
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {

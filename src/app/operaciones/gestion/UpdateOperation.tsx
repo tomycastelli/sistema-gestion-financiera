@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarIcon } from "lucide-react";
@@ -28,35 +28,47 @@ import {
   FormMessage,
 } from "~/app/components/ui/form";
 import { Input } from "~/app/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "~/app/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/app/components/ui/popover";
 import { Textarea } from "~/app/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterInputs } from "~/trpc/shared";
 
-
 interface UpdateOperationProps {
   opId: number;
-  opDate: Date
+  opDate: Date;
   opObservations: string | undefined | null;
-  operationsQueryInput: RouterInputs["operations"]["getOperations"]
-  accountingPeriodDate: Date
+  operationsQueryInput: RouterInputs["operations"]["getOperations"];
+  accountingPeriodDate: Date;
 }
 
 const FormSchema = z.object({
   opObservations: z.string().optional(),
   opDate: z.date(),
-  opTime: z.string()
+  opTime: z.string(),
 });
 
-
-const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservations, operationsQueryInput, accountingPeriodDate }) => {
-  const utils = api.useContext()
+const UpdateOperation: FC<UpdateOperationProps> = ({
+  opId,
+  opDate,
+  opObservations,
+  operationsQueryInput,
+  accountingPeriodDate,
+}) => {
+  const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { opObservations: opObservations ?? undefined, opDate, opTime: moment(opDate).format("HH:mm") }
+    defaultValues: {
+      opObservations: opObservations ?? undefined,
+      opDate,
+      opTime: moment(opDate).format("HH:mm"),
+    },
   });
 
   const { mutateAsync } = api.editingOperations.changeOpData.useMutation({
@@ -70,9 +82,13 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
         ...old!,
         operations: old!.operations.map((operation) => {
           if (operation.id === newOperation.opId) {
-            return { ...operation, observations: newOperation.opObservations ?? null, date: newOperation.opDate }
+            return {
+              ...operation,
+              observations: newOperation.opObservations ?? null,
+              date: newOperation.opDate,
+            };
           } else {
-            return operation
+            return operation;
           }
         }),
       }));
@@ -84,34 +100,33 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
       toast.error("No se pudieron actualizar las transacciones", {
-        description: err.message
-      })
+        description: err.message,
+      });
       return { prevData };
     },
     onSettled() {
       void utils.operations.getOperations.invalidate();
-      void utils.movements.getMovementsByOpId.invalidate()
-      void utils.movements.getCurrentAccounts.invalidate()
-      void utils.movements.getBalancesByEntities.invalidate()
-      void utils.movements.getBalancesByEntitiesForCard.invalidate()
-
+      void utils.movements.getMovementsByOpId.invalidate();
+      void utils.movements.getCurrentAccounts.invalidate();
+      void utils.movements.getBalancesByEntities.invalidate();
+      void utils.movements.getBalancesByEntitiesForCard.invalidate();
     },
     onSuccess(data) {
       setIsOpen(false);
-      toast.success(`Operación ${data?.id} editada`)
+      toast.success(`Operación ${data?.id} editada`);
     },
-  })
+  });
 
   const { handleSubmit, reset } = form;
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    const dateString = moment(values.opDate).format("DD-MM-YYYY")
+    const dateString = moment(values.opDate).format("DD-MM-YYYY");
     await mutateAsync({
       opId,
       opObservations: values.opObservations,
       opDate: moment(dateString + values.opTime, "DD-MM-YYYY HH:mm").toDate(),
-      oldOpDate: opDate
-    })
+      oldOpDate: opDate,
+    });
   };
 
   return (
@@ -121,7 +136,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
           type="button"
           onClick={() => setIsOpen(true)}
           variant="outline"
-          className="p-2 flex justify-center items-center border-transparent"
+          className="flex items-center justify-center border-transparent p-2"
         >
           <Icons.editing className="h-6 text-black dark:text-white" />
         </Button>
@@ -134,7 +149,9 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
           <div className="flex w-full flex-row justify-between">
             <div className="flex flex-col gap-y-1">
               <DialogTitle>Operación {opId}</DialogTitle>
-              <DialogDescription>{moment(opDate).format("DD-MM-YYYY HH:mm")}</DialogDescription>
+              <DialogDescription>
+                {moment(opDate).format("DD-MM-YYYY HH:mm")}
+              </DialogDescription>
             </div>
             <DialogClose asChild>
               <Button
@@ -151,7 +168,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
           <Form {...form}>
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="flex flex-col space-y-2 justify-start"
+              className="flex flex-col justify-start space-y-2"
             >
               <FormField
                 control={form.control}
@@ -160,7 +177,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
                   <FormItem>
                     <FormLabel>Observaciones</FormLabel>
                     <FormControl>
-                      <Textarea className="resize-none w-full" {...field} />
+                      <Textarea className="w-full resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,11 +234,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
                     <FormItem>
                       <FormLabel>Tiempo</FormLabel>
                       <FormControl>
-                        <Input
-                          className="w-[88px]"
-                          type="time"
-                          {...field}
-                        />
+                        <Input className="w-[88px]" type="time" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -229,10 +242,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
                 />
               </div>
               <div className="flex w-full items-center justify-end">
-                <Button
-                  className="mt-4"
-                  type="submit"
-                >
+                <Button className="mt-4" type="submit">
                   Modificar operación
                 </Button>
               </div>
@@ -241,7 +251,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({ opId, opDate, opObservation
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};
 
-export default UpdateOperation
+export default UpdateOperation;

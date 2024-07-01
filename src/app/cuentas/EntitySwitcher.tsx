@@ -31,13 +31,22 @@ import {
 interface EntitySwitcherProps {
   entities: RouterOutputs["entities"]["getAll"];
   tags: RouterOutputs["tags"]["getAll"];
-  uiColor: string | undefined
-  selectedEntityObj: RouterOutputs["entities"]["getFiltered"][number] | undefined
-  selectedTagObj: RouterOutputs["tags"]["getFiltered"][number] | undefined
-  mainTags: string[]
+  uiColor: string | undefined;
+  selectedEntityObj:
+    | RouterOutputs["entities"]["getFiltered"][number]
+    | undefined;
+  selectedTagObj: RouterOutputs["tags"]["getFiltered"][number] | undefined;
+  mainTags: string[];
 }
 
-const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, selectedEntityObj, selectedTagObj, mainTags }) => {
+const EntitySwitcher: FC<EntitySwitcherProps> = ({
+  entities,
+  tags,
+  uiColor,
+  selectedEntityObj,
+  selectedTagObj,
+  mainTags,
+}) => {
   const groupedEntities = entities.reduce(
     (acc, entity) => {
       const existingGroup = acc.find((group) => group.tag === entity.tag.name);
@@ -60,7 +69,6 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -71,7 +79,10 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
           style={{ borderColor: uiColor }}
         >
           <Avatar className="mr-2 h-8 w-8">
-            <AvatarFallback style={{ backgroundColor: uiColor }} className={cn(uiColor && isDarkEnough(uiColor) && "text-white")}>
+            <AvatarFallback
+              style={{ backgroundColor: uiColor }}
+              className={cn(uiColor && isDarkEnough(uiColor) && "text-white")}
+            >
               {selectedTagObj
                 ? getInitials(selectedTagObj.name).toUpperCase()
                 : selectedEntityObj
@@ -84,10 +95,7 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
             {selectedTagObj
               ? capitalizeFirstLetter(selectedTagObj.name)
               : selectedEntityObj
-                ? truncateString(
-                  selectedEntityObj.name,
-                  14,
-                )
+                ? truncateString(selectedEntityObj.name, 14)
                 : "Elegir"}{" "}
           </p>
           <Icons.caretSort className="ml-auto h-4 w-4 shrink-0 opacity-50" />
@@ -99,77 +107,84 @@ const EntitySwitcher: FC<EntitySwitcherProps> = ({ entities, tags, uiColor, sele
             <CommandInput placeholder="Buscar entidad..." />
             <CommandEmpty>No se encontraron entidades.</CommandEmpty>
             <CommandGroup heading="Tags">
-              {tags.filter(tag => mainTags.includes(tag.name)).map((tag) => (
-                <CommandItem
-                  key={tag.name}
-                  className="text-sm"
-                  onSelect={() =>
-                    router.push(
-                      pathname +
-                      "?" +
-                      createQueryString(
-                        searchParams,
-                        "tag",
-                        tag.name,
-                        "entidad",
-                      ),
-                    )
-                  }
-                >
-                  {capitalizeFirstLetter(tag.name)}
-                  <Icons.check
-                    className={cn(
-                      "ml-auto h-4 w-4",
-                      selectedTagObj?.name === tag.name ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            {groupedEntities.filter(group => mainTags.includes(group.tag)).map((group) => (
-              <CommandGroup
-                key={group.tag}
-                heading={capitalizeFirstLetter(group.tag)}
-              >
-                {group.entities.map((entity) => (
+              {tags
+                .filter((tag) => mainTags.includes(tag.name))
+                .map((tag) => (
                   <CommandItem
-                    key={entity.id}
+                    key={tag.name}
                     className="text-sm"
-                    onSelect={() => {
+                    onSelect={() =>
                       router.push(
                         pathname +
-                        "?" +
-                        createQueryString(
-                          searchParams,
-                          "entidad",
-                          entity.id.toString(),
-                          "tag",
-                        ),
-                      );
-                    }}
+                          "?" +
+                          createQueryString(
+                            searchParams,
+                            "tag",
+                            tag.name,
+                            "entidad",
+                          ),
+                      )
+                    }
                   >
-                    <Avatar className="mr-2">
-                      <AvatarFallback
-                        className={cn(
-                          selectedEntityObj?.id === entity.id && "bg-primary text-white",
-                        )}
-                      >
-                        {getInitials(entity.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {entity.name}
+                    {capitalizeFirstLetter(tag.name)}
                     <Icons.check
                       className={cn(
                         "ml-auto h-4 w-4",
-                        selectedEntityObj?.id === entity.id
+                        selectedTagObj?.name === tag.name
                           ? "opacity-100"
                           : "opacity-0",
                       )}
                     />
                   </CommandItem>
                 ))}
-              </CommandGroup>
-            ))}
+            </CommandGroup>
+            {groupedEntities
+              .filter((group) => mainTags.includes(group.tag))
+              .map((group) => (
+                <CommandGroup
+                  key={group.tag}
+                  heading={capitalizeFirstLetter(group.tag)}
+                >
+                  {group.entities.map((entity) => (
+                    <CommandItem
+                      key={entity.id}
+                      className="text-sm"
+                      onSelect={() => {
+                        router.push(
+                          pathname +
+                            "?" +
+                            createQueryString(
+                              searchParams,
+                              "entidad",
+                              entity.id.toString(),
+                              "tag",
+                            ),
+                        );
+                      }}
+                    >
+                      <Avatar className="mr-2">
+                        <AvatarFallback
+                          className={cn(
+                            selectedEntityObj?.id === entity.id &&
+                              "bg-primary text-white",
+                          )}
+                        >
+                          {getInitials(entity.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {entity.name}
+                      <Icons.check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          selectedEntityObj?.id === entity.id
+                            ? "opacity-100"
+                            : "opacity-0",
+                        )}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
           </CommandList>
         </Command>
       </PopoverContent>

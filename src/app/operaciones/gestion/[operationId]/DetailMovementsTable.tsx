@@ -10,33 +10,36 @@ import { type RouterOutputs } from "~/trpc/shared";
 interface DetailMovementsTableProps {
   operationDate: RouterOutputs["operations"]["getOperations"]["operations"][number]["date"];
   movements: RouterOutputs["movements"]["getMovementsByOpId"];
-  operationId: number
+  operationId: number;
 }
 
 const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
   movements,
   operationDate,
 }) => {
-  const [page, setPage] = useState<number>(1)
-  const pageSize = 12
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 12;
 
-  const tableData = movements.flatMap((movement) => ({
-    id: movement.id,
-    date: moment(operationDate).format("DD/MM/YYYY HH:mm"),
-    transactionId: movement.transactionId,
-    cuenta: movement.account ? "Caja" : "Cuenta corriente",
-    type: movement.type,
-    fromEntityName:
-      movement.direction === 1
-        ? movement.transaction.fromEntity.name
-        : movement.transaction.toEntity.name,
-    toEntityName:
-      movement.direction === 1
-        ? movement.transaction.toEntity.name
-        : movement.transaction.fromEntity.name,
-    currency: movement.transaction.currency,
-    amount: movement.transaction.amount,
-  })).sort((a, b) => b.transactionId - a.transactionId).slice((page - 1) * pageSize, page * pageSize);
+  const tableData = movements
+    .flatMap((movement) => ({
+      id: movement.id,
+      date: moment(operationDate).format("DD/MM/YYYY HH:mm"),
+      transactionId: movement.transactionId,
+      cuenta: movement.account ? "Caja" : "Cuenta corriente",
+      type: movement.type,
+      fromEntityName:
+        movement.direction === 1
+          ? movement.transaction.fromEntity.name
+          : movement.transaction.toEntity.name,
+      toEntityName:
+        movement.direction === 1
+          ? movement.transaction.toEntity.name
+          : movement.transaction.fromEntity.name,
+      currency: movement.transaction.currency,
+      amount: movement.transaction.amount,
+    }))
+    .sort((a, b) => b.transactionId - a.transactionId)
+    .slice((page - 1) * pageSize, page * pageSize);
 
   const columns: ColumnDef<(typeof tableData)[number]>[] = [
     {
@@ -67,7 +70,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
       accessorKey: "type",
       header: "Tipo",
       cell: ({ row }) => {
-        const rowType = row.getValue("type")
+        const rowType = row.getValue("type");
         if (typeof rowType === "string") {
           return <p className="font-medium">{mvTypeFormatting.get(rowType)}</p>;
         }
@@ -99,18 +102,16 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
 
   return (
     <div className="flex flex-col justify-start gap-y-2">
-      <DataTable
-        columns={columns}
-        data={tableData}
-      />
-      <CustomPagination page={page}
+      <DataTable columns={columns} data={tableData} />
+      <CustomPagination
+        page={page}
         changePageState={setPage}
         itemName="movimientos"
         pageSize={pageSize}
         totalCount={movements.length}
       />
     </div>
-  )
+  );
 };
 
 export default DetailMovementsTable;

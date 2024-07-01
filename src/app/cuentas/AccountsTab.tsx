@@ -2,10 +2,10 @@ import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterOutputs } from "~/trpc/shared";
 import dynamic from "next/dynamic";
-const MovementsTable = dynamic(
-  () => import("./MovementsTable"), { ssr: false });
-const Balances = dynamic(() => import("./Balances"), { ssr: false })
-
+const MovementsTable = dynamic(() => import("./MovementsTable"), {
+  ssr: false,
+});
+const Balances = dynamic(() => import("./Balances"), { ssr: false });
 
 const AccountsTable = async ({
   initialBalances,
@@ -19,21 +19,21 @@ const AccountsTable = async ({
   uiColor,
   mainTags,
   users,
-  accountingPeriodDate
+  accountingPeriodDate,
 }: {
   searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
   accountType: boolean;
   initialTags: RouterOutputs["tags"]["getAll"];
   linkId: number | null;
-  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined;
   linkToken: string | null;
   entityTag: string | undefined;
   dayInPast: string | null;
-  uiColor: string | undefined
-  mainTags: string[]
-  users: RouterOutputs["users"]["getAll"]
-  accountingPeriodDate: Date
+  uiColor: string | undefined;
+  mainTags: string[];
+  users: RouterOutputs["users"]["getAll"];
+  accountingPeriodDate: Date;
 }) => {
   const user = await getUser();
 

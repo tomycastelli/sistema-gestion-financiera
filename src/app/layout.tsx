@@ -39,7 +39,7 @@ export default function RootLayout({
           <div
             className={cn(
               `font-sans ${inter.variable}`,
-              "bg-background px-4 lg:px-8 min-h-screen",
+              "min-h-screen bg-background px-4 lg:px-8",
             )}
           >
             <TRPCReactProvider headers={headers()}>

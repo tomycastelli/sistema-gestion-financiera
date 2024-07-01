@@ -3,17 +3,21 @@ import { type FC } from "react";
 import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
 import { Button } from "~/app/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "~/app/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "~/app/components/ui/hover-card";
 import { numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface TransactionInfoProps {
-  tx: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number]
-  users: RouterOutputs["users"]["getAll"]
-  entities: RouterOutputs["entities"]["getAll"]
-  isInFeed: boolean
+  tx: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
+  users: RouterOutputs["users"]["getAll"];
+  entities: RouterOutputs["entities"]["getAll"];
+  isInFeed: boolean;
 }
 
 const ChangeData = z.object({
@@ -28,42 +32,57 @@ const ChangeObject = z.object({
   changed_by: z.string(),
 });
 
-const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFeed }) => {
-  const { selectedTxForMvs, setSelectedTxForMvs } = useOperationsPageStore()
+const TransactionInfo: FC<TransactionInfoProps> = ({
+  tx,
+  users,
+  entities,
+  isInFeed,
+}) => {
+  const { selectedTxForMvs, setSelectedTxForMvs } = useOperationsPageStore();
 
   const onInfoClick = () => {
-    if (isInFeed) return
+    if (isInFeed) return;
     if (selectedTxForMvs === tx.id) {
-      setSelectedTxForMvs(undefined)
+      setSelectedTxForMvs(undefined);
     } else {
-      setSelectedTxForMvs(tx.id)
+      setSelectedTxForMvs(tx.id);
     }
-  }
+  };
 
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
-        <Button variant="outline" className="transition-all hover:scale-110 p-0 hover:bg-transparent border-transparent" onClick={() => onInfoClick()}>
-          <Icons.info className={cn("h-8", selectedTxForMvs === tx.id && "text-primary")} />
+        <Button
+          variant="outline"
+          className="border-transparent p-0 transition-all hover:scale-110 hover:bg-transparent"
+          onClick={() => onInfoClick()}
+        >
+          <Icons.info
+            className={cn("h-8", selectedTxForMvs === tx.id && "text-primary")}
+          />
         </Button>
       </HoverCardTrigger>
-      <HoverCardContent className="items-center flex flex-col space-y-1 px-4">
+      <HoverCardContent className="flex flex-col items-center space-y-1 px-4">
         {!isInFeed && (
-          <p className="text-sm w-full text-center">Clickeá para resaltar los movimientos relacionados a la transacción</p>
+          <p className="w-full text-center text-sm">
+            Clickeá para resaltar los movimientos relacionados a la transacción
+          </p>
         )}
         {
           // @ts-ignore
           tx.transactionMetadata?.metadata &&
-          // @ts-ignore
-          tx.transactionMetadata.metadata.exchange_rate && (
-            <p className="rounded-xl border border-muted-foreground p-2 shadow-md">
-              Cambio:{" "}
-              <span className="font-semibold">
-                {// @ts-ignore
-                  tx.transactionMetadata.metadata.exchange_rate.toString()}
-              </span>
-            </p>
-          )
+            // @ts-ignore
+            tx.transactionMetadata.metadata.exchange_rate && (
+              <p className="rounded-xl border border-muted-foreground p-2 shadow-md">
+                Cambio:{" "}
+                <span className="font-semibold">
+                  {
+                    // @ts-ignore
+                    tx.transactionMetadata.metadata.exchange_rate.toString()
+                  }
+                </span>
+              </p>
+            )
         }
         <div className="flex flex-col rounded-xl border border-muted-foreground p-2 shadow-md">
           <p className="font-semibold">
@@ -169,25 +188,25 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
                           "fromEntityId",
                           "toEntityId",
                         ].includes(change.key) && (
-                            <div className="flex flex-row items-center space-x-2">
-                              <Icons.person className="h-6" />
-                              <p className="font-light">
-                                {
-                                  entities.find(
-                                    (entity) => change.before === entity.id,
-                                  )?.name
-                                }
-                              </p>
-                              <Icons.chevronRight className="h-4" />
-                              <p className="font-semibold">
-                                {
-                                  entities.find(
-                                    (entity) => change.after === entity.id,
-                                  )?.name
-                                }
-                              </p>
-                            </div>
-                          )}
+                          <div className="flex flex-row items-center space-x-2">
+                            <Icons.person className="h-6" />
+                            <p className="font-light">
+                              {
+                                entities.find(
+                                  (entity) => change.before === entity.id,
+                                )?.name
+                              }
+                            </p>
+                            <Icons.chevronRight className="h-4" />
+                            <p className="font-semibold">
+                              {
+                                entities.find(
+                                  (entity) => change.after === entity.id,
+                                )?.name
+                              }
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -196,8 +215,7 @@ const TransactionInfo: FC<TransactionInfoProps> = ({ tx, users, entities, isInFe
         </div>
       </HoverCardContent>
     </HoverCard>
+  );
+};
 
-  )
-}
-
-export default TransactionInfo
+export default TransactionInfo;

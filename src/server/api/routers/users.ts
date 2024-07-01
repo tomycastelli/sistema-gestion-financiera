@@ -37,7 +37,7 @@ export const usersRouter = createTRPCRouter({
       });
 
       if (response) {
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
       }
       return response;
     }),
@@ -49,14 +49,13 @@ export const usersRouter = createTRPCRouter({
     });
     return response;
   }),
-  getAllPermissions: publicProcedure
-    .query(async ({ ctx }) => {
-      if (!ctx.user) {
-        return [];
-      }
-      const response = getAllPermissions(ctx.redis, ctx.user, ctx.db);
-      return response;
-    }),
+  getAllPermissions: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.user) {
+      return [];
+    }
+    const response = getAllPermissions(ctx.redis, ctx.user, ctx.db);
+    return response;
+  }),
   getUserPermissions: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -70,21 +69,23 @@ export const usersRouter = createTRPCRouter({
       );
 
       if (hasPermissions) {
-        const [response] = await ctx.db.select({ permissions: user.permissions }).from(user).where(eq(user.id, input.id))
+        const [response] = await ctx.db
+          .select({ permissions: user.permissions })
+          .from(user)
+          .where(eq(user.id, input.id));
 
         if (!response) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `The user with id: ${input.id} does not exist`
-          })
+            message: `The user with id: ${input.id} does not exist`,
+          });
         }
 
         return response.permissions as z.infer<typeof PermissionSchema> | null;
       } else {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message:
-            "El usuario no tiene los permisos suficientes",
+          message: "El usuario no tiene los permisos suficientes",
         });
       }
     }),
@@ -121,7 +122,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         return response;
       } else {
@@ -159,7 +160,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         return response;
       } else {
@@ -187,7 +188,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.userId}`);
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         return response;
       } else {
@@ -215,7 +216,7 @@ export const usersRouter = createTRPCRouter({
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         return response;
       } else {

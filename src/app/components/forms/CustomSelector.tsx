@@ -58,7 +58,17 @@ const CustomSelector = ({
           {isLoading
             ? "Cargando..."
             : field.value
-              ? Array.isArray(field.value) ? field.value.length > 1 ? field.value.length + " " + "elementos" : truncateString(data.find(d => d.value === field.value[0])?.label, 15) : truncateString(data.find(d => d.value === field.value)?.label, 15)
+              ? Array.isArray(field.value)
+                ? field.value.length > 1
+                  ? field.value.length + " " + "elementos"
+                  : truncateString(
+                      data.find((d) => d.value === field.value[0])?.label,
+                      15,
+                    )
+                : truncateString(
+                    data.find((d) => d.value === field.value)?.label,
+                    15,
+                  )
               : placeholder}
         </Button>
       </PopoverTrigger>
@@ -74,8 +84,7 @@ const CustomSelector = ({
                   if (Array.isArray(field.value)) {
                     const aIndex = field.value.indexOf(a.value);
                     const bIndex = field.value.indexOf(b.value);
-                    if (aIndex !== -1 && bIndex !== -1)
-                      return aIndex - bIndex;
+                    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
                     if (aIndex !== -1) return -1;
                     if (bIndex !== -1) return 1;
                   } else {
@@ -94,15 +103,10 @@ const CustomSelector = ({
                           if (field.value.includes(obj.value)) {
                             setValue(
                               fieldName,
-                              field.value.filter(
-                                (item) => item !== obj.value,
-                              ),
+                              field.value.filter((item) => item !== obj.value),
                             );
                           } else {
-                            setValue(fieldName, [
-                              ...field.value,
-                              obj.value,
-                            ]);
+                            setValue(fieldName, [...field.value, obj.value]);
                           }
                         } else {
                           setValue(fieldName, [obj.value]);
@@ -120,7 +124,8 @@ const CustomSelector = ({
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        (Array.isArray(field.value) && field.value.includes(obj.value)) ||
+                        (Array.isArray(field.value) &&
+                          field.value.includes(obj.value)) ||
                           field.value === obj.value
                           ? "opacity-100"
                           : "opacity-0",
@@ -136,7 +141,7 @@ const CustomSelector = ({
     </Popover>
   ) : (
     <p>No data found</p>
-  )
-}
+  );
+};
 
 export default CustomSelector;

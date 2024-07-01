@@ -34,7 +34,7 @@ export function DataTable<TData, TValue>({
     [],
   );
 
-  const { selectedTxForMvs } = useOperationsPageStore()
+  const { selectedTxForMvs } = useOperationsPageStore();
 
   const table = useReactTable({
     data,
@@ -69,9 +69,9 @@ export function DataTable<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
                     </TableHead>
                   );
                 })}
@@ -84,8 +84,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={cn("hover:bg-blue-200 dark:hover:bg-blue-900",
-                    typeof selectedTxForMvs === "number" && row.getValue("transactionId") === selectedTxForMvs && "bg-blue-200 dark:bg-blue-900"
+                  className={cn(
+                    "hover:bg-blue-200 dark:hover:bg-blue-900",
+                    typeof selectedTxForMvs === "number" &&
+                      row.getValue("transactionId") === selectedTxForMvs &&
+                      "bg-blue-200 dark:bg-blue-900",
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (

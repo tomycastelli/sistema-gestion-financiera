@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import Link from "next/link";
 import { Handle, Position, type NodeProps } from "reactflow";
 import loadingJson from "~/../public/animations/loading.json";
@@ -26,7 +26,7 @@ const EntityNode = (
   return (
     <Card
       style={{ borderColor: props.data.tag.color ?? undefined }}
-      className={cn(`border-2 rounded-full`)}
+      className={cn(`rounded-full border-2`)}
     >
       <Handle type="target" position={Position.Top} />
       <CardHeader>

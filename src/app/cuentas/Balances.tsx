@@ -34,14 +34,14 @@ interface BalancesProps {
   accountType: boolean;
   linkId: number | null;
   linkToken: string | null;
-  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined;
   selectedTag: string | undefined;
   tags: RouterOutputs["tags"]["getAll"];
   user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
-  uiColor: string | undefined
-  dayInPast: string | undefined
-  mainTags: string[]
+  uiColor: string | undefined;
+  dayInPast: string | undefined;
+  mainTags: string[];
 }
 
 const Balances: FC<BalancesProps> = ({
@@ -55,7 +55,7 @@ const Balances: FC<BalancesProps> = ({
   linkToken,
   accountType,
   dayInPast,
-  mainTags
+  mainTags,
 }) => {
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
@@ -70,28 +70,28 @@ const Balances: FC<BalancesProps> = ({
     destinationEntityId,
     isInverted,
     setIsInverted,
-    setMovementsTablePage
+    setMovementsTablePage,
   } = useCuentasStore();
 
   useEffect(() => {
     if (selectedTag) {
       if (mainTags.includes(selectedTag)) {
-        setIsInverted(false)
+        setIsInverted(false);
       } else {
-        setIsInverted(true)
+        setIsInverted(true);
       }
     } else if (selectedEntity) {
       if (mainTags.includes(selectedEntity.tag.name)) {
-        setIsInverted(false)
+        setIsInverted(false);
       } else {
-        setIsInverted(true)
+        setIsInverted(true);
       }
     }
-  }, [mainTags, selectedEntity, selectedTag, setIsInverted])
+  }, [mainTags, selectedEntity, selectedTag, setIsInverted]);
 
   const { theme } = useTheme();
 
-  const isDark = theme === "dark"
+  const isDark = theme === "dark";
 
   const transformedBalancesSchema = z.object({
     entity: z.object({
@@ -102,15 +102,18 @@ const Balances: FC<BalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
-  const { data: balances, isFetching } = api.movements.getBalancesByEntities.useQuery({
-    linkId,
-    account: accountType,
-    entityId: selectedEntity?.id,
-    dayInPast,
-    entityTag: selectedTag,
-    linkToken
-  }, { initialData: initialBalances, refetchOnWindowFocus: false })
-
+  const { data: balances, isFetching } =
+    api.movements.getBalancesByEntities.useQuery(
+      {
+        linkId,
+        account: accountType,
+        entityId: selectedEntity?.id,
+        dayInPast,
+        entityTag: selectedTag,
+        linkToken,
+      },
+      { initialData: initialBalances, refetchOnWindowFocus: false },
+    );
 
   const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
@@ -158,48 +161,50 @@ const Balances: FC<BalancesProps> = ({
         return acc;
       },
       [] as z.infer<typeof transformedBalancesSchema>[],
-    )
+    );
   } else if (selectedTag) {
     // Quiero que aparezcan dos asientos en el caso de el tag ser el mismo
-    detailedBalances = balances.filter(obj => obj.selectedEntity.tagName !== obj.otherEntity.tagName).reduce(
-      (acc, balance) => {
-        const myPOVEntity = selectedTag ===
-          balance.selectedEntity.tagName
-          ? balance.otherEntity
-          : balance.selectedEntity;
-        let entityEntry = acc.find(
-          (entry) => entry.entity.id === myPOVEntity.id,
-        );
+    detailedBalances = balances
+      .filter((obj) => obj.selectedEntity.tagName !== obj.otherEntity.tagName)
+      .reduce(
+        (acc, balance) => {
+          const myPOVEntity =
+            selectedTag === balance.selectedEntity.tagName
+              ? balance.otherEntity
+              : balance.selectedEntity;
+          let entityEntry = acc.find(
+            (entry) => entry.entity.id === myPOVEntity.id,
+          );
 
-        if (!entityEntry) {
-          entityEntry = {
-            entity: myPOVEntity,
-            data: [],
-          };
-          acc.push(entityEntry);
-        }
+          if (!entityEntry) {
+            entityEntry = {
+              entity: myPOVEntity,
+              data: [],
+            };
+            acc.push(entityEntry);
+          }
 
-        const balanceMultiplier =
-          entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
+          const balanceMultiplier =
+            entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
 
-        let dataEntry = entityEntry.data.find(
-          (d) => d.currency === balance.currency,
-        );
+          let dataEntry = entityEntry.data.find(
+            (d) => d.currency === balance.currency,
+          );
 
-        if (!dataEntry) {
-          dataEntry = {
-            currency: balance.currency,
-            balance: 0,
-          };
-          entityEntry.data.push(dataEntry);
-        }
+          if (!dataEntry) {
+            dataEntry = {
+              currency: balance.currency,
+              balance: 0,
+            };
+            entityEntry.data.push(dataEntry);
+          }
 
-        dataEntry.balance += balance.balance * balanceMultiplier;
+          dataEntry.balance += balance.balance * balanceMultiplier;
 
-        return acc;
-      },
-      [] as z.infer<typeof transformedBalancesSchema>[],
-    )
+          return acc;
+        },
+        [] as z.infer<typeof transformedBalancesSchema>[],
+      );
   }
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
@@ -215,8 +220,8 @@ const Balances: FC<BalancesProps> = ({
       },
       onError(err) {
         toast.error("Error al generar el archivo", {
-          description: err.message
-        })
+          description: err.message,
+        });
       },
     });
 
@@ -227,7 +232,7 @@ const Balances: FC<BalancesProps> = ({
   } = useSearch<(typeof detailedBalances)[0]>({
     dataSet: detailedBalances,
     keys: ["entity.name"],
-    scoreThreshold: 0.55
+    scoreThreshold: 0.55,
   });
 
   const {
@@ -246,15 +251,17 @@ const Balances: FC<BalancesProps> = ({
     let title = "";
     if (accountListToAdd.indexOf(id) !== -1) {
       setAccountListToAdd(accountListToAdd.filter((n) => n !== id));
-      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
-        ?.entity.name} fue removida de la lista`;
+      title = `La entidad ${
+        detailedBalances.find((b) => b.entity.id === id)?.entity.name
+      } fue removida de la lista`;
     } else {
       setAccountListToAdd([...accountListToAdd, id]);
-      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
-        ?.entity.name} fue añadida a la lista`;
+      title = `La entidad ${
+        detailedBalances.find((b) => b.entity.id === id)?.entity.name
+      } fue añadida a la lista`;
     }
 
-    toast.info(title)
+    toast.info(title);
   };
 
   const addList = async () => {
@@ -293,7 +300,8 @@ const Balances: FC<BalancesProps> = ({
         selectedEntityId={selectedEntity?.id}
         selectedTag={selectedTag}
         accountType={accountType}
-        isInverted={isInverted} />
+        isInverted={isInverted}
+      />
       <div className="flex flex-row items-end justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
@@ -340,8 +348,9 @@ const Balances: FC<BalancesProps> = ({
                             <p className="font-semibold">Lista {list.id}</p>
                             <p className="text-sm">
                               {list.idList.slice(0, 3).flatMap((id, index) => {
-                                const name = entities.find((e) => e.id === id)
-                                  ?.name;
+                                const name = entities.find(
+                                  (e) => e.id === id,
+                                )?.name;
                                 if (index + 1 === list.idList.length) {
                                   return name;
                                 } else {
@@ -478,14 +487,14 @@ const Balances: FC<BalancesProps> = ({
                       });
 
                       toast.promise(promise, {
-                        loading: 'Generando archivo...',
+                        loading: "Generando archivo...",
                         success(data) {
-                          return `Archivo generado: ${data.filename}`
+                          return `Archivo generado: ${data.filename}`;
                         },
                         error() {
-                          return `Error al generar el archivo`
-                        }
-                      })
+                          return `Error al generar el archivo`;
+                        },
+                      });
                     }}
                   >
                     <Icons.pdf className="h-4" />
@@ -501,11 +510,11 @@ const Balances: FC<BalancesProps> = ({
                       });
 
                       toast.promise(promise, {
-                        loading: 'Generando archivo...',
+                        loading: "Generando archivo...",
                         success(data) {
-                          return `Archivo generado: ${data.filename}`
+                          return `Archivo generado: ${data.filename}`;
                         },
-                      })
+                      });
                     }}
                   >
                     <Icons.excel className="h-4" />
@@ -525,7 +534,10 @@ const Balances: FC<BalancesProps> = ({
         />
       </div>
       <div className="grid grid-cols-1 gap-3">
-        <div style={{ borderColor: uiColor }} className="grid grid-cols-13 justify-items-center rounded-xl border-2 p-2">
+        <div
+          style={{ borderColor: uiColor }}
+          className="grid grid-cols-13 justify-items-center rounded-xl border-2 p-2"
+        >
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
           {currencyOrder.map((currency) => (
@@ -568,7 +580,13 @@ const Balances: FC<BalancesProps> = ({
           .map((item, index) => (
             <div
               key={item.entity.id}
-              style={{ backgroundColor: uiColor ? index % 2 === 0 ? lightenColor(uiColor, isDark ? 60 : 20) : lightenColor(uiColor, isDark ? 40 : 10) : undefined }}
+              style={{
+                backgroundColor: uiColor
+                  ? index % 2 === 0
+                    ? lightenColor(uiColor, isDark ? 60 : 20)
+                    : lightenColor(uiColor, isDark ? 40 : 10)
+                  : undefined,
+              }}
               className="grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
               {isListSelection ? (
@@ -608,13 +626,13 @@ const Balances: FC<BalancesProps> = ({
                 onClick={() => {
                   setSelectedCurrency(undefined);
                   setDestinationEntityId(item.entity.id);
-                  setMovementsTablePage(1)
+                  setMovementsTablePage(1);
                 }}
                 className={cn(
                   "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                   !selectedCurrency &&
-                  destinationEntityId === item.entity.id &&
-                  "bg-primary text-white shadow-md",
+                    destinationEntityId === item.entity.id &&
+                    "bg-primary text-white shadow-md",
                 )}
               >
                 <p>{item.entity.name}</p>
@@ -633,21 +651,31 @@ const Balances: FC<BalancesProps> = ({
                       ) {
                         setSelectedCurrency(currency);
                         setDestinationEntityId(item.entity.id);
-                        setMovementsTablePage(1)
+                        setMovementsTablePage(1);
                       } else {
                         setSelectedCurrency(undefined);
                         setDestinationEntityId(undefined);
-                        setMovementsTablePage(1)
+                        setMovementsTablePage(1);
                       }
                     }}
                     key={currency}
-                    style={{ backgroundColor: (selectedCurrency === currency && destinationEntityId === item.entity.id) ? uiColor : undefined }}
+                    style={{
+                      backgroundColor:
+                        selectedCurrency === currency &&
+                        destinationEntityId === item.entity.id
+                          ? uiColor
+                          : undefined,
+                    }}
                     className={cn(
                       "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
                       selectedCurrency === currency &&
-                      destinationEntityId === item.entity.id && uiColor && isDarkEnough(uiColor) &&
-                      "bg-primary text-white shadow-md",
-                      selectedCurrency === currency && destinationEntityId === item.entity.id && "bg-primary text-white shadow-md"
+                        destinationEntityId === item.entity.id &&
+                        uiColor &&
+                        isDarkEnough(uiColor) &&
+                        "bg-primary text-white shadow-md",
+                      selectedCurrency === currency &&
+                        destinationEntityId === item.entity.id &&
+                        "bg-primary text-white shadow-md",
                     )}
                   >
                     {!isFetching ? (
@@ -661,15 +689,13 @@ const Balances: FC<BalancesProps> = ({
                     ) : (
                       <p>Cargando...</p>
                     )}
-
                   </div>
                 ) : (
                   <p className="col-span-2" key={currency}></p>
-                )
+                );
               })}
             </div>
-          ))
-        }
+          ))}
       </div>
     </div>
   );

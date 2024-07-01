@@ -14,11 +14,13 @@ const adapter = new DrizzlePostgreSQLAdapter(db, session, user);
 
 const baseUrl =
   env.NODE_ENV === "production"
-    ? env.VERCEL_URL ? `https://sistema-maika.vercel.app` : "https://sistema.maika.com.ar"
+    ? env.VERCEL_URL
+      ? `https://sistema-maika.vercel.app`
+      : "https://sistema.maika.com.ar"
     : "http://localhost:3000";
 
 const msftRedirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
-const googleRedirectUrl = `${baseUrl}/api/auth/callback/google`
+const googleRedirectUrl = `${baseUrl}/api/auth/callback/google`;
 
 export const microsoft = new MicrosoftEntraId(
   env.AZURE_AD_TENANT_ID,
@@ -27,7 +29,11 @@ export const microsoft = new MicrosoftEntraId(
   msftRedirectUrl,
 );
 
-export const google = new Google(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, googleRedirectUrl)
+export const google = new Google(
+  env.GOOGLE_CLIENT_ID,
+  env.GOOGLE_CLIENT_SECRET,
+  googleRedirectUrl,
+);
 
 export const lucia = new Lucia(adapter, {
   sessionExpiresIn: new TimeSpan(2, "w"),
@@ -108,7 +114,7 @@ export const logOut = async () => {
     sessionCookie.attributes,
   );
 
-  await lucia.deleteExpiredSessions()
+  await lucia.deleteExpiredSessions();
 
   return redirect("/");
 };

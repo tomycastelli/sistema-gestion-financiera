@@ -5,11 +5,7 @@ import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  isNumeric,
-  numberFormatter,
-  truncateString,
-} from "~/lib/functions";
+import { isNumeric, numberFormatter, truncateString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currencies, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
@@ -40,7 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/ui/popover";
-import dynamic from 'next/dynamic'
+import dynamic from "next/dynamic";
 import {
   Select,
   SelectContent,
@@ -54,7 +50,7 @@ import { DataTable } from "./DataTable";
 import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
-const OperationDrawer = dynamic(() => import("../components/OperationDrawer"))
+const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
 import { ScrollArea } from "../components/ui/scroll-area";
 import moment from "moment";
 
@@ -70,8 +66,8 @@ interface CuentasTableProps {
   linkId: number | null;
   linkToken: string | null;
   mainTags: string[];
-  users: RouterOutputs["users"]["getAll"]
-  accountingPeriodDate: Date
+  users: RouterOutputs["users"]["getAll"];
+  accountingPeriodDate: Date;
 }
 
 const MovementsTable = ({
@@ -86,15 +82,15 @@ const MovementsTable = ({
   linkToken,
   mainTags,
   users,
-  accountingPeriodDate
+  accountingPeriodDate,
 }: CuentasTableProps) => {
   const utils = api.useContext();
 
   const searchParams = useSearchParams();
   const selectedEntityString = searchParams.get("entidad");
-  const timeMachineDate = searchParams.get("dia")
+  const timeMachineDate = searchParams.get("dia");
 
-  const [groupInTag, setGroupInTag] = useState<boolean>(true)
+  const [groupInTag, setGroupInTag] = useState<boolean>(true);
 
   const {
     movementsTablePage,
@@ -111,12 +107,18 @@ const MovementsTable = ({
   } = useCuentasStore();
 
   useEffect(() => {
-    setDestinationEntityId(undefined)
-    setSelectedCurrency(undefined)
-    setFromDate(undefined)
-    setToDate(undefined)
-    setMovementsTablePage(1)
-  }, [setDestinationEntityId, setSelectedCurrency, setFromDate, setToDate, setMovementsTablePage])
+    setDestinationEntityId(undefined);
+    setSelectedCurrency(undefined);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setMovementsTablePage(1);
+  }, [
+    setDestinationEntityId,
+    setSelectedCurrency,
+    setFromDate,
+    setToDate,
+    setMovementsTablePage,
+  ]);
 
   const { data, refetch, isFetching } =
     api.movements.getCurrentAccounts.useQuery(
@@ -133,7 +135,7 @@ const MovementsTable = ({
         pageNumber: movementsTablePage,
         pageSize: pageSize,
         dayInPast: timeMachineDate ?? undefined,
-        groupInTag
+        groupInTag,
       },
       {
         initialData: initialMovements,
@@ -156,8 +158,8 @@ const MovementsTable = ({
       },
       onError(err) {
         toast.error("Error al generar el archivo", {
-          description: err.message
-        })
+          description: err.message,
+        });
       },
     });
 
@@ -193,8 +195,9 @@ const MovementsTable = ({
       accessorKey: "type",
       header: "Detalle",
       cell: ({ row }) => {
-        const rowType = row.getValue("type")
-        const type = typeof rowType === "string" ? mvTypeFormatting.get(rowType) : ""
+        const rowType = row.getValue("type");
+        const type =
+          typeof rowType === "string" ? mvTypeFormatting.get(rowType) : "";
 
         const metadata: JSON | null = row.getValue("metadata");
         const mvId: number = row.getValue("id");
@@ -207,9 +210,9 @@ const MovementsTable = ({
               // @ts-ignore
               metadata && isNumeric(metadata.exchange_rate)
                 ? // @ts-ignore
-                `- $${metadata.exchange_rate}`
+                  `- $${metadata.exchange_rate}`
                 : ""
-              }`}</p>
+            }`}</p>
             <p className="text-sm font-light text-muted-foreground">
               {observations}
             </p>
@@ -290,31 +293,33 @@ const MovementsTable = ({
       cell: ({ row }) => {
         const movement = row.original;
 
-        if (user) return (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Abrir menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <OperationDrawer
-                entities={entities}
-                user={user}
-                opId={movement.operationId}
-                opDate={moment(movement.date, "DD-MM-YYYY HH:mm").toDate()}
-                accountingPeriodDate={accountingPeriodDate}
-                mainTags={mainTags} users={users}>
-                <Button variant="outline">
-
-                  <p>Operación {numberFormatter(movement.operationId)}</p>
+        if (user)
+          return (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Abrir menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </OperationDrawer>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <OperationDrawer
+                  entities={entities}
+                  user={user}
+                  opId={movement.operationId}
+                  opDate={moment(movement.date, "DD-MM-YYYY HH:mm").toDate()}
+                  accountingPeriodDate={accountingPeriodDate}
+                  mainTags={mainTags}
+                  users={users}
+                >
+                  <Button variant="outline">
+                    <p>Operación {numberFormatter(movement.operationId)}</p>
+                  </Button>
+                </OperationDrawer>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
       },
     },
   ];
@@ -366,7 +371,11 @@ const MovementsTable = ({
                   )}
                 >
                   {destinationEntityId
-                    ? truncateString(entities.find((e) => e.id === destinationEntityId)?.name, 22)
+                    ? truncateString(
+                        entities.find((e) => e.id === destinationEntityId)
+                          ?.name,
+                        22,
+                      )
                     : "Elegir"}
                 </Button>
               </PopoverTrigger>
@@ -446,15 +455,15 @@ const MovementsTable = ({
                       toDate: toDate,
                       fileType: "pdf",
                       dayInPast: timeMachineDate ?? undefined,
-                      toEntityId: destinationEntityId
+                      toEntityId: destinationEntityId,
                     });
 
                     toast.promise(promise, {
-                      loading: 'Generando archivo...',
+                      loading: "Generando archivo...",
                       success(data) {
-                        return `Archivo generado: ${data.filename}`
+                        return `Archivo generado: ${data.filename}`;
                       },
-                    })
+                    });
                   }}
                 >
                   <Icons.pdf className="h-4" />
@@ -471,18 +480,18 @@ const MovementsTable = ({
                       toDate: toDate,
                       fileType: "csv",
                       dayInPast: timeMachineDate ?? undefined,
-                      toEntityId: destinationEntityId
+                      toEntityId: destinationEntityId,
                     });
 
                     toast.promise(promise, {
-                      loading: 'Generando archivo...',
+                      loading: "Generando archivo...",
                       success(data) {
-                        return `Archivo generado: ${data.filename}`
+                        return `Archivo generado: ${data.filename}`;
                       },
                       error() {
-                        return `Error al generar el archivo`
-                      }
-                    })
+                        return `Error al generar el archivo`;
+                      },
+                    });
                   }}
                 >
                   <Icons.excel className="h-4" />
@@ -494,7 +503,10 @@ const MovementsTable = ({
           {entityTag && (
             <div className="flex flex-col justify-start gap-y-1">
               <Label className="mb-2">Agrupar</Label>
-              <Button variant="outline" onClick={() => setGroupInTag(!groupInTag)}>
+              <Button
+                variant="outline"
+                onClick={() => setGroupInTag(!groupInTag)}
+              >
                 <Switch checked={groupInTag} />
               </Button>
             </div>
@@ -525,7 +537,13 @@ const MovementsTable = ({
         )}
       </div>
       <div className="mt-4 flex w-fit flex-col items-center justify-start space-y-2">
-        <CustomPagination page={movementsTablePage} changePageState={setMovementsTablePage} itemName="movimientos" pageSize={pageSize} totalCount={data.totalRows} />
+        <CustomPagination
+          page={movementsTablePage}
+          changePageState={setMovementsTablePage}
+          itemName="movimientos"
+          pageSize={pageSize}
+          totalCount={data.totalRows}
+        />
       </div>
     </div>
   );

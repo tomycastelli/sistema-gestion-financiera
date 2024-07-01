@@ -4,11 +4,15 @@ import { api } from "~/trpc/server";
 import Sidebar from "./Sidebar";
 
 const ChatLayout = async ({ children }: { children: ReactNode }) => {
-  const user = await getUser()
-  const userChats = await api.messages.getUserChats.query()
+  const user = await getUser();
+  const userChats = await api.messages.getUserChats.query();
 
   if (!user) {
-    return (<h1 className="text-2xl font-semibold">El usuario no está autentificado</h1>)
+    return (
+      <h1 className="text-2xl font-semibold">
+        El usuario no está autentificado
+      </h1>
+    );
   }
 
   return (
@@ -18,7 +22,7 @@ const ChatLayout = async ({ children }: { children: ReactNode }) => {
       </div>
       <div className="col-span-4">{children}</div>
     </div>
-  )
-}
+  );
+};
 
-export default ChatLayout
+export default ChatLayout;

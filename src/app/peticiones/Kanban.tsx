@@ -21,13 +21,13 @@ import { toast } from "sonner";
 interface KanbanProps {
   initialRequests: RouterOutputs["requests"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
-  user: User
+  user: User;
 }
 
 const Kanban: FC<KanbanProps> = ({
   initialRequests,
   userPermissions,
-  user
+  user,
 }) => {
   const utils = api.useContext();
 
@@ -52,15 +52,15 @@ const Kanban: FC<KanbanProps> = ({
       const prevData = utils.requests.getAll.getData(undefined);
       // Doing some ui actions
       toast.error("No se pudo eliminar la petición", {
-        description: err.message
-      })
+        description: err.message,
+      });
       return { prevData };
     },
     onSettled() {
       void utils.requests.getAll.invalidate();
     },
     onSuccess() {
-      toast.success("Petición eliminada")
+      toast.success("Petición eliminada");
     },
   });
 

@@ -25,53 +25,67 @@ export const filesRouter = createTRPCRouter({
         toDate: z.date().optional().nullish(),
         account: z.boolean(),
         currency: z.string().optional().nullish(),
-        groupInTag: z.boolean().default(true)
+        groupInTag: z.boolean().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { movementsQuery: tableData } = await currentAccountsProcedure({
-        entityTag: input.entityTag,
-        entityId: input.entityId,
-        currency: input.currency,
-        account: input.account,
-        fromDate: input.fromDate,
-        toDate: input.toDate,
-        pageSize: 100000,
-        pageNumber: 1,
-        dayInPast: input.dayInPast,
-        toEntityId: input.toEntityId,
-        groupInTag: input.groupInTag
-      }, ctx)
+      const { movementsQuery: tableData } = await currentAccountsProcedure(
+        {
+          entityTag: input.entityTag,
+          entityId: input.entityId,
+          currency: input.currency,
+          account: input.account,
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+          pageSize: 100000,
+          pageNumber: 1,
+          dayInPast: input.dayInPast,
+          toEntityId: input.toEntityId,
+          groupInTag: input.groupInTag,
+        },
+        ctx,
+      );
 
       const data = tableData.map((mv) => ({
         fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
         origen: mv.selectedEntity,
         cliente: mv.otherEntity,
-        detalle: `${mv.type === "upload"
-          ? "Carga"
-          : mv.type === "confirmation"
-            ? "Confirmación"
-            : "Cancelación"
-          } de ${mv.txType} - Nro ${mv.id}`,
+        detalle: `${
+          mv.type === "upload"
+            ? "Carga"
+            : mv.type === "confirmation"
+              ? "Confirmación"
+              : "Cancelación"
+        } de ${mv.txType} - Nro ${mv.id}`,
         observaciones: mv.observations ?? "",
-        entrada: mv.ingress === 0 ? "" : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
-        salida: mv.egress === 0 ? "" : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
-        saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance)
+        entrada:
+          mv.ingress === 0
+            ? ""
+            : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
+        salida:
+          mv.egress === 0
+            ? ""
+            : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
+        saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
       }));
 
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
-      const filename = `${input.account ? "cuenta_corriente" : "caja"
-        }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${input.entityId
+      const filename = `${
+        input.account ? "cuenta_corriente" : "caja"
+      }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${
+        input.entityId
           ? entities.find((e) => e.id === input.entityId)?.name
           : input.entityTag
-        }${input.fromDate
+      }${
+        input.fromDate
           ? `_desde:${moment(input.fromDate).format("DD-MM-YYYY")}`
           : ""
-        }${input.toDate
+      }${
+        input.toDate
           ? `_hasta:${moment(input.toDate).format("DD-MM-YYYY")}`
           : ""
-        }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
+      }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
 
       if (input.fileType === "csv") {
         const csv = unparse(data, { delimiter: "," });
@@ -87,10 +101,11 @@ export const filesRouter = createTRPCRouter({
           `<html>
           <body class="main-container">
           <div class="header-div">
-            <h1 class="title">Cuenta corriente de ${input.entityId
-            ? entities.find((e) => e.id === input.entityId)?.name
-            : input.entityTag
-          } ${input.toEntityId ? "con " + entities.find(e => e.id === input.toEntityId)?.name : ""}</h1>
+            <h1 class="title">Cuenta corriente de ${
+              input.entityId
+                ? entities.find((e) => e.id === input.entityId)?.name
+                : input.entityTag
+            } ${input.toEntityId ? "con " + entities.find((e) => e.id === input.toEntityId)?.name : ""}</h1>
           </div>` +
           `
           <div class="table-container">
@@ -100,9 +115,7 @@ export const filesRouter = createTRPCRouter({
             <th>Fecha</th>
             <th>Detalle</th>
             <th>Origen</th>
-            ${!input.toEntityId ? (
-            "<th>Cliente</th>"
-          ) : ""}
+            ${!input.toEntityId ? "<th>Cliente</th>" : ""}
             <th>Entrada</th>
             <th>Salida</th>
             <th>Saldo</th>
@@ -110,30 +123,27 @@ export const filesRouter = createTRPCRouter({
           </thead>
           <tbody class="table-body">
             ${data
-            .map(
-              (mv, index) =>
-                `<tr key="${index}">
+              .map(
+                (mv, index) =>
+                  `<tr key="${index}">
                   <td>${mv.fecha}</td>
                   <td>
                     <p>${mv.detalle}</p>
                     <p class="observations-text">${mv.observaciones}</p>
                   </td>
                   <td>${mv.origen}</td>
-                  ${!input.toEntityId ? (
-                  `<td>${mv.cliente}</td>`
-                ) : ""}
+                  ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
                   <td>${mv.entrada}</td>
                   <td>${mv.salida}</td>
                   <td>${mv.saldo}</td>
                   </tr>`,
-            )
-            .join("")}
+              )
+              .join("")}
             </tbody>
             </body>
             </html>`;
 
-        const cssString =
-          `.table-container{margin-top: 0.5rem;}
+        const cssString = `.table-container{margin-top: 0.5rem;}
           .table{width: 100%; border-collapse: collapse;}
           .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
           .table th,
@@ -211,10 +221,11 @@ export const filesRouter = createTRPCRouter({
       const entities = await getAllEntities(ctx.redis, ctx.db);
       const filename = `saldos_fecha:${moment().format(
         "DD-MM-YYYY-HH:mm:ss",
-      )}_entidad:${input.entityId
-        ? entities.find((e) => e.id === input.entityId)?.name
-        : input.entityTag
-        }.${input.fileType}`;
+      )}_entidad:${
+        input.entityId
+          ? entities.find((e) => e.id === input.entityId)?.name
+          : input.entityTag
+      }.${input.fileType}`;
 
       const formattedBalances = input.detailedBalances.flatMap((balance) => ({
         entidad: balance.entity.name,
@@ -236,9 +247,10 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const htmlString =
-          `<div class="header-div"><h1 class="title">Saldos de ${input.entityId
-            ? entities.find((e) => e.id === input.entityId)?.name
-            : input.entityTag
+          `<div class="header-div"><h1 class="title">Saldos de ${
+            input.entityId
+              ? entities.find((e) => e.id === input.entityId)?.name
+              : input.entityTag
           }</h1></div>` +
           `
           <div class="table">
@@ -251,9 +263,9 @@ export const filesRouter = createTRPCRouter({
             <p>BRL</p>
           </div>
             ${formattedBalances
-            .map(
-              (b, index) =>
-                `<div key="${index}" class="table-row">
+              .map(
+                (b, index) =>
+                  `<div key="${index}" class="table-row">
                   <p>${b.entidad}</p>
                   <p>${numberFormatter(b.ars)}</p>
                   <p>${numberFormatter(b.usd)}</p>
@@ -261,8 +273,8 @@ export const filesRouter = createTRPCRouter({
                   <p>${numberFormatter(b.eur)}</p>
                   <p>${numberFormatter(b.brl)}</p>
                   </div>`,
-            )
-            .join("")}
+              )
+              .join("")}
             </div>`;
 
         const cssString =

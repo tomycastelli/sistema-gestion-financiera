@@ -26,15 +26,17 @@ export const truncateString = (input: string | undefined, N: number) => {
   }
 };
 
-
 export const parseFormattedFloat = (input: string): number => {
-  return parseFloat(input.replace(/\./g, "").replace(",", "."))
-}
+  return parseFloat(input.replace(/\./g, "").replace(",", "."));
+};
 
-export const numberFormatter = (n: number, maximumFractionDigits = 2): string => {
-  if (n === 0) return "0"
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits }).format(n)
-}
+export const numberFormatter = (
+  n: number,
+  maximumFractionDigits = 2,
+): string => {
+  if (n === 0) return "0";
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits }).format(n);
+};
 
 export const safeJsonParse = <T>(str: string) => {
   try {
@@ -89,9 +91,9 @@ export function isDarkEnough(hexColor: string): boolean {
   const rgb = match.slice(1).map((value) => parseInt(value, 16));
 
   const getRelativeLuminance = (value: number): number => {
-    return (value / 255) > 0.03928
-      ? Math.pow((value / 255), 2.2)
-      : (value / 255) / 12.92;
+    return value / 255 > 0.03928
+      ? Math.pow(value / 255, 2.2)
+      : value / 255 / 12.92;
   };
 
   const relativeLuminance = rgb
@@ -310,12 +312,11 @@ export function getAllChildrenTags(
   result: string[] = [],
 ): string[] {
   if (!tagNames) {
-    return []
+    return [];
   }
   if (typeof tagNames === "string") {
     // Find the tag in the array
     const currentTag = allTags.find((tag) => tag.name === tagNames);
-
 
     // If the tag is found, add it to the result and continue with children
     if (currentTag) {
@@ -332,7 +333,6 @@ export function getAllChildrenTags(
     for (const tagName of tagNames) {
       // Find the tag in the array
       const currentTag = allTags.find((tag) => tag.name === tagName);
-
 
       // If the tag is found, add it to the result and continue with children
       if (currentTag) {
@@ -476,13 +476,19 @@ export const calculateBeforeAmount = (
 };
 
 export function timeout(delay: number) {
-  return new Promise(res => setTimeout(res, delay));
+  return new Promise((res) => setTimeout(res, delay));
 }
 
-export const getAccountingPeriodDate = (months: number, graceDays: number): Date => {
+export const getAccountingPeriodDate = (
+  months: number,
+  graceDays: number,
+): Date => {
   if (moment().date() <= graceDays) {
-    return moment().startOf("month").subtract(months, "month").toDate()
+    return moment().startOf("month").subtract(months, "month").toDate();
   } else {
-    return moment().startOf("month").subtract(months - 1, "month").toDate()
+    return moment()
+      .startOf("month")
+      .subtract(months - 1, "month")
+      .toDate();
   }
-}
+};

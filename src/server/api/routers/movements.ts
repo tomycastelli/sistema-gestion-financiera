@@ -1,15 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import {
-  and,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  lte,
-  not,
-  or,
-} from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, not, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
@@ -29,7 +19,12 @@ import {
   operations,
   transactions,
 } from "~/server/db/schema";
-import { createTRPCRouter, protectedProcedure, publicLoggedProcedure, publicProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicLoggedProcedure,
+  publicProcedure,
+} from "../trpc";
 
 export const movementsRouter = createTRPCRouter({
   getCurrentAccounts: publicLoggedProcedure
@@ -48,11 +43,11 @@ export const movementsRouter = createTRPCRouter({
         fromDate: z.date().optional().nullish(),
         toDate: z.date().optional().nullish(),
         dayInPast: z.string().optional(),
-        groupInTag: z.boolean().default(true)
+        groupInTag: z.boolean().default(true),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const response = await currentAccountsProcedure(input, ctx)
+      const response = await currentAccountsProcedure(input, ctx);
       return {
         movements: response.movementsQuery,
         totalRows: response.totalRows,
@@ -61,21 +56,23 @@ export const movementsRouter = createTRPCRouter({
 
   getBalancesByEntities: publicProcedure
     .input(
-      z.object({
-        entityId: z.number().int().optional().nullable(),
-        entityTag: z.string().optional().nullable(),
-        linkId: z.number().optional().nullable(),
-        linkToken: z.string().optional().nullable(),
-        account: z.boolean().optional().nullable(),
-        dayInPast: z.string().optional(),
-      }).superRefine((obj, ctx) => {
-        if (!obj.entityId && !obj.entityTag) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Es necesario una entidad o un tag",
-          })
-        }
-      }),
+      z
+        .object({
+          entityId: z.number().int().optional().nullable(),
+          entityTag: z.string().optional().nullable(),
+          linkId: z.number().optional().nullable(),
+          linkToken: z.string().optional().nullable(),
+          account: z.boolean().optional().nullable(),
+          dayInPast: z.string().optional(),
+        })
+        .superRefine((obj, ctx) => {
+          if (!obj.entityId && !obj.entityTag) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Es necesario una entidad o un tag",
+            });
+          }
+        }),
     )
     .query(async ({ ctx, input }) => {
       let isRequestValid = false;
@@ -100,20 +97,20 @@ export const movementsRouter = createTRPCRouter({
               (p.name === "ACCOUNTS_VISUALIZE_SOME" &&
                 (input.entityId
                   ? p.entitiesIds?.includes(input.entityId) ||
-                  (entityTag &&
-                    getAllChildrenTags(p.entitiesTags, tags).includes(
-                      entityTag,
-                    ))
+                    (entityTag &&
+                      getAllChildrenTags(p.entitiesTags, tags).includes(
+                        entityTag,
+                      ))
                   : input.entityTag
                     ? getAllChildrenTags(p.entitiesTags, tags).includes(
-                      input.entityTag,
-                    )
+                        input.entityTag,
+                      )
                     : false)),
           )
         ) {
           isRequestValid = true;
         } else if (input.entityId === ctx.user.entityId) {
-          isRequestValid = true
+          isRequestValid = true;
         }
       } else if (input.linkId && input.linkToken && input.entityId) {
         const link = await ctx.db.query.links.findFirst({
@@ -171,16 +168,18 @@ export const movementsRouter = createTRPCRouter({
               isNull(balances.tagName),
               or(
                 eq(selectedEntityObject.tagName, input.entityTag),
-                eq(otherEntityObject.tagName, input.entityTag)
+                eq(otherEntityObject.tagName, input.entityTag),
               ),
               typeof input.account === "boolean"
                 ? eq(balances.account, input.account)
                 : undefined,
               input.dayInPast
                 ? lte(
-                  balances.date,
-                  moment(input.dayInPast, dateFormatting.day).startOf("day").toDate(),
-                )
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day)
+                      .startOf("day")
+                      .toDate(),
+                  )
                 : undefined,
             ),
           )
@@ -228,9 +227,9 @@ export const movementsRouter = createTRPCRouter({
                 : undefined,
               input.dayInPast
                 ? lte(
-                  balances.date,
-                  moment(input.dayInPast, dateFormatting.day).toDate(),
-                )
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
                 : undefined,
             ),
           )
@@ -253,20 +252,22 @@ export const movementsRouter = createTRPCRouter({
     }),
   getBalancesByEntitiesForCard: publicProcedure
     .input(
-      z.object({
-        entityId: z.number().int().optional().nullable(),
-        entityTag: z.string().optional().nullable(),
-        linkId: z.number().optional().nullable(),
-        linkToken: z.string().optional().nullable(),
-        dayInPast: z.string().optional(),
-      }).superRefine((obj, ctx) => {
-        if (!obj.entityId && !obj.entityTag) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Es necesario una entidad o un tag",
-          })
-        }
-      }),
+      z
+        .object({
+          entityId: z.number().int().optional().nullable(),
+          entityTag: z.string().optional().nullable(),
+          linkId: z.number().optional().nullable(),
+          linkToken: z.string().optional().nullable(),
+          dayInPast: z.string().optional(),
+        })
+        .superRefine((obj, ctx) => {
+          if (!obj.entityId && !obj.entityTag) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Es necesario una entidad o un tag",
+            });
+          }
+        }),
     )
     .query(async ({ ctx, input }) => {
       let isRequestValid = false;
@@ -314,7 +315,9 @@ export const movementsRouter = createTRPCRouter({
 
       if (input.entityTag) {
         const allTags = await getAllTags(ctx.redis, ctx.db);
-        const allChildrenTags = Array.from(getAllChildrenTags(input.entityTag, allTags));
+        const allChildrenTags = Array.from(
+          getAllChildrenTags(input.entityTag, allTags),
+        );
 
         const balancesData = await ctx.db
           .selectDistinctOn([
@@ -347,9 +350,9 @@ export const movementsRouter = createTRPCRouter({
               ),
               input.dayInPast
                 ? lte(
-                  balances.date,
-                  moment(input.dayInPast, dateFormatting.day).toDate(),
-                )
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
                 : undefined,
             ),
           )
@@ -448,9 +451,9 @@ export const movementsRouter = createTRPCRouter({
               ),
               input.dayInPast
                 ? lte(
-                  balances.date,
-                  moment(input.dayInPast, dateFormatting.day).toDate(),
-                )
+                    balances.date,
+                    moment(input.dayInPast, dateFormatting.day).toDate(),
+                  )
                 : undefined,
             ),
           )
@@ -532,15 +535,19 @@ export const movementsRouter = createTRPCRouter({
           .from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(and(eq(operations.id, input.operationId), isNull(movements.entitiesMovementId))).orderBy(desc(movements.id));
+          .where(
+            and(
+              eq(operations.id, input.operationId),
+              isNull(movements.entitiesMovementId),
+            ),
+          )
+          .orderBy(desc(movements.id));
 
-        const mvsIds = movementsIds.length > 0 ? movementsIds.map(mv => mv.id) : [0]
+        const mvsIds =
+          movementsIds.length > 0 ? movementsIds.map((mv) => mv.id) : [0];
 
         return await transaction.query.movements.findMany({
-          where: inArray(
-            movements.id,
-            mvsIds,
-          ),
+          where: inArray(movements.id, mvsIds),
           with: {
             transaction: {
               with: {
@@ -549,7 +556,7 @@ export const movementsRouter = createTRPCRouter({
               },
             },
           },
-          orderBy: desc(movements.id)
+          orderBy: desc(movements.id),
         });
       });
 

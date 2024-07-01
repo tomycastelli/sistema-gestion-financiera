@@ -47,8 +47,13 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { HexColorPicker } from "react-colorful";
-import "./color-picker.css"
-import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import "./color-picker.css";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { cn } from "~/lib/utils";
 import { toast } from "sonner";
 
@@ -57,23 +62,21 @@ interface AddTagsFormProps {
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
-const AddTagsForm: FC<AddTagsFormProps> = ({
-  tags,
-  userPermissions,
-}) => {
+const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
   enum ActionStatus {
     ADD = "ADD",
-    EDIT = "EDIT"
+    EDIT = "EDIT",
   }
-  const [tagToEdit, setTagToEdit] = useState<string | undefined>(undefined)
-  const [actionStatus, setActionStatus] = useState<ActionStatus>(ActionStatus.ADD)
+  const [tagToEdit, setTagToEdit] = useState<string | undefined>(undefined);
+  const [actionStatus, setActionStatus] = useState<ActionStatus>(
+    ActionStatus.ADD,
+  );
 
-  const FormSchema = z
-    .object({
-      name: z.string(),
-      parent: z.string().optional(),
-      color: z.string().optional()
-    });
+  const FormSchema = z.object({
+    name: z.string(),
+    parent: z.string().optional(),
+    color: z.string().optional(),
+  });
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -81,8 +84,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
 
   const { handleSubmit, control, setValue, watch, reset } = form;
 
-  const watchTagName = watch("name")
-  const watchTagColor = watch("color")
+  const watchTagName = watch("name");
+  const watchTagColor = watch("color");
 
   const utils = api.useContext();
 
@@ -93,9 +96,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
 
       const prevData = utils.tags.getAll.getData();
 
-      utils.tags.getAll.setData(
-        undefined,
-        (old) => old?.filter((tag) => tag.name !== newOperation.name),
+      utils.tags.getAll.setData(undefined, (old) =>
+        old?.filter((tag) => tag.name !== newOperation.name),
       );
 
       return { prevData };
@@ -104,15 +106,15 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       utils.tags.getAll.setData(undefined, ctx?.prevData);
 
       toast.error(`El tag ${newOperation.name} no se pudo eliminar`, {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.tags.getAll.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Tag ${data.name} eliminado`)
-    }
+      toast.success(`Tag ${data.name} eliminado`);
+    },
   });
 
   const { mutateAsync } = api.tags.addOne.useMutation({
@@ -128,7 +130,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
         newOperation,
       ]);
 
-      reset()
+      reset();
 
       return { prevData };
     },
@@ -136,15 +138,15 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       utils.tags.getFiltered.setData(undefined, ctx?.prevData);
 
       toast.error(`El tag ${newOperation.name} no pudo ser eliminado`, {
-        description: JSON.stringify(err.message)
-      })
+        description: JSON.stringify(err.message),
+      });
     },
     onSettled() {
       void utils.tags.getFiltered.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Tag ${data.name} añadido`)
-    }
+      toast.success(`Tag ${data.name} añadido`);
+    },
   });
 
   const { mutateAsync: editAsync } = api.tags.editOne.useMutation({
@@ -154,15 +156,22 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
 
       const prevData = utils.tags.getFiltered.getData();
 
-      utils.tags.getAll.setData(undefined, (old) => old?.map(tag => {
-        if (tag.name === newOperation.oldName) {
-          return ({ name: newOperation.name ?? newOperation.oldName, parent: newOperation.parent ?? null, color: newOperation.color ?? null, children: tag.children })
-        } else {
-          return tag
-        }
-      }));
+      utils.tags.getAll.setData(undefined, (old) =>
+        old?.map((tag) => {
+          if (tag.name === newOperation.oldName) {
+            return {
+              name: newOperation.name ?? newOperation.oldName,
+              parent: newOperation.parent ?? null,
+              color: newOperation.color ?? null,
+              children: tag.children,
+            };
+          } else {
+            return tag;
+          }
+        }),
+      );
 
-      reset()
+      reset();
 
       return { prevData };
     },
@@ -170,27 +179,35 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
       utils.tags.getFiltered.setData(undefined, ctx?.prevData);
 
       toast.error(`El tag ${newOperation.name} no pudo ser editado`, {
-        description: err.message
-      })
-
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.tags.getFiltered.invalidate();
-      void utils.entities.getAll.invalidate()
+      void utils.entities.getAll.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Tag ${data.name} editado`)
-    }
+      toast.success(`Tag ${data.name} editado`);
+    },
   });
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     if (actionStatus === ActionStatus.ADD) {
-      await mutateAsync({ name: data.name, parent: data.parent, color: data.color });
+      await mutateAsync({
+        name: data.name,
+        parent: data.parent,
+        color: data.color,
+      });
     } else if (actionStatus === ActionStatus.EDIT && tagToEdit) {
-      await editAsync({ name: data.name, parent: data.parent, color: data.color, oldName: tagToEdit })
+      await editAsync({
+        name: data.name,
+        parent: data.parent,
+        color: data.color,
+        oldName: tagToEdit,
+      });
     }
-    reset({ name: "", parent: undefined, color: undefined })
-    setActionStatus(ActionStatus.ADD)
+    reset({ name: "", parent: undefined, color: undefined });
+    setActionStatus(ActionStatus.ADD);
   }
 
   return (
@@ -218,12 +235,28 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader className="flex flex-row items-center justify-between">
-              <DialogTitle className={cn(actionStatus === ActionStatus.EDIT && "animate-pulse")}>{actionStatus === ActionStatus.ADD ? "Añadiendo tag" : actionStatus === ActionStatus.EDIT ? "Editando tag" : ""}</DialogTitle>
+              <DialogTitle
+                className={cn(
+                  actionStatus === ActionStatus.EDIT && "animate-pulse",
+                )}
+              >
+                {actionStatus === ActionStatus.ADD
+                  ? "Añadiendo tag"
+                  : actionStatus === ActionStatus.EDIT
+                    ? "Editando tag"
+                    : ""}
+              </DialogTitle>
               {actionStatus === ActionStatus.EDIT && (
-                <Button variant="outline" className="animate-pulse" onClick={() => {
-                  reset()
-                  setActionStatus(ActionStatus.ADD)
-                }}>Volver a añadir</Button>
+                <Button
+                  variant="outline"
+                  className="animate-pulse"
+                  onClick={() => {
+                    reset();
+                    setActionStatus(ActionStatus.ADD);
+                  }}
+                >
+                  Volver a añadir
+                </Button>
               )}
               <DialogClose asChild>
                 <Button type="button" variant="outline">
@@ -261,13 +294,11 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {
-                          tags
-                            .map((tag) => (
-                              <SelectItem key={tag.name} value={tag.name}>
-                                {capitalizeFirstLetter(tag.name)}
-                              </SelectItem>
-                            ))}
+                        {tags.map((tag) => (
+                          <SelectItem key={tag.name} value={tag.name}>
+                            {capitalizeFirstLetter(tag.name)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -281,11 +312,17 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                   <FormItem>
                     <FormLabel>Color</FormLabel>
                     <FormControl>
-                      <div className="flex flex-row gap-8 justify-start items-center h-32">
+                      <div className="flex h-32 flex-row items-center justify-start gap-8">
                         <section className="small">
-                          <HexColorPicker color={field.value} onChange={(color) => setValue("color", color)} />
+                          <HexColorPicker
+                            color={field.value}
+                            onChange={(color) => setValue("color", color)}
+                          />
                         </section>
-                        <Card className="flex items-start shadow-md justify-center h-32 w-32 border-2" style={{ borderColor: watchTagColor }}>
+                        <Card
+                          className="flex h-32 w-32 items-start justify-center border-2 shadow-md"
+                          style={{ borderColor: watchTagColor }}
+                        >
                           <CardHeader>
                             <CardTitle>Ejemplo</CardTitle>
                             <CardDescription>{watchTagName}</CardDescription>
@@ -300,7 +337,11 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
             </div>
             <DialogFooter>
               <Button type="submit" variant="outline">
-                {actionStatus === ActionStatus.ADD ? "Añadir" : actionStatus === ActionStatus.EDIT ? "Editar" : ""}
+                {actionStatus === ActionStatus.ADD
+                  ? "Añadir"
+                  : actionStatus === ActionStatus.EDIT
+                    ? "Editar"
+                    : ""}
               </Button>
             </DialogFooter>
           </form>
@@ -323,14 +364,18 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                   )}
                 </div>
                 <div className="flex flex-row gap-2">
-                  <Button variant="outline" className="border-transparent" onClick={() => {
-                    setActionStatus(ActionStatus.EDIT)
-                    setTagToEdit(tag.name)
-                    setValue("name", tag.name)
-                    setValue("parent", tag.parent ?? undefined)
-                    setValue("color", tag.color ?? undefined)
-                  }}>
-                    <Icons.editing className="w-4 h-4 text-green" />
+                  <Button
+                    variant="outline"
+                    className="border-transparent"
+                    onClick={() => {
+                      setActionStatus(ActionStatus.EDIT);
+                      setTagToEdit(tag.name);
+                      setValue("name", tag.name);
+                      setValue("parent", tag.parent ?? undefined);
+                      setValue("color", tag.color ?? undefined);
+                    }}
+                  >
+                    <Icons.editing className="h-4 w-4 text-green" />
                   </Button>
                   {tag.name !== "Operadores" && (
                     <AlertDialog>
@@ -348,7 +393,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({
                             ¿Seguro que querés borrar el tag?
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            Si el mismo tiene entidades relacionadas, no podrá ser eliminado
+                            Si el mismo tiene entidades relacionadas, no podrá
+                            ser eliminado
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

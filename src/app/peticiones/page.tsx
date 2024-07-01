@@ -6,7 +6,7 @@ import { getUser } from "~/server/auth";
 const Page = async () => {
   const initialRequests = await api.requests.getAll.query();
 
-  const user = await getUser()
+  const user = await getUser();
 
   const userPermissions = await api.users.getAllPermissions.query();
   if (user) {

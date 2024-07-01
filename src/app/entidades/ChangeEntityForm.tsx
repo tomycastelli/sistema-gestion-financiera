@@ -36,7 +36,7 @@ import { toast } from "sonner";
 
 interface ChangeEntityFormProps {
   entity: RouterOutputs["entities"]["getAll"][number];
-  tags: RouterOutputs["tags"]["getFiltered"]
+  tags: RouterOutputs["tags"]["getFiltered"];
 }
 
 const FormSchema = z.object({
@@ -56,11 +56,14 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
 
       utils.entities.getAll.setData(undefined, (old) => {
         if (!old) {
-          return []
+          return [];
         }
-        const tagObj = tags.find(t => t.name === newOperation.name)
-        return old.map(obj => obj.id === newOperation.id && tagObj ?
-          ({ id: obj.id, name: newOperation.name, tag: tagObj }) : obj)
+        const tagObj = tags.find((t) => t.name === newOperation.name);
+        return old.map((obj) =>
+          obj.id === newOperation.id && tagObj
+            ? { id: obj.id, name: newOperation.name, tag: tagObj }
+            : obj,
+        );
       });
 
       return { prevData };
@@ -69,14 +72,14 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
       toast.error(`No se pudo cargar la entidad ${newOperation.id}`, {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Entidad ${data.id} modificada`)
+      toast.success(`Entidad ${data.id} modificada`);
     },
   });
 
@@ -138,8 +141,10 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {tags.map(tag => (
-                            <SelectItem value={tag.name} key={tag.name}>{tag.name}</SelectItem>
+                          {tags.map((tag) => (
+                            <SelectItem value={tag.name} key={tag.name}>
+                              {tag.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

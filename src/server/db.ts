@@ -4,7 +4,7 @@ import * as schema from "./db/schema";
 
 import { env } from "~/env.mjs";
 
-let connection: postgres.Sql
+let connection: postgres.Sql;
 
 if (process.env.NODE_ENV === "production") {
   connection = postgres(env.DATABASE_URL, { prepare: false });
@@ -23,6 +23,6 @@ if (process.env.NODE_ENV === "production") {
 }
 
 export const db = drizzle(connection, {
-  schema, logger: env.NODE_ENV ===
-    "development"
+  schema,
+  logger: env.NODE_ENV === "development",
 });

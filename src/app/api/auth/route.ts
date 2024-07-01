@@ -41,13 +41,9 @@ export async function GET(request: Request) {
       },
     });
   } else if (provider === "google") {
-    const url: URL = await google.createAuthorizationURL(
-      state,
-      codeVerifier,
-      {
-        scopes: ["profile", "email"],
-      },
-    );
+    const url: URL = await google.createAuthorizationURL(state, codeVerifier, {
+      scopes: ["profile", "email"],
+    });
 
     cookies().set("state", state, {
       secure: env.NODE_ENV !== "development", // false in case of local development

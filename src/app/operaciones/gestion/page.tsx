@@ -23,13 +23,13 @@ const Page = async ({
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
   const selectedEntity = searchParams.entidad;
-  const selectedFromEntity = searchParams.origen
+  const selectedFromEntity = searchParams.origen;
   const selectedToEntity = searchParams.destino;
   const selectedCurrency = searchParams.divisa as string;
   const selectedDateGreater = searchParams.diaDesde as string | undefined;
   const selectedDateLesser = searchParams.diaHasta as string | undefined;
   const selectedType = searchParams.tipo as string;
-  const selectedOperator = searchParams.operador
+  const selectedOperator = searchParams.operador;
   const selectedAmount = searchParams.monto as string | undefined;
   const selectedAmountGreater = searchParams.montoMin as string | undefined;
   const selectedAmountLesser = searchParams.montoMax as string | undefined;
@@ -42,19 +42,19 @@ const Page = async ({
   };
 
   if (selectedEntity) {
-    operationsQueryInput.entityId = Array.isArray(selectedEntity) ? selectedEntity.map((str) =>
-      parseInt(str)
-    ) : [parseInt(selectedEntity)]
+    operationsQueryInput.entityId = Array.isArray(selectedEntity)
+      ? selectedEntity.map((str) => parseInt(str))
+      : [parseInt(selectedEntity)];
   }
   if (selectedFromEntity) {
-    operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity) ? selectedFromEntity.map((str) =>
-      parseInt(str),
-    ) : [parseInt(selectedFromEntity)];
+    operationsQueryInput.fromEntityId = Array.isArray(selectedFromEntity)
+      ? selectedFromEntity.map((str) => parseInt(str))
+      : [parseInt(selectedFromEntity)];
   }
   if (selectedToEntity) {
-    operationsQueryInput.toEntityId = Array.isArray(selectedToEntity) ? selectedToEntity.map((str) =>
-      parseInt(str),
-    ) : [parseInt(selectedToEntity)];
+    operationsQueryInput.toEntityId = Array.isArray(selectedToEntity)
+      ? selectedToEntity.map((str) => parseInt(str))
+      : [parseInt(selectedToEntity)];
   }
   if (selectedCurrency) {
     operationsQueryInput.currency = selectedCurrency;
@@ -75,9 +75,9 @@ const Page = async ({
     operationsQueryInput.transactionType = selectedType;
   }
   if (selectedOperator) {
-    operationsQueryInput.operatorEntityId = Array.isArray(selectedOperator) ? selectedOperator.map((str) =>
-      parseInt(str),
-    ) : [parseInt(selectedOperator)];
+    operationsQueryInput.operatorEntityId = Array.isArray(selectedOperator)
+      ? selectedOperator.map((str) => parseInt(str))
+      : [parseInt(selectedOperator)];
   }
   if (selectedAmount) {
     operationsQueryInput.amount = parseFloat(selectedAmount);
@@ -93,31 +93,40 @@ const Page = async ({
     operationsQueryInput.confirmedById = selectedConfirmationUserId;
   }
 
-  const initialOperations = await api.operations.getOperations.query(
-    operationsQueryInput,
-  );
+  const initialOperations =
+    await api.operations.getOperations.query(operationsQueryInput);
 
   const initialEntities = await api.entities.getAll.query();
 
   const users = await api.users.getAll.query();
 
-  const tags = await api.tags.getAll.query()
+  const tags = await api.tags.getAll.query();
 
-  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+  const { data: mainTagData } = await api.globalSettings.get.query({
+    name: "mainTag",
+  });
 
-  const mainTag = mainTagData as { tag: string }
+  const mainTag = mainTagData as { tag: string };
 
-  const mainTags = getAllChildrenTags(mainTag.tag, tags)
+  const mainTags = getAllChildrenTags(mainTag.tag, tags);
 
-  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({
+    name: "accountingPeriod",
+  });
 
-  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
+  const accountingPeriod = accountingPeriodData as {
+    months: number;
+    graceDays: number;
+  };
 
-  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+  const accountingPeriodDate = getAccountingPeriodDate(
+    accountingPeriod.months,
+    accountingPeriod.graceDays,
+  );
 
   return (
     <div className="flex w-full flex-col">
-      <h1 className="text-4xl font-bold tracking-tighter mb-8">Operaciones</h1>
+      <h1 className="mb-8 text-4xl font-bold tracking-tighter">Operaciones</h1>
       {user && (
         <>
           <div className="flex flex-col justify-start">

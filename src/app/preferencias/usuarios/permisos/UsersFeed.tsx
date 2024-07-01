@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import { type FC } from "react";
 import loadingJson from "~/../public/animations/loading.json";
 import UserCard from "~/app/components/ui/UserCard";

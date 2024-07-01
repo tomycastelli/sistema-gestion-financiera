@@ -1,30 +1,44 @@
-"use client"
+"use client";
 
-import { type FC } from "react"
-import { api } from "~/trpc/react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator } from "~/app/components/ui/dropdown-menu";
+import { type FC } from "react";
+import { api } from "~/trpc/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "~/app/components/ui/dropdown-menu";
 import { Button } from "~/app/components/ui/button";
 import { Icons } from "~/app/components/ui/Icons";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import { toast } from "sonner";
 
 interface ShareOperationProps {
-  operationId: number
+  operationId: number;
 }
 
 const ShareOperation: FC<ShareOperationProps> = ({ operationId }) => {
-  const { data: chats, isLoading, isSuccess } = api.messages.getUserChats.useQuery(undefined, {
+  const {
+    data: chats,
+    isLoading,
+    isSuccess,
+  } = api.messages.getUserChats.useQuery(undefined, {
     staleTime: 60 * 1000,
     refetchOnMount: false,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
-  })
+  });
 
   const { mutateAsync: sendMessage } = api.messages.sendMessage.useMutation({
     onSuccess(_, variables) {
-      toast.success(`Operación ${operationId} compartida al chat ${variables.chatId}`)
+      toast.success(
+        `Operación ${operationId} compartida al chat ${variables.chatId}`,
+      );
     },
-  })
+  });
 
   return (
     <DropdownMenu>
@@ -38,12 +52,26 @@ const ShareOperation: FC<ShareOperationProps> = ({ operationId }) => {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {!isLoading ? (
-            isSuccess && chats.map(chat => (
+            isSuccess &&
+            chats.map((chat) => (
               <DropdownMenuItem
                 className="flex flex-row justify-between"
                 key={chat.id}
-                onClick={() => sendMessage({ chatId: chat.id, message: `operation:${operationId}`, timestamp: Date.now() })}>
-                <span>{chat.name ? chat.name : chat.users.length < 4 ? chat.users.map(obj => obj.name).join(", ") : chat.id.toString()}</span>
+                onClick={() =>
+                  sendMessage({
+                    chatId: chat.id,
+                    message: `operation:${operationId}`,
+                    timestamp: Date.now(),
+                  })
+                }
+              >
+                <span>
+                  {chat.name
+                    ? chat.name
+                    : chat.users.length < 4
+                      ? chat.users.map((obj) => obj.name).join(", ")
+                      : chat.id.toString()}
+                </span>
                 <Icons.sendArrowRight className="h-4" />
               </DropdownMenuItem>
             ))
@@ -51,10 +79,9 @@ const ShareOperation: FC<ShareOperationProps> = ({ operationId }) => {
             <LoadingAnimation size="sm" text="Cargando chats" />
           )}
         </DropdownMenuGroup>
-
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};
 
-export default ShareOperation
+export default ShareOperation;

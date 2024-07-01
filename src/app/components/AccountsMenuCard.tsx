@@ -9,11 +9,13 @@ const OperationsMenuCard = async () => {
     permissionName: "ACCOUNTS_VISUALIZE",
   });
 
-  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+  const { data: mainTagData } = await api.globalSettings.get.query({
+    name: "mainTag",
+  });
 
-  const mainTag = mainTagData as { tag: string }
+  const mainTag = mainTagData as { tag: string };
 
-  const mainTags = getAllChildrenTags(mainTag.tag, filteredTags)
+  const mainTags = getAllChildrenTags(mainTag.tag, filteredTags);
 
   return (
     <Card>
@@ -36,17 +38,19 @@ const OperationsMenuCard = async () => {
           <h4 className="mb-2 mt-2 text-3xl font-semibold leading-none">
             Entidades
           </h4>
-          {filteredEntities.filter(entity => mainTags.includes(entity.tag.name)).map((entity) => (
-            <Link
-              key={entity.name}
-              className={`mb-2 flex flex-row space-x-2 pl-2 text-xl hover:border-l-8 hover:border-primary hover:transition-all`}
-              href={{ pathname: "/cuentas", query: { entidad: entity.id } }}
-              prefetch={false}
-            >
-              <p>{entity.name}</p>
-              <p className="text-muted-foreground">{entity.tag.name}</p>
-            </Link>
-          ))}
+          {filteredEntities
+            .filter((entity) => mainTags.includes(entity.tag.name))
+            .map((entity) => (
+              <Link
+                key={entity.name}
+                className={`mb-2 flex flex-row space-x-2 pl-2 text-xl hover:border-l-8 hover:border-primary hover:transition-all`}
+                href={{ pathname: "/cuentas", query: { entidad: entity.id } }}
+                prefetch={false}
+              >
+                <p>{entity.name}</p>
+                <p className="text-muted-foreground">{entity.tag.name}</p>
+              </Link>
+            ))}
         </ScrollArea>
       </CardContent>
     </Card>

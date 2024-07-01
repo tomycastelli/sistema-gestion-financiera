@@ -11,7 +11,9 @@ import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
-const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), { ssr: false })
+const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), {
+  ssr: false,
+});
 
 const Page = async ({
   searchParams,
@@ -29,41 +31,47 @@ const Page = async ({
 
   const linkIdString = searchParams.id as string | null;
   const linkId = linkIdString ? parseInt(linkIdString) : null;
-  const dayInPast = searchParams.dia as string | null
+  const dayInPast = searchParams.dia as string | null;
 
   const initialEntities = await api.entities.getFiltered.query({
     permissionName: "ACCOUNTS_VISUALIZE",
   });
 
-  const users = await api.users.getAll.query()
+  const users = await api.users.getAll.query();
 
   const filteredTags = await api.tags.getFiltered.query();
 
-  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+  const { data: mainTagData } = await api.globalSettings.get.query({
+    name: "mainTag",
+  });
 
-  const mainTag = mainTagData as { tag: string }
+  const mainTag = mainTagData as { tag: string };
 
-  const mainTags = getAllChildrenTags(mainTag.tag, filteredTags)
+  const mainTags = getAllChildrenTags(mainTag.tag, filteredTags);
 
-  const selectedEntityObj = selectedEntityId ? initialEntities.find(e => e.id === parseInt(selectedEntityId)) : undefined
-  const selectedTagObj = selectedTag ? filteredTags.find(t => t.name === selectedTag) : undefined
+  const selectedEntityObj = selectedEntityId
+    ? initialEntities.find((e) => e.id === parseInt(selectedEntityId))
+    : undefined;
+  const selectedTagObj = selectedTag
+    ? filteredTags.find((t) => t.name === selectedTag)
+    : undefined;
 
-  const initialBalancesInput: RouterInputs["movements"]["getBalancesByEntities"] = {
-    entityTag: selectedTagObj?.name,
-    entityId: selectedEntityObj?.id,
-    account:
-      selectedTab === "cuenta_corriente"
-        ? false
-        : selectedTab === "caja"
-          ? true
-          : undefined,
-    linkToken: linkToken,
-    linkId: linkId,
-    dayInPast: dayInPast ?? undefined
-  };
-  const initialBalances = await api.movements.getBalancesByEntities.query(
-    initialBalancesInput,
-  );
+  const initialBalancesInput: RouterInputs["movements"]["getBalancesByEntities"] =
+    {
+      entityTag: selectedTagObj?.name,
+      entityId: selectedEntityObj?.id,
+      account:
+        selectedTab === "cuenta_corriente"
+          ? false
+          : selectedTab === "caja"
+            ? true
+            : undefined,
+      linkToken: linkToken,
+      linkId: linkId,
+      dayInPast: dayInPast ?? undefined,
+    };
+  const initialBalances =
+    await api.movements.getBalancesByEntities.query(initialBalancesInput);
 
   const initialBalancesForCard =
     await api.movements.getBalancesByEntitiesForCard.query({
@@ -71,7 +79,7 @@ const Page = async ({
       entityTag: initialBalancesInput.entityTag,
       linkId: initialBalancesInput.linkId,
       linkToken: initialBalancesInput.linkToken,
-      dayInPast: dayInPast ?? undefined
+      dayInPast: dayInPast ?? undefined,
     });
 
   const movementsAmount = 5;
@@ -82,24 +90,37 @@ const Page = async ({
     pageNumber: 1,
     entityTag: selectedTag,
     entityId: selectedEntityObj?.id,
-    dayInPast: dayInPast ?? undefined
+    dayInPast: dayInPast ?? undefined,
   };
 
-  const initialMovements = await api.movements.getCurrentAccounts.query(
-    queryInput,
+  const initialMovements =
+    await api.movements.getCurrentAccounts.query(queryInput);
+
+  const uiColor = selectedEntityObj
+    ? selectedEntityObj.tag.color ?? undefined
+    : selectedTagObj
+      ? selectedTagObj.color ?? undefined
+      : undefined;
+
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({
+    name: "accountingPeriod",
+  });
+
+  const accountingPeriod = accountingPeriodData as {
+    months: number;
+    graceDays: number;
+  };
+
+  const accountingPeriodDate = getAccountingPeriodDate(
+    accountingPeriod.months,
+    accountingPeriod.graceDays,
   );
 
-  const uiColor = selectedEntityObj ? selectedEntityObj.tag.color ?? undefined : selectedTagObj ? selectedTagObj.color ?? undefined : undefined
-
-  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
-
-  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
-
-  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
-
-  return mainTags.includes(selectedTag ?? "") || mainTags.includes(selectedEntityObj?.tag.name ?? "") ? (
+  return mainTags.includes(selectedTag ?? "") ||
+    mainTags.includes(selectedEntityObj?.tag.name ?? "") ? (
     <div>
-      <div className="flex w-full flex-row justify-between space-x-8 border-b-2 pb-4"
+      <div
+        className="flex w-full flex-row justify-between space-x-8 border-b-2 pb-4"
         style={{ borderColor: uiColor }}
       >
         {user && (
@@ -112,7 +133,13 @@ const Page = async ({
               entities={initialEntities}
               tags={filteredTags}
             />
-            {(selectedEntityObj?.id || selectedTagObj?.name) && <TabSwitcher uiColor={uiColor} selectedEntityId={selectedEntityObj?.id.toString()} selectedTag={selectedTagObj?.name} />}
+            {(selectedEntityObj?.id || selectedTagObj?.name) && (
+              <TabSwitcher
+                uiColor={uiColor}
+                selectedEntityId={selectedEntityObj?.id.toString()}
+                selectedTag={selectedTagObj?.name}
+              />
+            )}
           </div>
         )}
         {(selectedEntityObj?.id || selectedTagObj?.name) && (
@@ -127,22 +154,22 @@ const Page = async ({
             <div className="mt-4 w-full">
               {(selectedTab === "cuenta_corriente" ||
                 selectedTab === "caja") && (
-                  <AccountsTab
-                    users={users}
-                    accountingPeriodDate={accountingPeriodDate}
-                    mainTags={mainTags}
-                    uiColor={uiColor}
-                    selectedEntity={selectedEntityObj}
-                    entityTag={selectedTagObj?.name}
-                    accountType={selectedTab === "caja" ? true : false}
-                    searchParams={searchParams}
-                    initialBalances={initialBalances}
-                    initialTags={filteredTags}
-                    linkId={linkId}
-                    linkToken={linkToken}
-                    dayInPast={dayInPast}
-                  />
-                )}
+                <AccountsTab
+                  users={users}
+                  accountingPeriodDate={accountingPeriodDate}
+                  mainTags={mainTags}
+                  uiColor={uiColor}
+                  selectedEntity={selectedEntityObj}
+                  entityTag={selectedTagObj?.name}
+                  accountType={selectedTab === "caja" ? true : false}
+                  searchParams={searchParams}
+                  initialBalances={initialBalances}
+                  initialTags={filteredTags}
+                  linkId={linkId}
+                  linkToken={linkToken}
+                  dayInPast={dayInPast}
+                />
+              )}
               {selectedTab === "resumen" && (
                 <div suppressHydrationWarning={true}>
                   {initialBalancesForCard && (
@@ -157,7 +184,7 @@ const Page = async ({
                         linkId: linkId,
                         entityId: selectedEntityObj?.id,
                         entityTag: selectedTagObj?.name,
-                        dayInPast: dayInPast ?? undefined
+                        dayInPast: dayInPast ?? undefined,
                       }}
                       uiColor={uiColor}
                       tags={filteredTags}
@@ -185,7 +212,9 @@ const Page = async ({
         )}
       </Suspense>
     </div>
-  ) : (<p>La entidad seleccionada no pertenece al tag: {mainTags.join(", ")}</p>);
+  ) : (
+    <p>La entidad seleccionada no pertenece al tag: {mainTags.join(", ")}</p>
+  );
 };
 
 export default Page;

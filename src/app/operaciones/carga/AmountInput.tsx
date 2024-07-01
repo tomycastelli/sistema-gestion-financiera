@@ -1,8 +1,13 @@
-"use client"
+"use client";
 
 import { type FC } from "react";
 import { useFormContext } from "react-hook-form";
-import { FormControl, FormField, FormItem, FormLabel } from "~/app/components/ui/form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "~/app/components/ui/form";
 import { Input } from "~/app/components/ui/input";
 import { useNumberFormat } from "@react-input/number-format";
 
@@ -15,7 +20,7 @@ interface AmountInputProps {
 const AmountInput: FC<AmountInputProps> = ({ name, label, placeholder }) => {
   const { control } = useFormContext();
 
-  const inputRef = useNumberFormat({ locales: "es-AR" })
+  const inputRef = useNumberFormat({ locales: "es-AR" });
 
   return (
     <FormField
@@ -27,14 +32,17 @@ const AmountInput: FC<AmountInputProps> = ({ name, label, placeholder }) => {
           <FormControl>
             <Input
               ref={inputRef}
-              className="w-32" name={field.name} placeholder={placeholder ?? "$"}
+              className="w-32"
+              name={field.name}
+              placeholder={placeholder ?? "$"}
               value={field.value}
-              onChange={field.onChange} />
+              onChange={field.onChange}
+            />
           </FormControl>
         </FormItem>
       )}
     />
-  )
-}
+  );
+};
 
-export default AmountInput
+export default AmountInput;

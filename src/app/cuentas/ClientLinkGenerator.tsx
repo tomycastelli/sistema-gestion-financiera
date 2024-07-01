@@ -33,7 +33,7 @@ const ClientLinkGenerator = ({
   const utils = api.useContext();
   const { mutateAsync } = api.shareableLinks.createLink.useMutation({
     async onSuccess(newOperation) {
-      toast.success(`Link ${newOperation?.id} creado`)
+      toast.success(`Link ${newOperation?.id} creado`);
       await utils.shareableLinks.getLinksByEntityId.refetch();
     },
   });
@@ -41,7 +41,7 @@ const ClientLinkGenerator = ({
   const { mutateAsync: deleteAsync } =
     api.shareableLinks.removeLink.useMutation({
       async onSuccess(newOperation) {
-        toast.success(`Link ${newOperation?.id} borrado`)
+        toast.success(`Link ${newOperation?.id} borrado`);
         await utils.shareableLinks.getLinksByEntityId.refetch();
       },
     });

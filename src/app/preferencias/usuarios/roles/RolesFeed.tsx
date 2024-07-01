@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import Link from "next/link";
 import { type FC } from "react";
 import { toast } from "sonner";
@@ -36,7 +36,11 @@ interface RolesFeedProps {
 const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
   const utils = api.useContext();
 
-  const { data: roles, isLoading, isSuccess } = api.roles.getAll.useQuery(undefined, {
+  const {
+    data: roles,
+    isLoading,
+    isSuccess,
+  } = api.roles.getAll.useQuery(undefined, {
     initialData: initialRoles,
     refetchOnWindowFocus: false,
   });
@@ -47,9 +51,8 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
 
       const prevData = utils.roles.getAll.getData();
 
-      utils.roles.getAll.setData(
-        undefined,
-        (old) => old?.filter((role) => role.id !== newOperation.id),
+      utils.roles.getAll.setData(undefined, (old) =>
+        old?.filter((role) => role.id !== newOperation.id),
       );
 
       return { prevData };
@@ -58,15 +61,15 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
       utils.roles.getAll.setData(undefined, ctx?.prevData);
 
       toast.error("No se pudo eliminar el rol", {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.roles.getAll.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Rol ${data?.name} eliminado`)
-    }
+      toast.success(`Rol ${data?.name} eliminado`);
+    },
   });
 
   return (
@@ -99,7 +102,9 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
               <div className="mr-4 flex flex-row items-center justify-between">
                 <CardHeader>
                   <CardTitle>
-                    <Link href={`/preferencias/usuarios/roles/${role.id}`}>{role.name}</Link>
+                    <Link href={`/preferencias/usuarios/roles/${role.id}`}>
+                      {role.name}
+                    </Link>
                   </CardTitle>
                   <CardDescription>
                     {
@@ -110,7 +115,11 @@ const RolesFeed: FC<RolesFeedProps> = ({ initialRoles }) => {
                   </CardDescription>
                   <CardDescription>
                     {role.users ? role.users.length : 0}{" "}
-                    {role.users ? role.users.length === 1 ? "usuario" : "usuarios" : ""}
+                    {role.users
+                      ? role.users.length === 1
+                        ? "usuario"
+                        : "usuarios"
+                      : ""}
                   </CardDescription>
                 </CardHeader>
                 <AlertDialog>

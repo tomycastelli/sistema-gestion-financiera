@@ -34,38 +34,40 @@ import { toast } from "sonner";
 
 const FormSchema = z.object({
   transactions: z.array(
-    z.object({
-      type: z.string(),
-      fromEntityId: z.string().min(1),
-      toEntityId: z.string().min(1),
-      operatorId: z.string().min(1),
-      currency: z.string().min(1),
-      amount: z.string().min(1),
-      direction: z.boolean().optional().default(false),
-      time: z.string().optional(),
-    }).superRefine((val, ctx) => {
-      if (val.fromEntityId === val.toEntityId) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Las entidades no pueden ser iguales",
-          path: ["fromEntityId", "toEntityId"]
-        })
-      }
-    })
-  )
-})
+    z
+      .object({
+        type: z.string(),
+        fromEntityId: z.string().min(1),
+        toEntityId: z.string().min(1),
+        operatorId: z.string().min(1),
+        currency: z.string().min(1),
+        amount: z.string().min(1),
+        direction: z.boolean().optional().default(false),
+        time: z.string().optional(),
+      })
+      .superRefine((val, ctx) => {
+        if (val.fromEntityId === val.toEntityId) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Las entidades no pueden ser iguales",
+            path: ["fromEntityId", "toEntityId"],
+          });
+        }
+      }),
+  ),
+});
 interface FlexibleTransactionsFormProps {
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
   isLoading: boolean;
-  mainTags: string[]
+  mainTags: string[];
 }
 
 const FlexibleTransactionsForm = ({
   user,
   entities,
   isLoading,
-  mainTags
+  mainTags,
 }: FlexibleTransactionsFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
@@ -101,14 +103,18 @@ const FlexibleTransactionsForm = ({
     }, 0);
 
     values.transactions.forEach((transaction, index) => {
-      const fromTag = entities.find(e => e.id === parseInt(transaction.fromEntityId))!.tag.name
-      const toTag = entities.find(e => e.id === parseInt(transaction.toEntityId))!.tag.name
+      const fromTag = entities.find(
+        (e) => e.id === parseInt(transaction.fromEntityId),
+      )!.tag.name;
+      const toTag = entities.find(
+        (e) => e.id === parseInt(transaction.toEntityId),
+      )!.tag.name;
 
       if (!mainTags.includes(fromTag) && !mainTags.includes(toTag)) {
         toast.error(`Transacción ${index + 1}`, {
-          description: `Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`
-        })
-        return
+          description: `Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`,
+        });
+        return;
       }
 
       addTransactionToStore({
@@ -123,9 +129,8 @@ const FlexibleTransactionsForm = ({
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFormattedFloat(transaction.amount),
-      })
-    }
-    );
+      });
+    });
 
     reset({ transactions: [{ amount: "", currency: "ars" }] });
   };
@@ -251,12 +256,12 @@ const FlexibleTransactionsForm = ({
                         )
                           ? "La transacción no podrá ser confirmada"
                           : cashAccountOnlyTypes.has(
-                            // @ts-ignore
-                            watchTransactions[index].type,
-                          )
+                                // @ts-ignore
+                                watchTransactions[index].type,
+                              )
                             ? "La transacción solo afectará caja"
                             : watchTransactions[index]?.type ===
-                              "pago por cta cte"
+                                "pago por cta cte"
                               ? "La transacción será confirmada automaticamente"
                               : ""}
                       </p>
@@ -323,7 +328,10 @@ const FlexibleTransactionsForm = ({
                 </div>
               )}
             </div>
-            <div className="mt-4 flex flex-row justify-center space-x-8" key={index}>
+            <div
+              className="mt-4 flex flex-row justify-center space-x-8"
+              key={index}
+            >
               {index > 0 && (
                 <Button
                   type="button"

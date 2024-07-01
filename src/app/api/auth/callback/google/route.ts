@@ -35,11 +35,14 @@ export async function GET(request: Request) {
       storedCodeVerifier,
     );
 
-    const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
+    const response = await fetch(
+      "https://openidconnect.googleapis.com/v1/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.accessToken}`,
+        },
       },
-    });
+    );
 
     const userSchema = z.object({
       sub: z.string(),
@@ -49,7 +52,7 @@ export async function GET(request: Request) {
       picture: z.string(),
       email: z.string(),
       email_verified: z.boolean(),
-      locale: z.string()
+      locale: z.string(),
     });
 
     const googleUser = userSchema.parse(await response.json());
@@ -85,8 +88,10 @@ export async function GET(request: Request) {
         await tx.insert(tag).values({ name: "Operadores" });
       }
 
-      const [existingEntity] = await tx.select({ id: entities.id }).from(entities)
-        .where(eq(entities.name, googleUser.name))
+      const [existingEntity] = await tx
+        .select({ id: entities.id })
+        .from(entities)
+        .where(eq(entities.name, googleUser.name));
 
       if (!existingEntity) {
         const [userEntity] = await tx
@@ -109,8 +114,8 @@ export async function GET(request: Request) {
           name: googleUser.name,
           photoUrl: googleUser.picture,
           email: googleUser.email,
-          entityId: existingEntity.id
-        })
+          entityId: existingEntity.id,
+        });
       }
 
       await tx.insert(oauth_account).values({
@@ -132,24 +137,24 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     if (e instanceof ZodError) {
-      console.error(e)
+      console.error(e);
       return new Response(e.toString(), {
         status: 422,
       });
     }
     if (e instanceof OAuth2RequestError) {
-      console.error(e)
+      console.error(e);
       return new Response(e.message, {
         status: 400,
       });
     }
     if (e instanceof DrizzleError) {
-      console.error(e)
+      console.error(e);
       return new Response(e.message, {
         status: 500,
       });
     }
-    console.error(e)
+    console.error(e);
     // @ts-ignore
     return new Response(e, {
       status: 500,

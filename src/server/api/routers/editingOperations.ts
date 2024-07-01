@@ -2,7 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
-import { generateMovements, getAllEntities, logIO, undoMovements } from "~/lib/trpcFunctions";
+import {
+  generateMovements,
+  getAllEntities,
+  logIO,
+  undoMovements,
+} from "~/lib/trpcFunctions";
 import {
   Status,
   entities,
@@ -10,10 +15,7 @@ import {
   transactions,
   transactionsMetadata,
 } from "~/server/db/schema";
-import {
-  createTRPCRouter,
-  protectedLoggedProcedure,
-} from "../trpc";
+import { createTRPCRouter, protectedLoggedProcedure } from "../trpc";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -75,13 +77,17 @@ export const editingOperationsRouter = createTRPCRouter({
             currency: input.newTransactionData.currency,
             amount: input.newTransactionData.amount,
           })
-          .where(eq(transactions.id, input.txId)).returning({ id: transactions.id, operationId: transactions.operationId });
+          .where(eq(transactions.id, input.txId))
+          .returning({
+            id: transactions.id,
+            operationId: transactions.operationId,
+          });
 
         if (!newTxObj) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Transaction to update not found"
-          })
+            message: "Transaction to update not found",
+          });
         }
         await transaction
           .update(transactionsMetadata)
@@ -91,41 +97,67 @@ export const editingOperationsRouter = createTRPCRouter({
           })
           .where(eq(transactionsMetadata.transactionId, input.txId));
 
-        const entitiesData = await getAllEntities(ctx.redis, ctx.db)
+        const entitiesData = await getAllEntities(ctx.redis, ctx.db);
 
-        const toEntityObj = entitiesData.find(e => e.id === input.oldTransactionData.toEntityId)
+        const toEntityObj = entitiesData.find(
+          (e) => e.id === input.oldTransactionData.toEntityId,
+        );
 
         if (!toEntityObj) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`
-          })
+            message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
+          });
         }
 
-        const [opData] = await transaction.select().from(operations).where(eq(operations.id, newTxObj.operationId))
+        const [opData] = await transaction
+          .select()
+          .from(operations)
+          .where(eq(operations.id, newTxObj.operationId));
 
-        const deletedMovements = await undoMovements(transaction, { id: newTxObj.id, fromEntity: { id: input.oldTransactionData.fromEntityId }, toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name }, currency: input.oldTransactionData.currency, amount: input.oldTransactionData.amount, operation: { date: opData!.date } })
+        const deletedMovements = await undoMovements(transaction, {
+          id: newTxObj.id,
+          fromEntity: { id: input.oldTransactionData.fromEntityId },
+          toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
+          currency: input.oldTransactionData.currency,
+          amount: input.oldTransactionData.amount,
+          operation: { date: opData!.date },
+        });
 
         const fromEntity = alias(entities, "fromEntity");
         const toEntity = alias(entities, "toEntity");
 
-        const [newTxResponse] = await transaction.select().from(transactions)
+        const [newTxResponse] = await transaction
+          .select()
+          .from(transactions)
           .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
           .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(eq(transactions.id, newTxObj.id))
+          .where(eq(transactions.id, newTxObj.id));
 
-        const txForMovement = { ...newTxResponse!.Transactions, fromEntity: newTxResponse!.fromEntity!, toEntity: newTxResponse!.toEntity!, operation: newTxResponse!.Operations! }
+        const txForMovement = {
+          ...newTxResponse!.Transactions,
+          fromEntity: newTxResponse!.fromEntity!,
+          toEntity: newTxResponse!.toEntity!,
+          operation: newTxResponse!.Operations!,
+        };
 
-        const filteredMovements = deletedMovements.filter(mv => mv.entitiesMovementId === null)
+        const filteredMovements = deletedMovements.filter(
+          (mv) => mv.entitiesMovementId === null,
+        );
 
         // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
         for (const deletedMovement of filteredMovements) {
-          await generateMovements(transaction, txForMovement, deletedMovement.account, deletedMovement.direction, deletedMovement.type)
+          await generateMovements(
+            transaction,
+            txForMovement,
+            deletedMovement.account,
+            deletedMovement.direction,
+            deletedMovement.type,
+          );
         }
 
-
-        return newTxResponse!.Transactions
+        return newTxResponse!.Transactions;
       });
 
       if (response) {
@@ -149,30 +181,38 @@ export const editingOperationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       try {
         const response = await ctx.db.transaction(async (transaction) => {
-          const confirmedTxs = []
+          const confirmedTxs = [];
 
           const fromEntity = alias(entities, "fromEntity");
           const toEntity = alias(entities, "toEntity");
 
           for (const txId of input.transactionIds) {
-            const [transactionData] = await transaction.select().from(transactions)
-              .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+            const [transactionData] = await transaction
+              .select()
+              .from(transactions)
+              .leftJoin(
+                fromEntity,
+                eq(transactions.fromEntityId, fromEntity.id),
+              )
               .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
               .leftJoin(operations, eq(transactions.operationId, operations.id))
-              .where(eq(transactions.id, txId))
+              .where(eq(transactions.id, txId));
 
             if (!transactionData || !transactionData.Operations) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
-                message: `Transaction ${txId} does not exist`
-              })
+                message: `Transaction ${txId} does not exist`,
+              });
             }
 
-            if (transactionData.Transactions.status !== Status.enumValues[2] || currentAccountOnlyTypes.has(transactionData.Transactions.type)) {
+            if (
+              transactionData.Transactions.status !== Status.enumValues[2] ||
+              currentAccountOnlyTypes.has(transactionData.Transactions.type)
+            ) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
-                message: "This transaction cannot be confirmed"
-              })
+                message: "This transaction cannot be confirmed",
+              });
             }
             await transaction
               .update(transactions)
@@ -189,12 +229,29 @@ export const editingOperationsRouter = createTRPCRouter({
               })
               .where(eq(transactionsMetadata.transactionId, txId));
 
-            const mappedTransaction = { ...transactionData.Transactions, operation: { date: transactionData.Operations.date }, fromEntity: transactionData.fromEntity!, toEntity: transactionData.toEntity! }
+            const mappedTransaction = {
+              ...transactionData.Transactions,
+              operation: { date: transactionData.Operations.date },
+              fromEntity: transactionData.fromEntity!,
+              toEntity: transactionData.toEntity!,
+            };
 
-            await generateMovements(transaction, mappedTransaction, false, 1, "confirmation");
-            await generateMovements(transaction, mappedTransaction, true, 1, "confirmation");
+            await generateMovements(
+              transaction,
+              mappedTransaction,
+              false,
+              1,
+              "confirmation",
+            );
+            await generateMovements(
+              transaction,
+              mappedTransaction,
+              true,
+              1,
+              "confirmation",
+            );
 
-            confirmedTxs.push(mappedTransaction.id)
+            confirmedTxs.push(mappedTransaction.id);
           }
 
           return confirmedTxs;
@@ -218,40 +275,51 @@ export const editingOperationsRouter = createTRPCRouter({
   cancelTransaction: protectedLoggedProcedure
     .input(
       z.object({
-        transactionId: z.number().int().optional(),
+        transactionsId: z.array(z.number().int()).optional(),
         operationId: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const response = await ctx.db.transaction(async (transaction) => {
-        const transactionsToCancel = await transaction.query.transactions.findMany({
-          where: and(
-            input.transactionId
-              ? eq(transactions.id, input.transactionId)
-              : undefined,
-            input.operationId
-              ? eq(transactions.operationId, input.operationId)
-              : undefined,
-          ),
-          with: {
-            operation: true,
-            movements: true,
-            fromEntity: true,
-            toEntity: true
-          }
-        })
+        const transactionsToCancel =
+          await transaction.query.transactions.findMany({
+            where: and(
+              input.transactionsId
+                ? inArray(transactions.id, input.transactionsId)
+                : undefined,
+              input.operationId
+                ? eq(transactions.operationId, input.operationId)
+                : undefined,
+            ),
+            with: {
+              operation: true,
+              movements: true,
+              fromEntity: true,
+              toEntity: true,
+            },
+          });
 
         // Transaction cancellation
-        await transaction.update(transactions).set({ status: Status.enumValues[0] }).where(inArray(transactions.id, transactionsToCancel.map(tx => tx.id)))
+        await transaction
+          .update(transactions)
+          .set({ status: Status.enumValues[0] })
+          .where(
+            inArray(
+              transactions.id,
+              transactionsToCancel.map((tx) => tx.id),
+            ),
+          );
 
-        if (input.transactionId) {
+        if (input.transactionsId) {
           await transaction
             .update(transactionsMetadata)
             .set({
               cancelledBy: ctx.user.id,
               cancelledDate: new Date(),
             })
-            .where(eq(transactionsMetadata.transactionId, input.transactionId));
+            .where(
+              inArray(transactionsMetadata.transactionId, input.transactionsId),
+            );
         } else if (input.operationId) {
           const relatedTxIds = await transaction
             .select({ id: transactions.id })
@@ -273,12 +341,20 @@ export const editingOperationsRouter = createTRPCRouter({
 
         // Para cancelar, vamos a crear los mismos movimientos con los datos de la transaccion invertidos
         for (const tx of transactionsToCancel) {
-          for (const mv of tx.movements.filter(m => m.entitiesMovementId === null)) {
-            await generateMovements(transaction, tx, mv.account, mv.direction * (-1), "cancellation")
+          for (const mv of tx.movements.filter(
+            (m) => m.entitiesMovementId === null,
+          )) {
+            await generateMovements(
+              transaction,
+              tx,
+              mv.account,
+              mv.direction * -1,
+              "cancellation",
+            );
           }
         }
 
-        return transactionsToCancel
+        return transactionsToCancel;
       });
 
       await logIO(
@@ -291,38 +367,65 @@ export const editingOperationsRouter = createTRPCRouter({
 
       return response;
     }),
-  changeOpData: protectedLoggedProcedure.input(z.object({
-    opId: z.number(),
-    opObservations: z.string().optional(),
-    oldOpDate: z.date(),
-    opDate: z.date()
-  })).mutation(async ({ ctx, input }) => {
-    const response = await ctx.db.transaction(async (transaction) => {
-      const [updatedOperation] = await transaction.update(operations)
-        .set({ observations: input.opObservations, date: input.opDate }).where(eq(operations.id, input.opId)).returning()
+  changeOpData: protectedLoggedProcedure
+    .input(
+      z.object({
+        opId: z.number(),
+        opObservations: z.string().optional(),
+        oldOpDate: z.date(),
+        opDate: z.date(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const response = await ctx.db.transaction(async (transaction) => {
+        const [updatedOperation] = await transaction
+          .update(operations)
+          .set({ observations: input.opObservations, date: input.opDate })
+          .where(eq(operations.id, input.opId))
+          .returning();
 
-      if (input.oldOpDate.valueOf() !== input.opDate.valueOf()) {
-        const fromEntity = alias(entities, "fromEntity")
-        const toEntity = alias(entities, "toEntity")
-        const relatedTxs = await transaction.select().from(transactions)
-          .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
-          .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
-          .where(eq(transactions.operationId, input.opId))
+        if (input.oldOpDate.valueOf() !== input.opDate.valueOf()) {
+          const fromEntity = alias(entities, "fromEntity");
+          const toEntity = alias(entities, "toEntity");
+          const relatedTxs = await transaction
+            .select()
+            .from(transactions)
+            .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+            .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+            .where(eq(transactions.operationId, input.opId));
 
-        for (const relatedTx of relatedTxs) {
-          const deletedMvs = await undoMovements(transaction, { ...relatedTx.Transactions, operation: { date: input.oldOpDate }, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity! })
+          for (const relatedTx of relatedTxs) {
+            const deletedMvs = await undoMovements(transaction, {
+              ...relatedTx.Transactions,
+              operation: { date: input.oldOpDate },
+              fromEntity: relatedTx.fromEntity!,
+              toEntity: relatedTx.toEntity!,
+            });
 
-          const filteredMovements = deletedMvs.filter(mv => mv.entitiesMovementId === null)
+            const filteredMovements = deletedMvs.filter(
+              (mv) => mv.entitiesMovementId === null,
+            );
 
-          for (const deletedMv of filteredMovements) {
-            await generateMovements(transaction, { ...relatedTx.Transactions, fromEntity: relatedTx.fromEntity!, toEntity: relatedTx.toEntity!, operation: { date: input.opDate } }, deletedMv.account, deletedMv.direction, deletedMv.type)
+            for (const deletedMv of filteredMovements) {
+              await generateMovements(
+                transaction,
+                {
+                  ...relatedTx.Transactions,
+                  fromEntity: relatedTx.fromEntity!,
+                  toEntity: relatedTx.toEntity!,
+                  operation: { date: input.opDate },
+                },
+                deletedMv.account,
+                deletedMv.direction,
+                deletedMv.type,
+              );
+            }
           }
         }
-      }
 
-      return updatedOperation
-    })
+        return updatedOperation;
+      });
 
-    return response
-  })
+      return response;
+    }),
 });

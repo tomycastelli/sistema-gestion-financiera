@@ -6,9 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  isNumeric,
-} from "~/lib/functions";
+import { isNumeric } from "~/lib/functions";
 import { currencies, dateFormatting, operationTypes } from "~/lib/variables";
 import type { RouterOutputs } from "~/trpc/shared";
 import { DateRangePicker } from "../DateRangePicker";
@@ -88,11 +86,11 @@ const FilterOperationsForm = ({
     defaultValues: {
       opDateRange: selectedDateGreater
         ? {
-          from: moment(selectedDateGreater, dateFormatting.day).toDate(),
-          to: selectedDateGreater
-            ? moment(selectedDateLesser, dateFormatting.day).toDate()
-            : undefined,
-        }
+            from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+            to: selectedDateGreater
+              ? moment(selectedDateLesser, dateFormatting.day).toDate()
+              : undefined,
+          }
         : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
@@ -100,7 +98,8 @@ const FilterOperationsForm = ({
       fromEntityId: selectedFromEntity,
       toEntityId: selectedToEntity,
       currency: selectedCurrency,
-      amount: selectedAmount ?? selectedMaxAmount ?? selectedMinAmount ?? undefined,
+      amount:
+        selectedAmount ?? selectedMaxAmount ?? selectedMinAmount ?? undefined,
       amountFilterType: selectedAmount
         ? "equal"
         : selectedMaxAmount
@@ -162,22 +161,22 @@ const FilterOperationsForm = ({
           if (currentValue.length > 0) {
             currentValue.forEach(() => {
               updatedSearchParams.delete(paramName);
-              updatedSearchParams.set("pagina", "1")
+              updatedSearchParams.set("pagina", "1");
             });
           }
         } else {
           if (Array.isArray(paramValue)) {
             if (!arraysEqual(currentValue, paramValue)) {
-              updatedSearchParams.delete(paramName)
-              updatedSearchParams.set("pagina", "1")
-              paramValue.forEach(value => {
+              updatedSearchParams.delete(paramName);
+              updatedSearchParams.set("pagina", "1");
+              paramValue.forEach((value) => {
                 updatedSearchParams.append(paramName, value);
               });
             }
           } else {
             if (currentValue[0] !== paramValue) {
               updatedSearchParams.set(paramName, paramValue);
-              updatedSearchParams.set("pagina", "1")
+              updatedSearchParams.set("pagina", "1");
             }
           }
         }
@@ -187,7 +186,6 @@ const FilterOperationsForm = ({
     },
     [pathname, searchParams, router],
   );
-
 
   useEffect(() => {
     updateUrl({
@@ -351,7 +349,12 @@ const FilterOperationsForm = ({
                 <FormItem className="flex flex-col">
                   <FormLabel>Monto</FormLabel>
                   <FormControl>
-                    <Input type="number" className="w-32" placeholder="$" {...field} />
+                    <Input
+                      type="number"
+                      className="w-32"
+                      placeholder="$"
+                      {...field}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -450,7 +453,10 @@ const FilterOperationsForm = ({
         </div>
         <div className="flex flex-row justify-start">
           <Link href={"/operaciones/gestion"}>
-            <Button variant="outline" onClick={() => reset({ amount: "", amountFilterType: "equal" })}>
+            <Button
+              variant="outline"
+              onClick={() => reset({ amount: "", amountFilterType: "equal" })}
+            >
               Resetear filtros <Icons.undo className="ml-2 h-5" />
             </Button>
           </Link>

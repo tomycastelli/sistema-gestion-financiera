@@ -88,13 +88,15 @@ export async function GET(request: Request) {
         await tx.insert(tag).values({ name: "Operadores" });
       }
 
-      const adminsEmails = ["christian@ifc.com.ar", "tomas.castelli@ifc.com.ar"]
+      const adminsEmails = [
+        "christian@ifc.com.ar",
+        "tomas.castelli@ifc.com.ar",
+      ];
 
-      const [existingUserEntity] = await tx.select().from(entities).where(
-        and(
-          eq(entities.name, userFullName),
-        )
-      )
+      const [existingUserEntity] = await tx
+        .select()
+        .from(entities)
+        .where(and(eq(entities.name, userFullName)));
       if (!existingUserEntity) {
         const [userEntity] = await tx
           .insert(entities)
@@ -109,7 +111,9 @@ export async function GET(request: Request) {
           photoUrl: microsoftUser.picture,
           email: microsoftUser.email,
           entityId: userEntity!.id,
-          permissions: adminsEmails.includes(microsoftUser.email) ? [{ name: "ADMIN" }] : null
+          permissions: adminsEmails.includes(microsoftUser.email)
+            ? [{ name: "ADMIN" }]
+            : null,
         });
       } else {
         await tx.insert(user).values({
@@ -118,8 +122,10 @@ export async function GET(request: Request) {
           photoUrl: microsoftUser.picture,
           email: microsoftUser.email,
           entityId: existingUserEntity.id,
-          permissions: adminsEmails.includes(microsoftUser.email) ? [{ "name": "ADMIN" }] : null
-        })
+          permissions: adminsEmails.includes(microsoftUser.email)
+            ? [{ name: "ADMIN" }]
+            : null,
+        });
       }
 
       await tx.insert(oauth_account).values({

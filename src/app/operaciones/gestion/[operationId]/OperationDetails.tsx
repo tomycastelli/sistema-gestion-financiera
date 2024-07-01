@@ -19,8 +19,8 @@ interface OperationDetailsProps {
   user: User;
   users: RouterOutputs["users"]["getAll"];
   initialMovements: RouterOutputs["movements"]["getMovementsByOpId"];
-  mainTags: string[]
-  accountingPeriodDate: Date
+  mainTags: string[];
+  accountingPeriodDate: Date;
 }
 
 const OperationDetails: FC<OperationDetailsProps> = ({
@@ -31,7 +31,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
   user,
   users,
   mainTags,
-  accountingPeriodDate
+  accountingPeriodDate,
 }) => {
   const { data, isLoading } = api.operations.getOperations.useQuery(
     { operationId: parseInt(operationId), limit: 1, page: 1 },
@@ -41,87 +41,94 @@ const OperationDetails: FC<OperationDetailsProps> = ({
     },
   );
 
-  const utils = api.useContext()
+  const utils = api.useContext();
 
   const { txIdsStore, resetTxIds } = useOperationsPageStore();
 
-  const operationsQueryInput = { operationId: parseInt(operationId), page: 1, limit: 1 }
+  const operationsQueryInput = {
+    operationId: parseInt(operationId),
+    page: 1,
+    limit: 1,
+  };
 
-  const { mutateAsync: updateTransaction } = api.editingOperations.updateTransactionStatus.useMutation({
-    async onMutate(newOperation) {
-      // Doing the optimistic update
-      await utils.operations.getOperations.cancel();
+  const { mutateAsync: updateTransaction } =
+    api.editingOperations.updateTransactionStatus.useMutation({
+      async onMutate(newOperation) {
+        // Doing the optimistic update
+        await utils.operations.getOperations.cancel();
 
-      const prevData =
-        utils.operations.getOperations.getData(operationsQueryInput);
+        const prevData =
+          utils.operations.getOperations.getData(operationsQueryInput);
 
-      utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
-        ...old!,
-        operations: old!.operations.map((operation) => {
-          const updatedTransactions = operation.transactions.map(
-            (transaction) => {
-              if (
-                newOperation.transactionIds.includes(transaction.id) &&
-                transaction.transactionMetadata
-              ) {
-                return {
-                  ...transaction,
-                  status: Status.enumValues[1],
-                  transactionMetadata: {
-                    ...transaction.transactionMetadata,
-                    confirmedBy: user.id,
-                  },
-                };
-              }
-              return transaction;
-            },
-          );
+        utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
+          ...old!,
+          operations: old!.operations.map((operation) => {
+            const updatedTransactions = operation.transactions.map(
+              (transaction) => {
+                if (
+                  newOperation.transactionIds.includes(transaction.id) &&
+                  transaction.transactionMetadata
+                ) {
+                  return {
+                    ...transaction,
+                    status: Status.enumValues[1],
+                    transactionMetadata: {
+                      ...transaction.transactionMetadata,
+                      confirmedBy: user.id,
+                    },
+                  };
+                }
+                return transaction;
+              },
+            );
 
-          return {
-            ...operation,
-            transactions: updatedTransactions,
-          };
-        }),
-      }));
+            return {
+              ...operation,
+              transactions: updatedTransactions,
+            };
+          }),
+        }));
 
-      return { prevData };
-    },
-    onError(err) {
-      const prevData =
-        utils.operations.getOperations.getData(operationsQueryInput);
-      // Doing some ui actions
-      toast.error("No se pudo actualizar", {
-        description: err.message
-      })
-      return { prevData };
-    },
-    onSettled() {
-      resetTxIds();
-      void utils.operations.getOperations.invalidate();
-      void utils.movements.getMovementsByOpId.invalidate();
-      void utils.movements.getCurrentAccounts.invalidate();
-    },
-    onSuccess(data) {
-      const title = data.length > 1 ? data.length.toString() + " transacciones actualizadas" : " 1 transacción actualizada"
-      toast.success(title)
-    }
-  });
-
+        return { prevData };
+      },
+      onError(err) {
+        const prevData =
+          utils.operations.getOperations.getData(operationsQueryInput);
+        // Doing some ui actions
+        toast.error("No se pudo actualizar", {
+          description: err.message,
+        });
+        return { prevData };
+      },
+      onSettled() {
+        resetTxIds();
+        void utils.operations.getOperations.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate();
+        void utils.movements.getCurrentAccounts.invalidate();
+      },
+      onSuccess(data) {
+        const title =
+          data.length > 1
+            ? data.length.toString() + " transacciones actualizadas"
+            : " 1 transacción actualizada";
+        toast.success(title);
+      },
+    });
 
   const firstRender = useFirstRender();
 
   useEffect(() => {
-    if (firstRender) return
+    if (firstRender) return;
     if (txIdsStore.length > 0) {
       toast.info("Lista de transacciones", {
         description: txIdsStore.join(", "),
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
           onClick: () => void updateTransaction({ transactionIds: txIdsStore }),
-        }
-      })
+        },
+      });
     } else {
-      toast.dismiss()
+      toast.dismiss();
     }
   }, [txIdsStore, updateTransaction, firstRender]);
 
@@ -132,10 +139,10 @@ const OperationDetails: FC<OperationDetailsProps> = ({
       ) : data.operations[0] ? (
         data.operations[0].isVisualizeAllowed ? (
           <div className="mx-auto flex w-full flex-col rounded-xl border border-muted p-8 shadow-md">
-            <div className="grid lg:grid-cols-9 lg:grid-rows-1 grid-rows-2 p-4">
-              <div className="lg:col-span-5 row-span-1"></div>
-              <div className="lg:col-span-4 row-span-1 grid grid-cols-3">
-                <div className="col-span-1 w-full flex flex-row items-center justify-start">
+            <div className="grid grid-rows-2 p-4 lg:grid-cols-9 lg:grid-rows-1">
+              <div className="row-span-1 lg:col-span-5"></div>
+              <div className="row-span-1 grid grid-cols-3 lg:col-span-4">
+                <div className="col-span-1 flex w-full flex-row items-center justify-start">
                   <p className="text-3xl font-semibold">Entrada</p>
                 </div>
                 <div className="col-span-1 flex flex-row items-center justify-start">
@@ -160,7 +167,7 @@ const OperationDetails: FC<OperationDetailsProps> = ({
                 entities={entities}
               />
             </div>
-            <div className="justify-center items-center flex flex-col gap-4">
+            <div className="flex flex-col items-center justify-center gap-4">
               <h1 className="mx-auto text-4xl font-semibold tracking-tighter">
                 Movimientos
               </h1>

@@ -19,7 +19,7 @@ import { type User } from "lucia";
 import { toast } from "sonner";
 
 interface MyUserFormProps {
-  user: User
+  user: User;
 }
 
 const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
@@ -51,15 +51,17 @@ const MyUserForm: FC<MyUserFormProps> = ({ user }) => {
     },
     onError(err) {
       toast.error("No se pudo cambiar el nombre de usuario", {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.users.getById.invalidate();
     },
     onSuccess(data, variables) {
-      toast.success(`Nombre modificado de ${variables.oldName} a ${variables.name}`)
-    }
+      toast.success(
+        `Nombre modificado de ${variables.oldName} a ${variables.name}`,
+      );
+    },
   });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {

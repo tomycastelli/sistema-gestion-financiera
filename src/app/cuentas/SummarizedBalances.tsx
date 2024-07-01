@@ -10,7 +10,7 @@ import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import { Button } from "../components/ui/button";
-import dynamic from 'next/dynamic'
+import dynamic from "next/dynamic";
 import {
   Card,
   CardContent,
@@ -26,7 +26,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { DataTable } from "./DataTable";
 import LoadingAnimation from "../components/LoadingAnimation";
-const OperationDrawer = dynamic(() => import("../components/OperationDrawer"))
+const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
 import { type User } from "lucia";
 
 interface SummarizedBalancesProps {
@@ -34,15 +34,15 @@ interface SummarizedBalancesProps {
   initialBalancesInput: RouterInputs["movements"]["getBalancesByEntitiesForCard"];
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
   selectedTag: string | undefined;
-  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined
+  selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined;
   tags: RouterOutputs["tags"]["getAll"];
   uiColor: string | undefined;
-  dayInPast: string | undefined
-  mainTags: string[]
+  dayInPast: string | undefined;
+  mainTags: string[];
   entities: RouterOutputs["entities"]["getAll"];
   user: User | null;
-  users: RouterOutputs["users"]["getAll"]
-  accountingPeriodDate: Date
+  users: RouterOutputs["users"]["getAll"];
+  accountingPeriodDate: Date;
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -57,35 +57,32 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   entities,
   user,
   users,
-  accountingPeriodDate
+  accountingPeriodDate,
 }) => {
-  const {
-    selectedCurrency,
-    setSelectedCurrency,
-    isInverted,
-    setIsInverted,
-  } = useCuentasStore();
+  const { selectedCurrency, setSelectedCurrency, isInverted, setIsInverted } =
+    useCuentasStore();
 
   useEffect(() => {
     if (selectedTag) {
       if (mainTags.includes(selectedTag)) {
-        setIsInverted(false)
+        setIsInverted(false);
       } else {
-        setIsInverted(true)
+        setIsInverted(true);
       }
     } else if (selectedEntity) {
       if (mainTags.includes(selectedEntity.tag.name)) {
-        setIsInverted(false)
+        setIsInverted(false);
       } else {
-        setIsInverted(true)
+        setIsInverted(true);
       }
     }
-  }, [mainTags, selectedEntity, selectedTag, setIsInverted])
+  }, [mainTags, selectedEntity, selectedTag, setIsInverted]);
 
-  const { data: balances, isFetching } = api.movements.getBalancesByEntitiesForCard.useQuery(initialBalancesInput, {
-    initialData: initialBalancesForCard,
-    refetchOnWindowFocus: false
-  })
+  const { data: balances, isFetching } =
+    api.movements.getBalancesByEntitiesForCard.useQuery(initialBalancesInput, {
+      initialData: initialBalancesForCard,
+      refetchOnWindowFocus: false,
+    });
 
   const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
     currency: selectedCurrency,
@@ -125,7 +122,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       accessorKey: "type",
       header: "Tipo",
       cell: ({ row }) => {
-        const rowType = row.getValue("type")
+        const rowType = row.getValue("type");
         if (typeof rowType === "string") {
           return <p className="font-medium">{mvTypeFormatting.get(rowType)}</p>;
         }
@@ -206,31 +203,32 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       cell: ({ row }) => {
         const movement = row.original;
 
-        if (user) return (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <OperationDrawer
-                entities={entities}
-                user={user}
-                opId={movement.operationId}
-                accountingPeriodDate={accountingPeriodDate}
-                mainTags={mainTags} users={users}>
-                <Button variant="outline" className="">
-
-                  <p>Operación {numberFormatter(movement.operationId)}</p>
+        if (user)
+          return (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </OperationDrawer>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <OperationDrawer
+                  entities={entities}
+                  user={user}
+                  opId={movement.operationId}
+                  accountingPeriodDate={accountingPeriodDate}
+                  mainTags={mainTags}
+                  users={users}
+                >
+                  <Button variant="outline" className="">
+                    <p>Operación {numberFormatter(movement.operationId)}</p>
+                  </Button>
+                </OperationDrawer>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
       },
     },
   ];
@@ -238,53 +236,63 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   return (
     <div className="flex flex-col space-y-8">
       <div className="grid w-full grid-cols-2 gap-8 lg:grid-cols-3">
-        {!isFetching ? balances.sort(
-          (a, b) =>
-            currenciesOrder.indexOf(a.currency) -
-            currenciesOrder.indexOf(b.currency),
-        )
-          .map((item) => (
-            <Card
-              key={item.currency}
-              onClick={() => {
-                if (selectedCurrency !== item.currency) {
-                  setSelectedCurrency(item.currency)
-                } else {
-                  setSelectedCurrency(undefined)
-                }
-              }}
-              style={{ borderColor: item.currency === selectedCurrency ? uiColor : undefined }}
-              className={cn(
-                "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
-              )}
-            >
-              <CardHeader>
-                <CardTitle>{item.currency.toUpperCase()}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-4">
-                  {item.balances
-                    .sort((a, b) =>
-                      a.account === b.account ? 0 : a.account ? 1 : -1,
-                    )
-                    .map((balance) => (
-                      <div
-                        key={balance.amount}
-                        className="flex flex-col space-y-2"
-                      >
-                        <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                        <p className="text-xl font-semibold">
-                          {numberFormatter(
-                            balance.amount === 0 ? 0 : !isInverted ? balance.amount : -balance.amount,
-                          )}
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          )) : (
-          <div className="flex justify-center items-cente lg:col-span-3 col-span-2">
+        {!isFetching ? (
+          balances
+            .sort(
+              (a, b) =>
+                currenciesOrder.indexOf(a.currency) -
+                currenciesOrder.indexOf(b.currency),
+            )
+            .map((item) => (
+              <Card
+                key={item.currency}
+                onClick={() => {
+                  if (selectedCurrency !== item.currency) {
+                    setSelectedCurrency(item.currency);
+                  } else {
+                    setSelectedCurrency(undefined);
+                  }
+                }}
+                style={{
+                  borderColor:
+                    item.currency === selectedCurrency ? uiColor : undefined,
+                }}
+                className={cn(
+                  "border-2 transition-all hover:scale-105 hover:cursor-pointer hover:shadow-md hover:shadow-primary",
+                )}
+              >
+                <CardHeader>
+                  <CardTitle>{item.currency.toUpperCase()}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col space-y-4">
+                    {item.balances
+                      .sort((a, b) =>
+                        a.account === b.account ? 0 : a.account ? 1 : -1,
+                      )
+                      .map((balance) => (
+                        <div
+                          key={balance.amount}
+                          className="flex flex-col space-y-2"
+                        >
+                          <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
+                          <p className="text-xl font-semibold">
+                            {numberFormatter(
+                              balance.amount === 0
+                                ? 0
+                                : !isInverted
+                                  ? balance.amount
+                                  : -balance.amount,
+                            )}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+        ) : (
+          <div className="items-cente col-span-2 flex justify-center lg:col-span-3">
             <LoadingAnimation size="lg" text="Cargando balances" />
           </div>
         )}

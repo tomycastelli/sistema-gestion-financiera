@@ -17,4 +17,5 @@ Web application for Maika (financial services). Using the T3 stack:
 It's a monorepo where backend and frontend are deeply integrated, using TRPC and the backend model NextJS offers since the app directory update (version 13).
 
 ## Deployment
+
 The application is containerized with the Dockerfile in a Github Actions CI/CD pipeline. Then it is uploaded to an ECR repository and tagged according to the pushed Tag from the repository. The image is then retrieved by an ECS service and with a Elastic Load Balancer (ELB), exposed to the internet.

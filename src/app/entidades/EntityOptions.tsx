@@ -21,7 +21,7 @@ import { toast } from "sonner";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
-  tags: RouterOutputs["tags"]["getFiltered"]
+  tags: RouterOutputs["tags"]["getFiltered"];
 }
 
 const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
@@ -29,7 +29,6 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
 
   const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
     async onMutate() {
-
       // Doing the Optimistic update
       await utils.entities.getAll.cancel();
 
@@ -45,15 +44,15 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
       toast.error(`No se pudo eliminar la entidad ${newOperation.entityId}`, {
-        description: JSON.stringify(err.message)
-      })
+        description: JSON.stringify(err.message),
+      });
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Entidad ${data.id} eliminada`)
-    }
+      toast.success(`Entidad ${data.id} eliminada`);
+    },
   });
 
   return (
@@ -76,7 +75,9 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red"
-              onClick={() => deleteAsync({ entityId: entity.id, tag: entity.tag.name })}
+              onClick={() =>
+                deleteAsync({ entityId: entity.id, tag: entity.tag.name })
+              }
             >
               Eliminar
             </AlertDialogAction>

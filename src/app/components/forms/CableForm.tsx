@@ -27,23 +27,21 @@ import CustomSelector from "./CustomSelector";
 import { useNumberFormat } from "@react-input/number-format";
 import { toast } from "sonner";
 
-const FormSchema = z.object({
-  emittingEntity: z.string(),
-  receivingEntity: z.string(),
-  middleEntity: z.string(),
-  operatorEntity: z.string(),
-  currency: z.string(),
-  amount: z.string(),
-  emittingFee: z
-    .string()
-    .optional(),
-  receivingFee: z
-    .string()
-    .optional(),
-}).refine(data => data.emittingEntity !== data.receivingEntity, {
-  message: "La entidad emisora y receptora no puede ser la misma",
-  path: ['receivingEntity']
-});
+const FormSchema = z
+  .object({
+    emittingEntity: z.string(),
+    receivingEntity: z.string(),
+    middleEntity: z.string(),
+    operatorEntity: z.string(),
+    currency: z.string(),
+    amount: z.string(),
+    emittingFee: z.string().optional(),
+    receivingFee: z.string().optional(),
+  })
+  .refine((data) => data.emittingEntity !== data.receivingEntity, {
+    message: "La entidad emisora y receptora no puede ser la misma",
+    path: ["receivingEntity"],
+  });
 
 interface CableFormProps {
   userEntityId: string;
@@ -51,7 +49,11 @@ interface CableFormProps {
   mainTags: string[];
 }
 
-const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => {
+const CableForm: FC<CableFormProps> = ({
+  userEntityId,
+  entities,
+  mainTags,
+}) => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -69,20 +71,28 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
   const watchReceivingFee = watch("receivingFee");
   const watchAmount = parseFormattedFloat(watch("amount"));
 
-  const parsedWatchEmittingFee = watchEmittingFee ? parseFormattedFloat(watchEmittingFee) : undefined
-  const parsedWatchReceivingFee = watchReceivingFee ? parseFormattedFloat(watchReceivingFee) : undefined
+  const parsedWatchEmittingFee = watchEmittingFee
+    ? parseFormattedFloat(watchEmittingFee)
+    : undefined;
+  const parsedWatchReceivingFee = watchReceivingFee
+    ? parseFormattedFloat(watchReceivingFee)
+    : undefined;
 
   const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
-    const parsedAmount = parseFormattedFloat(values.amount)
-    const parsedReceivingFee = values.receivingFee ? parseFormattedFloat(values.receivingFee) : 0
-    const parsedEmittingFee = values.emittingFee ? parseFormattedFloat(values.emittingFee) : 0
+    const parsedAmount = parseFormattedFloat(values.amount);
+    const parsedReceivingFee = values.receivingFee
+      ? parseFormattedFloat(values.receivingFee)
+      : 0;
+    const parsedEmittingFee = values.emittingFee
+      ? parseFormattedFloat(values.emittingFee)
+      : 0;
 
-    const parsedEmittingEntity = parseInt(values.emittingEntity)
-    const parsedMiddleEntity = parseInt(values.middleEntity)
-    const parsedOperatorEntity = parseInt(values.operatorEntity)
-    const parsedReceivingEntity = parseInt(values.receivingEntity)
+    const parsedEmittingEntity = parseInt(values.emittingEntity);
+    const parsedMiddleEntity = parseInt(values.middleEntity);
+    const parsedOperatorEntity = parseInt(values.operatorEntity);
+    const parsedReceivingEntity = parseInt(values.receivingEntity);
 
     const greatestId = transactionsStore.reduce((maxId, currentObject) => {
       return Math.max(maxId, currentObject.txId);
@@ -110,60 +120,45 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
         relatedTxId: greatestId + 1,
       },
     ];
-    if (
-      values.emittingFee &&
-      parsedEmittingFee !== 0
-    ) {
+    if (values.emittingFee && parsedEmittingFee !== 0) {
       transactions.push({
         txId: greatestId + 3,
         type: "fee",
         fromEntityId:
-          parsedEmittingFee < 0
-            ? parsedEmittingEntity
-            : parsedMiddleEntity,
+          parsedEmittingFee < 0 ? parsedEmittingEntity : parsedMiddleEntity,
         toEntityId:
-          parsedEmittingFee > 0
-            ? parsedEmittingEntity
-            : parsedMiddleEntity,
+          parsedEmittingFee > 0 ? parsedEmittingEntity : parsedMiddleEntity,
         currency: values.currency,
-        amount: Math.abs(
-          (parsedAmount * parsedEmittingFee) / 100,
-        ),
+        amount: Math.abs((parsedAmount * parsedEmittingFee) / 100),
         operatorId: parseInt(values.operatorEntity),
         relatedTxId: greatestId + 1,
       });
     }
-    if (
-      values.receivingFee &&
-      parsedReceivingFee !== 0
-    ) {
+    if (values.receivingFee && parsedReceivingFee !== 0) {
       transactions.push({
         txId: greatestId + 4,
         type: "fee",
         fromEntityId:
-          parsedReceivingFee > 0
-            ? parsedReceivingEntity
-            : parsedMiddleEntity,
+          parsedReceivingFee > 0 ? parsedReceivingEntity : parsedMiddleEntity,
         toEntityId:
-          parsedReceivingFee < 0
-            ? parsedReceivingEntity
-            : parsedMiddleEntity,
+          parsedReceivingFee < 0 ? parsedReceivingEntity : parsedMiddleEntity,
         currency: values.currency,
-        amount: Math.abs(
-          (parsedAmount * parsedReceivingFee) / 100,
-        ),
+        amount: Math.abs((parsedAmount * parsedReceivingFee) / 100),
         operatorId: parsedOperatorEntity,
         relatedTxId: greatestId + 2,
       });
     }
 
-    const middleEntityTag = entities.find(e => e.id === parseInt(values.middleEntity))!.tag.name
+    const middleEntityTag = entities.find(
+      (e) => e.id === parseInt(values.middleEntity),
+    )!.tag.name;
 
     if (!mainTags.includes(middleEntityTag)) {
-      toast.error(`La entidad mediadora tiene que pertencer al tag: ${mainTags.join(", ")}`)
-      return
+      toast.error(
+        `La entidad mediadora tiene que pertencer al tag: ${mainTags.join(", ")}`,
+      );
+      return;
     }
-
 
     transactions.forEach((transaction) => {
       addTransactionToStore(transaction);
@@ -172,9 +167,9 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
     reset();
   };
 
-  const inputRef1 = useNumberFormat({ locales: "es-AR" })
-  const inputRef2 = useNumberFormat({ locales: "es-AR" })
-  const inputRef3 = useNumberFormat({ locales: "es-AR" })
+  const inputRef1 = useNumberFormat({ locales: "es-AR" });
+  const inputRef2 = useNumberFormat({ locales: "es-AR" });
+  const inputRef3 = useNumberFormat({ locales: "es-AR" });
 
   return (
     <Form {...form}>
@@ -219,19 +214,24 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                 <FormItem>
                   <FormLabel>Fee</FormLabel>
                   <FormControl>
-                    <Input ref={inputRef1} className="w-32" placeholder="$" name={field.name} value={field.value} onChange={field.onChange} />
+                    <Input
+                      ref={inputRef1}
+                      className="w-32"
+                      placeholder="$"
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
             {parsedWatchEmittingFee &&
-              (watchEmittingFee &&
-                parsedWatchEmittingFee !== 0 ? (
+              (watchEmittingFee && parsedWatchEmittingFee !== 0 ? (
                 <p>
-                  {numberFormatter(Math.abs(
-                    (parsedWatchEmittingFee * watchAmount) /
-                    100,
-                  ))}{" "}
+                  {numberFormatter(
+                    Math.abs((parsedWatchEmittingFee * watchAmount) / 100),
+                  )}{" "}
                   {parsedWatchEmittingFee > 0
                     ? "a favor"
                     : parsedWatchEmittingFee < 0
@@ -269,9 +269,14 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                   <FormItem>
                     <FormLabel>Monto</FormLabel>
                     <FormControl>
-                      <Input ref={inputRef2} className="w-32" name={field.name} placeholder="$"
+                      <Input
+                        ref={inputRef2}
+                        className="w-32"
+                        name={field.name}
+                        placeholder="$"
                         value={field.value}
-                        onChange={field.onChange} />
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -285,10 +290,12 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                   <FormLabel>Entidad Intermediadora</FormLabel>
                   <>
                     <CustomSelector
-                      data={entities.filter(e => mainTags.includes(e.tag.name)).map((entity) => ({
-                        value: entity.id.toString(),
-                        label: entity.name,
-                      }))}
+                      data={entities
+                        .filter((e) => mainTags.includes(e.tag.name))
+                        .map((entity) => ({
+                          value: entity.id.toString(),
+                          label: entity.name,
+                        }))}
                       field={field}
                       fieldName="middleEntity"
                       placeholder="Elegir"
@@ -367,19 +374,24 @@ const CableForm: FC<CableFormProps> = ({ userEntityId, entities, mainTags }) => 
                 <FormItem>
                   <FormLabel>Fee</FormLabel>
                   <FormControl>
-                    <Input ref={inputRef3} className="w-32" placeholder="$" name={field.name} value={field.value} onChange={field.onChange} />
+                    <Input
+                      ref={inputRef3}
+                      className="w-32"
+                      placeholder="$"
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
             {parsedWatchReceivingFee &&
-              (watchReceivingFee &&
-                parsedWatchReceivingFee !== 0 ? (
+              (watchReceivingFee && parsedWatchReceivingFee !== 0 ? (
                 <p>
-                  {numberFormatter(Math.abs(
-                    (parsedWatchReceivingFee * watchAmount) /
-                    100,
-                  ))}{" "}
+                  {numberFormatter(
+                    Math.abs((parsedWatchReceivingFee * watchAmount) / 100),
+                  )}{" "}
                   {parsedWatchReceivingFee > 0
                     ? "en contra"
                     : parsedWatchReceivingFee < 0

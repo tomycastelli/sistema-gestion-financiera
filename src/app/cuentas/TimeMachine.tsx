@@ -14,36 +14,42 @@ import { dateFormatting } from "~/lib/variables";
 import { useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-
 const TimeMachine = () => {
   const searchParams = useSearchParams();
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const timeMachineDate = searchParams.get("dia") ?? undefined;
 
-  const parsedDate = timeMachineDate ? moment(timeMachineDate, dateFormatting.day).toDate() : undefined
+  const parsedDate = timeMachineDate
+    ? moment(timeMachineDate, dateFormatting.day).toDate()
+    : undefined;
 
-  const router = useRouter()
+  const router = useRouter();
 
-  const setTimeMachineDate = useCallback((dateInput: Date | undefined) => {
-    const updatedSearchParams = new URLSearchParams(searchParams)
+  const setTimeMachineDate = useCallback(
+    (dateInput: Date | undefined) => {
+      const updatedSearchParams = new URLSearchParams(searchParams);
 
-    const dateString = dateInput ? moment(dateInput).format(dateFormatting.day) : undefined
+      const dateString = dateInput
+        ? moment(dateInput).format(dateFormatting.day)
+        : undefined;
 
-    if (dateString) {
-      updatedSearchParams.set("dia", dateString)
-    } else {
-      updatedSearchParams.delete("dia")
-    }
+      if (dateString) {
+        updatedSearchParams.set("dia", dateString);
+      } else {
+        updatedSearchParams.delete("dia");
+      }
 
-    router.push(pathname + "?" + updatedSearchParams.toString())
-  }, [router, pathname, searchParams])
+      router.push(pathname + "?" + updatedSearchParams.toString());
+    },
+    [router, pathname, searchParams],
+  );
 
   useEffect(() => {
     if (timeMachineDate) {
-      setTimeMachineDate(moment(timeMachineDate, dateFormatting.day).toDate())
+      setTimeMachineDate(moment(timeMachineDate, dateFormatting.day).toDate());
     }
-  }, [router, timeMachineDate, setTimeMachineDate])
+  }, [router, timeMachineDate, setTimeMachineDate]);
 
   return (
     <Popover>
@@ -70,6 +76,6 @@ const TimeMachine = () => {
       </PopoverContent>
     </Popover>
   );
-}
+};
 
-export default TimeMachine
+export default TimeMachine;

@@ -109,20 +109,20 @@ const UpdateTransaction = ({
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
       toast.error("No se pudieron actualizar las transacciones", {
-        description: err.message
-      })
+        description: err.message,
+      });
       return { prevData };
     },
     onSettled() {
       void utils.operations.getOperations.invalidate();
-      void utils.movements.getMovementsByOpId.invalidate()
-      void utils.movements.getCurrentAccounts.invalidate()
-      void utils.movements.getBalancesByEntities.invalidate()
-      void utils.movements.getBalancesByEntitiesForCard.invalidate()
+      void utils.movements.getMovementsByOpId.invalidate();
+      void utils.movements.getCurrentAccounts.invalidate();
+      void utils.movements.getBalancesByEntities.invalidate();
+      void utils.movements.getBalancesByEntitiesForCard.invalidate();
     },
     onSuccess(data) {
       setIsOpen(false);
-      toast.success(`Transacción ${data.id} editada`)
+      toast.success(`Transacción ${data.id} editada`);
     },
   });
 
@@ -169,12 +169,12 @@ const UpdateTransaction = ({
         toEntityId: tx.toEntityId,
         operatorEntityId: tx.operatorEntityId,
         currency: tx.currency,
-        amount: tx.amount
+        amount: tx.amount,
       },
     });
   };
 
-  const inputRef = useNumberFormat({ locales: "es-AR" })
+  const inputRef = useNumberFormat({ locales: "es-AR" });
 
   return (
     <Dialog open={isOpen} onOpenChange={() => reset()}>
@@ -233,7 +233,10 @@ const UpdateTransaction = ({
                               placeholder="Elegir"
                             />
                             {watchOperatorEntity && (
-                              <EntityCard entity={tx.operatorEntity} disableLinks={true} />
+                              <EntityCard
+                                entity={tx.operatorEntity}
+                                disableLinks={true}
+                              />
                             )}
                           </>
                         )}
@@ -243,10 +246,7 @@ const UpdateTransaction = ({
                   />
                   <HoverCard>
                     <HoverCardTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="link"
-                      >
+                      <Button type="button" variant="link">
                         <Icons.info className="h-8" />
                       </Button>
                     </HoverCardTrigger>
@@ -289,7 +289,10 @@ const UpdateTransaction = ({
                                   placeholder="Elegir"
                                 />
                                 {watchFromEntity && (
-                                  <EntityCard entity={tx.fromEntity} disableLinks={true} />
+                                  <EntityCard
+                                    entity={tx.fromEntity}
+                                    disableLinks={true}
+                                  />
                                 )}
                               </>
                             )}
@@ -325,9 +328,14 @@ const UpdateTransaction = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input ref={inputRef} className="w-32" name={field.name} placeholder="$"
+                                <Input
+                                  ref={inputRef}
+                                  className="w-32"
+                                  name={field.name}
+                                  placeholder="$"
                                   value={field.value}
-                                  onChange={field.onChange} />
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                             </FormItem>
                           )}
@@ -352,7 +360,10 @@ const UpdateTransaction = ({
                                 placeholder="Elegir"
                               />
                               {watchToEntity && (
-                                <EntityCard entity={tx.toEntity} disableLinks={true} />
+                                <EntityCard
+                                  entity={tx.toEntity}
+                                  disableLinks={true}
+                                />
                               )}
                             </>
                           )}
@@ -372,10 +383,7 @@ const UpdateTransaction = ({
                 >
                   Resetear <Icons.undo className="ml-2 h-8" />
                 </Button>
-                <Button
-                  className="mt-4"
-                  type="submit"
-                >
+                <Button className="mt-4" type="submit">
                   Modificar transacción
                 </Button>
               </div>

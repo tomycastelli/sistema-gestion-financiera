@@ -74,8 +74,8 @@ const TransactionStatusButton = ({
         utils.operations.getOperations.getData(operationsQueryInput);
       // Doing some ui actions
       toast.error("No se pudo actualizar", {
-        description: err.message
-      })
+        description: err.message,
+      });
       return { prevData };
     },
     onSettled() {
@@ -85,12 +85,13 @@ const TransactionStatusButton = ({
       void utils.movements.getCurrentAccounts.invalidate();
     },
     onSuccess(data) {
-      const title = data.length > 1 ? data.length.toString() + " transacciones actualizadas" : " 1 transacción actualizada"
-      toast.success(title)
-    }
+      const title =
+        data.length > 1
+          ? data.length.toString() + " transacciones actualizadas"
+          : " 1 transacción actualizada";
+      toast.success(title);
+    },
   });
-
-
 
   const handleToast = useCallback(() => {
     if (!txIdsStore.includes(tx.id)) {
@@ -99,12 +100,12 @@ const TransactionStatusButton = ({
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
           onClick: () => mutate({ transactionIds: txIdsStore }),
-        }
-      })
+        },
+      });
     } else {
-      toast.dismiss()
+      toast.dismiss();
     }
-  }, [txIdsStore, mutate, tx.id])
+  }, [txIdsStore, mutate, tx.id]);
 
   useEffect(() => {
     handleToast();
@@ -118,7 +119,9 @@ const TransactionStatusButton = ({
       }}
       className={cn(
         "rounded-full border-2 border-transparent bg-transparent p-2",
-        txIdsStore.includes(tx.id) ? "bg-primary text-white" : "bg-transparent text-black dark:text-white",
+        txIdsStore.includes(tx.id)
+          ? "bg-primary text-white"
+          : "bg-transparent text-black dark:text-white",
       )}
     >
       {tx.status === Status.confirmed ? (

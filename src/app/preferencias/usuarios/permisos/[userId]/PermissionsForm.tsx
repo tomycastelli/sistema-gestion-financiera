@@ -100,32 +100,48 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
       utils.users.getUserPermissions.setData({ id: userId }, ctx?.prevData);
 
       toast.error("No se pudieron añadir los permisos", {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.users.getUserPermissions.invalidate();
     },
     onSuccess() {
-      toast.success("Permisos actualizados")
-    }
+      toast.success("Permisos actualizados");
+    },
   });
 
   const defaultPermissions = permissionsData.map((permission) => {
     if (!permissions) {
-      return { name: permission.name, active: false, entitiesIds: [], entitiesTags: [] }
+      return {
+        name: permission.name,
+        active: false,
+        entitiesIds: [],
+        entitiesTags: [],
+      };
     }
-    const permissionObject = permissions.find(item => item.name === permission.name)
+    const permissionObject = permissions.find(
+      (item) => item.name === permission.name,
+    );
     if (!permissionObject) {
-      return { name: permission.name, active: false, entitiesIds: [], entitiesTags: [] }
+      return {
+        name: permission.name,
+        active: false,
+        entitiesIds: [],
+        entitiesTags: [],
+      };
     }
     return {
       name: permission.name,
       active: true,
-      entitiesIds: permissionObject.entitiesIds ? Array.from(permissionObject.entitiesIds) : [],
-      entitiesTags: permissionObject.entitiesTags ? Array.from(permissionObject.entitiesTags) : [],
-    }
-  })
+      entitiesIds: permissionObject.entitiesIds
+        ? Array.from(permissionObject.entitiesIds)
+        : [],
+      entitiesTags: permissionObject.entitiesTags
+        ? Array.from(permissionObject.entitiesTags)
+        : [],
+    };
+  });
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -144,15 +160,15 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     const addedPermissions = values.permissions.filter(
       (permission) => permission.active === true,
-    )
+    );
     await mutateAsync({ id: userId, permissions: addedPermissions });
   };
 
   useEffect(() => {
     if (Object.keys(formState.errors).length > 0) {
-      toast.error(JSON.stringify(formState.errors))
+      toast.error(JSON.stringify(formState.errors));
     }
-  }, [formState.errors])
+  }, [formState.errors]);
 
   return (
     <Form {...form}>
@@ -201,23 +217,25 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                         )
                           ? false
                           : userPermissions?.find(
-                            (p) =>
-                              (p.name ===
-                                "USERS_PERMISSIONS_MANAGE_ACCOUNTS" &&
-                                loopField.name.startsWith("ACCOUNTS")) ||
-                              (p.name ===
-                                "USERS_PERMISSIONS_MANAGE_OPERATIONS" &&
-                                loopField.name.startsWith("OPERATIONS")) ||
-                              (p.name ===
-                                "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
-                                loopField.name.startsWith("TRANSACTIONS")) ||
-                              (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
-                                user?.role?.name &&
-                                p.entitiesTags?.includes(user.role.name)) ||
-                              (p.name ===
-                                "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
-                                loopField.name.startsWith("ENTITIES")),
-                          )
+                                (p) =>
+                                  (p.name ===
+                                    "USERS_PERMISSIONS_MANAGE_ACCOUNTS" &&
+                                    loopField.name.startsWith("ACCOUNTS")) ||
+                                  (p.name ===
+                                    "USERS_PERMISSIONS_MANAGE_OPERATIONS" &&
+                                    loopField.name.startsWith("OPERATIONS")) ||
+                                  (p.name ===
+                                    "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
+                                    loopField.name.startsWith(
+                                      "TRANSACTIONS",
+                                    )) ||
+                                  (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
+                                    user?.role?.name &&
+                                    p.entitiesTags?.includes(user.role.name)) ||
+                                  (p.name ===
+                                    "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
+                                    loopField.name.startsWith("ENTITIES")),
+                              )
                             ? false
                             : true
                       }
@@ -252,8 +270,8 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                               >
                                 {field.value
                                   ? Array.from(field.value).map((number) => (
-                                    <p key={number}>{number}</p>
-                                  ))
+                                      <p key={number}>{number}</p>
+                                    ))
                                   : "Añadir entidad"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
@@ -277,7 +295,9 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                       } else {
                                         setValue(
                                           `permissions.${index}.entitiesIds`,
-                                          field.value.filter(n => n !== entity.id)
+                                          field.value.filter(
+                                            (n) => n !== entity.id,
+                                          ),
                                         );
                                       }
                                     }}
@@ -324,10 +344,10 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                             >
                               {field.value
                                 ? Array.from(field.value).map((tag) => (
-                                  <p key={tag}>
-                                    {capitalizeFirstLetter(tag)}
-                                  </p>
-                                ))
+                                    <p key={tag}>
+                                      {capitalizeFirstLetter(tag)}
+                                    </p>
+                                  ))
                                 : loopField.name.startsWith("USERS_")
                                   ? "Añadir rol"
                                   : "Añadir Tag"}
@@ -348,64 +368,68 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                             <CommandGroup>
                               {loopField.name.startsWith("USERS_")
                                 ? roles &&
-                                roles.map((role) => (
-                                  <CommandItem
-                                    key={role.id}
-                                    value={role.name}
-                                    onSelect={() => {
-                                      if (!field.value.includes(role.name)) {
-                                        setValue(
-                                          `permissions.${index}.entitiesTags`,
-                                          [...field.value, role.name]
-                                        );
-                                      } else {
-                                        setValue(
-                                          `permissions.${index}.entitiesTags`,
-                                          field.value.filter(str => str !== role.name)
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value.includes(role.name)
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    {capitalizeFirstLetter(role.name)}
-                                  </CommandItem>
-                                ))
+                                  roles.map((role) => (
+                                    <CommandItem
+                                      key={role.id}
+                                      value={role.name}
+                                      onSelect={() => {
+                                        if (!field.value.includes(role.name)) {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            [...field.value, role.name],
+                                          );
+                                        } else {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            field.value.filter(
+                                              (str) => str !== role.name,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value.includes(role.name)
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      {capitalizeFirstLetter(role.name)}
+                                    </CommandItem>
+                                  ))
                                 : tags.map((tag) => (
-                                  <CommandItem
-                                    value={tag.name}
-                                    key={tag.name}
-                                    onSelect={() => {
-                                      if (!field.value.includes(tag.name)) {
-                                        setValue(
-                                          `permissions.${index}.entitiesTags`,
-                                          [...field.value, tag.name]
-                                        );
-                                      } else {
-                                        setValue(
-                                          `permissions.${index}.entitiesTags`,
-                                          field.value.filter(str => str !== tag.name)
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value.includes(tag.name)
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    {capitalizeFirstLetter(tag.name)}
-                                  </CommandItem>
-                                ))}
+                                    <CommandItem
+                                      value={tag.name}
+                                      key={tag.name}
+                                      onSelect={() => {
+                                        if (!field.value.includes(tag.name)) {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            [...field.value, tag.name],
+                                          );
+                                        } else {
+                                          setValue(
+                                            `permissions.${index}.entitiesTags`,
+                                            field.value.filter(
+                                              (str) => str !== tag.name,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value.includes(tag.name)
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      {capitalizeFirstLetter(tag.name)}
+                                    </CommandItem>
+                                  ))}
                             </CommandGroup>
                           </Command>
                         </PopoverContent>

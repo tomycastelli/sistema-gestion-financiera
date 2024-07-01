@@ -1,12 +1,9 @@
 "use client";
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
-import {
-  capitalizeFirstLetter,
-  getAllChildrenTags,
-} from "~/lib/functions";
+import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -53,8 +50,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 
   const { data: tags, isSuccess } = api.tags.getFiltered.useQuery(undefined, {
     initialData: initialTags,
-    refetchOnWindowFocus: false
-  })
+    refetchOnWindowFocus: false,
+  });
 
   const { data: entities, isLoading } = api.entities.getAll.useQuery(
     undefined,
@@ -105,7 +102,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 
   return (
     <div className="mx-auto my-4 flex max-w-4xl flex-col flex-wrap gap-4">
-      <div className="flex flex-row justify-between gap-4 rounded-xl border border-muted p-4 items-center">
+      <div className="flex flex-row items-center justify-between gap-4 rounded-xl border border-muted p-4">
         <div className="flex flex-row gap-4">
           <Input
             className="w-36"
@@ -174,14 +171,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         </div>
         {isSuccess && (
           <div className="flex flex-row space-x-4">
-            <AddEntitiesForm
-              tags={tags}
-              userPermissions={userPermissions}
-            />
-            <AddTagsForm
-              tags={tags}
-              userPermissions={userPermissions}
-            />
+            <AddEntitiesForm tags={tags} userPermissions={userPermissions} />
+            <AddTagsForm tags={tags} userPermissions={userPermissions} />
           </div>
         )}
       </div>
@@ -189,7 +180,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         {isLoading ? (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
-          <div className="flex flex-col gap-6 items-start">
+          <div className="flex flex-col items-start gap-6">
             <div className="flex flex-wrap justify-center gap-8">
               {twiceFilteredEntities
                 .slice((page - 1) * pageSize, page * pageSize)
@@ -199,7 +190,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                     className="flex flex-col items-center justify-center space-y-2 self-start"
                   >
                     <EntityCard entity={entity} />
-                    {isSuccess && entity.tag.name !== "Operadores" &&
+                    {isSuccess &&
+                      entity.tag.name !== "Operadores" &&
                       manageableEntities.find(
                         (item) => item.name === entity.name,
                       ) && <EntityOptions entity={entity} tags={tags} />}

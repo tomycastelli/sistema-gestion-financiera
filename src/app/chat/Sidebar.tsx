@@ -1,13 +1,18 @@
-import { ScrollArea } from "../components/ui/scroll-area"
-import AddChat from "./AddChat"
-import { type User } from "lucia"
-import { type RouterOutputs } from "~/trpc/shared"
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
-import ChatList from "./ChatList"
+import { ScrollArea } from "../components/ui/scroll-area";
+import AddChat from "./AddChat";
+import { type User } from "lucia";
+import { type RouterOutputs } from "~/trpc/shared";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../components/ui/card";
+import ChatList from "./ChatList";
 
 interface SidebarProps {
-  user: User
-  userChats: RouterOutputs["messages"]["getUserChats"]
+  user: User;
+  userChats: RouterOutputs["messages"]["getUserChats"];
 }
 
 const Sidebar = ({ user, userChats }: SidebarProps) => {
@@ -17,7 +22,7 @@ const Sidebar = ({ user, userChats }: SidebarProps) => {
         <CardTitle>Chats</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="flex w-full h-full">
+        <ScrollArea className="flex h-full w-full">
           <nav className="grid grid-cols-1 gap-y-2">
             <AddChat user={user} />
             <ChatList initialUserChats={userChats} />
@@ -25,7 +30,7 @@ const Sidebar = ({ user, userChats }: SidebarProps) => {
         </ScrollArea>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
-export default Sidebar
+export default Sidebar;

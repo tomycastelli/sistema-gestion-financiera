@@ -33,7 +33,7 @@ export const appRouter = createTRPCRouter({
   files: filesRouter,
   userPreferences: userPreferencesRouter,
   messages: messagesRouter,
-  globalSettings: globalSettingsRouter
+  globalSettings: globalSettingsRouter,
 });
 
 // export type definition of API

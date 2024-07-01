@@ -324,22 +324,22 @@ export const operationsRouter = createTRPCRouter({
               ),
             )
           : input.opDateIsGreater
-          ? and(
-              gte(
-                operations.date,
-                moment(input.opDateIsGreater)
-                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                  .toDate(),
-              ),
-              lte(
-                operations.date,
-                moment(input.opDateIsGreater)
-                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                  .add(1, "day")
-                  .toDate(),
-              ),
-            )
-          : undefined,
+            ? and(
+                gte(
+                  operations.date,
+                  moment(input.opDateIsGreater)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .toDate(),
+                ),
+                lte(
+                  operations.date,
+                  moment(input.opDateIsGreater)
+                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                    .add(1, "day")
+                    .toDate(),
+                ),
+              )
+            : undefined,
       );
 
       const txMetadataIds: number[] = [0];
@@ -586,37 +586,9 @@ export const operationsRouter = createTRPCRouter({
         )
           ? true
           : userPermissions?.find((p) => {
-              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
-              if (
-                p.name === "OPERATIONS_VISUALIZE_SOME" &&
-                op.transactions.find(
-                  (tx) =>
-                    p.entitiesIds?.includes(tx.fromEntityId) ||
-                    allAllowedTags.includes(tx.fromEntity.tagName),
-                ) &&
-                op.transactions.find(
-                  (tx) =>
-                    p.entitiesIds?.includes(tx.toEntityId) ||
-                    allAllowedTags.includes(tx.toEntity.tagName),
-                )
-              ) {
-                return true;
-              }
-            })
-          ? true
-          : false;
-
-        const isCreateAllowed =
-          isInPeriod &&
-          !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
-          userPermissions?.find(
-            (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
-          )
-            ? true
-            : userPermissions?.find((p) => {
                 const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
                 if (
-                  p.name === "OPERATIONS_CREATE_SOME" &&
+                  p.name === "OPERATIONS_VISUALIZE_SOME" &&
                   op.transactions.find(
                     (tx) =>
                       p.entitiesIds?.includes(tx.fromEntityId) ||
@@ -633,6 +605,37 @@ export const operationsRouter = createTRPCRouter({
               })
             ? true
             : false;
+
+        const isCreateAllowed =
+          isInPeriod &&
+          !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
+          userPermissions?.find(
+            (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+          )
+            ? true
+            : userPermissions?.find((p) => {
+                  const allAllowedTags = getAllChildrenTags(
+                    p.entitiesTags,
+                    tags,
+                  );
+                  if (
+                    p.name === "OPERATIONS_CREATE_SOME" &&
+                    op.transactions.find(
+                      (tx) =>
+                        p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName),
+                    ) &&
+                    op.transactions.find(
+                      (tx) =>
+                        p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName),
+                    )
+                  ) {
+                    return true;
+                  }
+                })
+              ? true
+              : false;
 
         return {
           ...op,
@@ -676,22 +679,22 @@ export const operationsRouter = createTRPCRouter({
               )
                 ? true
                 : userPermissions?.find((p) => {
-                    const allAllowedTags = getAllChildrenTags(
-                      p.entitiesTags,
-                      tags,
-                    );
-                    if (
-                      p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                      (p.entitiesIds?.includes(tx.fromEntityId) ||
-                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                      (p.entitiesIds?.includes(tx.toEntityId) ||
-                        allAllowedTags.includes(tx.toEntity.tagName))
-                    ) {
-                      return true;
-                    }
-                  })
-                ? true
-                : false;
+                      const allAllowedTags = getAllChildrenTags(
+                        p.entitiesTags,
+                        tags,
+                      );
+                      if (
+                        p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                        (p.entitiesIds?.includes(tx.fromEntityId) ||
+                          allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                        (p.entitiesIds?.includes(tx.toEntityId) ||
+                          allAllowedTags.includes(tx.toEntity.tagName))
+                      ) {
+                        return true;
+                      }
+                    })
+                  ? true
+                  : false;
 
             const isValidateAllowed =
               isInPeriod &&
@@ -846,11 +849,11 @@ export const operationsRouter = createTRPCRouter({
                       eq(toEntity.id, input.entityId),
                     )
                   : input.entityTag
-                  ? or(
-                      eq(fromEntity.tagName, input.entityTag),
-                      eq(toEntity.tagName, input.entityTag),
-                    )
-                  : undefined,
+                    ? or(
+                        eq(fromEntity.tagName, input.entityTag),
+                        eq(toEntity.tagName, input.entityTag),
+                      )
+                    : undefined,
               ),
             );
 

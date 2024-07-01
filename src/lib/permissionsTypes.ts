@@ -61,11 +61,11 @@ export const mergePermissions = (
         existingPermission.entitiesIds = [
           ...(existingPermission.entitiesIds ?? []),
           ...(permission.entitiesIds ?? []),
-        ]
+        ];
         existingPermission.entitiesTags = [
           ...(existingPermission.entitiesTags ?? []),
           ...(permission.entitiesTags ?? []),
-        ]
+        ];
       }
     } else {
       // If the permission doesn't exist in the merged array, add it

@@ -12,56 +12,104 @@ import { getAllChildrenTags } from "~/lib/functions";
 import { Button } from "./ui/button";
 import { Icons } from "./ui/Icons";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./ui/accordion";
 
 const Navbar = async () => {
   const user = await getUser();
 
-  const tags = await api.tags.getAll.query()
+  const tags = await api.tags.getAll.query();
 
-  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+  const { data: mainTagData } = await api.globalSettings.get.query({
+    name: "mainTag",
+  });
 
-  const mainTag = mainTagData as { tag: string }
+  const mainTag = mainTagData as { tag: string };
 
-  const mainTags = getAllChildrenTags(mainTag.tag, tags)
+  const mainTags = getAllChildrenTags(mainTag.tag, tags);
 
   interface MenuItem {
     name: string;
-    links: { name: string; description: string, href: string }[]
+    links: { name: string; description: string; href: string }[];
   }
 
   const menuItems: MenuItem[] = [
     {
       name: "Operaciones",
       links: [
-        { name: "Carga", description: "Ingresar operaciones", href: "/operaciones/carga" },
-        { name: "Gestión", description: "Visualizar, cancelar, confirmar y modificar operaciones", href: "/operaciones/gestion?pagina=1" }
-      ]
+        {
+          name: "Carga",
+          description: "Ingresar operaciones",
+          href: "/operaciones/carga",
+        },
+        {
+          name: "Gestión",
+          description:
+            "Visualizar, cancelar, confirmar y modificar operaciones",
+          href: "/operaciones/gestion?pagina=1",
+        },
+      ],
     },
     {
       name: "Cuentas",
       links: [
-        { name: "Caja", description: "Las cuentas de caja", href: `/cuentas?tag=${mainTag.tag}&cuenta=caja` },
-        { name: "Cuenta corriente", description: "Las cuentas de cuenta corriente", href: `/cuentas?tag=${mainTag.tag}&cuenta=cuenta_corriente` }
-      ]
+        {
+          name: "Caja",
+          description: "Las cuentas de caja",
+          href: `/cuentas?tag=${mainTag.tag}&cuenta=caja`,
+        },
+        {
+          name: "Cuenta corriente",
+          description: "Las cuentas de cuenta corriente",
+          href: `/cuentas?tag=${mainTag.tag}&cuenta=cuenta_corriente`,
+        },
+      ],
     },
     {
       name: "Entidades",
       links: [
-        { name: "Gestión", description: "Crear, editar o eliminar Entidades y Tags", href: "/entidades" },
-        { name: "Gráfico", description: "Visualizar el arbol de Tags", href: "/entidades/grafico" }
-      ]
+        {
+          name: "Gestión",
+          description: "Crear, editar o eliminar Entidades y Tags",
+          href: "/entidades",
+        },
+        {
+          name: "Gráfico",
+          description: "Visualizar el arbol de Tags",
+          href: "/entidades/grafico",
+        },
+      ],
     },
     {
       name: "Preferencias",
       links: [
-        { name: "Ajustes globales", description: "Ajustes globales del sistema", href: "/preferencias" },
-        { name: "Mi usuario", description: "Manejar mi usuario", href: "/preferencias/usuarios" },
-        { name: "Permisos", description: "Modificar los permisos de usuario", href: "/preferencias/usuarios/permisos" },
-        { name: "Roles", description: "Manejar grupos de usuarios bajo un grupo de permisos", href: "/preferencias/usuarios/roles" }
-      ]
-    }
-  ]
+        {
+          name: "Ajustes globales",
+          description: "Ajustes globales del sistema",
+          href: "/preferencias",
+        },
+        {
+          name: "Mi usuario",
+          description: "Manejar mi usuario",
+          href: "/preferencias/usuarios",
+        },
+        {
+          name: "Permisos",
+          description: "Modificar los permisos de usuario",
+          href: "/preferencias/usuarios/permisos",
+        },
+        {
+          name: "Roles",
+          description: "Manejar grupos de usuarios bajo un grupo de permisos",
+          href: "/preferencias/usuarios/roles",
+        },
+      ],
+    },
+  ];
 
   return (
     <header className="h-fit w-full py-4 text-foreground">
@@ -75,18 +123,18 @@ const Navbar = async () => {
             Maika.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.1.1
+            v0.2.6
           </p>
         </div>
         <div className="hidden lg:block">
-          {user && (
-            <NavMenu menuItems={menuItems} />
-          )}
+          {user && <NavMenu menuItems={menuItems} />}
         </div>
         {user && (
           <div className="hidden lg:block">
             <div className="flex flex-row items-center gap-x-4">
-              <Suspense fallback={<LoadingAnimation text="Cargando chats" size="sm" />}>
+              <Suspense
+                fallback={<LoadingAnimation text="Cargando chats" size="sm" />}
+              >
                 <ChatsNav />
               </Suspense>
               <UserInfo user={user} />
@@ -96,7 +144,7 @@ const Navbar = async () => {
           </div>
         )}
         {user && (
-          <div className="lg:hidden flex flex-row justify-end gap-x-4">
+          <div className="flex flex-row justify-end gap-x-4 lg:hidden">
             <ThemeToggler />
             <Sheet>
               <SheetTrigger asChild>
@@ -105,16 +153,33 @@ const Navbar = async () => {
                 </Button>
               </SheetTrigger>
               <SheetContent tw="w-full flex flex-col gap-y-4" side="right">
-                <div className="flex w-full flex-col justify-end gap-y-4 my-4">
-                  <Accordion type="single" collapsible className="w-full flex-flex-col gap-y-2 justify-end">
-                    {menuItems.map(item => (
-                      <AccordionItem value={item.name} key={item.name} className="justify-end flex flex-col gap-y-1">
-                        <AccordionTrigger className="text-lg font-semibold">{item.name}</AccordionTrigger>
+                <div className="my-4 flex w-full flex-col justify-end gap-y-4">
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="flex-flex-col w-full justify-end gap-y-2"
+                  >
+                    {menuItems.map((item) => (
+                      <AccordionItem
+                        value={item.name}
+                        key={item.name}
+                        className="flex flex-col justify-end gap-y-1"
+                      >
+                        <AccordionTrigger className="text-lg font-semibold">
+                          {item.name}
+                        </AccordionTrigger>
                         <AccordionContent className="flex flex-col gap-y-1">
-                          {item.links.map(link => (
-                            <Link key={link.name} prefetch={false} href={link.href} className="rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex flex-col gap-y-1 p-2">
+                          {item.links.map((link) => (
+                            <Link
+                              key={link.name}
+                              prefetch={false}
+                              href={link.href}
+                              className="flex flex-col gap-y-1 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            >
                               <h3 className="text-white">{link.name}</h3>
-                              <p className="text-muted-foreground text-sm font-light">{link.description}</p>
+                              <p className="text-sm font-light text-muted-foreground">
+                                {link.description}
+                              </p>
                             </Link>
                           ))}
                         </AccordionContent>
@@ -123,7 +188,11 @@ const Navbar = async () => {
                   </Accordion>
                   <CommandMenu mainTags={mainTags} />
                   <UserInfo user={user} />
-                  <Suspense fallback={<LoadingAnimation text="Cargando chats" size="sm" />}>
+                  <Suspense
+                    fallback={
+                      <LoadingAnimation text="Cargando chats" size="sm" />
+                    }
+                  >
                     <ChatsNav />
                   </Suspense>
                 </div>

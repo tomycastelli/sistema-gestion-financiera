@@ -20,7 +20,7 @@ import { Icons } from "./Icons";
 import { Button } from "./button";
 
 interface CommandMenuProps {
-  mainTags: string[]
+  mainTags: string[];
 }
 
 const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
@@ -77,7 +77,7 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
       } else if (e.key === "e") {
         handleSelect("/entidades");
       } else if (e.key === "l") {
-        handleSelect("/preferencias")
+        handleSelect("/preferencias");
       }
     }
   };
@@ -120,7 +120,7 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
               <Icons.addPackage className="h-5" />
               <p>
                 {searchValue.split("op:")[1] &&
-                  searchValue.split("op:")[1]!.length >= 1
+                searchValue.split("op:")[1]!.length >= 1
                   ? searchValue.split("op:")[1]
                   : "Elegi un numero de operacion"}
               </p>
@@ -134,30 +134,30 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_CREATE"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/operaciones/carga")}
-                  value="Cargar operaciones"
-                >
-                  <Icons.addPackage className="mr-2 h-4 w-4" />
-                  <span>Cargar operaciones</span>
-                  <CommandShortcut>⌘C</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/operaciones/carga")}
+                value="Cargar operaciones"
+              >
+                <Icons.addPackage className="mr-2 h-4 w-4" />
+                <span>Cargar operaciones</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+            )}
             {userPermissions?.find(
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("OPERATIONS_VISUALIZE"),
             ) && (
-                <>
-                  <CommandItem
-                    onSelect={() => handleSelect("/operaciones/gestion")}
-                    value="Gestionar operaciones"
-                  >
-                    <Icons.editing className="mr-2 h-4 w-4" />
-                    <span>Gestionar operaciones</span>
-                    <CommandShortcut>⌘G</CommandShortcut>
-                  </CommandItem>
-                </>
-              )}
+              <>
+                <CommandItem
+                  onSelect={() => handleSelect("/operaciones/gestion")}
+                  value="Gestionar operaciones"
+                >
+                  <Icons.editing className="mr-2 h-4 w-4" />
+                  <span>Gestionar operaciones</span>
+                  <CommandShortcut>⌘G</CommandShortcut>
+                </CommandItem>
+              </>
+            )}
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Entidades">
@@ -194,27 +194,27 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
               (p) =>
                 p.name === "ADMIN" || p.name.startsWith("USERS_PERMISSIONS"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/preferencias/usuarios/permisos")}
-                  value="Permisos"
-                >
-                  <Icons.settings className="mr-2 h-4 w-4" />
-                  <span>Permisos</span>
-                  <CommandShortcut>⌘P</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/preferencias/usuarios/permisos")}
+                value="Permisos"
+              >
+                <Icons.settings className="mr-2 h-4 w-4" />
+                <span>Permisos</span>
+                <CommandShortcut>⌘P</CommandShortcut>
+              </CommandItem>
+            )}
             {userPermissions?.find(
               (p) => p.name === "ADMIN" || p.name.startsWith("USERS_ROLES"),
             ) && (
-                <CommandItem
-                  onSelect={() => handleSelect("/preferencias/usuarios/roles")}
-                  value="Roles"
-                >
-                  <Icons.roles className="mr-2 h-4 w-4" />
-                  <span>Roles</span>
-                  <CommandShortcut>⌘R</CommandShortcut>
-                </CommandItem>
-              )}
+              <CommandItem
+                onSelect={() => handleSelect("/preferencias/usuarios/roles")}
+                value="Roles"
+              >
+                <Icons.roles className="mr-2 h-4 w-4" />
+                <span>Roles</span>
+                <CommandShortcut>⌘R</CommandShortcut>
+              </CommandItem>
+            )}
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Logs">
@@ -237,9 +237,7 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
                 value={tag}
                 onSelect={() =>
                   handleSelect(
-                    "/cuentas" +
-                    "?" +
-                    createQueryString(undefined, "tag", tag),
+                    "/cuentas" + "?" + createQueryString(undefined, "tag", tag),
                   )
                 }
               >
@@ -249,26 +247,28 @@ const CommandMenu: FC<CommandMenuProps> = ({ mainTags }) => {
             ))}
             <p className="ml-2 mt-1 text-xs text-muted-foreground">Entidades</p>
             {isEntitiesSuccess &&
-              entities.filter(e => mainTags.includes(e.tag.name)).map((entity) => (
-                <CommandItem
-                  key={entity.id}
-                  value={entity.name}
-                  onSelect={() =>
-                    handleSelect(
-                      "/cuentas" +
-                      "?" +
-                      createQueryString(
-                        undefined,
-                        "entidad",
-                        entity.id.toString(),
-                      ),
-                    )
-                  }
-                >
-                  <Icons.currentAccount className="mr-2 h-4 w-4" />
-                  <span>{entity.name}</span>
-                </CommandItem>
-              ))}
+              entities
+                .filter((e) => mainTags.includes(e.tag.name))
+                .map((entity) => (
+                  <CommandItem
+                    key={entity.id}
+                    value={entity.name}
+                    onSelect={() =>
+                      handleSelect(
+                        "/cuentas" +
+                          "?" +
+                          createQueryString(
+                            undefined,
+                            "entidad",
+                            entity.id.toString(),
+                          ),
+                      )
+                    }
+                  >
+                    <Icons.currentAccount className="mr-2 h-4 w-4" />
+                    <span>{entity.name}</span>
+                  </CommandItem>
+                ))}
           </CommandGroup>
         </CommandList>
       </CommandDialog>

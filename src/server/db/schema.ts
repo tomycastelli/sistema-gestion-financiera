@@ -36,11 +36,13 @@ export const transactionsMetadata = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
-    relatedTransactionId: integer("relatedTransactionId")
-      .references(() => transactions.id, {
+    relatedTransactionId: integer("relatedTransactionId").references(
+      () => transactions.id,
+      {
         onDelete: "set null",
-        onUpdate: "no action"
-      }),
+        onUpdate: "no action",
+      },
+    ),
     uploadedBy: text("uploadedBy")
       .notNull()
       .references(() => user.id, { onDelete: "restrict", onUpdate: "cascade" }),
@@ -103,48 +105,60 @@ export const operations = pgTable(
   },
 );
 
-export const chat = pgTable(
-  "Chat",
-  {
-    id: serial("id").primaryKey().notNull(),
-    name: text("name")
-  },
-)
+export const chat = pgTable("Chat", {
+  id: serial("id").primaryKey().notNull(),
+  name: text("name"),
+});
 
 export const chatToUsers = pgTable(
-  "chatToUsers", {
-  chatId: integer("chatId").notNull().references(() => chat.id),
-  userId: text("userId").notNull().references(() => user.id),
-  lastConnection: bigint("lastConnection", { mode: "number" }).notNull().default(0)
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.userId, table.chatId] })
-  }
-}
-)
+  "chatToUsers",
+  {
+    chatId: integer("chatId")
+      .notNull()
+      .references(() => chat.id),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    lastConnection: bigint("lastConnection", { mode: "number" })
+      .notNull()
+      .default(0),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.userId, table.chatId] }),
+    };
+  },
+);
 
 export const messages = pgTable(
   "Messages",
   {
     id: serial("id").primaryKey().notNull(),
-    chatId: integer("chatId").notNull().references(() => chat.id),
-    userId: text("userId").notNull().references(() => user.id, {
-      onUpdate: "cascade",
-      onDelete: "cascade"
-    }),
+    chatId: integer("chatId")
+      .notNull()
+      .references(() => chat.id),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     timestamp: bigint("timestamp", { mode: "number" }).notNull(),
-    message: text("message").notNull()
+    message: text("message").notNull(),
   },
   (table) => {
     return {
-      chatTimestampIdx: index("chat_timestamp_idx").on(table.chatId, table.timestamp)
-    }
-  }
-)
+      chatTimestampIdx: index("chat_timestamp_idx").on(
+        table.chatId,
+        table.timestamp,
+      ),
+    };
+  },
+);
 
 const decimalNumber = customType<{ data: number }>({
   dataType() {
-    return 'numeric(16, 4)';
+    return "numeric(16, 4)";
   },
   fromDriver(value) {
     return Number(value);
@@ -218,19 +232,20 @@ export const balances = pgTable(
     account: boolean("account").notNull(),
     date: timestamp("date", { mode: "date" }).notNull(),
     balance: decimalNumber("balance").notNull(),
-    otherEntityId: integer("otherEntityId")
-      .references(() => entities.id, {
+    otherEntityId: integer("otherEntityId").references(() => entities.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    selectedEntityId: integer("selectedEntityId").references(
+      () => entities.id,
+      {
         onDelete: "cascade",
         onUpdate: "cascade",
-      }),
-    selectedEntityId: integer("selectedEntityId")
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+      },
+    ),
     tagName: text("tagName").references(() => tag.name, {
       onUpdate: "cascade",
-      onDelete: "cascade"
+      onDelete: "cascade",
     }),
     currency: text("currency").notNull(),
   },
@@ -373,19 +388,20 @@ export const movements = pgTable(
     type: text("type").notNull(),
     account: boolean("account").notNull(),
     balance: decimalNumber("balance").notNull(),
-    balanceId: integer("balanceId").notNull()
+    balanceId: integer("balanceId")
+      .notNull()
       .references(() => balances.id, {
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
-    entitiesMovementId: integer("entitiesMovementId")
+    entitiesMovementId: integer("entitiesMovementId"),
   },
   (table) => {
     return {
       entitiesMovementReference: foreignKey({
         columns: [table.entitiesMovementId],
         foreignColumns: [table.id],
-        name: "entities_movement_fk"
+        name: "entities_movement_fk",
       }),
       transactionIdDirectionIdx: index(
         "Movements_transactionId_account_idx",
@@ -407,8 +423,8 @@ export const requests = pgTable("Requests", {
 
 export const globalSettings = pgTable("GlobalSettings", {
   name: text("name").primaryKey().notNull(),
-  data: jsonb("data").notNull()
-})
+  data: jsonb("data").notNull(),
+});
 
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
@@ -431,15 +447,15 @@ export const entitiesRelations = relations(entities, ({ many, one }) => ({
 }));
 
 export const chatRelations = relations(chat, ({ many }) => ({
-  messages: many(messages)
-}))
+  messages: many(messages),
+}));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   chat: one(chat, {
     fields: [messages.chatId],
-    references: [chat.id]
-  })
-}))
+    references: [chat.id],
+  }),
+}));
 
 export const operationManyRelations = relations(operations, ({ many }) => ({
   transactions: many(transactions),
@@ -557,14 +573,25 @@ export const requestsOneRelations = relations(requests, ({ one }) => ({
   }),
 }));
 
-export const insertTransactionsSchema = createInsertSchema(transactions).extend({ amount: z.number() });
-export const insertMovementsSchema = createInsertSchema(movements).extend({ balance: z.number() });
+export const insertTransactionsSchema = createInsertSchema(transactions).extend(
+  { amount: z.number() },
+);
+export const insertMovementsSchema = createInsertSchema(movements).extend({
+  balance: z.number(),
+});
 
-export const returnedBalancesSchema = createSelectSchema(balances).extend({ balance: z.number() });
-export const returnedMovementsSchema = createSelectSchema(movements).extend({ balance: z.number() });
-export const returnedTransactionsSchema = createSelectSchema(transactions).extend({ amount: z.number() });
-export const returnedOperationsSchema = createSelectSchema(operations)
-export const returnedEntitiesSchema = createSelectSchema(entities)
-export const returnedTransactionsMetadataSchema = createSelectSchema(transactionsMetadata)
-export const returnedUserSchema = createSelectSchema(user)
-export const returnedTagSchema = createSelectSchema(tag)
+export const returnedBalancesSchema = createSelectSchema(balances).extend({
+  balance: z.number(),
+});
+export const returnedMovementsSchema = createSelectSchema(movements).extend({
+  balance: z.number(),
+});
+export const returnedTransactionsSchema = createSelectSchema(
+  transactions,
+).extend({ amount: z.number() });
+export const returnedOperationsSchema = createSelectSchema(operations);
+export const returnedEntitiesSchema = createSelectSchema(entities);
+export const returnedTransactionsMetadataSchema =
+  createSelectSchema(transactionsMetadata);
+export const returnedUserSchema = createSelectSchema(user);
+export const returnedTagSchema = createSelectSchema(tag);

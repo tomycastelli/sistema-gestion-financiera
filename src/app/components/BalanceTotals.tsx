@@ -10,7 +10,7 @@ interface BalanceTotalsProps {
 
 const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
   return (
-    <ScrollArea className="w-full h-full">
+    <ScrollArea className="h-full w-full">
       {totals.map((total) => (
         <div key={total.currency}>
           <h1 className="text-lg font-semibold">

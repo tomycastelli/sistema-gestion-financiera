@@ -5,7 +5,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { logOut } from "~/server/auth";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { Icons } from "./ui/Icons";
 
 interface UserInfoProps {
@@ -14,9 +18,9 @@ interface UserInfoProps {
 
 const UserInfo: FC<UserInfoProps> = ({ user }) => {
   const logOutAction = async () => {
-    "use server"
-    await logOut()
-  }
+    "use server";
+    await logOut();
+  };
   const userData = [
     {
       name: "Nombre",
@@ -35,7 +39,10 @@ const UserInfo: FC<UserInfoProps> = ({ user }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild className="cursor-default">
-        <Button variant="outline" className="p-4 rounded-full hover:bg-primary hover:text-white">
+        <Button
+          variant="outline"
+          className="rounded-full p-4 hover:bg-primary hover:text-white"
+        >
           <Icons.person className="h-5" />
         </Button>
       </DropdownMenuTrigger>
@@ -47,7 +54,9 @@ const UserInfo: FC<UserInfoProps> = ({ user }) => {
           </div>
         ))}
         <form action={logOutAction} method="POST">
-          <Button variant="outline" size="sm" type="submit">Logout</Button>
+          <Button variant="outline" size="sm" type="submit">
+            Logout
+          </Button>
         </form>
       </DropdownMenuContent>
     </DropdownMenu>

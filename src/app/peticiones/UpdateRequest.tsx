@@ -54,7 +54,6 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
 
   const { mutateAsync: updateAsync } = api.requests.updateOne.useMutation({
     async onMutate(newOperation) {
-
       setIsOpen(false);
 
       reset({
@@ -68,19 +67,18 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
 
       utils.requests.getAll.setData(undefined, (old) =>
         old
-          ?
-          old.map((r) => {
-            if (r.id === newOperation.id) {
-              return {
-                ...r,
-                id: r.id,
-                title: newOperation.title,
-                content: newOperation.content,
-              };
-            } else {
-              return r;
-            }
-          })
+          ? old.map((r) => {
+              if (r.id === newOperation.id) {
+                return {
+                  ...r,
+                  id: r.id,
+                  title: newOperation.title,
+                  content: newOperation.content,
+                };
+              } else {
+                return r;
+              }
+            })
           : [],
       );
 
@@ -90,12 +88,12 @@ const UpdateRequest: FC<UpdateRequestProps> = ({ request }) => {
       const prevData = utils.requests.getAll.getData(undefined);
 
       toast.error("No se pudo actualizar la petición", {
-        description: JSON.stringify(err.message)
-      })
+        description: JSON.stringify(err.message),
+      });
       return { prevData };
     },
     onSuccess(_, variables) {
-      toast.success(`Petición ${variables.id} guardada`)
+      toast.success(`Petición ${variables.id} guardada`);
     },
     onSettled() {
       void utils.requests.getAll.invalidate();

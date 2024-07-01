@@ -62,7 +62,7 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
   );
 
   if (!role) {
-    return (<h1 className="text-2xl font-semibold">No hay rol</h1>)
+    return <h1 className="text-2xl font-semibold">No hay rol</h1>;
   }
 
   const utils = api.useContext();
@@ -89,10 +89,12 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
             name: old!.name,
             color: old!.color,
             permissions: old!.permissions,
-            users: old?.users ? [
-              ...old.users,
-              users.find((user) => user.id === newOperation.userId),
-            ] : [],
+            users: old?.users
+              ? [
+                  ...old.users,
+                  users.find((user) => user.id === newOperation.userId),
+                ]
+              : [],
           };
         },
       );
@@ -103,15 +105,15 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
       utils.roles.getById.setData({ id: role?.id ?? 1 }, ctx?.prevData);
 
       toast.error(`No se pudo añadir al usuario ${newOperation.userId}`, {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.roles.getById.invalidate();
     },
     onSuccess(data) {
-      toast.success(`Usuario ${data?.name} añadido`)
-    }
+      toast.success(`Usuario ${data?.name} añadido`);
+    },
   });
   const { mutateAsync: removeUserFromRole } =
     api.users.removeUserFromRole.useMutation({
@@ -129,7 +131,9 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
               name: old!.name,
               color: old!.color,
               permissions: old!.permissions,
-              users: old?.users ? old.users.filter((user) => user.id !== newOperation.id) : [],
+              users: old?.users
+                ? old.users.filter((user) => user.id !== newOperation.id)
+                : [],
             };
           },
         );
@@ -140,15 +144,15 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         utils.roles.getById.setData({ id: role?.id ?? 1 }, ctx?.prevData);
 
         toast.error(`No se pudo eliminar al usuario ${newOperation.id}`, {
-          description: err.message
-        })
+          description: err.message,
+        });
       },
       onSettled() {
         void utils.roles.getById.invalidate();
       },
       onSuccess(data) {
-        toast.success(`Usuario ${data?.name} eliminado`)
-      }
+        toast.success(`Usuario ${data?.name} eliminado`);
+      },
     });
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
@@ -196,52 +200,53 @@ const ManageUsers: FC<ManageUsersProps> = ({ initialRole, initialUsers }) => {
         </form>
       </Form>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {role.users && role.users.map((user) => (
-          <Card key={user.id}>
-            <CardHeader>
-              <div className="flex flex-row items-center justify-between">
-                <CardTitle>
-                  <Link
-                    href={`/preferencias/usuarios/permisos/${user.id}`}
-                    key={user.id}
-                    className="flex flex-col items-center justify-center rounded-xl transition-all hover:scale-105"
-                  >
-                    {user.name}
-                  </Link>
-                </CardTitle>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="border-transparent p-1"
+        {role.users &&
+          role.users.map((user) => (
+            <Card key={user.id}>
+              <CardHeader>
+                <div className="flex flex-row items-center justify-between">
+                  <CardTitle>
+                    <Link
+                      href={`/preferencias/usuarios/permisos/${user.id}`}
+                      key={user.id}
+                      className="flex flex-col items-center justify-center rounded-xl transition-all hover:scale-105"
                     >
-                      <Icons.cross className="h-6 text-red" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        ¿Seguro que querés eliminar al usuario de este rol?
-                      </AlertDialogTitle>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-red"
-                        onClick={async () =>
-                          await removeUserFromRole({ id: user.id })
-                        }
+                      {user.name}
+                    </Link>
+                  </CardTitle>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="border-transparent p-1"
                       >
-                        Eliminar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-              <CardDescription>{user.email}</CardDescription>
-            </CardHeader>
-          </Card>
-        ))}
+                        <Icons.cross className="h-6 text-red" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          ¿Seguro que querés eliminar al usuario de este rol?
+                        </AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red"
+                          onClick={async () =>
+                            await removeUserFromRole({ id: user.id })
+                          }
+                        >
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+                <CardDescription>{user.email}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
       </div>
     </div>
   );

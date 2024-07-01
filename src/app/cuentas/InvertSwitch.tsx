@@ -13,7 +13,7 @@ import { Switch } from "../components/ui/switch";
 
 interface InvertSwitchProps {
   entities: RouterOutputs["entities"]["getAll"];
-  uiColor: string | undefined
+  uiColor: string | undefined;
 }
 
 const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
@@ -35,7 +35,7 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       setIsInverted(false);
       setIsSwitchDisabled(true);
     } else {
-      setIsInverted(true)
+      setIsInverted(true);
       setIsSwitchDisabled(true);
     }
   }, [setIsInverted, selectedEntityId, selectedTag, entities]);
@@ -45,7 +45,9 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       <HoverCardTrigger className="flex flex-col items-center justify-center space-y-1">
         <p className="text-sm">{!isInverted ? "Normal" : "Invertido"}</p>
         <Switch
-          style={{ backgroundColor: isInverted ? uiColor ?? "blue" : undefined }}
+          style={{
+            backgroundColor: isInverted ? uiColor ?? "blue" : undefined,
+          }}
           disabled={isSwitchDisabled}
           checked={isInverted}
           onCheckedChange={(bool) => setIsInverted(bool)}
@@ -54,7 +56,11 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       <HoverCardContent>
         <p className="font-semibold">Punto de vista</p>
         <p className="text-sm text-gray-700">
-          La cuenta esta invertida para verlo desde el punto de vista de Maika y no de {selectedEntityId ? entities.find(obj => obj.id === selectedEntityId)?.name : "la otra entidad"}
+          La cuenta esta invertida para verlo desde el punto de vista de Maika y
+          no de{" "}
+          {selectedEntityId
+            ? entities.find((obj) => obj.id === selectedEntityId)?.name
+            : "la otra entidad"}
         </p>
       </HoverCardContent>
     </HoverCard>

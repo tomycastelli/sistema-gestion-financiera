@@ -10,8 +10,8 @@ export const dateFormatting = {
 export const mvTypeFormatting = new Map<string, string>([
   ["cancellation", "Cancelación"],
   ["confirmation", "Confirmación"],
-  ["upload", "Carga"]
-])
+  ["upload", "Carga"],
+]);
 
 export const colors = [
   {
@@ -120,5 +120,9 @@ export const operationTypes = [
   },
 ];
 
-export const currentAccountOnlyTypes = new Set(["fee", "cuenta corriente", "cable"]);
+export const currentAccountOnlyTypes = new Set([
+  "fee",
+  "cuenta corriente",
+  "cable",
+]);
 export const cashAccountOnlyTypes = new Set(["ingreso", "gasto"]);

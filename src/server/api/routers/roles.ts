@@ -33,7 +33,6 @@ export const rolesRouter = createTRPCRouter({
       (p) => p.name === "USERS_ROLES_MANAGE_SOME",
     )?.entitiesTags;
 
-
     if (hasSpecificRoles) {
       const response = await ctx.db.query.role.findMany({
         where: inArray(role.name, Array.from(hasSpecificRoles)),
@@ -65,7 +64,12 @@ export const rolesRouter = createTRPCRouter({
           },
         });
 
-        return { ...response, permissions: response?.permissions as z.infer<typeof PermissionSchema> };
+        return {
+          ...response,
+          permissions: response?.permissions as z.infer<
+            typeof PermissionSchema
+          >,
+        };
       } else {
         return null;
       }
@@ -123,7 +127,7 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {
@@ -171,7 +175,7 @@ export const rolesRouter = createTRPCRouter({
           .where(eq(role.id, input.id))
           .returning();
 
-        await deletePattern(ctx.redis, "entities|*")
+        await deletePattern(ctx.redis, "entities|*");
 
         const pipeline = ctx.redis.pipeline();
         users.forEach((user) => {

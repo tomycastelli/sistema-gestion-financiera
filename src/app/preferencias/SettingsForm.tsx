@@ -1,7 +1,15 @@
-"use client"
+"use client";
 
 import { z } from "zod";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../components/ui/form";
 import { type FC } from "react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { useForm } from "react-hook-form";
@@ -16,39 +24,46 @@ import CustomSelector from "../components/forms/CustomSelector";
 
 const FormSchema = z.object({
   months: z.string().min(1),
-  graceDays: z.string().refine(str => parseInt(str) >= 0),
-  mainTag: z.string()
+  graceDays: z.string().refine((str) => parseInt(str) >= 0),
+  mainTag: z.string(),
 });
 
 interface SettingsFormProps {
   initialSettings: RouterOutputs["globalSettings"]["getAll"];
-  isAdmin: boolean
-  tags: RouterOutputs["tags"]["getAll"]
+  isAdmin: boolean;
+  tags: RouterOutputs["tags"]["getAll"];
 }
 
-
-const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags }) => {
-  const utils = api.useContext()
+const SettingsForm: FC<SettingsFormProps> = ({
+  initialSettings,
+  isAdmin,
+  tags,
+}) => {
+  const utils = api.useContext();
 
   const { data: settings } = api.globalSettings.getAll.useQuery(undefined, {
     initialData: initialSettings,
-    refetchOnWindowFocus: false
-  })
+    refetchOnWindowFocus: false,
+  });
 
   const { mutateAsync } = api.globalSettings.set.useMutation({
     async onMutate(newOperation) {
-
       // Doing the Optimistic update
       await utils.globalSettings.getAll.cancel();
 
       const prevData = utils.globalSettings.getAll.getData();
 
-      utils.globalSettings.getAll.setData(undefined, (old) => old?.map(obj => {
-        if (newOperation.name === "accountingPeriod" && obj.name === "accountingPeriod") {
-          return { name: "accountingPeriod", data: newOperation.data }
-        }
-        return obj
-      }));
+      utils.globalSettings.getAll.setData(undefined, (old) =>
+        old?.map((obj) => {
+          if (
+            newOperation.name === "accountingPeriod" &&
+            obj.name === "accountingPeriod"
+          ) {
+            return { name: "accountingPeriod", data: newOperation.data };
+          }
+          return obj;
+        }),
+      );
 
       return { prevData };
     },
@@ -56,25 +71,27 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
       utils.globalSettings.getAll.setData(undefined, ctx?.prevData);
 
       toast.error("No se pudo actualizar la configuración", {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.globalSettings.getAll.invalidate();
     },
     onSuccess() {
-      toast.success("Configuración modificada")
-    }
-  })
+      toast.success("Configuración modificada");
+    },
+  });
 
-  const accountingPeriod = settings.find(obj => obj.name === "accountingPeriod") as {
+  const accountingPeriod = settings.find(
+    (obj) => obj.name === "accountingPeriod",
+  ) as {
     name: string;
-    data: { months: number; graceDays: number; }
-  }
-  const mainTag = settings.find(obj => obj.name === "mainTag") as {
+    data: { months: number; graceDays: number };
+  };
+  const mainTag = settings.find((obj) => obj.name === "mainTag") as {
     name: string;
-    data: { tag: string; }
-  }
+    data: { tag: string };
+  };
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -82,7 +99,7 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
       months: accountingPeriod.data.months.toString(),
       graceDays: accountingPeriod.data.graceDays.toString(),
       mainTag: mainTag.data.tag,
-    }
+    },
   });
 
   const { handleSubmit, control, watch } = form;
@@ -90,16 +107,25 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     await mutateAsync({
       name: "accountingPeriod",
-      data: { months: parseInt(values.months), graceDays: parseInt(values.graceDays) }
-    })
+      data: {
+        months: parseInt(values.months),
+        graceDays: parseInt(values.graceDays),
+      },
+    });
   };
 
-  const accountingPeriodDate = getAccountingPeriodDate(parseInt(watch("months")), parseInt(watch("graceDays")))
+  const accountingPeriodDate = getAccountingPeriodDate(
+    parseInt(watch("months")),
+    parseInt(watch("graceDays")),
+  );
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-y-6 justify-start w-1/3">
-        <div className="flex flex-col gap-y-4 justify-start">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex w-1/3 flex-col justify-start gap-y-6"
+      >
+        <div className="flex flex-col justify-start gap-y-4">
           <h1 className="text-xl">Período contable</h1>
           <FormField
             control={control}
@@ -111,8 +137,8 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
                   <Input disabled={!isAdmin} type="number" {...field} />
                 </FormControl>
                 <FormDescription>
-                  Duración del periodo contable.
-                  Pasado el periodo de una operación, la misma no podrá ser modificada.
+                  Duración del periodo contable. Pasado el periodo de una
+                  operación, la misma no podrá ser modificada.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -128,18 +154,27 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
                   <Input disabled={!isAdmin} type="number" min={0} {...field} />
                 </FormControl>
                 <FormDescription>
-                  Cuantos días, pasado el mes, puede una operación ser modificada.
+                  Cuantos días, pasado el mes, puede una operación ser
+                  modificada.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <div className="flex flex-col gap-y-1 justify-start text-sm">
-            <p>Inicio del periodo actual: <span className="font-semibold">{moment(accountingPeriodDate).format("DD-MM-YYYY")}</span></p>
-            <p>Las operaciones y los balances previos a esta fecha no podrán ser modificados.</p>
+          <div className="flex flex-col justify-start gap-y-1 text-sm">
+            <p>
+              Inicio del periodo actual:{" "}
+              <span className="font-semibold">
+                {moment(accountingPeriodDate).format("DD-MM-YYYY")}
+              </span>
+            </p>
+            <p>
+              Las operaciones y los balances previos a esta fecha no podrán ser
+              modificados.
+            </p>
           </div>
         </div>
-        <div className="flex flex-col gap-y-4 justify-start">
+        <div className="flex flex-col justify-start gap-y-4">
           <h1 className="text-xl">Tag principal</h1>
           <FormField
             control={control}
@@ -149,7 +184,7 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
                 <FormLabel>Tag</FormLabel>
                 <CustomSelector
                   buttonClassName="w-22"
-                  data={tags.map(t => ({ value: t.name, label: t.name }))}
+                  data={tags.map((t) => ({ value: t.name, label: t.name }))}
                   field={field}
                   fieldName={"mainTag"}
                 />
@@ -158,13 +193,19 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin, tags })
             )}
           />
           <div className="flex flex-col justify-start text-sm">
-            <p className="text-muted-foreground">Las transacciones cargadas tendrán que tener una entidad de este Tag participando y serán vistas desde el punto de vista de este Tag.</p>
+            <p className="text-muted-foreground">
+              Las transacciones cargadas tendrán que tener una entidad de este
+              Tag participando y serán vistas desde el punto de vista de este
+              Tag.
+            </p>
           </div>
         </div>
-        <Button type="submit" disabled={!isAdmin}>Guardar</Button>
+        <Button type="submit" disabled={!isAdmin}>
+          Guardar
+        </Button>
       </form>
     </Form>
-  )
-}
+  );
+};
 
-export default SettingsForm
+export default SettingsForm;

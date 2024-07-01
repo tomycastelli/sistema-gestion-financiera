@@ -4,7 +4,9 @@ import OperationsMenuBarChart from "./OperationsMenuBarChart";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 const OperationsMenuCard = async ({ userId }: { userId: string }) => {
-  const userUploadedOps = await api.operations.userUploaded.query({ userId: userId });
+  const userUploadedOps = await api.operations.userUploaded.query({
+    userId: userId,
+  });
 
   return (
     <Card>

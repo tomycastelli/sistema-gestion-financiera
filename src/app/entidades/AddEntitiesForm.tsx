@@ -37,7 +37,9 @@ import {
 import { toast } from "sonner";
 
 const FormSchema = z.object({
-  name: z.string().max(20, { message: "El nombre tiene que ser menor a 20 caracteres" }),
+  name: z
+    .string()
+    .max(20, { message: "El nombre tiene que ser menor a 20 caracteres" }),
   tag: z.string().min(1),
 });
 
@@ -50,13 +52,12 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
   tags,
   userPermissions,
 }) => {
-  const [open, setOpen] = useState<boolean>(false)
+  const [open, setOpen] = useState<boolean>(false);
 
   const utils = api.useContext();
 
   const { mutateAsync } = api.entities.addOne.useMutation({
     async onMutate(newOperation) {
-
       // Doing the Optimistic update
       await utils.entities.getAll.cancel();
 
@@ -80,17 +81,17 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
       utils.entities.getAll.setData(undefined, ctx?.prevData);
 
       toast.error(`No se pudo crear la entidad ${newOperation.name}`, {
-        description: err.message
-      })
+        description: err.message,
+      });
     },
     onSettled() {
       void utils.entities.getAll.invalidate();
     },
     onSuccess(data) {
-      setOpen(false)
-      reset({ name: "", tag: "" })
-      toast.success(`Entidad ${data.name} añadida`)
-    }
+      setOpen(false);
+      reset({ name: "", tag: "" });
+      toast.success(`Entidad ${data.name} añadida`);
+    },
   });
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -160,11 +161,13 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {tags.filter(tag => tag.name !== "Operadores").map((tag) => (
-                          <SelectItem key={tag.name} value={tag.name}>
-                            {capitalizeFirstLetter(tag.name)}
-                          </SelectItem>
-                        ))}
+                        {tags
+                          .filter((tag) => tag.name !== "Operadores")
+                          .map((tag) => (
+                            <SelectItem key={tag.name} value={tag.name}>
+                              {capitalizeFirstLetter(tag.name)}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -174,7 +177,9 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cerrar</Button>
+                <Button type="button" variant="outline">
+                  Cerrar
+                </Button>
               </DialogClose>
               <Button type="submit">Añadir</Button>
             </DialogFooter>

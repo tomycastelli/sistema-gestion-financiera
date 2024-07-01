@@ -26,10 +26,12 @@ import { Textarea } from "../ui/textarea";
 import { type FC } from "react";
 
 interface InitialDataOperationFormProps {
-  accountingPeriodDate: Date
+  accountingPeriodDate: Date;
 }
 
-const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({ accountingPeriodDate }) => {
+const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({
+  accountingPeriodDate,
+}) => {
   const FormSchema = InitialOperationStoreSchema;
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -111,11 +113,7 @@ const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({ accountin
               <FormItem>
                 <FormLabel>Tiempo</FormLabel>
                 <FormControl>
-                  <Input
-                    className="w-[88px]"
-                    type="time"
-                    {...field}
-                  />
+                  <Input className="w-[88px]" type="time" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

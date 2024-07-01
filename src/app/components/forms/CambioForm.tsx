@@ -303,13 +303,19 @@ const CambioPair = ({
             numberFormatter(amountB / amountA),
           );
         }
-        if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
+        if (
+          watchCurrencyA === "usd" &&
+          (watchCurrencyB === "usdt" || watchCurrencyB === "usd")
+        ) {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter((amountB / amountA - 1) * 100),
           );
         }
-        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
+        if (
+          (watchCurrencyA === "usdt" || watchCurrencyA === "usd") &&
+          watchCurrencyB === "usd"
+        ) {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter((amountA / amountB - 1) * 100),
@@ -334,13 +340,19 @@ const CambioPair = ({
             numberFormatter(amountA / exchangeRate),
           );
         }
-        if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
+        if (
+          watchCurrencyA === "usd" &&
+          (watchCurrencyB === "usdt" || watchCurrencyB === "usd")
+        ) {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA / (1 + exchangeRate / 100)),
           );
         }
-        if (watchCurrencyB === "usd" && watchCurrencyA === "usdt") {
+        if (
+          watchCurrencyB === "usd" &&
+          (watchCurrencyA === "usdt" || watchCurrencyA === "usd")
+        ) {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA * (1 + exchangeRate / 100)),
@@ -365,13 +377,19 @@ const CambioPair = ({
             numberFormatter(amountB * exchangeRate),
           );
         }
-        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
+        if (
+          (watchCurrencyA === "usdt" || watchCurrencyA === "usd") &&
+          watchCurrencyB === "usd"
+        ) {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter(amountB * (exchangeRate / 100) + 1),
           );
         }
-        if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
+        if (
+          (watchCurrencyB === "usdt" || watchCurrencyB === "usd") &&
+          watchCurrencyA === "usd"
+        ) {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter((amountB - 1) * (100 / exchangeRate)),
@@ -506,7 +524,7 @@ const CambioPair = ({
       </div>
       <div className="grid grid-cols-2 justify-items-center gap-x-4">
         <div id="entrada" className="flex flex-col gap-y-2">
-          <h2 className="mb-4 text-xl font-semibold">Entrada</h2>
+          <h2 className="text-2xl font-semibold">Entrada</h2>
           <FormField
             control={control}
             name={`transactions.${index}.currencyA`}
@@ -544,7 +562,7 @@ const CambioPair = ({
           </div>
         </div>
         <div id="salida" className="flex flex-col gap-y-2">
-          <h2 className="mb-4 text-xl font-semibold">Salida</h2>
+          <h2 className="text-2xl font-semibold">Salida</h2>
           <FormField
             control={control}
             name={`transactions.${index}.currencyB`}
@@ -586,7 +604,7 @@ const CambioPair = ({
         <AmountInput
           placeholder={
             ["usd", "usdt"].includes(watchCurrencyA) &&
-            ["usd", "usdt"].includes(watchCurrencyB)
+              ["usd", "usdt"].includes(watchCurrencyB)
               ? "%"
               : "$"
           }

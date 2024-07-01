@@ -1,4 +1,4 @@
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Handle, Position, type NodeProps } from "reactflow";
@@ -23,7 +23,10 @@ const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
     );
 
   return (
-    <Card style={{ borderColor: props.data.color ?? undefined }} className={cn(`border-2 rounded-sm`)}>
+    <Card
+      style={{ borderColor: props.data.color ?? undefined }}
+      className={cn(`rounded-sm border-2`)}
+    >
       <Handle type="target" position={Position.Top} />
       <CardHeader>
         <HoverCard>

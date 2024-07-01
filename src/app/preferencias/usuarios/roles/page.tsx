@@ -4,7 +4,7 @@ import AddRoleForm from "./AddRoleForm";
 import RolesFeed from "./RolesFeed";
 
 const Page = async () => {
-  const user = await getUser()
+  const user = await getUser();
   const roles = await api.roles.getAll.query();
   const entities = await api.entities.getAll.query();
   const tags = await api.tags.getAll.query();

@@ -78,9 +78,9 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
         className={cn(
           selectedTab === "caja" && "font-bold",
           selectedTab === "caja" &&
-          uiColor &&
-          isDarkEnough(uiColor) &&
-          "text-white",
+            uiColor &&
+            isDarkEnough(uiColor) &&
+            "text-white",
           "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
@@ -99,9 +99,9 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
         className={cn(
           selectedTab === "cuenta_corriente" && "font-bold",
           selectedTab === "cuenta_corriente" &&
-          uiColor &&
-          isDarkEnough(uiColor) &&
-          "text-white",
+            uiColor &&
+            isDarkEnough(uiColor) &&
+            "text-white",
           "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >

@@ -28,19 +28,29 @@ export default async function Page({
     operationId: parseInt(operationId),
   });
 
-  const tags = await api.tags.getAll.query()
+  const tags = await api.tags.getAll.query();
 
-  const { data: mainTagData } = await api.globalSettings.get.query({ name: "mainTag" })
+  const { data: mainTagData } = await api.globalSettings.get.query({
+    name: "mainTag",
+  });
 
-  const mainTag = mainTagData as { tag: string }
+  const mainTag = mainTagData as { tag: string };
 
-  const mainTags = getAllChildrenTags(mainTag.tag, tags)
+  const mainTags = getAllChildrenTags(mainTag.tag, tags);
 
-  const { data: accountingPeriodData } = await api.globalSettings.get.query({ name: "accountingPeriod" })
+  const { data: accountingPeriodData } = await api.globalSettings.get.query({
+    name: "accountingPeriod",
+  });
 
-  const accountingPeriod = accountingPeriodData as { months: number; graceDays: number; }
+  const accountingPeriod = accountingPeriodData as {
+    months: number;
+    graceDays: number;
+  };
 
-  const accountingPeriodDate = getAccountingPeriodDate(accountingPeriod.months, accountingPeriod.graceDays)
+  const accountingPeriodDate = getAccountingPeriodDate(
+    accountingPeriod.months,
+    accountingPeriod.graceDays,
+  );
 
   return (
     <div>
