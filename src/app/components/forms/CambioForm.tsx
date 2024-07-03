@@ -355,10 +355,9 @@ const CambioPair = ({
         if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.amountB`,
-            numberFormatter((amountA / (1 + exchangeRate / 100)),
-            );
+            numberFormatter(amountA / (1 + exchangeRate / 100)),
+          );
         }
-
       }
       if (
         watchLockAmountB &&
@@ -393,10 +392,9 @@ const CambioPair = ({
         if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.amountA`,
-            numberFormatter((amountB * (exchangeRate / 100) + 1),
-            );
+            numberFormatter(amountB * (exchangeRate / 100) + 1),
+          );
         }
-
       }
     }
   }, [
