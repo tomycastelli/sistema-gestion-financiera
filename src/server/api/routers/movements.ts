@@ -44,6 +44,7 @@ export const movementsRouter = createTRPCRouter({
         toDate: z.date().optional().nullish(),
         dayInPast: z.string().optional(),
         groupInTag: z.boolean().default(true),
+        dateOrdering: z.enum(["asc", "desc"]).default("desc"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -102,10 +103,10 @@ export const movementsRouter = createTRPCRouter({
                         entityTag,
                       ))
                   : input.entityTag
-                    ? getAllChildrenTags(p.entitiesTags, tags).includes(
-                        input.entityTag,
-                      )
-                    : false)),
+                  ? getAllChildrenTags(p.entitiesTags, tags).includes(
+                      input.entityTag,
+                    )
+                  : false)),
           )
         ) {
           isRequestValid = true;

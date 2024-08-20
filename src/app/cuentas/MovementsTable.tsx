@@ -92,6 +92,12 @@ const MovementsTable = ({
 
   const [groupInTag, setGroupInTag] = useState<boolean>(true);
 
+  enum Ordering {
+    ASC = "asc",
+    DESC = "desc",
+  }
+  const [dateOrdering, setDateOrdering] = useState<Ordering>(Ordering.DESC);
+
   const {
     movementsTablePage,
     setMovementsTablePage,
@@ -136,6 +142,7 @@ const MovementsTable = ({
         pageSize: pageSize,
         dayInPast: timeMachineDate ?? undefined,
         groupInTag,
+        dateOrdering,
       },
       {
         initialData: initialMovements,
@@ -511,6 +518,31 @@ const MovementsTable = ({
               </Button>
             </div>
           )}
+          <div className="flex flex-col justify-start gap-y-1">
+            <Label className="mb-2">Ordenar por fecha</Label>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (dateOrdering === Ordering.DESC) {
+                  setDateOrdering(Ordering.ASC);
+                } else {
+                  setDateOrdering(Ordering.DESC);
+                }
+              }}
+            >
+              {dateOrdering === Ordering.DESC ? (
+                <div className="flex gap-2">
+                  <Icons.calendarArrowDown className="h-5 w-5" />
+                  <p>Reciente</p>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Icons.calendarArrowUp className="h-5 w-5" />
+                  <p>Antigua</p>
+                </div>
+              )}
+            </Button>
+          </div>
         </div>
         {!isFetching ? (
           <DataTable

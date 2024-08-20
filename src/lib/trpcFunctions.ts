@@ -14,6 +14,7 @@ import {
   gte,
   isNull,
   count,
+  asc,
 } from "drizzle-orm";
 import { alias, type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -241,28 +242,28 @@ export const generateMovements = async (
             eq(balances.otherEntityId, otherEntity.id),
           )
         : index === 1
-          ? and(
-              eq(balances.selectedEntityId, tx.fromEntity.id),
-              eq(balances.tagName, tx.toEntity.tagName),
-            )
-          : index === 2
-            ? and(
-                eq(balances.selectedEntityId, tx.toEntity.id),
-                eq(balances.tagName, tx.fromEntity.tagName),
-              )
-            : undefined;
+        ? and(
+            eq(balances.selectedEntityId, tx.fromEntity.id),
+            eq(balances.tagName, tx.toEntity.tagName),
+          )
+        : index === 2
+        ? and(
+            eq(balances.selectedEntityId, tx.toEntity.id),
+            eq(balances.tagName, tx.fromEntity.tagName),
+          )
+        : undefined;
 
     const balanceEntitiesToInsert =
       index === 0
         ? { selectedEntityId: selectedEntity.id, otherEntityId: otherEntity.id }
         : index === 1
-          ? { selectedEntityId: tx.fromEntity.id, tagName: tx.toEntity.tagName }
-          : index === 2
-            ? {
-                selectedEntityId: tx.toEntity.id,
-                tagName: tx.fromEntity.tagName,
-              }
-            : undefined;
+        ? { selectedEntityId: tx.fromEntity.id, tagName: tx.toEntity.tagName }
+        : index === 2
+        ? {
+            selectedEntityId: tx.toEntity.id,
+            tagName: tx.fromEntity.tagName,
+          }
+        : undefined;
 
     // Busco el ultimo balance relacionado al movimiento por hacer
     const [balance] = await transaction
@@ -391,8 +392,8 @@ export const generateMovements = async (
             balance: movement
               ? movement.amount + changeAmount
               : beforeBalance
-                ? beforeBalance.amount + changeAmount
-                : changeAmount,
+              ? beforeBalance.amount + changeAmount
+              : changeAmount,
             balanceId: oldBalance.id,
             entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
           });
@@ -441,8 +442,8 @@ export const generateMovements = async (
           balance: movement
             ? movement.amount + changeAmount
             : beforeBalance
-              ? beforeBalance.amount + changeAmount
-              : changeAmount,
+            ? beforeBalance.amount + changeAmount
+            : changeAmount,
           balanceId: balance.id,
           entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
         });
@@ -653,6 +654,7 @@ const currentAccountsProcedureInput = z.object({
   toDate: z.date().optional().nullish(),
   dayInPast: z.string().optional(),
   groupInTag: z.boolean().default(true),
+  dateOrdering: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const currentAccountsProcedure = async (
@@ -839,7 +841,12 @@ export const currentAccountsProcedure = async (
       .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
       .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
       .where(and(movementsConditions, mainConditions))
-      .orderBy(desc(operations.date), desc(movements.id))
+      .orderBy(
+        input.dateOrdering === "desc"
+          ? desc(operations.date)
+          : asc(operations.date),
+        input.dateOrdering === "desc" ? desc(movements.id) : asc(movements.id),
+      )
       .offset(sql.placeholder("queryOffset"))
       .limit(sql.placeholder("queryLimit"))
       .prepare("movements_query");

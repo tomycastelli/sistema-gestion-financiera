@@ -53,16 +53,18 @@ const SettingsForm: FC<SettingsFormProps> = ({
 
       const prevData = utils.globalSettings.getAll.getData();
 
-      utils.globalSettings.getAll.setData(undefined, (old) =>
-        old?.map((obj) => {
-          if (
-            newOperation.name === "accountingPeriod" &&
-            obj.name === "accountingPeriod"
-          ) {
-            return { name: "accountingPeriod", data: newOperation.data };
-          }
-          return obj;
-        }),
+      utils.globalSettings.getAll.setData(
+        undefined,
+        (old) =>
+          old?.map((obj) => {
+            if (
+              newOperation.name === "accountingPeriod" &&
+              obj.name === "accountingPeriod"
+            ) {
+              return { name: "accountingPeriod", data: newOperation.data };
+            }
+            return obj;
+          }),
       );
 
       return { prevData };
@@ -178,6 +180,7 @@ const SettingsForm: FC<SettingsFormProps> = ({
           <h1 className="text-xl">Tag principal</h1>
           <FormField
             control={control}
+            disabled={true}
             name={"mainTag"}
             render={({ field }) => (
               <FormItem className="flex flex-col">

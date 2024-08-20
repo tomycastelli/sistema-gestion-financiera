@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import AddOperation from "~/app/components/forms/AddOperation";
 import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 import { getUser } from "~/server/auth";
@@ -10,10 +11,14 @@ const Page = async () => {
 
   const user = await getUser();
 
+  if (!user) {
+    redirect("/");
+  }
+
   const operations = await api.operations.getOperations.query({
     limit: 5,
     page: 1,
-    uploadedById: user!.id,
+    uploadedById: user.id,
   });
 
   const userPermissions = await api.users.getAllPermissions.query();

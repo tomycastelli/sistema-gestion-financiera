@@ -155,7 +155,9 @@ const CableForm: FC<CableFormProps> = ({
 
     if (!mainTags.includes(middleEntityTag)) {
       toast.error(
-        `La entidad mediadora tiene que pertencer al tag: ${mainTags.join(", ")}`,
+        `La entidad mediadora tiene que pertencer al tag: ${mainTags.join(
+          ", ",
+        )}`,
       );
       return;
     }
@@ -167,9 +169,17 @@ const CableForm: FC<CableFormProps> = ({
     reset();
   };
 
-  const inputRef1 = useNumberFormat({ locales: "es-AR" });
-  const inputRef2 = useNumberFormat({ locales: "es-AR" });
-  const inputRef3 = useNumberFormat({ locales: "es-AR" });
+  const inputRef1 = useNumberFormat({
+    locales: "es-AR",
+    maximumFractionDigits: 24,
+  });
+  const inputRef2 = useNumberFormat({
+    locales: "es-AR",
+  });
+  const inputRef3 = useNumberFormat({
+    locales: "es-AR",
+    maximumFractionDigits: 24,
+  });
 
   return (
     <Form {...form}>
@@ -235,8 +245,8 @@ const CableForm: FC<CableFormProps> = ({
                   {parsedWatchEmittingFee > 0
                     ? "a favor"
                     : parsedWatchEmittingFee < 0
-                      ? "en contra"
-                      : ""}
+                    ? "en contra"
+                    : ""}
                 </p>
               ) : (
                 <p className="w-24 text-red">
@@ -395,8 +405,8 @@ const CableForm: FC<CableFormProps> = ({
                   {parsedWatchReceivingFee > 0
                     ? "en contra"
                     : parsedWatchReceivingFee < 0
-                      ? "a favor"
-                      : ""}
+                    ? "a favor"
+                    : ""}
                 </p>
               ) : (
                 <p className="w-24 text-red">
