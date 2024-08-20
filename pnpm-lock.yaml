@@ -27,8 +27,8 @@ dependencies:
     specifier: 3.3.2
     version: 3.3.2(react-hook-form@7.47.0)
   '@lucia-auth/adapter-drizzle':
-    specifier: ^1.0.4
-    version: 1.1.0(drizzle-orm@0.30.10)(lucia@3.2.0)
+    specifier: 1.0.7
+    version: 1.0.7(lucia@3.2.0)
   '@onedoc/react-print':
     specifier: ^0.1.131
     version: 0.1.133(@types/react@18.2.33)
@@ -2413,13 +2413,11 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  /@lucia-auth/adapter-drizzle@1.1.0(drizzle-orm@0.30.10)(lucia@3.2.0):
-    resolution: {integrity: sha512-iCTnZWvfI5lLZOdUHZYiXA1jaspIFEeo2extLxQ3DjP3uOVys7IPwBi7zezLIRu9dhro4H4Kji+7gSYyjcef2A==}
+  /@lucia-auth/adapter-drizzle@1.0.7(lucia@3.2.0):
+    resolution: {integrity: sha512-X/V7fLBca8EC/gPXCntwbQpb0+F9oEuRoHElvsi9rCrdnGhCMNxHgwAvgiQ6pes+rIYpyvx4n3hvjqo/fPo03A==}
     peerDependencies:
-      drizzle-orm: '>= 0.29 <1'
       lucia: 3.x
     dependencies:
-      drizzle-orm: 0.30.10(@opentelemetry/api@1.9.0)(@types/react@18.2.33)(postgres@3.4.4)(react@18.2.0)
       lucia: 3.2.0
     dev: false
 

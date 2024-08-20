@@ -11,22 +11,16 @@ import {
   protectedProcedure,
 } from "../trpc";
 import { numberFormatter } from "~/lib/functions";
+import { getCurrentAccountsInput } from "./movements";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
     .input(
-      z.object({
-        dayInPast: z.string().optional(),
-        toEntityId: z.number().int().optional().nullish(),
-        fileType: z.enum(["csv", "pdf"]),
-        entityId: z.number().nullish(),
-        entityTag: z.string().nullish(),
-        fromDate: z.date().nullish(),
-        toDate: z.date().optional().nullish(),
-        account: z.boolean(),
-        currency: z.string().optional().nullish(),
-        groupInTag: z.boolean().default(true),
-      }),
+      getCurrentAccountsInput
+        .extend({
+          fileType: z.enum(["csv", "pdf"]),
+        })
+        .omit({ pageSize: true, pageNumber: true }),
     )
     .mutation(async ({ ctx, input }) => {
       const { movementsQuery: tableData } = await currentAccountsProcedure(
@@ -42,6 +36,7 @@ export const filesRouter = createTRPCRouter({
           dayInPast: input.dayInPast,
           toEntityId: input.toEntityId,
           groupInTag: input.groupInTag,
+          dateOrdering: input.dateOrdering,
         },
         ctx,
       );
@@ -54,8 +49,8 @@ export const filesRouter = createTRPCRouter({
           mv.type === "upload"
             ? "Carga"
             : mv.type === "confirmation"
-              ? "Confirmación"
-              : "Cancelación"
+            ? "Confirmación"
+            : "Cancelación"
         } de ${mv.txType} - Nro ${mv.id}`,
         observaciones: mv.observations ?? "",
         entrada:
@@ -105,7 +100,11 @@ export const filesRouter = createTRPCRouter({
               input.entityId
                 ? entities.find((e) => e.id === input.entityId)?.name
                 : input.entityTag
-            } ${input.toEntityId ? "con " + entities.find((e) => e.id === input.toEntityId)?.name : ""}</h1>
+            } ${
+              input.toEntityId
+                ? "con " + entities.find((e) => e.id === input.toEntityId)?.name
+                : ""
+            }</h1>
           </div>` +
           `
           <div class="table-container">
@@ -148,9 +147,9 @@ export const filesRouter = createTRPCRouter({
           .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
           .table th,
           .table td {
-          border-top: 0.5px solid #000; 
+          border-top: 0.5px solid #000;
           border-bottom: 0.5px solid #000
-          padding: 0.75rem; 
+          padding: 0.75rem;
           text-align: right
           }
           .observations-text{
@@ -158,7 +157,7 @@ export const filesRouter = createTRPCRouter({
             font-weight: 200;
           }
           .table-body{font-size: 0.75rem;}
-          .header-div{width: 100%; text-align: center;} 
+          .header-div{width: 100%; text-align: center;}
           .title{font-size: 1.5rem; font-weight: 600;}
           .main-container{
             font-family: serif;

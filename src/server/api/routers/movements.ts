@@ -26,27 +26,27 @@ import {
   publicProcedure,
 } from "../trpc";
 
+export const getCurrentAccountsInput = z.object({
+  linkId: z.number().int().optional().nullable(),
+  linkToken: z.string().optional().nullable(),
+  sharedEntityId: z.number().optional().nullish(),
+  pageSize: z.number().int(),
+  pageNumber: z.number().int(),
+  entityId: z.number().int().optional().nullish(), // Change from array to single number
+  entityTag: z.string().optional().nullish(),
+  toEntityId: z.number().int().optional().nullish(),
+  currency: z.string().optional().nullish(),
+  account: z.boolean().optional(),
+  fromDate: z.date().optional().nullish(),
+  toDate: z.date().optional().nullish(),
+  dayInPast: z.string().optional(),
+  groupInTag: z.boolean().default(true),
+  dateOrdering: z.enum(["asc", "desc"]).default("desc"),
+});
+
 export const movementsRouter = createTRPCRouter({
   getCurrentAccounts: publicLoggedProcedure
-    .input(
-      z.object({
-        linkId: z.number().int().optional().nullable(),
-        linkToken: z.string().optional().nullable(),
-        sharedEntityId: z.number().optional().nullish(),
-        pageSize: z.number().int(),
-        pageNumber: z.number().int(),
-        entityId: z.number().int().optional().nullish(), // Change from array to single number
-        entityTag: z.string().optional().nullish(),
-        toEntityId: z.number().int().optional().nullish(),
-        currency: z.string().optional().nullish(),
-        account: z.boolean().optional(),
-        fromDate: z.date().optional().nullish(),
-        toDate: z.date().optional().nullish(),
-        dayInPast: z.string().optional(),
-        groupInTag: z.boolean().default(true),
-        dateOrdering: z.enum(["asc", "desc"]).default("desc"),
-      }),
-    )
+    .input(getCurrentAccountsInput)
     .query(async ({ ctx, input }) => {
       const response = await currentAccountsProcedure(input, ctx);
       return {

@@ -1,20 +1,20 @@
 import { TRPCError } from "@trpc/server";
 import {
   and,
+  asc,
+  count,
   desc,
   eq,
   gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  not,
+  or,
   sql,
   type ExtractTablesWithRelations,
-  lt,
-  inArray,
-  lte,
-  or,
-  not,
-  gte,
-  isNull,
-  count,
-  asc,
 } from "drizzle-orm";
 import { alias, type PgTransaction } from "drizzle-orm/pg-core";
 import {
@@ -25,25 +25,26 @@ import type Redis from "ioredis";
 import { type User } from "lucia";
 import moment from "moment";
 import { ZodError, z } from "zod";
+import { type createTRPCContext } from "~/server/api/trpc";
 import { type dynamodb } from "~/server/dynamodb";
 import type * as schema from "../server/db/schema";
 import {
   balances,
+  entities,
+  globalSettings,
+  links,
   movements,
   operations,
   role,
   transactions,
-  type returnedTransactionsSchema,
-  type insertMovementsSchema,
-  links,
-  entities,
   transactionsMetadata,
-  globalSettings,
+  type insertMovementsSchema,
+  type returnedTransactionsSchema,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
-import { type createTRPCContext } from "~/server/api/trpc";
 import { dateFormatting } from "./variables";
+import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
 
 export const getAllPermissions = async (
   redis: Redis,
@@ -639,26 +640,8 @@ export const logIO = async (
   );
 };
 
-const currentAccountsProcedureInput = z.object({
-  linkId: z.number().int().optional().nullable(),
-  linkToken: z.string().optional().nullable(),
-  sharedEntityId: z.number().optional().nullish(),
-  pageSize: z.number().int(),
-  pageNumber: z.number().int(),
-  entityId: z.number().int().optional().nullish(), // Change from array to single number
-  entityTag: z.string().optional().nullish(),
-  toEntityId: z.number().int().optional().nullish(),
-  currency: z.string().optional().nullish(),
-  account: z.boolean().optional(),
-  fromDate: z.date().optional().nullish(),
-  toDate: z.date().optional().nullish(),
-  dayInPast: z.string().optional(),
-  groupInTag: z.boolean().default(true),
-  dateOrdering: z.enum(["asc", "desc"]).default("desc"),
-});
-
 export const currentAccountsProcedure = async (
-  input: z.infer<typeof currentAccountsProcedureInput>,
+  input: z.infer<typeof getCurrentAccountsInput>,
   ctx: Awaited<ReturnType<typeof createTRPCContext>>,
 ) => {
   let isRequestValid = false;

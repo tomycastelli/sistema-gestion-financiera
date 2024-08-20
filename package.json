@@ -16,7 +16,7 @@
     "@dagrejs/dagre": "1.0.4",
     "@formkit/auto-animate": "0.8.0",
     "@hookform/resolvers": "3.3.2",
-    "@lucia-auth/adapter-drizzle": "^1.0.4",
+    "@lucia-auth/adapter-drizzle": "1.0.7",
     "@onedoc/react-print": "^0.1.131",
     "@opentelemetry/api": "^1.8.0",
     "@opentelemetry/api-logs": "^0.52.1",
