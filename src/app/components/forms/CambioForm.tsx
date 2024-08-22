@@ -277,12 +277,10 @@ const CambioPair = ({
         setValue(`transactions.${index}.lockAmountA`, false);
       }
     }
-    const isStrongCurrencyA = currencies.find(
-      (obj) => obj.value === watchCurrencyA,
-    )!.strong;
-    const isStrongCurrencyB = currencies.find(
-      (obj) => obj.value === watchCurrencyB,
-    )!.strong;
+    const isStrongCurrencyA =
+      currencies.find((obj) => obj.value === watchCurrencyA)?.strong ?? 0;
+    const isStrongCurrencyB =
+      currencies.find((obj) => obj.value === watchCurrencyB)?.strong ?? 0;
     const amountA = parseFormattedFloat(watchAmountA);
     const amountB = parseFormattedFloat(watchAmountB);
     const exchangeRate = parseFormattedFloat(watchExchangeRate);
