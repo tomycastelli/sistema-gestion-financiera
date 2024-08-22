@@ -114,7 +114,7 @@ const MovementsTable = ({
 
   useEffect(() => {
     const cliente_id = searchParams.get("cliente");
-    if (!!cliente_id) {
+    if (cliente_id) {
       setDestinationEntityId(parseInt(cliente_id));
     } else {
       setDestinationEntityId(undefined);
