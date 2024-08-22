@@ -40,6 +40,7 @@ import {
   transactionsMetadata,
   type insertMovementsSchema,
   type returnedTransactionsSchema,
+  cashBalances,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
@@ -212,12 +213,39 @@ export const generateMovements = async (
 
   const mvDate = tx.operation.date;
 
+  // Quiero que cada vez que me genere un movimiento en caja, vaya a CashBalances y lo updatee
+  // Y el balance que le quede al movimiento tiene que ser sacado de ahi
+  // Eventualmente todo lo que sea query a caja tendría que ser sacado de ahi
+  // Y no se generarían movimientos en caja en la tabla Balances que quedaría para ctas ctes
+
+  if (account) {
+    // Voy a tocar dos balances, el from y el to
+    // Busco el ultimo balance relacionado al movimiento por hacer
+    const [balance] = await transaction
+      .select({
+        id: cashBalances.id,
+        amount: cashBalances.balance,
+        date: cashBalances.date,
+      })
+      .from(cashBalances)
+      .where(
+        and(
+          eq(cashBalances.currency, tx.currency),
+          eq(cashBalances.entityId, tx.fromEntityId),
+        ),
+      )
+      .orderBy(desc(balances.date))
+      .limit(1);
+  }
+
   const selectedEntity =
     tx.fromEntityId < tx.toEntityId ? tx.fromEntity : tx.toEntity;
   const otherEntity =
     tx.fromEntityId < tx.toEntityId ? tx.toEntity : tx.fromEntity;
 
   // Voy a tener que hacer lo mismo tres veces, una para balance entre entidades, otras dos para entidad-tag / tag-entidad
+  // Y si guardo dos movimientos mas si es caja: uno para la caja del from y otro la caja del to
+  // Harían referencia a los cashBalances en vez de a los balances comunes
   for (let index = 0; index < 3; index++) {
     let changeAmount = 0;
 

@@ -313,6 +313,17 @@ export const balances = pgTable(
   },
 );
 
+export const cashBalances = pgTable("CashBalances", {
+  id: serial("id").primaryKey().notNull(),
+  date: timestamp("date", { mode: "date" }).notNull(),
+  balance: decimalNumber("balance").notNull(),
+  currency: text("currency").notNull(),
+  entityId: integer("entityId").references(() => entities.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+});
+
 export const entities = pgTable(
   "Entities",
   {
@@ -442,6 +453,10 @@ export const movements = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    cashBalanceId: integer("cashBalanceId").references(() => cashBalances.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
     entitiesMovementId: integer("entitiesMovementId"),
   },
   (table) => {
