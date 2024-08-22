@@ -52,12 +52,12 @@ export const currencies = [
   {
     value: "usd",
     label: "USD",
-    strong: 3,
+    strong: 4,
   },
   {
     value: "usdt",
     label: "USDT",
-    strong: 3,
+    strong: 4,
   },
   {
     value: "ars",
@@ -67,16 +67,21 @@ export const currencies = [
   {
     value: "eur",
     label: "EUR",
-    strong: 2,
+    strong: 3,
   },
   {
     value: "brl",
     label: "BRL",
     strong: 2,
   },
+  {
+    value: "gbp",
+    label: "GBP",
+    strong: 3,
+  },
 ];
 
-export const currenciesOrder = ["ars", "usd", "usdt", "eur", "brl"];
+export const currenciesOrder = ["ars", "usd", "usdt", "eur", "brl", "gbp"];
 
 export const paymentMethods = [
   {

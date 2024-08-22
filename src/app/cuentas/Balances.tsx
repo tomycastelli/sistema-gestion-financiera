@@ -28,6 +28,7 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import BalancesCards from "./BalancesCards";
 import { useTheme } from "next-themes";
+import { currenciesOrder } from "~/lib/variables";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -114,8 +115,6 @@ const Balances: FC<BalancesProps> = ({
       },
       { initialData: initialBalances, refetchOnWindowFocus: false },
     );
-
-  const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
@@ -251,14 +250,12 @@ const Balances: FC<BalancesProps> = ({
     let title = "";
     if (accountListToAdd.indexOf(id) !== -1) {
       setAccountListToAdd(accountListToAdd.filter((n) => n !== id));
-      title = `La entidad ${
-        detailedBalances.find((b) => b.entity.id === id)?.entity.name
-      } fue removida de la lista`;
+      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
+        ?.entity.name} fue removida de la lista`;
     } else {
       setAccountListToAdd([...accountListToAdd, id]);
-      title = `La entidad ${
-        detailedBalances.find((b) => b.entity.id === id)?.entity.name
-      } fue añadida a la lista`;
+      title = `La entidad ${detailedBalances.find((b) => b.entity.id === id)
+        ?.entity.name} fue añadida a la lista`;
     }
 
     toast.info(title);
@@ -348,9 +345,8 @@ const Balances: FC<BalancesProps> = ({
                             <p className="font-semibold">Lista {list.id}</p>
                             <p className="text-sm">
                               {list.idList.slice(0, 3).flatMap((id, index) => {
-                                const name = entities.find(
-                                  (e) => e.id === id,
-                                )?.name;
+                                const name = entities.find((e) => e.id === id)
+                                  ?.name;
                                 if (index + 1 === list.idList.length) {
                                   return name;
                                 } else {
@@ -536,11 +532,11 @@ const Balances: FC<BalancesProps> = ({
       <div className="grid grid-cols-1 gap-3">
         <div
           style={{ borderColor: uiColor }}
-          className="grid grid-cols-13 justify-items-center rounded-xl border-2 p-2"
+          className="grid-cols-15 grid justify-items-center rounded-xl border-2 p-2"
         >
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
-          {currencyOrder.map((currency) => (
+          {currenciesOrder.map((currency) => (
             <p key={currency} className="col-span-2">
               {currency.toUpperCase()}
             </p>
@@ -587,7 +583,7 @@ const Balances: FC<BalancesProps> = ({
                     : lightenColor(uiColor, isDark ? 40 : 10)
                   : undefined,
               }}
-              className="grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold"
+              className="grid-cols-15 grid justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
               {isListSelection ? (
                 <Button
@@ -637,7 +633,7 @@ const Balances: FC<BalancesProps> = ({
               >
                 <p>{item.entity.name}</p>
               </div>
-              {currencyOrder.map((currency) => {
+              {currenciesOrder.map((currency) => {
                 const matchingBalance = item.data.find(
                   (balance) => balance.currency === currency,
                 );

@@ -233,6 +233,7 @@ export const filesRouter = createTRPCRouter({
         usdt: balance.data.find((d) => d.currency === "usdt")?.balance ?? 0,
         eur: balance.data.find((d) => d.currency === "eur")?.balance ?? 0,
         brl: balance.data.find((d) => d.currency === "brl")?.balance ?? 0,
+        gbp: balance.data.find((d) => d.currency === "gbp")?.balance ?? 0,
       }));
 
       if (input.fileType === "csv") {
@@ -260,6 +261,7 @@ export const filesRouter = createTRPCRouter({
             <p>USDT</p>
             <p>EUR</p>
             <p>BRL</p>
+            <p>GBP</p>
           </div>
             ${formattedBalances
               .map(
@@ -271,6 +273,7 @@ export const filesRouter = createTRPCRouter({
                   <p>${numberFormatter(b.usdt)}</p>
                   <p>${numberFormatter(b.eur)}</p>
                   <p>${numberFormatter(b.brl)}</p>
+                  <p>${numberFormatter(b.gbp)}</p>
                   </div>`,
               )
               .join("")}

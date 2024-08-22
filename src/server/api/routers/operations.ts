@@ -30,6 +30,7 @@ import {
   entities,
   movements,
   operations,
+  pendingTransactions,
   returnedEntitiesSchema,
   returnedOperationsSchema,
   returnedTagSchema,
@@ -72,6 +73,16 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Estas transacciones seran insertadas directamente en la tabla comun
+      const directTransactions = input.transactions.filter(
+        (tx) => tx.type !== "cuenta corriente",
+      );
+
+      // Estas seran insertadas a la tabla de pending
+      const pendingInput = input.transactions.filter(
+        (tx) => tx.type === "cuenta corriente",
+      );
+
       // Un map del tipo txFormId-insertedTxId donde txFormId es el id temporal generado en el form
       // Y el insertedTxId es el id generado por la base de datos
       const relatedTxIdMap = new Map<number, number>();
@@ -94,7 +105,17 @@ export const operationsRouter = createTRPCRouter({
             });
           }
 
-          for (const txToInsert of input.transactions) {
+          // Inserto las pending que estan relacionadas a esa operación, se subiran con status: pending automaticamente
+          // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
+          if (pendingInput.length > 0) {
+            const pendingToInsert = pendingInput.map((pendingTx) => ({
+              operationId: opId,
+              ...pendingTx,
+            }));
+            await tx.insert(pendingTransactions).values(pendingToInsert);
+          }
+
+          for (const txToInsert of directTransactions) {
             const [txIdObj] = await tx
               .insert(transactions)
               .values({
@@ -138,9 +159,25 @@ export const operationsRouter = createTRPCRouter({
             } else if (insertedTx.type === "pago por cta cte") {
               await generateMovements(tx, txForMovement, false, 1, "upload");
               await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (insertedTx.type === "cambio")
+            } else if (insertedTx.type === "cambio") {
               await generateMovements(tx, txForMovement, false, -1, "upload");
+            }
           }
+
+          if (directTransactions.length > 0) {
+            const txMetadataToInsert = directTransactions.map((txToInsert) => ({
+              transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+              uploadedBy: ctx.user.id,
+              uploadedDate: new Date(),
+              metadata: txToInsert.metadata,
+              relatedTransactionId: txToInsert.relatedTransactionId
+                ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
+                : undefined,
+            }));
+
+            await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+          }
+
           return { operation, transactions: list };
         });
 
@@ -153,7 +190,17 @@ export const operationsRouter = createTRPCRouter({
             .values({ date: input.opDate, observations: input.opObservations })
             .returning();
 
-          for (const txToInsert of input.transactions) {
+          // Inserto las pending que estan relacionadas a esta nueva operación, se subiran con status: pending automaticamente
+          // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
+          if (pendingInput.length > 0) {
+            const pendingToInsert = pendingInput.map((pendingTx) => ({
+              operationId: op!.id,
+              ...pendingTx,
+            }));
+            await tx.insert(pendingTransactions).values(pendingToInsert);
+          }
+
+          for (const txToInsert of directTransactions) {
             const [txIdObj] = await tx
               .insert(transactions)
               .values({
@@ -205,21 +252,24 @@ export const operationsRouter = createTRPCRouter({
             } else if (insertedTx.type === "pago por cta cte") {
               await generateMovements(tx, txForMovement, false, 1, "upload");
               await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (insertedTx.type === "cambio")
+            } else if (insertedTx.type === "cambio") {
               await generateMovements(tx, txForMovement, false, -1, "upload");
+            }
           }
 
-          const txMetadataToInsert = input.transactions.map((txToInsert) => ({
-            transactionId: relatedTxIdMap.get(txToInsert.formId)!,
-            uploadedBy: ctx.user.id,
-            uploadedDate: new Date(),
-            metadata: txToInsert.metadata,
-            relatedTransactionId: txToInsert.relatedTransactionId
-              ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
-              : undefined,
-          }));
+          if (directTransactions.length > 0) {
+            const txMetadataToInsert = directTransactions.map((txToInsert) => ({
+              transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+              uploadedBy: ctx.user.id,
+              uploadedDate: new Date(),
+              metadata: txToInsert.metadata,
+              relatedTransactionId: txToInsert.relatedTransactionId
+                ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
+                : undefined,
+            }));
 
-          await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+            await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+          }
 
           return { operation: op!, transactions: list };
         });
@@ -234,6 +284,163 @@ export const operationsRouter = createTRPCRouter({
 
         return response;
       }
+    }),
+  approvePendingTransactions: protectedLoggedProcedure
+    .input(
+      z.object({
+        pendingTransactionsIds: z.array(z.number().int()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        ctx.user.email !== "christian@ifc.com.ar" &&
+        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "Only these emails can do this: christian@ifc.com.ar, tomas.castelli@ifc.com.ar",
+        });
+      }
+
+      // Vamos a insertar las pending en la tabla común de transacciones y generar los movimientos
+      const response = await ctx.db.transaction(async (tx) => {
+        const fromEntity = alias(entities, "fromEntity");
+        const toEntity = alias(entities, "toEntity");
+
+        // Agarro las transacciones pending y las elimino de la tabla ya que dejaran de ser pending
+        const pendingTransactionsToInsert = await tx
+          .delete(pendingTransactions)
+          .where(inArray(pendingTransactions.id, input.pendingTransactionsIds))
+          .returning({
+            operationId: pendingTransactions.operationId,
+            type: pendingTransactions.type,
+            operatorEntityId: pendingTransactions.operatorEntityId,
+            fromEntityId: pendingTransactions.fromEntityId,
+            toEntityId: pendingTransactions.toEntityId,
+            currency: pendingTransactions.currency,
+            amount: pendingTransactions.amount,
+            observations: pendingTransactions.observations,
+            status: pendingTransactions.status,
+          });
+
+        // Las inserto en la tabla comun
+        const insertedTxsIds = await tx
+          .insert(transactions)
+          .values(pendingTransactionsToInsert)
+          .returning({ id: transactions.id });
+        const mappedTxIds = insertedTxsIds.map((tx) => tx.id);
+
+        const insertedTxsResponse = await tx
+          .select()
+          .from(transactions)
+          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+          .where(inArray(transactions.id, mappedTxIds));
+
+        // Genero los movimientos
+        for (const insertedTxResponse of insertedTxsResponse) {
+          const [op] = await tx
+            .select({ date: operations.date })
+            .from(operations)
+            .where(
+              eq(operations.id, insertedTxResponse.Transactions.operationId),
+            );
+          const txForMovement = {
+            ...insertedTxResponse.Transactions,
+            fromEntity: insertedTxResponse.fromEntity!,
+            toEntity: insertedTxResponse.toEntity!,
+            operation: { date: op!.date },
+          };
+
+          if (cashAccountOnlyTypes.has(txForMovement.type)) {
+            await generateMovements(tx, txForMovement, true, 1, "upload");
+          } else if (currentAccountOnlyTypes.has(txForMovement.type)) {
+            await generateMovements(tx, txForMovement, false, 1, "upload");
+          } else if (txForMovement.type === "pago por cta cte") {
+            await generateMovements(tx, txForMovement, false, 1, "upload");
+            await generateMovements(tx, txForMovement, true, 1, "upload");
+          } else if (txForMovement.type === "cambio") {
+            await generateMovements(tx, txForMovement, false, -1, "upload");
+          }
+        }
+
+        const txMetadataToInsert = insertedTxsResponse.map((pendingTx) => ({
+          transactionId: pendingTx.Transactions.id,
+          uploadedBy: ctx.user.id,
+          uploadedDate: new Date(),
+        }));
+
+        await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+
+        return insertedTxsResponse;
+      });
+
+      return response;
+    }),
+  getPendingTransactions: protectedProcedure.query(async ({ ctx }) => {
+    const fromEntity = alias(entities, "fromEntity");
+    const toEntity = alias(entities, "toEntity");
+    const operatorEntity = alias(entities, "operatorEntity");
+    const fromEntityTag = alias(tag, "fromEntityTag");
+    const toEntityTag = alias(tag, "toEntityTag");
+    const operatorEntityTag = alias(tag, "operatorEntityTag");
+
+    const pendingOperations = await ctx.db
+      .select()
+      .from(pendingTransactions)
+      .leftJoin(fromEntity, eq(pendingTransactions.fromEntityId, fromEntity.id))
+      .leftJoin(toEntity, eq(pendingTransactions.toEntityId, toEntity.id))
+      .leftJoin(
+        operatorEntity,
+        eq(pendingTransactions.operatorEntityId, operatorEntity.id),
+      )
+      .leftJoin(fromEntityTag, eq(fromEntity.tagName, fromEntityTag.name))
+      .leftJoin(toEntityTag, eq(toEntity.tagName, toEntityTag.name))
+      .leftJoin(
+        operatorEntityTag,
+        eq(operatorEntity.tagName, operatorEntityTag.name),
+      );
+    const response = pendingOperations.map((tx) => ({
+      ...tx.pendingTransactions!,
+      fromEntity: {
+        ...tx.fromEntity!,
+        tag: tx.fromEntityTag!,
+      },
+      toEntity: {
+        ...tx.toEntity!,
+        tag: tx.toEntityTag!,
+      },
+      operatorEntity: {
+        ...tx.operatorEntity!,
+        tag: tx.operatorEntityTag!,
+      },
+    }));
+    return response;
+  }),
+  deletePendingTransactions: protectedLoggedProcedure
+    .input(
+      z.object({
+        pendingTransactionsIds: z.array(z.number().int()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        ctx.user.email !== "christian@ifc.com.ar" &&
+        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "Only these emails can do this: christian@ifc.com.ar, tomas.castelli@ifc.com.ar",
+        });
+      }
+
+      const deletedPendingTransactions = await ctx.db
+        .delete(pendingTransactions)
+        .where(inArray(pendingTransactions.id, input.pendingTransactionsIds));
+
+      return deletedPendingTransactions;
     }),
   getOperationsByUser: protectedProcedure.query(async ({ ctx }) => {
     const getOperationsByUserQuery = ctx.db
@@ -324,22 +531,22 @@ export const operationsRouter = createTRPCRouter({
               ),
             )
           : input.opDateIsGreater
-            ? and(
-                gte(
-                  operations.date,
-                  moment(input.opDateIsGreater)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                    .toDate(),
-                ),
-                lte(
-                  operations.date,
-                  moment(input.opDateIsGreater)
-                    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                    .add(1, "day")
-                    .toDate(),
-                ),
-              )
-            : undefined,
+          ? and(
+              gte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .add(1, "day")
+                  .toDate(),
+              ),
+            )
+          : undefined,
       );
 
       const txMetadataIds: number[] = [0];
@@ -586,9 +793,37 @@ export const operationsRouter = createTRPCRouter({
         )
           ? true
           : userPermissions?.find((p) => {
+              const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+              if (
+                p.name === "OPERATIONS_VISUALIZE_SOME" &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.fromEntityId) ||
+                    allAllowedTags.includes(tx.fromEntity.tagName),
+                ) &&
+                op.transactions.find(
+                  (tx) =>
+                    p.entitiesIds?.includes(tx.toEntityId) ||
+                    allAllowedTags.includes(tx.toEntity.tagName),
+                )
+              ) {
+                return true;
+              }
+            })
+          ? true
+          : false;
+
+        const isCreateAllowed =
+          isInPeriod &&
+          !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
+          userPermissions?.find(
+            (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+          )
+            ? true
+            : userPermissions?.find((p) => {
                 const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
                 if (
-                  p.name === "OPERATIONS_VISUALIZE_SOME" &&
+                  p.name === "OPERATIONS_CREATE_SOME" &&
                   op.transactions.find(
                     (tx) =>
                       p.entitiesIds?.includes(tx.fromEntityId) ||
@@ -605,37 +840,6 @@ export const operationsRouter = createTRPCRouter({
               })
             ? true
             : false;
-
-        const isCreateAllowed =
-          isInPeriod &&
-          !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
-          userPermissions?.find(
-            (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
-          )
-            ? true
-            : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "OPERATIONS_CREATE_SOME" &&
-                    op.transactions.find(
-                      (tx) =>
-                        p.entitiesIds?.includes(tx.fromEntityId) ||
-                        allAllowedTags.includes(tx.fromEntity.tagName),
-                    ) &&
-                    op.transactions.find(
-                      (tx) =>
-                        p.entitiesIds?.includes(tx.toEntityId) ||
-                        allAllowedTags.includes(tx.toEntity.tagName),
-                    )
-                  ) {
-                    return true;
-                  }
-                })
-              ? true
-              : false;
 
         return {
           ...op,
@@ -679,22 +883,22 @@ export const operationsRouter = createTRPCRouter({
               )
                 ? true
                 : userPermissions?.find((p) => {
-                      const allAllowedTags = getAllChildrenTags(
-                        p.entitiesTags,
-                        tags,
-                      );
-                      if (
-                        p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                        (p.entitiesIds?.includes(tx.fromEntityId) ||
-                          allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                        (p.entitiesIds?.includes(tx.toEntityId) ||
-                          allAllowedTags.includes(tx.toEntity.tagName))
-                      ) {
-                        return true;
-                      }
-                    })
-                  ? true
-                  : false;
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
             const isValidateAllowed =
               isInPeriod &&
@@ -849,11 +1053,11 @@ export const operationsRouter = createTRPCRouter({
                       eq(toEntity.id, input.entityId),
                     )
                   : input.entityTag
-                    ? or(
-                        eq(fromEntity.tagName, input.entityTag),
-                        eq(toEntity.tagName, input.entityTag),
-                      )
-                    : undefined,
+                  ? or(
+                      eq(fromEntity.tagName, input.entityTag),
+                      eq(toEntity.tagName, input.entityTag),
+                    )
+                  : undefined,
               ),
             );
 

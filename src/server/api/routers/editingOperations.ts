@@ -12,6 +12,7 @@ import {
   Status,
   entities,
   operations,
+  pendingTransactions,
   transactions,
   transactionsMetadata,
 } from "~/server/db/schema";
@@ -38,10 +39,36 @@ export const editingOperationsRouter = createTRPCRouter({
           currency: z.string(),
           amount: z.number(),
         }),
+        isPendingUpdate: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const response = await ctx.db.transaction(async (transaction) => {
+        if (input.isPendingUpdate) {
+          const [newTxObj] = await transaction
+            .update(pendingTransactions)
+            .set({
+              fromEntityId: input.newTransactionData.fromEntityId,
+              toEntityId: input.newTransactionData.toEntityId,
+              operatorEntityId: input.newTransactionData.operatorEntityId,
+              currency: input.newTransactionData.currency,
+              amount: input.newTransactionData.amount,
+            })
+            .where(eq(pendingTransactions.id, input.txId))
+            .returning({
+              id: pendingTransactions.id,
+              operationId: pendingTransactions.operationId,
+            });
+
+          if (!newTxObj) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Transaction to update not found",
+            });
+          }
+
+          return newTxObj;
+        }
         const [historyResponse2] = await transaction
           .select({ history: transactionsMetadata.history })
           .from(transactionsMetadata)

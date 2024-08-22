@@ -165,6 +165,54 @@ const decimalNumber = customType<{ data: number }>({
   },
 });
 
+export const pendingTransactions = pgTable(
+  "pendingTransactions",
+  {
+    id: serial("id").primaryKey().notNull(),
+    operationId: integer("operationId")
+      .notNull()
+      .references(() => operations.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    type: text("type").notNull(),
+    operatorEntityId: integer("operatorEntityId")
+      .notNull()
+      .references(() => entities.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    fromEntityId: integer("fromEntityId")
+      .notNull()
+      .references(() => entities.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    toEntityId: integer("toEntityId")
+      .notNull()
+      .references(() => entities.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    currency: text("currency").notNull(),
+    amount: decimalNumber("amount").notNull(),
+    observations: text("observations"),
+    status: Status("status").default("pending").notNull(),
+  },
+  (table) => {
+    return {
+      operationIdFromEntityIdToEntityIdDateCurreIdx: index(
+        "pendingTransactions_operationId_fromEntityId_toEntityId_date_curre_idx",
+      ).on(
+        table.operationId,
+        table.fromEntityId,
+        table.toEntityId,
+        table.currency,
+      ),
+    };
+  },
+);
+
 export const transactions = pgTable(
   "Transactions",
   {
