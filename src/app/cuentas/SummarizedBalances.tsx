@@ -188,7 +188,20 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
         const amount = parseFloat(row.getValue("balance"));
         const formatted = numberFormatter(amount);
         return (
-          <div className="text-right font-medium">
+          <div
+            className={cn(
+              "text-right font-medium",
+              amount !== 0
+                ? !isInverted
+                  ? amount > 0
+                    ? "text-green"
+                    : "text-red"
+                  : -amount > 0
+                  ? "text-green"
+                  : "text-red"
+                : undefined,
+            )}
+          >
             {" "}
             <span className="font-light text-muted-foreground">
               {movements.movements[row.index]!.currency.toUpperCase()}
@@ -276,13 +289,26 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
                           className="flex flex-col space-y-2"
                         >
                           <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-                          <p className="text-xl font-semibold">
+                          <p
+                            className={cn(
+                              "text-xl font-semibold",
+                              balance.amount !== 0
+                                ? !isInverted
+                                  ? balance.amount > 0
+                                    ? "text-green"
+                                    : "text-red"
+                                  : -balance.amount > 0
+                                  ? "text-green"
+                                  : "text-red"
+                                : undefined,
+                            )}
+                          >
                             {numberFormatter(
                               balance.amount === 0
                                 ? 0
                                 : !isInverted
-                                  ? balance.amount
-                                  : -balance.amount,
+                                ? balance.amount
+                                : -balance.amount,
                             )}
                           </p>
                         </div>

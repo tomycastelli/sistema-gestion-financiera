@@ -127,8 +127,8 @@ export const filesRouter = createTRPCRouter({
                   `<tr key="${index}">
                   <td>${mv.fecha}</td>
                   <td>
-                    <p>${mv.detalle}</p>
                     <p class="observations-text">${mv.observaciones}</p>
+                    <p class="details-text">${mv.detalle}</p>
                   </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
@@ -147,14 +147,27 @@ export const filesRouter = createTRPCRouter({
           .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
           .table th,
           .table td {
-          border-top: 0.5px solid #000;
-          border-bottom: 0.5px solid #000
-          padding: 0.75rem;
-          text-align: right
+            border-top: 0.5px solid #000;
+            border-bottom: 0.5px solid #000;
+            text-align: right;
+            padding: 0.25rem;
+            vertical-align: top;
+          }
+
+          .table td p {
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+          }
+
+          .table td p + p {
+            margin-top: 0.2rem;
           }
           .observations-text{
-            font-size: 0.75rem;
-            font-weight: 200;
+            font-weight: 600;
+          }
+          .details-text{
+            font-weight: 400;
           }
           .table-body{font-size: 0.75rem;}
           .header-div{width: 100%; text-align: center;}

@@ -16,6 +16,7 @@ import { type RouterOutputs } from "~/trpc/shared";
 import { Button } from "../components/ui/button";
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
+import { cn } from "~/lib/utils";
 
 const transformedBalancesSchema = z.object({
   entity: z.object({
@@ -248,7 +249,20 @@ const BalancesCards: FC<BalancesCardsProps> = ({
                             <p className="col-span-1">
                               {balances.currency.toUpperCase()}
                             </p>
-                            <p className="col-span-2 text-xl font-bold">
+                            <p
+                              className={cn(
+                                "col-span-2 text-xl font-bold",
+                                balances.balance !== 0
+                                  ? !isInverted
+                                    ? balances.balance > 0
+                                      ? "text-green"
+                                      : "text-red"
+                                    : -balances.balance > 0
+                                    ? "text-green"
+                                    : "text-red"
+                                  : undefined,
+                              )}
+                            >
                               ${" "}
                               {numberFormatter(
                                 !isInverted
@@ -302,7 +316,20 @@ const BalancesCards: FC<BalancesCardsProps> = ({
                               <p className="col-span-1">
                                 {balances.currency.toUpperCase()}
                               </p>
-                              <p className="col-span-2 text-xl font-bold">
+                              <p
+                                className={cn(
+                                  "col-span-2 text-xl font-bold",
+                                  balances.balance !== 0
+                                    ? !isInverted
+                                      ? balances.balance > 0
+                                        ? "text-green"
+                                        : "text-red"
+                                      : -balances.balance > 0
+                                      ? "text-green"
+                                      : "text-red"
+                                    : undefined,
+                                )}
+                              >
                                 ${" "}
                                 {numberFormatter(
                                   !isInverted

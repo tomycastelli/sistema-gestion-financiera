@@ -663,19 +663,31 @@ const Balances: FC<BalancesProps> = ({
                           : undefined,
                     }}
                     className={cn(
-                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
+                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:shadow-md",
                       selectedCurrency === currency &&
                         destinationEntityId === item.entity.id &&
                         uiColor &&
                         isDarkEnough(uiColor) &&
-                        "bg-primary text-white shadow-md",
+                        "bg-white text-black shadow-md",
                       selectedCurrency === currency &&
                         destinationEntityId === item.entity.id &&
-                        "bg-primary text-white shadow-md",
+                        "bg-white text-black shadow-md",
                     )}
                   >
                     {!isFetching ? (
-                      <p>
+                      <p
+                        className={cn(
+                          matchingBalance.balance !== 0
+                            ? !isInverted
+                              ? matchingBalance.balance > 0
+                                ? "text-green"
+                                : "text-red"
+                              : -matchingBalance.balance > 0
+                              ? "text-green"
+                              : "text-red"
+                            : undefined,
+                        )}
+                      >
                         {numberFormatter(
                           !isInverted
                             ? matchingBalance.balance

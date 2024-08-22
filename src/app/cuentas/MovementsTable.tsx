@@ -219,16 +219,14 @@ const MovementsTable = ({
 
         return (
           <>
-            <p className="font-medium">{`${type} de ${txType} - Mto ${mvId} ${
+            <p className="font-semibold">{observations}</p>
+            <p className="font-normal">{`${type} de ${txType} - Mto ${mvId} ${
               // @ts-ignore
               metadata && isNumeric(metadata.exchange_rate)
                 ? // @ts-ignore
                   `- $${metadata.exchange_rate}`
                 : ""
             }`}</p>
-            <p className="text-sm font-light text-muted-foreground">
-              {observations}
-            </p>
           </>
         );
       },
@@ -291,7 +289,20 @@ const MovementsTable = ({
         const amount = parseFloat(row.getValue("balance"));
         const formatted = numberFormatter(amount);
         return (
-          <div className="text-right font-medium">
+          <div
+            className={cn(
+              "text-right font-medium",
+              amount !== 0
+                ? !isInverted
+                  ? amount > 0
+                    ? "text-green"
+                    : "text-red"
+                  : -amount > 0
+                  ? "text-green"
+                  : "text-red"
+                : undefined,
+            )}
+          >
             {" "}
             <span className="font-light text-muted-foreground">
               {data.movements[row.index]!.currency.toUpperCase()}
