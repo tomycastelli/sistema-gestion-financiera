@@ -44,6 +44,17 @@ const EntityCard = React.memo(
         },
       );
 
+    let queryObject = {};
+    if (entity.tag.name !== "Maika") {
+      queryObject = {
+        tag: "Maika",
+        cuenta: "cuenta_corriente",
+        cliente: entity.id,
+      };
+    } else {
+      queryObject = { entidad: entity.id };
+    }
+
     return (
       <>
         {entity ? (
@@ -67,7 +78,7 @@ const EntityCard = React.memo(
                         )}
                         href={{
                           pathname: "/cuentas",
-                          query: { entidad: entity.id },
+                          query: queryObject,
                         }}
                       >
                         {entity.name}
@@ -102,7 +113,7 @@ const EntityCard = React.memo(
               <HoverCard onOpenChange={setEnableQueryTag}>
                 <HoverCardTrigger asChild>
                   <CardDescription>
-                    {!disableLinks ? (
+                    {!disableLinks && entity.tag.name === "Maika" ? (
                       <Link
                         prefetch={false}
                         className="flex transition-all hover:scale-110"

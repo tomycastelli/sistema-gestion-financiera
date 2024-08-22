@@ -138,9 +138,6 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
         return Math.max(maxId, currentObj.txId);
       }, 0);
 
-      console.log("HERE --- LatestID: ", latestId);
-      console.log("HERE --- Index: ", index);
-
       const transactions: SingleTransactionInStoreSchema[] = [
         {
           txId: latestId + 1 + index * 2,
@@ -282,22 +279,22 @@ const CambioPair = ({
     }
     const isStrongCurrencyA = currencies.find(
       (obj) => obj.value === watchCurrencyA,
-    )?.strong;
+    )!.strong;
     const isStrongCurrencyB = currencies.find(
       (obj) => obj.value === watchCurrencyB,
-    )?.strong;
+    )!.strong;
     const amountA = parseFormattedFloat(watchAmountA);
     const amountB = parseFormattedFloat(watchAmountB);
     const exchangeRate = parseFormattedFloat(watchExchangeRate);
     if (watchCurrencyA && watchCurrencyB) {
       if (watchLockAmountA && amountA > 0 && watchLockAmountB && amountB > 0) {
-        if (!isStrongCurrencyA && isStrongCurrencyB) {
+        if (isStrongCurrencyA < isStrongCurrencyB) {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter(amountA / amountB),
           );
         }
-        if (isStrongCurrencyA && !isStrongCurrencyB) {
+        if (isStrongCurrencyA > isStrongCurrencyB) {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter(amountB / amountA),
@@ -328,13 +325,13 @@ const CambioPair = ({
         watchLockExchange &&
         exchangeRate !== 0
       ) {
-        if (isStrongCurrencyA && !isStrongCurrencyB) {
+        if (isStrongCurrencyA > isStrongCurrencyB) {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA * exchangeRate),
           );
         }
-        if (!isStrongCurrencyA && isStrongCurrencyB) {
+        if (isStrongCurrencyA < isStrongCurrencyB) {
           setValue(
             `transactions.${index}.amountB`,
             numberFormatter(amountA / exchangeRate),
@@ -365,13 +362,13 @@ const CambioPair = ({
         watchLockExchange &&
         exchangeRate !== 0
       ) {
-        if (isStrongCurrencyA && !isStrongCurrencyB) {
+        if (isStrongCurrencyA > isStrongCurrencyB) {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter(amountB / exchangeRate),
           );
         }
-        if (!isStrongCurrencyA && isStrongCurrencyB) {
+        if (isStrongCurrencyA < isStrongCurrencyB) {
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter(amountB * exchangeRate),
@@ -604,7 +601,7 @@ const CambioPair = ({
         <AmountInput
           placeholder={
             ["usd", "usdt"].includes(watchCurrencyA) &&
-              ["usd", "usdt"].includes(watchCurrencyB)
+            ["usd", "usdt"].includes(watchCurrencyB)
               ? "%"
               : "$"
           }

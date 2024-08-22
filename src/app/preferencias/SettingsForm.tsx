@@ -20,25 +20,18 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { getAccountingPeriodDate } from "~/lib/functions";
 import moment from "moment";
-import CustomSelector from "../components/forms/CustomSelector";
 
 const FormSchema = z.object({
   months: z.string().min(1),
   graceDays: z.string().refine((str) => parseInt(str) >= 0),
-  mainTag: z.string(),
 });
 
 interface SettingsFormProps {
   initialSettings: RouterOutputs["globalSettings"]["getAll"];
   isAdmin: boolean;
-  tags: RouterOutputs["tags"]["getAll"];
 }
 
-const SettingsForm: FC<SettingsFormProps> = ({
-  initialSettings,
-  isAdmin,
-  tags,
-}) => {
+const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
   const utils = api.useContext();
 
   const { data: settings } = api.globalSettings.getAll.useQuery(undefined, {
@@ -90,17 +83,12 @@ const SettingsForm: FC<SettingsFormProps> = ({
     name: string;
     data: { months: number; graceDays: number };
   };
-  const mainTag = settings.find((obj) => obj.name === "mainTag") as {
-    name: string;
-    data: { tag: string };
-  };
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       months: accountingPeriod.data.months.toString(),
       graceDays: accountingPeriod.data.graceDays.toString(),
-      mainTag: mainTag.data.tag,
     },
   });
 
@@ -173,33 +161,6 @@ const SettingsForm: FC<SettingsFormProps> = ({
             <p>
               Las operaciones y los balances previos a esta fecha no podrán ser
               modificados.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col justify-start gap-y-4">
-          <h1 className="text-xl">Tag principal</h1>
-          <FormField
-            control={control}
-            disabled={true}
-            name={"mainTag"}
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Tag</FormLabel>
-                <CustomSelector
-                  buttonClassName="w-22"
-                  data={tags.map((t) => ({ value: t.name, label: t.name }))}
-                  field={field}
-                  fieldName={"mainTag"}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="flex flex-col justify-start text-sm">
-            <p className="text-muted-foreground">
-              Las transacciones cargadas tendrán que tener una entidad de este
-              Tag participando y serán vistas desde el punto de vista de este
-              Tag.
             </p>
           </div>
         </div>

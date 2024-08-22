@@ -113,7 +113,12 @@ const MovementsTable = ({
   } = useCuentasStore();
 
   useEffect(() => {
-    setDestinationEntityId(undefined);
+    const cliente_id = searchParams.get("cliente");
+    if (!!cliente_id) {
+      setDestinationEntityId(parseInt(cliente_id));
+    } else {
+      setDestinationEntityId(undefined);
+    }
     setSelectedCurrency(undefined);
     setFromDate(undefined);
     setToDate(undefined);
@@ -124,6 +129,7 @@ const MovementsTable = ({
     setFromDate,
     setToDate,
     setMovementsTablePage,
+    searchParams,
   ]);
 
   const { data, refetch, isFetching } =

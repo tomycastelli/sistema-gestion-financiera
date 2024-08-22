@@ -52,27 +52,27 @@ export const currencies = [
   {
     value: "usd",
     label: "USD",
-    strong: true,
+    strong: 3,
   },
   {
     value: "usdt",
     label: "USDT",
-    strong: true,
+    strong: 3,
   },
   {
     value: "ars",
     label: "ARS",
-    strong: false,
+    strong: 1,
   },
   {
     value: "eur",
     label: "EUR",
-    strong: true,
+    strong: 2,
   },
   {
     value: "brl",
     label: "BRL",
-    strong: true,
+    strong: 2,
   },
 ];
 
