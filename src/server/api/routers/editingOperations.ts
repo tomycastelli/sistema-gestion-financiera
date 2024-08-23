@@ -307,6 +307,7 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      console.log("Input of cancelTransactions: ", input);
       const response = await ctx.db.transaction(async (transaction) => {
         const transactionsToCancel =
           await transaction.query.transactions.findMany({

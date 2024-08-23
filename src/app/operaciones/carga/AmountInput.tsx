@@ -15,12 +15,21 @@ interface AmountInputProps {
   name: string;
   label?: string;
   placeholder?: string;
+  decimals?: number;
 }
 
-const AmountInput: FC<AmountInputProps> = ({ name, label, placeholder }) => {
+const AmountInput: FC<AmountInputProps> = ({
+  name,
+  label,
+  placeholder,
+  decimals,
+}) => {
   const { control } = useFormContext();
 
-  const inputRef = useNumberFormat({ locales: "es-AR" });
+  const inputRef = useNumberFormat({
+    locales: "es-AR",
+    maximumFractionDigits: decimals ?? 2,
+  });
 
   return (
     <FormField

@@ -301,13 +301,13 @@ const CambioPair = ({
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             `transactions.${index}.exchangeRate`,
-            numberFormatter((amountA / amountB - 1) * 100),
+            numberFormatter((amountA / amountB - 1) * 100, 4),
           );
         }
         if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.exchangeRate`,
-            numberFormatter((amountB / amountA - 1) * 100),
+            numberFormatter((amountB / amountA - 1) * 100, 4),
           );
         }
       }
@@ -579,6 +579,12 @@ const CambioPair = ({
       </div>
       <div className="flex flex-row items-end justify-center gap-x-2">
         <AmountInput
+          decimals={
+            ["usd", "usdt"].includes(watchCurrencyA) &&
+            ["usd", "usdt"].includes(watchCurrencyB)
+              ? 4
+              : 2
+          }
           placeholder={
             ["usd", "usdt"].includes(watchCurrencyA) &&
             ["usd", "usdt"].includes(watchCurrencyB)
