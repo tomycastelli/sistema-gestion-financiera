@@ -1206,7 +1206,7 @@ export const currentAccountsProcedure = async (
       balance: z.number(),
     });
 
-    if (input.entityTag && input.groupInTag) {
+    if ((input.entityTag && input.groupInTag) || input.account) {
       // Agarro los movimientos en su version de Tag
       const ids = movementsData.map((obj) => obj.Movements.id);
 
@@ -1221,10 +1221,12 @@ export const currentAccountsProcedure = async (
         .where(
           and(
             inArray(movements.entitiesMovementId, ids.length > 0 ? ids : [0]),
-            or(
-              eq(balances.tagName, input.entityTag),
-              eq(cashBalances.tagName, input.entityTag),
-            ),
+            input.entityTag
+              ? or(
+                  eq(balances.tagName, input.entityTag),
+                  eq(cashBalances.tagName, input.entityTag),
+                )
+              : eq(cashBalances.entityId, input.entityId!),
           ),
         );
 
@@ -1249,19 +1251,32 @@ export const currentAccountsProcedure = async (
           },
         }))
         .map((mv) => {
-          // Mi POV es la entidad que pertenece al tag
+          // Mi POV es la entidad que pertenece al tag o la entidad en si de la caja en caso de ser sin entityTag
           const selectedEntity =
-            mv.transaction.fromEntity.tagName === input.entityTag
+            input.account && !input.entityTag
+              ? mv.transaction.fromEntity.id === input.entityId
+                ? mv.transaction.fromEntity
+                : mv.transaction.toEntity
+              : mv.transaction.fromEntity.tagName === input.entityTag
               ? mv.transaction.fromEntity
               : mv.transaction.toEntity;
           const otherEntity =
-            mv.transaction.fromEntity.tagName === input.entityTag
+            input.account && !input.entityTag
+              ? mv.transaction.fromEntity.id === input.entityId
+                ? mv.transaction.toEntity
+                : mv.transaction.fromEntity
+              : mv.transaction.fromEntity.tagName === input.entityTag
               ? mv.transaction.toEntity
               : mv.transaction.fromEntity;
 
           // Es una entrada si al generar el movimiento, este sumo al balance del Tag con la entidad
+          // Si es caja, chequeo por el id no por el tagName necesariamente
           const direction =
-            mv.transaction.toEntity.tagName === input.entityTag
+            input.account && !input.entityTag
+              ? mv.transaction.toEntity.id === input.entityId
+                ? mv.direction
+                : -mv.direction
+              : mv.transaction.toEntity.tagName === input.entityTag
               ? mv.direction
               : -mv.direction;
           // El balance es del punto de vista del tag
