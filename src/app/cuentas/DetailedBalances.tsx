@@ -27,6 +27,7 @@ import { useCuentasStore } from "~/stores/cuentasStore";
 import { z } from "zod";
 import { type User } from "lucia";
 import { api } from "~/trpc/react";
+import { currenciesOrder } from "~/lib/variables";
 
 interface DetailedBalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
@@ -56,8 +57,6 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   const { theme } = useTheme();
 
   const isDark = theme === "dark";
-
-  const currencyOrder = ["usd", "ars", "usdt", "eur", "brl"];
 
   const transformedBalancesSchema = z.object({
     entity: z.object({
@@ -486,11 +485,11 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
       <div className="grid grid-cols-1 gap-3">
         <div
           style={{ borderColor: uiColor }}
-          className="grid grid-cols-13 justify-items-center rounded-xl border-2 p-2"
+          className="grid grid-cols-15 justify-items-center rounded-xl border-2 p-2"
         >
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
-          {currencyOrder.map((currency) => (
+          {currenciesOrder.map((currency) => (
             <p key={currency} className="col-span-2">
               {currency.toUpperCase()}
             </p>
@@ -537,7 +536,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                     : lightenColor(uiColor, isDark ? 40 : 10)
                   : undefined,
               }}
-              className="grid grid-cols-13 justify-items-center rounded-xl p-3 text-lg font-semibold"
+              className="grid grid-cols-15 justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
               {isListSelection ? (
                 <Button
@@ -587,7 +586,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               >
                 <p>{item.entity.name}</p>
               </div>
-              {currencyOrder.map((currency) => {
+              {currenciesOrder.map((currency) => {
                 const matchingBalance = item.data.find(
                   (balance) => balance.currency === currency,
                 );
