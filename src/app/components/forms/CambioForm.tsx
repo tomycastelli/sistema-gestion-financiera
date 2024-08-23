@@ -301,16 +301,10 @@ const CambioPair = ({
         if (watchCurrencyA === "usd" && watchCurrencyB === "usdt") {
           setValue(
             `transactions.${index}.exchangeRate`,
-            numberFormatter((amountB / amountA - 1) * 100),
-          );
-        }
-        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
-          setValue(
-            `transactions.${index}.exchangeRate`,
             numberFormatter((amountA / amountB - 1) * 100),
           );
         }
-        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
+        if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.exchangeRate`,
             numberFormatter((amountB / amountA - 1) * 100),
@@ -347,12 +341,6 @@ const CambioPair = ({
             numberFormatter(amountA * (1 + exchangeRate / 100)),
           );
         }
-        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
-          setValue(
-            `transactions.${index}.amountB`,
-            numberFormatter(amountA / (1 + exchangeRate / 100)),
-          );
-        }
       }
       if (
         watchLockAmountB &&
@@ -375,19 +363,13 @@ const CambioPair = ({
         if (watchCurrencyA === "usdt" && watchCurrencyB === "usd") {
           setValue(
             `transactions.${index}.amountA`,
-            numberFormatter(amountB * (exchangeRate / 100) + 1),
+            numberFormatter(amountB / (1 + exchangeRate / 100)),
           );
         }
         if (watchCurrencyB === "usdt" && watchCurrencyA === "usd") {
           setValue(
             `transactions.${index}.amountA`,
-            numberFormatter((amountB - 1) * (100 / exchangeRate)),
-          );
-        }
-        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
-          setValue(
-            `transactions.${index}.amountA`,
-            numberFormatter(amountB * (exchangeRate / 100) + 1),
+            numberFormatter(amountB * (1 + exchangeRate / 100)),
           );
         }
       }
