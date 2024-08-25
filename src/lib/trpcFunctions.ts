@@ -1055,16 +1055,20 @@ export const currentAccountsProcedure = async (
       ? and(
           or(
             and(
-              inArray(fromEntity.tagName, tagAndChildren),
+              input.originEntityId
+                ? eq(fromEntity.id, input.originEntityId)
+                : inArray(fromEntity.tagName, tagAndChildren),
               input.toEntityId
                 ? eq(toEntity.id, input.toEntityId)
                 : not(inArray(toEntity.tagName, tagAndChildren)),
             ),
             and(
+              input.originEntityId
+                ? eq(toEntity.id, input.originEntityId)
+                : inArray(toEntity.tagName, tagAndChildren),
               input.toEntityId
                 ? eq(fromEntity.id, input.toEntityId)
                 : not(inArray(fromEntity.tagName, tagAndChildren)),
-              inArray(toEntity.tagName, tagAndChildren),
             ),
           ),
           isNull(movements.entitiesMovementId),

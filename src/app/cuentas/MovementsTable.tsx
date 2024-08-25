@@ -101,6 +101,8 @@ const MovementsTable = ({
   const {
     movementsTablePage,
     setMovementsTablePage,
+    originEntityId,
+    setOriginEntityId,
     destinationEntityId,
     setDestinationEntityId,
     selectedCurrency,
@@ -119,11 +121,18 @@ const MovementsTable = ({
     } else {
       setDestinationEntityId(undefined);
     }
+    const origin_entity_id = searchParams.get("origen");
+    if (origin_entity_id) {
+      setOriginEntityId(parseInt(origin_entity_id));
+    } else {
+      setOriginEntityId(undefined);
+    }
     setSelectedCurrency(undefined);
     setFromDate(undefined);
     setToDate(undefined);
     setMovementsTablePage(1);
   }, [
+    setOriginEntityId,
     setDestinationEntityId,
     setSelectedCurrency,
     setFromDate,
@@ -140,6 +149,7 @@ const MovementsTable = ({
         account: accountType,
         entityId: entityId,
         entityTag: entityTag,
+        originEntityId,
         toEntityId: destinationEntityId,
         currency: selectedCurrency,
         fromDate: fromDate,
@@ -381,6 +391,57 @@ const MovementsTable = ({
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex flex-col">
+            <Label className="mb-2">Origen</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-[200px] justify-between",
+                    !originEntityId && "text-muted-foreground",
+                  )}
+                >
+                  {originEntityId
+                    ? truncateString(
+                        entities.find((e) => e.id === originEntityId)?.name,
+                        22,
+                      )
+                    : "Elegir"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Elegir..." />
+                  <CommandEmpty>...</CommandEmpty>
+                  <ScrollArea className="h-44 w-48 rounded-md">
+                    <CommandGroup>
+                      <CommandItem
+                        value="todas"
+                        onSelect={() => setOriginEntityId(undefined)}
+                      >
+                        Todas
+                      </CommandItem>
+                      {entities
+                        .filter(
+                          (e) => e.id !== entityId && e.tag.name !== entityTag,
+                        )
+                        .map((entity) => (
+                          <CommandItem
+                            key={entity.id}
+                            value={entity.name}
+                            onSelect={() => setOriginEntityId(entity.id)}
+                          >
+                            {entity.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </ScrollArea>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex flex-col">
             <Label className="mb-2">Entidad</Label>

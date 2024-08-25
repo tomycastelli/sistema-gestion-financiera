@@ -81,7 +81,7 @@ export const currencies = [
   },
 ];
 
-export const currenciesOrder = ["ars", "usd", "usdt", "eur", "brl", "gbp"];
+export const currenciesOrder = ["usd", "usdt", "ars", "eur", "brl", "gbp"];
 
 export const paymentMethods = [
   {

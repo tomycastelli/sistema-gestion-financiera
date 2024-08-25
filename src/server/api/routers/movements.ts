@@ -34,6 +34,7 @@ export const getCurrentAccountsInput = z.object({
   pageNumber: z.number().int(),
   entityId: z.number().int().optional().nullish(), // Change from array to single number
   entityTag: z.string().optional().nullish(),
+  originEntityId: z.number().int().optional().nullish(),
   toEntityId: z.number().int().optional().nullish(),
   currency: z.string().optional().nullish(),
   account: z.boolean().optional(),

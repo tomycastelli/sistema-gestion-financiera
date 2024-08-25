@@ -12,6 +12,7 @@ import {
 } from "../trpc";
 import { numberFormatter } from "~/lib/functions";
 import { getCurrentAccountsInput } from "./movements";
+import { currenciesOrder } from "~/lib/variables";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -239,18 +240,15 @@ export const filesRouter = createTRPCRouter({
           : input.entityTag
       }.${input.fileType}`;
 
-      const formattedBalances = input.detailedBalances.flatMap((balance) => ({
-        entidad: balance.entity.name,
-        ars: balance.data.find((d) => d.currency === "ars")?.balance ?? 0,
-        usd: balance.data.find((d) => d.currency === "usd")?.balance ?? 0,
-        usdt: balance.data.find((d) => d.currency === "usdt")?.balance ?? 0,
-        eur: balance.data.find((d) => d.currency === "eur")?.balance ?? 0,
-        brl: balance.data.find((d) => d.currency === "brl")?.balance ?? 0,
-        gbp: balance.data.find((d) => d.currency === "gbp")?.balance ?? 0,
-      }));
-
       if (input.fileType === "csv") {
-        const csv = unparse(formattedBalances, { delimiter: "," });
+        const csvData = input.detailedBalances.flatMap((detailedBalance) =>
+          detailedBalance.data.map((dataItem) => ({
+            entidad: detailedBalance.entity.name,
+            divisa: dataItem.currency,
+            saldo: dataItem.balance,
+          })),
+        );
+        const csv = unparse(csvData, { delimiter: "," });
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
           Key: `saldos/${filename}`,
@@ -269,31 +267,68 @@ export const filesRouter = createTRPCRouter({
           <div class="table">
           <div class="table-header">
             <p>Entidad</p>
-            <p>ARS</p>
-            <p>USD</p>
-            <p>USDT</p>
-            <p>EUR</p>
-            <p>BRL</p>
-            <p>GBP</p>
-          </div>
-            ${formattedBalances
-              .map(
-                (b, index) =>
-                  `<div key="${index}" class="table-row">
-                  <p>${b.entidad}</p>
-                  <p>${numberFormatter(b.ars)}</p>
-                  <p>${numberFormatter(b.usd)}</p>
-                  <p>${numberFormatter(b.usdt)}</p>
-                  <p>${numberFormatter(b.eur)}</p>
-                  <p>${numberFormatter(b.brl)}</p>
-                  <p>${numberFormatter(b.gbp)}</p>
-                  </div>`,
-              )
+            ${currenciesOrder
+              .map((currency) => `<p>${currency.toUpperCase()}</p>`)
               .join("")}
-            </div>`;
+          </div>
+          ${input.detailedBalances
+            .map((b, index) => {
+              // Create a map of all currencies with their balances or default to 0
+              const currencyMap: Record<string, number> =
+                currenciesOrder.reduce(
+                  (acc, currency) => {
+                    const foundCurrency = b.data.find(
+                      (item) => item.currency === currency,
+                    );
+                    acc[currency] = foundCurrency ? foundCurrency.balance : 0;
+                    return acc;
+                  },
+                  {} as Record<string, number>,
+                );
 
-        const cssString =
-          ".table{display: grid; grid-template-columns: repeat(1, 1fr); gap: 0.25rem} .table-row{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.1rem; border-bottom: 1px solid black; padding-bottom: 0.10rem; text-align: center; font-size: 0.75rem; align-items: center;} .table-header{display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; border-bottom: 2px solid black; padding-bottom: 0.25rem; text-align: center; font-size: 1rem; font-weight: 600; align-items: center;} .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}";
+              // Generate the HTML for each row, respecting the currency order
+              return `<div key="${index}" class="table-row">
+                          <p>${b.entity.name}</p>
+                          ${currenciesOrder
+                            .map(
+                              (currency) =>
+                                `<p>${numberFormatter(
+                                  currencyMap[currency]!,
+                                )}</p>`,
+                            )
+                            .join("")}
+                        </div>`;
+            })
+            .join("")}
+          </div>`;
+
+        const cssString = `.table{
+            display: grid;
+            grid-template-columns:
+            repeat(1, 1fr);
+            gap: 0.25rem
+            }
+          .table-row{
+          display: grid;
+          grid-template-columns: repeat(${currenciesOrder.length + 1}, 1fr);
+          gap: 0.1rem;
+          border-bottom: 1px solid black;
+          padding-bottom: 0.10rem;
+          text-align: center;
+          font-size: 0.75rem;
+          align-items: center;
+          }
+          .table-header{
+          display: grid;
+          grid-template-columns: repeat(${currenciesOrder.length + 1}, 1fr);
+          gap: 0.25rem;
+          border-bottom: 2px solid black;
+          padding-bottom: 0.25rem;
+          text-align: center;
+          font-size: 1rem;
+          font-weight: 600;
+          align-items: center;
+          } .header-div{width: 100%; text-align: center;} .title{font-size: 2rem; font-weight: 600;}`;
 
         try {
           await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
