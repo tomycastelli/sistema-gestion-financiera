@@ -310,6 +310,12 @@ const CambioPair = ({
             numberFormatter((amountB / amountA - 1) * 100, 4),
           );
         }
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
+          setValue(
+            `transactions.${index}.exchangeRate`,
+            numberFormatter((amountA / amountB - 1) * 100, 4),
+          );
+        }
       }
       if (
         watchLockAmountA &&
@@ -341,6 +347,12 @@ const CambioPair = ({
             numberFormatter(amountA * (1 + exchangeRate / 100)),
           );
         }
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
+          setValue(
+            `transactions.${index}.amountB`,
+            numberFormatter(amountA / (1 + exchangeRate / 100)),
+          );
+        }
       }
       if (
         watchLockAmountB &&
@@ -370,6 +382,12 @@ const CambioPair = ({
           setValue(
             `transactions.${index}.amountA`,
             numberFormatter(amountB * (1 + exchangeRate / 100)),
+          );
+        }
+        if (watchCurrencyA === "usd" && watchCurrencyB === "usd") {
+          setValue(
+            `transactions.${index}.amountA`,
+            numberFormatter(amountB / (1 + exchangeRate / 100)),
           );
         }
       }
@@ -420,7 +438,7 @@ const CambioPair = ({
               <FormLabel>Operador</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter((entity) => entity.tag.name !== "Maika")
+                  .filter((entity) => entity.tag.name === "Operadores")
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,

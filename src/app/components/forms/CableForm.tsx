@@ -332,10 +332,12 @@ const CableForm: FC<CableFormProps> = ({
                 <FormItem className="flex flex-col">
                   <FormLabel>Operador</FormLabel>
                   <CustomSelector
-                    data={entities.map((entity) => ({
-                      value: entity.id.toString(),
-                      label: entity.name,
-                    }))}
+                    data={entities
+                      .filter((entity) => entity.tag.name === "Operadores")
+                      .map((entity) => ({
+                        value: entity.id.toString(),
+                        label: entity.name,
+                      }))}
                     field={field}
                     fieldName="operatorEntity"
                     placeholder="Elegir"

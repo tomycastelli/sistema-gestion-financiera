@@ -112,7 +112,9 @@ const FlexibleTransactionsForm = ({
 
       if (!mainTags.includes(fromTag) && !mainTags.includes(toTag)) {
         toast.error(`Transacción ${index + 1}`, {
-          description: `Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(", ")}`,
+          description: `Aunque sea una de las entidades tiene que pertencer al tag: ${mainTags.join(
+            ", ",
+          )}`,
         });
         return;
       }
@@ -256,14 +258,14 @@ const FlexibleTransactionsForm = ({
                         )
                           ? "La transacción no podrá ser confirmada"
                           : cashAccountOnlyTypes.has(
-                                // @ts-ignore
-                                watchTransactions[index].type,
-                              )
-                            ? "La transacción solo afectará caja"
-                            : watchTransactions[index]?.type ===
-                                "pago por cta cte"
-                              ? "La transacción será confirmada automaticamente"
-                              : ""}
+                              // @ts-ignore
+                              watchTransactions[index].type,
+                            )
+                          ? "La transacción solo afectará caja"
+                          : watchTransactions[index]?.type ===
+                            "pago por cta cte"
+                          ? "La transacción será confirmada automaticamente"
+                          : ""}
                       </p>
                     )}
                   </div>
@@ -277,10 +279,14 @@ const FlexibleTransactionsForm = ({
                       <FormItem className="mx-auto mt-2 flex flex-col">
                         <FormLabel>Operador</FormLabel>
                         <CustomSelector
-                          data={entities.map((entity) => ({
-                            value: entity.id.toString(),
-                            label: entity.name,
-                          }))}
+                          data={entities
+                            .filter(
+                              (entity) => entity.tag.name === "Operadores",
+                            )
+                            .map((entity) => ({
+                              value: entity.id.toString(),
+                              label: entity.name,
+                            }))}
                           field={field}
                           fieldName={`transactions.${index}.operatorId`}
                         />

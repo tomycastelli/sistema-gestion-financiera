@@ -10,6 +10,7 @@ import {
 } from "~/lib/trpcFunctions";
 import { tag } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
+import { fixedTags } from "~/lib/variables";
 
 export const tagsRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -78,6 +79,12 @@ export const tagsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (fixedTags.includes(input.oldName) && input.oldName !== input.name) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `The tag ${input.oldName} cannot change its name`,
+        });
+      }
       const userPermissions = await getAllPermissions(
         ctx.redis,
         ctx.user,
@@ -120,6 +127,12 @@ export const tagsRouter = createTRPCRouter({
   removeOne: protectedProcedure
     .input(z.object({ name: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      if (fixedTags.includes(input.name)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `The tag ${input.name} cannot be removed`,
+        });
+      }
       const userPermissions = await getAllPermissions(
         ctx.redis,
         ctx.user,
