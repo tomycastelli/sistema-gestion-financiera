@@ -39,7 +39,7 @@ import { toast } from "sonner";
 const FormSchema = z.object({
   name: z
     .string()
-    .max(20, { message: "El nombre tiene que ser menor a 20 caracteres" }),
+    .max(40, { message: "El nombre tiene que ser menor a 40 caracteres" }),
   tag: z.string().min(1),
 });
 
