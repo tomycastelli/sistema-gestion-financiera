@@ -1287,9 +1287,7 @@ export const currentAccountsProcedure = async (
 
           const tableData: z.infer<typeof tableDataType> = {
             id: mv.id,
-            date: moment(mv.transaction.operation.date).format(
-              "DD-MM-YYYY HH:mm",
-            ),
+            date: moment(mv.transaction.operation.date).format("DD-MM-YYYY"),
             operationId: mv.transaction.operationId,
             type: mv.type,
             txType: mv.transaction.type,
@@ -1365,9 +1363,7 @@ export const currentAccountsProcedure = async (
 
         const tableData: z.infer<typeof tableDataType> = {
           id: mv.id,
-          date: moment(mv.transaction.operation.date).format(
-            "DD-MM-YYYY HH:mm",
-          ),
+          date: moment(mv.transaction.operation.date).format("DD-MM-YYYY"),
           operationId: mv.transaction.operationId,
           type: mv.type,
           txType: mv.transaction.type,
