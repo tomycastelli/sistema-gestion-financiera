@@ -9,6 +9,8 @@ interface TimeframeStore {
   setSelectedCurrency: (newCurrency: string | undefined) => void;
   movementsTablePage: number;
   setMovementsTablePage: (page: number) => void;
+  showCurrentAccountTotals: boolean;
+  setShowCurrentAccountsTotals: (show: boolean) => void;
   originEntityId: number | undefined;
   setOriginEntityId: (id: number | undefined) => void;
   destinationEntityId: number | undefined;
@@ -31,6 +33,10 @@ export const useCuentasStore = create<TimeframeStore>((set) => ({
   movementsTablePage: 1,
   setMovementsTablePage(page) {
     set({ movementsTablePage: page });
+  },
+  showCurrentAccountTotals: false,
+  setShowCurrentAccountsTotals(show) {
+    set({ showCurrentAccountTotals: show });
   },
   originEntityId: undefined,
   setOriginEntityId(id) {

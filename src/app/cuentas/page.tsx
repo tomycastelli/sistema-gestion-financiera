@@ -8,6 +8,7 @@ import TabSwitcher from "./TabSwitcher";
 import AccountsTab from "./AccountsTab";
 import TimeMachine from "./TimeMachine";
 import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
+import CurrentAccountsTotalsSwitch from "./CurrentAccountsTotalsSwitch";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -64,14 +65,15 @@ const Page = async ({
         selectedTab === "cuenta_corriente"
           ? false
           : selectedTab === "caja"
-            ? true
-            : undefined,
+          ? true
+          : undefined,
       linkToken: linkToken,
       linkId: linkId,
       dayInPast: dayInPast ?? undefined,
     };
-  const initialBalances =
-    await api.movements.getBalancesByEntities.query(initialBalancesInput);
+  const initialBalances = await api.movements.getBalancesByEntities.query(
+    initialBalancesInput,
+  );
 
   const initialBalancesForCard =
     await api.movements.getBalancesByEntitiesForCard.query({
@@ -93,14 +95,15 @@ const Page = async ({
     dayInPast: dayInPast ?? undefined,
   };
 
-  const initialMovements =
-    await api.movements.getCurrentAccounts.query(queryInput);
+  const initialMovements = await api.movements.getCurrentAccounts.query(
+    queryInput,
+  );
 
   const uiColor = selectedEntityObj
     ? selectedEntityObj.tag.color ?? undefined
     : selectedTagObj
-      ? selectedTagObj.color ?? undefined
-      : undefined;
+    ? selectedTagObj.color ?? undefined
+    : undefined;
 
   const { data: accountingPeriodData } = await api.globalSettings.get.query({
     name: "accountingPeriod",
@@ -144,6 +147,9 @@ const Page = async ({
         )}
         {(selectedEntityObj?.id || selectedTagObj?.name) && (
           <div className="flex flex-wrap gap-4">
+            {selectedTab === "cuenta_corriente" && (
+              <CurrentAccountsTotalsSwitch />
+            )}
             <TimeMachine />
           </div>
         )}

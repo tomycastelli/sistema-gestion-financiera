@@ -83,6 +83,7 @@ const EntityCard = React.memo(
                         href={{
                           pathname: "/cuentas",
                           query: queryObject,
+                          hash: "movimientos",
                         }}
                       >
                         {entity.name}
@@ -124,6 +125,7 @@ const EntityCard = React.memo(
                         href={{
                           pathname: "/cuentas",
                           query: { tag: entity.tag.name },
+                          hash: "movimientos",
                         }}
                       >
                         {capitalizeFirstLetter(entity.tag.name)}
