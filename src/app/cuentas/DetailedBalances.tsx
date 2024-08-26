@@ -180,7 +180,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     });
 
   const {
-    results: filteredBalances,
+    results: searchedBalances,
     searchValue,
     setSearchValue,
   } = useSearch<(typeof detailedBalances)[0]>({
@@ -248,6 +248,40 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   const columnAmount = (currenciesOrder.length + 1) * 2 + 1;
 
   const defaultList = accountsLists?.find((list) => list.isDefault);
+
+  const filteredBalances = searchedBalances
+    .sort((a, b) => {
+      if (defaultList) {
+        const aIndex = defaultList.idList.indexOf(a.entity.id);
+        const bIndex = defaultList.idList.indexOf(b.entity.id);
+        // Check if both objects have valid indices in the orderList
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+
+        // If only a has a valid index, place it before b
+        if (aIndex !== -1) {
+          return -1;
+        }
+
+        // If only b has a valid index, place it before a
+        if (bIndex !== -1) {
+          return 1;
+        }
+
+        // If neither has a valid index, maintain the current order
+        return 0;
+      } else {
+        return 0;
+      }
+    })
+    .filter((item) => {
+      if (defaultList && onlyListEntities) {
+        return defaultList.idList.includes(item.entity.id);
+      } else {
+        return true;
+      }
+    });
 
   const {
     selectedCurrency,
@@ -516,38 +550,6 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
           ))}
         </div>
         {filteredBalances
-          .sort((a, b) => {
-            if (defaultList) {
-              const aIndex = defaultList.idList.indexOf(a.entity.id);
-              const bIndex = defaultList.idList.indexOf(b.entity.id);
-              // Check if both objects have valid indices in the orderList
-              if (aIndex !== -1 && bIndex !== -1) {
-                return aIndex - bIndex;
-              }
-
-              // If only a has a valid index, place it before b
-              if (aIndex !== -1) {
-                return -1;
-              }
-
-              // If only b has a valid index, place it before a
-              if (bIndex !== -1) {
-                return 1;
-              }
-
-              // If neither has a valid index, maintain the current order
-              return 0;
-            } else {
-              return 0;
-            }
-          })
-          .filter((item) => {
-            if (defaultList && onlyListEntities) {
-              return defaultList.idList.includes(item.entity.id);
-            } else {
-              return true;
-            }
-          })
           .slice(
             pageSize * (detailedBalancesPage - 1),
             pageSize * detailedBalancesPage,

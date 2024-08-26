@@ -426,7 +426,7 @@ const MovementsTable = ({
                       </CommandItem>
                       {entities
                         .filter(
-                          (e) => e.id !== entityId && e.tag.name !== entityTag,
+                          (e) => e.id === entityId || e.tag.name === entityTag,
                         )
                         .map((entity) => (
                           <CommandItem

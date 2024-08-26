@@ -8,6 +8,18 @@ import { cn } from "~/lib/utils";
 import { currenciesOrder } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { type RouterOutputs } from "~/trpc/shared";
+import { Icons } from "../components/ui/Icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+import { Button } from "../components/ui/button";
+import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 const transformedBalancesSchema = z.object({
   tableData: z.array(
@@ -41,6 +53,24 @@ const BalancesTable: FC<BalancesTableProps> = ({
   selectedEntityId,
   selectedTag,
 }) => {
+  const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
+    api.files.detailedBalancesFile.useMutation({
+      onSuccess(newOperation) {
+        const link = document.createElement("a");
+        link.href = newOperation.downloadUrl;
+        link.download = newOperation.filename;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      onError(err) {
+        toast.error("Error al generar el archivo", {
+          description: err.message,
+        });
+      },
+    });
+
   const transformedBalances: z.infer<typeof transformedBalancesSchema> =
     balances.reduce(
       (acc, balance) => {
@@ -187,8 +217,91 @@ const BalancesTable: FC<BalancesTableProps> = ({
 
   return (
     <div className="flex flex-col gap-y-4">
-      <div className="flex flex-row items-center justify-between gap-x-4">
+      <div className="flex flex-row items-center justify-start gap-x-4">
         <h1 className="text-3xl font-semibold tracking-tighter">Entidades</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            {!isUrlLoading ? (
+              <Button variant="outline">Generar</Button>
+            ) : (
+              <p>Cargando...</p>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={() => {
+                  const promise = getUrlAsync({
+                    entityId: selectedEntityId,
+                    entityTag: selectedTag,
+                    detailedBalances: [
+                      ...transformedBalances.tableData,
+                      {
+                        entity: {
+                          id: 0,
+                          name: "Total",
+                          tagName: "Maika",
+                        },
+                        data: transformedBalances.totals.map((t) => ({
+                          currency: t.currency,
+                          balance: t.total,
+                        })),
+                      },
+                    ],
+                    fileType: "pdf",
+                  });
+
+                  toast.promise(promise, {
+                    loading: "Generando archivo...",
+                    success(data) {
+                      return `Archivo generado: ${data.filename}`;
+                    },
+                    error() {
+                      return `Error al generar el archivo`;
+                    },
+                  });
+                }}
+              >
+                <Icons.pdf className="h-4" />
+                <span>PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const promise = getUrlAsync({
+                    entityId: selectedEntityId,
+                    entityTag: selectedTag,
+                    detailedBalances: [
+                      ...transformedBalances.tableData,
+                      {
+                        entity: {
+                          id: 0,
+                          name: "Total",
+                          tagName: "Maika",
+                        },
+                        data: transformedBalances.totals.map((t) => ({
+                          currency: t.currency,
+                          balance: t.total,
+                        })),
+                      },
+                    ],
+                    fileType: "csv",
+                  });
+
+                  toast.promise(promise, {
+                    loading: "Generando archivo...",
+                    success(data) {
+                      return `Archivo generado: ${data.filename}`;
+                    },
+                  });
+                }}
+              >
+                <Icons.excel className="h-4" />
+                <span>Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="grid grid-cols-1 gap-3">
         <div
