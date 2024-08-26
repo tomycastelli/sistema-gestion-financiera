@@ -438,7 +438,8 @@ export const operationsRouter = createTRPCRouter({
 
       const deletedPendingTransactions = await ctx.db
         .delete(pendingTransactions)
-        .where(inArray(pendingTransactions.id, input.pendingTransactionsIds));
+        .where(inArray(pendingTransactions.id, input.pendingTransactionsIds))
+        .returning({ id: pendingTransactions.id });
 
       return deletedPendingTransactions;
     }),

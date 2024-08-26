@@ -67,13 +67,57 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
       },
       onSuccess(data) {
         toast.success(
-          `${data.length === 1 ? "Transacción" : "Transacciones"} aprobadas${
+          `${data.length === 1 ? "Transacción" : "Transacciones"} aprobada${
             data.length === 1 ? "" : "s"
           }`,
         );
       },
     },
   );
+
+  const { mutateAsync: deleteAsync } =
+    api.operations.deletePendingTransactions.useMutation({
+      async onMutate(newOperation) {
+        // Doing the Optimistic update
+        await utils.operations.getPendingTransactions.cancel();
+
+        const prevData = utils.operations.getPendingTransactions.getData();
+
+        utils.operations.getPendingTransactions.setData(undefined, (old) =>
+          old!.filter((pendingTx) =>
+            newOperation.pendingTransactionsIds.includes(pendingTx.id),
+          ),
+        );
+
+        return { prevData };
+      },
+      onError(err, newOperation, ctx) {
+        utils.operations.getPendingTransactions.setData(
+          undefined,
+          ctx?.prevData,
+        );
+
+        toast.error(
+          `No se pudo eliminar ${newOperation.pendingTransactionsIds.join(
+            ", ",
+          )}`,
+          {
+            description: JSON.stringify(err.message),
+          },
+        );
+      },
+      onSettled() {
+        void utils.operations.getOperations.invalidate();
+        void utils.operations.getPendingTransactions.invalidate();
+      },
+      onSuccess(data) {
+        toast.success(
+          `${data.length === 1 ? "Transacción" : "Transacciones"} eliminada${
+            data.length === 1 ? "" : "s"
+          }`,
+        );
+      },
+    });
 
   const mainEntity = (
     fromEntity: RouterOutputs["entities"]["getAll"][number],
@@ -212,14 +256,27 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
             <div className="col-span-1 flex items-center justify-center lg:justify-end">
               <Button
                 onClick={() =>
-                  mutateAsync({ pendingTransactionsIds: [pendingTx.id] })
+                  deleteAsync({ pendingTransactionsIds: [pendingTx.id] })
                 }
+                variant="outline"
                 disabled={
                   user.email !== "christian@ifc.com.ar" &&
                   user.email !== "tomas.castelli@ifc.com.ar"
                 }
               >
-                <Icons.check className="h-5 w-5" />
+                <Icons.cross className="h-5 w-5 text-red" />
+              </Button>
+              <Button
+                onClick={() =>
+                  mutateAsync({ pendingTransactionsIds: [pendingTx.id] })
+                }
+                variant="outline"
+                disabled={
+                  user.email !== "christian@ifc.com.ar" &&
+                  user.email !== "tomas.castelli@ifc.com.ar"
+                }
+              >
+                <Icons.check className="h-5 w-5 text-green" />
               </Button>
             </div>
           </div>
