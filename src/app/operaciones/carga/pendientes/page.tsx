@@ -29,6 +29,7 @@ const Page = async () => {
         Transacciones pendientes de aprobación
       </h1>
       <PendingTransactions
+        user={user}
         initialPendingTransactions={initialPendingTransactions}
         mainTags={mainTags}
       />

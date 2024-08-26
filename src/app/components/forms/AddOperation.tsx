@@ -173,10 +173,6 @@ const AddOperation = ({
     },
   ];
 
-  const isPendingPanelAllowed =
-    user.email === "christian@ifc.com.ar" ||
-    user.email === "tomas.castelli@ifc.com.ar";
-
   return (
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
       <div className="lg:col-span-1">
@@ -522,14 +518,12 @@ const AddOperation = ({
             <InitialDataOperationForm
               accountingPeriodDate={accountingPeriodDate}
             />
-            {isPendingPanelAllowed && (
-              <Link href="/operaciones/carga/pendientes">
-                <Button className="flex flex-row gap-x-2">
-                  <p>Transacciones pendientes</p>
-                  <Icons.pending className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
+            <Link href="/operaciones/carga/pendientes">
+              <Button className="flex flex-row gap-x-2">
+                <p>Transacciones pendientes</p>
+                <Icons.pending className="h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         )}
       </div>

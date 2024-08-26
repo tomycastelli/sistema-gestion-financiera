@@ -10,15 +10,18 @@ import { cn } from "~/lib/utils";
 import { Status } from "~/server/db/schema";
 import { Button } from "~/app/components/ui/button";
 import { toast } from "sonner";
+import { type User } from "lucia";
 
 interface PendingTransactionsProps {
   initialPendingTransactions: RouterOutputs["operations"]["getPendingTransactions"];
   mainTags: string[];
+  user: User;
 }
 
 const PendingTransactions: FC<PendingTransactionsProps> = ({
   initialPendingTransactions,
   mainTags,
+  user,
 }) => {
   const { data: pendingTransactions } =
     api.operations.getPendingTransactions.useQuery(undefined, {
@@ -210,6 +213,10 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
               <Button
                 onClick={() =>
                   mutateAsync({ pendingTransactionsIds: [pendingTx.id] })
+                }
+                disabled={
+                  user.email !== "christian@ifc.com.ar" &&
+                  user.email !== "tomas.castelli@ifc.com.ar"
                 }
               >
                 <Icons.check className="h-5 w-5" />
