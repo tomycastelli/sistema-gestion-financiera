@@ -111,7 +111,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
 
           dataEntry.balance += balance.balance * balanceMultiplier;
         } else if (selectedTag) {
-          // Quiero que si hay un balance de entidades del mismo Tag, se sume como corresponda en cada entidad, osea que afecte dos entityEntry
+          // Handle entities with the same tag
           const myPOVEntity =
             selectedTag === balance.selectedEntity.tagName
               ? balance.selectedEntity
@@ -122,6 +122,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
               ? balance.otherEntity
               : balance.selectedEntity;
 
+          // Process myOtherEntity
           if (myOtherEntity.tagName === myPOVEntity.tagName) {
             let otherEntityEntry = acc.tableData.find(
               (entry) => entry.entity.id === myOtherEntity.id,
@@ -150,8 +151,23 @@ const BalancesTable: FC<BalancesTableProps> = ({
             }
 
             dataEntry.balance += balance.balance * balanceMultiplier;
+
+            // Update totals
+            let totalEntry = acc.totals.find(
+              (t) => t.currency === dataEntry?.currency,
+            );
+            if (!totalEntry) {
+              totalEntry = {
+                currency: dataEntry.currency,
+                total: 0,
+              };
+              acc.totals.push(totalEntry);
+            }
+
+            totalEntry.total += balance.balance * balanceMultiplier;
           }
 
+          // Process myPOVEntity
           let entityEntry = acc.tableData.find(
             (entry) => entry.entity.id === myPOVEntity.id,
           );
@@ -181,9 +197,9 @@ const BalancesTable: FC<BalancesTableProps> = ({
 
           dataEntry.balance += balance.balance * balanceMultiplier;
 
-          // Ahora sumo a totales
+          // Update totals
           let totalEntry = acc.totals.find(
-            (t) => t.currency === dataEntry!.currency,
+            (t) => t.currency === dataEntry?.currency,
           );
           if (!totalEntry) {
             totalEntry = {
@@ -236,7 +252,14 @@ const BalancesTable: FC<BalancesTableProps> = ({
                     entityId: selectedEntityId,
                     entityTag: selectedTag,
                     detailedBalances: [
-                      ...transformedBalances.tableData,
+                      ...transformedBalances.tableData.map((d) => ({
+                        entity: d.entity,
+                        data: d.data.map((detail) => ({
+                          currency: detail.currency,
+                          balance:
+                            detail.currency === "usdt" ? 0 : detail.balance,
+                        })),
+                      })),
                       {
                         entity: {
                           id: 0,
@@ -272,7 +295,14 @@ const BalancesTable: FC<BalancesTableProps> = ({
                     entityId: selectedEntityId,
                     entityTag: selectedTag,
                     detailedBalances: [
-                      ...transformedBalances.tableData,
+                      ...transformedBalances.tableData.map((d) => ({
+                        entity: d.entity,
+                        data: d.data.map((detail) => ({
+                          currency: detail.currency,
+                          balance:
+                            detail.currency === "usdt" ? 0 : detail.balance,
+                        })),
+                      })),
                       {
                         entity: {
                           id: 0,
