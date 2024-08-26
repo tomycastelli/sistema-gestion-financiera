@@ -56,6 +56,7 @@ import {
 } from "../components/ui/card";
 import { cn } from "~/lib/utils";
 import { toast } from "sonner";
+import { fixedTags } from "~/lib/variables";
 
 interface AddTagsFormProps {
   tags: RouterOutputs["tags"]["getFiltered"];
@@ -96,8 +97,9 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
 
       const prevData = utils.tags.getAll.getData();
 
-      utils.tags.getAll.setData(undefined, (old) =>
-        old?.filter((tag) => tag.name !== newOperation.name),
+      utils.tags.getAll.setData(
+        undefined,
+        (old) => old?.filter((tag) => tag.name !== newOperation.name),
       );
 
       return { prevData };
@@ -156,19 +158,21 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
 
       const prevData = utils.tags.getFiltered.getData();
 
-      utils.tags.getAll.setData(undefined, (old) =>
-        old?.map((tag) => {
-          if (tag.name === newOperation.oldName) {
-            return {
-              name: newOperation.name ?? newOperation.oldName,
-              parent: newOperation.parent ?? null,
-              color: newOperation.color ?? null,
-              children: tag.children,
-            };
-          } else {
-            return tag;
-          }
-        }),
+      utils.tags.getAll.setData(
+        undefined,
+        (old) =>
+          old?.map((tag) => {
+            if (tag.name === newOperation.oldName) {
+              return {
+                name: newOperation.name ?? newOperation.oldName,
+                parent: newOperation.parent ?? null,
+                color: newOperation.color ?? null,
+                children: tag.children,
+              };
+            } else {
+              return tag;
+            }
+          }),
       );
 
       reset();
@@ -199,12 +203,16 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
         color: data.color,
       });
     } else if (actionStatus === ActionStatus.EDIT && tagToEdit) {
-      await editAsync({
-        name: data.name,
-        parent: data.parent,
-        color: data.color,
-        oldName: tagToEdit,
-      });
+      if (fixedTags.includes(tagToEdit) && tagToEdit !== data.name) {
+        toast.info(`El tag ${tagToEdit} no puede cambiar de nombre`);
+      } else {
+        await editAsync({
+          name: data.name,
+          parent: data.parent,
+          color: data.color,
+          oldName: tagToEdit,
+        });
+      }
     }
     reset({ name: "", parent: undefined, color: undefined });
     setActionStatus(ActionStatus.ADD);
@@ -243,8 +251,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
                 {actionStatus === ActionStatus.ADD
                   ? "Añadiendo tag"
                   : actionStatus === ActionStatus.EDIT
-                    ? "Editando tag"
-                    : ""}
+                  ? "Editando tag"
+                  : ""}
               </DialogTitle>
               {actionStatus === ActionStatus.EDIT && (
                 <Button
@@ -340,8 +348,8 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
                 {actionStatus === ActionStatus.ADD
                   ? "Añadir"
                   : actionStatus === ActionStatus.EDIT
-                    ? "Editar"
-                    : ""}
+                  ? "Editar"
+                  : ""}
               </Button>
             </DialogFooter>
           </form>
@@ -377,7 +385,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
                   >
                     <Icons.editing className="h-4 w-4 text-green" />
                   </Button>
-                  {tag.name !== "Operadores" && (
+                  {!fixedTags.includes(tag.name) && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -390,7 +398,7 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            ¿Seguro que querés borrar el tag?
+                            ¿Seguro que querés borrar el tag {tag.name}?
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             Si el mismo tiene entidades relacionadas, no podrá

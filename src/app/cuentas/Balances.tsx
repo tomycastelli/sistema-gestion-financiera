@@ -5,7 +5,7 @@ import { type FC, useEffect } from "react";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import BalancesCards from "./BalancesCards";
+import BalancesTable from "./BalancesTable";
 import DetailedBalances from "./DetailedBalances";
 
 interface BalancesProps {
@@ -67,16 +67,21 @@ const Balances: FC<BalancesProps> = ({
       { initialData: initialBalances, refetchOnWindowFocus: false },
     );
 
+  const { showCurrentAccountTotals } = useCuentasStore();
+
   return (
     <div className="flex flex-col space-y-4">
-      <BalancesCards
-        balances={balances}
-        selectedEntityId={selectedEntity?.id}
-        selectedTag={selectedTag}
-        accountType={accountType}
-        isInverted={isInverted}
-      />
-      {!accountType && (
+      {accountType || showCurrentAccountTotals ? (
+        <BalancesTable
+          balances={balances}
+          selectedEntityId={selectedEntity?.id}
+          selectedTag={selectedTag}
+          accountType={accountType}
+          isInverted={isInverted}
+          isFetching={isFetching}
+          uiColor={uiColor}
+        />
+      ) : (
         <DetailedBalances
           isFetching={isFetching}
           entities={entities}

@@ -131,3 +131,5 @@ export const currentAccountOnlyTypes = new Set([
   "cable",
 ]);
 export const cashAccountOnlyTypes = new Set(["ingreso", "gasto"]);
+
+export const fixedTags = ["Maika", "Operadores", "Clientes"];

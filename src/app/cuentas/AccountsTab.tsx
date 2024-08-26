@@ -73,11 +73,9 @@ const AccountsTable = async ({
           />
         )}
       </div>
-      {initialMovements.movements.length > 0 && (
-        <div className="flex flex-col">
-          <h1 className="text-3xl font-semibold tracking-tighter">
-            Movimientos
-          </h1>
+      <div className="flex flex-col pt-4" id="movimientos">
+        <h1 className="text-3xl font-semibold tracking-tighter">Movimientos</h1>
+        {initialMovements.movements.length > 0 ? (
           <MovementsTable
             mainTags={mainTags}
             users={users}
@@ -93,8 +91,10 @@ const AccountsTable = async ({
             entityTag={entityTag}
             entityId={selectedEntity?.id}
           />
-        </div>
-      )}
+        ) : (
+          <p className="text-xl font-semibold">No hay movimientos</p>
+        )}
+      </div>
     </div>
   );
 };

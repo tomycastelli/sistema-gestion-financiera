@@ -28,6 +28,8 @@ import { z } from "zod";
 import { type User } from "lucia";
 import { api } from "~/trpc/react";
 import { currenciesOrder } from "~/lib/variables";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
 
 interface DetailedBalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
@@ -53,6 +55,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   const pageSize = 8;
 
   const [isListSelection, setIsListSelection] = useState<boolean>(false);
+
+  const [onlyListEntities, setOnlyListEntities] = useState<boolean>(false);
 
   const { theme } = useTheme();
 
@@ -241,6 +245,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     }
   };
 
+  const columnAmount = (currenciesOrder.length + 1) * 2 + 1;
+
+  const defaultList = accountsLists?.find((list) => list.isDefault);
+
   const {
     selectedCurrency,
     setSelectedCurrency,
@@ -415,6 +423,15 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            {defaultList && (
+              <div className="flex flex-col items-center justify-start gap-y-2">
+                <Label>Solo lista</Label>
+                <Switch
+                  checked={onlyListEntities}
+                  onCheckedChange={setOnlyListEntities}
+                />
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 {!isUrlLoading ? (
@@ -484,8 +501,11 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
       </div>
       <div className="grid grid-cols-1 gap-3">
         <div
-          style={{ borderColor: uiColor }}
-          className="grid grid-cols-15 justify-items-center rounded-xl border-2 p-2"
+          style={{
+            borderColor: uiColor,
+            gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
+          }}
+          className="grid justify-items-center rounded-xl border-2 p-2"
         >
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
@@ -497,7 +517,6 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
         </div>
         {filteredBalances
           .sort((a, b) => {
-            const defaultList = accountsLists?.find((list) => list.isDefault);
             if (defaultList) {
               const aIndex = defaultList.idList.indexOf(a.entity.id);
               const bIndex = defaultList.idList.indexOf(b.entity.id);
@@ -522,6 +541,13 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               return 0;
             }
           })
+          .filter((item) => {
+            if (defaultList && onlyListEntities) {
+              return defaultList.idList.includes(item.entity.id);
+            } else {
+              return true;
+            }
+          })
           .slice(
             pageSize * (detailedBalancesPage - 1),
             pageSize * detailedBalancesPage,
@@ -535,8 +561,9 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                     ? lightenColor(uiColor, isDark ? 60 : 20)
                     : lightenColor(uiColor, isDark ? 40 : 10)
                   : undefined,
+                gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
               }}
-              className="grid grid-cols-15 justify-items-center rounded-xl p-3 text-lg font-semibold"
+              className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
               {isListSelection ? (
                 <Button
@@ -573,9 +600,17 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               )}
               <div
                 onClick={() => {
-                  setSelectedCurrency(undefined);
-                  setDestinationEntityId(item.entity.id);
-                  setMovementsTablePage(1);
+                  if (
+                    destinationEntityId === item.entity.id &&
+                    !selectedCurrency
+                  ) {
+                    setDestinationEntityId(undefined);
+                    setMovementsTablePage(1);
+                  } else {
+                    setSelectedCurrency(undefined);
+                    setDestinationEntityId(item.entity.id);
+                    setMovementsTablePage(1);
+                  }
                 }}
                 className={cn(
                   "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
