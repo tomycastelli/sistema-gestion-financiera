@@ -3,7 +3,7 @@
 import { useTheme } from "next-themes";
 import { type FC } from "react";
 import { z } from "zod";
-import { isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
+import { lightenColor, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currenciesOrder } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
@@ -362,7 +362,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
             }}
             className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
           >
-            <div
+            <Button
               onClick={() => {
                 if (originEntityId === item.entity.id && !selectedCurrency) {
                   setOriginEntityId(undefined);
@@ -374,22 +374,18 @@ const BalancesTable: FC<BalancesTableProps> = ({
                   setMovementsTablePage(1);
                 }
               }}
-              className={cn(
-                "col-span-1 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                !selectedCurrency &&
-                  originEntityId == item.entity.id &&
-                  "bg-primary text-white shadow-md",
-              )}
+              variant="outline"
+              className="border-transparent text-xl"
             >
               <p>{item.entity.name}</p>
-            </div>
+            </Button>
             {currenciesOrder.map((currency) => {
               const matchingBalance = item.data.find(
                 (balance) => balance.currency === currency,
               );
 
               return matchingBalance && currency !== "usdt" ? (
-                <div
+                <Button
                   onClick={() => {
                     if (
                       selectedCurrency !== currency ||
@@ -406,24 +402,8 @@ const BalancesTable: FC<BalancesTableProps> = ({
                     }
                   }}
                   key={currency}
-                  style={{
-                    backgroundColor:
-                      selectedCurrency === currency &&
-                      originEntityId === item.entity.id
-                        ? uiColor
-                        : undefined,
-                  }}
-                  className={cn(
-                    "col-span-1 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                    selectedCurrency === currency &&
-                      originEntityId === item.entity.id &&
-                      uiColor &&
-                      isDarkEnough(uiColor) &&
-                      "bg-primary text-white shadow-md",
-                    selectedCurrency === currency &&
-                      originEntityId === item.entity.id &&
-                      "bg-primary text-white shadow-md",
-                  )}
+                  variant="outline"
+                  className="border-transparent text-xl"
                 >
                   {!isFetching ? (
                     <p
@@ -448,7 +428,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                   ) : (
                     <p>Cargando...</p>
                   )}
-                </div>
+                </Button>
               ) : (
                 <p className="col-span-1" key={currency}></p>
               );
@@ -468,23 +448,38 @@ const BalancesTable: FC<BalancesTableProps> = ({
               transformedBalances.totals.find((t) => t.currency === currency)
                 ?.total ?? 0;
             return (
-              <p
+              <Button
                 key={currency}
-                className={cn(
-                  "col-span-1",
-                  total !== 0
-                    ? !isInverted
-                      ? total > 0
+                onClick={() => {
+                  setOriginEntityId(undefined);
+                  setDestinationEntityId(undefined);
+                  setMovementsTablePage(1);
+                  if (selectedCurrency === currency) {
+                    setSelectedCurrency(undefined);
+                  } else {
+                    setSelectedCurrency(currency);
+                  }
+                }}
+                variant="outline"
+                className="text-xl"
+              >
+                <p
+                  className={cn(
+                    "col-span-1",
+                    total !== 0
+                      ? !isInverted
+                        ? total > 0
+                          ? "text-green"
+                          : "text-red"
+                        : -total > 0
                         ? "text-green"
                         : "text-red"
-                      : -total > 0
-                      ? "text-green"
-                      : "text-red"
-                    : undefined,
-                )}
-              >
-                {numberFormatter(!isInverted ? total : -total)}
-              </p>
+                      : undefined,
+                  )}
+                >
+                  {numberFormatter(!isInverted ? total : -total)}
+                </p>
+              </Button>
             );
           })}
         </div>

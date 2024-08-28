@@ -1,5 +1,17 @@
 "use client";
 
+import { type User } from "lucia";
+import { useTheme } from "next-themes";
+import { useState, type FC } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
+import useSearch from "~/hooks/useSearch";
+import { lightenColor, numberFormatter } from "~/lib/functions";
+import { cn } from "~/lib/utils";
+import { currenciesOrder } from "~/lib/variables";
+import { useCuentasStore } from "~/stores/cuentasStore";
+import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
 import CustomPagination from "../components/CustomPagination";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
@@ -15,21 +27,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { isDarkEnough, lightenColor, numberFormatter } from "~/lib/functions";
 import { Input } from "../components/ui/input";
-import { cn } from "~/lib/utils";
-import { type RouterOutputs } from "~/trpc/shared";
-import { useState, type FC } from "react";
-import useSearch from "~/hooks/useSearch";
-import { toast } from "sonner";
-import { useTheme } from "next-themes";
-import { useCuentasStore } from "~/stores/cuentasStore";
-import { z } from "zod";
-import { type User } from "lucia";
-import { api } from "~/trpc/react";
-import { currenciesOrder } from "~/lib/variables";
-import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
+import { Switch } from "../components/ui/switch";
 
 interface DetailedBalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
@@ -600,7 +600,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               ) : (
                 <p></p>
               )}
-              <div
+              <Button
                 onClick={() => {
                   if (
                     destinationEntityId === item.entity.id &&
@@ -615,21 +615,26 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                   }
                 }}
                 className={cn(
-                  "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                  !selectedCurrency &&
-                    destinationEntityId === item.entity.id &&
-                    "bg-primary text-white shadow-md",
+                  "col-span-2 border-transparent",
+                  item.entity.name.length < 12
+                    ? "text-xl"
+                    : item.entity.name.length < 22
+                    ? "text-lg"
+                    : item.entity.name.length < 28
+                    ? "text-md"
+                    : "text-sm",
                 )}
+                variant="outline"
               >
                 <p>{item.entity.name}</p>
-              </div>
+              </Button>
               {currenciesOrder.map((currency) => {
                 const matchingBalance = item.data.find(
                   (balance) => balance.currency === currency,
                 );
 
                 return matchingBalance ? (
-                  <div
+                  <Button
                     onClick={() => {
                       if (
                         selectedCurrency !== currency ||
@@ -645,24 +650,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                       }
                     }}
                     key={currency}
-                    style={{
-                      backgroundColor:
-                        selectedCurrency === currency &&
-                        destinationEntityId === item.entity.id
-                          ? uiColor
-                          : undefined,
-                    }}
-                    className={cn(
-                      "col-span-2 flex items-center justify-center rounded-full p-2 transition-all hover:scale-105 hover:cursor-default hover:bg-primary hover:text-white hover:shadow-md",
-                      selectedCurrency === currency &&
-                        destinationEntityId === item.entity.id &&
-                        uiColor &&
-                        isDarkEnough(uiColor) &&
-                        "bg-primary text-white shadow-md",
-                      selectedCurrency === currency &&
-                        destinationEntityId === item.entity.id &&
-                        "bg-primary text-white shadow-md",
-                    )}
+                    className="col-span-2 border-transparent text-xl"
+                    variant="outline"
                   >
                     {!isFetching ? (
                       <p
@@ -687,7 +676,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                     ) : (
                       <p>Cargando...</p>
                     )}
-                  </div>
+                  </Button>
                 ) : (
                   <p className="col-span-2" key={currency}></p>
                 );
