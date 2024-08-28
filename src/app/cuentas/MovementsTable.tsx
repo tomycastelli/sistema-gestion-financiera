@@ -366,11 +366,14 @@ const MovementsTable = ({
             <Label className="mb-1">Divisa</Label>
             <Select
               value={selectedCurrency ?? "todas"}
-              onValueChange={(value) =>
-                value === "todas"
-                  ? setSelectedCurrency(undefined)
-                  : setSelectedCurrency(value)
-              }
+              onValueChange={(value) => {
+                setMovementsTablePage(1);
+                if (value === "todas") {
+                  setSelectedCurrency(undefined);
+                } else {
+                  setSelectedCurrency(value);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Divisa" />
@@ -392,57 +395,66 @@ const MovementsTable = ({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col">
-            <Label className="mb-2">Origen</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className={cn(
-                    "w-[200px] justify-between",
-                    !originEntityId && "text-muted-foreground",
-                  )}
-                >
-                  {originEntityId
-                    ? truncateString(
-                        entities.find((e) => e.id === originEntityId)?.name,
-                        22,
-                      )
-                    : "Elegir"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Elegir..." />
-                  <CommandEmpty>...</CommandEmpty>
-                  <ScrollArea className="h-44 w-48 rounded-md">
-                    <CommandGroup>
-                      <CommandItem
-                        value="todas"
-                        onSelect={() => setOriginEntityId(undefined)}
-                      >
-                        Todas
-                      </CommandItem>
-                      {entities
-                        .filter(
-                          (e) => e.id === entityId || e.tag.name === entityTag,
+          {entityTag && !entityId && (
+            <div className="flex flex-col">
+              <Label className="mb-2">Origen</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-[200px] justify-between",
+                      !originEntityId && "text-muted-foreground",
+                    )}
+                  >
+                    {originEntityId
+                      ? truncateString(
+                          entities.find((e) => e.id === originEntityId)?.name,
+                          22,
                         )
-                        .map((entity) => (
-                          <CommandItem
-                            key={entity.id}
-                            value={entity.name}
-                            onSelect={() => setOriginEntityId(entity.id)}
-                          >
-                            {entity.name}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  </ScrollArea>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                      : "Elegir"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Elegir..." />
+                    <CommandEmpty>...</CommandEmpty>
+                    <ScrollArea className="h-44 w-48 rounded-md">
+                      <CommandGroup>
+                        <CommandItem
+                          value="todas"
+                          onSelect={() => {
+                            setMovementsTablePage(1);
+                            setOriginEntityId(undefined);
+                          }}
+                        >
+                          Todas
+                        </CommandItem>
+                        {entities
+                          .filter(
+                            (e) =>
+                              e.id === entityId || e.tag.name === entityTag,
+                          )
+                          .map((entity) => (
+                            <CommandItem
+                              key={entity.id}
+                              value={entity.name}
+                              onSelect={() => {
+                                setMovementsTablePage(1);
+                                setOriginEntityId(entity.id);
+                              }}
+                            >
+                              {entity.name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </ScrollArea>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           <div className="flex flex-col">
             <Label className="mb-2">Entidad</Label>
             <Popover>
@@ -472,7 +484,10 @@ const MovementsTable = ({
                     <CommandGroup>
                       <CommandItem
                         value="todas"
-                        onSelect={() => setDestinationEntityId(undefined)}
+                        onSelect={() => {
+                          setMovementsTablePage(1);
+                          setDestinationEntityId(undefined);
+                        }}
                       >
                         Todas
                       </CommandItem>
@@ -484,7 +499,10 @@ const MovementsTable = ({
                           <CommandItem
                             key={entity.id}
                             value={entity.name}
-                            onSelect={() => setDestinationEntityId(entity.id)}
+                            onSelect={() => {
+                              setMovementsTablePage(1);
+                              setDestinationEntityId(entity.id);
+                            }}
                           >
                             {entity.name}
                           </CommandItem>
@@ -500,6 +518,7 @@ const MovementsTable = ({
             <DateRangePicker
               date={{ from: fromDate, to: toDate }}
               setDate={(d) => {
+                setMovementsTablePage(1);
                 setFromDate(d?.from);
                 setToDate(d?.to);
               }}

@@ -203,7 +203,7 @@ export const entitiesRouter = createTRPCRouter({
       z.object({
         id: z.number().int(),
         name: z.string(),
-        tag: z.string().optional(),
+        tagName: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -219,7 +219,7 @@ export const entitiesRouter = createTRPCRouter({
           p.name === "ENTITIES_MANAGE" ||
           (p.name === "ENTITIES_MANAGE_SOME" &&
             (getAllChildrenTags(p.entitiesTags, tags).includes(
-              input.tag ?? "",
+              input.tagName ?? "",
             ) ||
               p.entitiesIds?.includes(input.id))),
       );
@@ -235,7 +235,6 @@ export const entitiesRouter = createTRPCRouter({
         .update(entities)
         .set({
           name: input.name,
-          tagName: input.tag,
         })
         .where(eq(entities.id, input.id))
         .returning();

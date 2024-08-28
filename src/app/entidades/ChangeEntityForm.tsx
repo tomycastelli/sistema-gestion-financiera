@@ -25,13 +25,6 @@ import {
   FormMessage,
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
 import { toast } from "sonner";
 
 interface ChangeEntityFormProps {
@@ -41,7 +34,6 @@ interface ChangeEntityFormProps {
 
 const FormSchema = z.object({
   name: z.string(),
-  tag: z.string(),
 });
 
 const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
@@ -87,14 +79,17 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       name: entity.name,
-      tag: entity.tag.name,
     },
   });
 
   const { handleSubmit, control } = form;
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    await mutateAsync({ id: entity.id, name: data.name, tag: data.tag });
+    await mutateAsync({
+      id: entity.id,
+      name: data.name,
+      tagName: entity.tag.name,
+    });
   }
 
   return (
@@ -124,35 +119,6 @@ const ChangeEntityForm = ({ entity, tags }: ChangeEntityFormProps) => {
                   </FormItem>
                 )}
               />
-              {entity.tag.name !== "user" && (
-                <FormField
-                  control={control}
-                  name="tag"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tag</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Elegir" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {tags.map((tag) => (
-                            <SelectItem value={tag.name} key={tag.name}>
-                              {tag.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </div>
             <DialogFooter>
               <DialogClose asChild>

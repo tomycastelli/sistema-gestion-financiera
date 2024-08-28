@@ -130,10 +130,20 @@ export const editingOperationsRouter = createTRPCRouter({
           (e) => e.id === input.oldTransactionData.toEntityId,
         );
 
+        const fromEntityObj = entitiesData.find(
+          (e) => e.id === input.oldTransactionData.fromEntityId,
+        );
+
         if (!toEntityObj) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
+          });
+        }
+        if (!fromEntityObj) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `La entidad con ID ${input.oldTransactionData.fromEntityId} no fue encontrada`,
           });
         }
 
@@ -144,7 +154,10 @@ export const editingOperationsRouter = createTRPCRouter({
 
         const deletedMovements = await undoMovements(transaction, {
           id: newTxObj.id,
-          fromEntity: { id: input.oldTransactionData.fromEntityId },
+          fromEntity: {
+            id: input.oldTransactionData.fromEntityId,
+            tagName: fromEntityObj.tag.name,
+          },
           toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
           currency: input.oldTransactionData.currency,
           amount: input.oldTransactionData.amount,

@@ -89,9 +89,20 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   } = useSearch<(typeof entities)[0]>({
     dataSet: entities,
     keys: ["name"],
+    scoreThreshold: 0.4,
   });
 
-  const twiceFilteredEntities = filteredEntities.filter((entity) => {
+  const {
+    results: doubleFilteredEntities,
+    searchValue: searchId,
+    setSearchValue: setSearchId,
+  } = useSearch<(typeof entities)[0]>({
+    dataSet: filteredEntities,
+    keys: ["id"],
+    scoreThreshold: 0.001,
+  });
+
+  const tripleFilteredEntities = doubleFilteredEntities.filter((entity) => {
     if (tagFilter === "todos") {
       return true;
     }
@@ -104,6 +115,15 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     <div className="mx-auto my-4 flex max-w-4xl flex-col flex-wrap gap-4">
       <div className="flex flex-row items-center justify-between gap-4 rounded-xl border border-muted p-4">
         <div className="flex flex-row gap-4">
+          <Input
+            className="w-36"
+            placeholder="ID"
+            value={searchId}
+            onChange={(e) => {
+              setPage(1);
+              setSearchId(e.target.value);
+            }}
+          />
           <Input
             className="w-36"
             placeholder="Nombre"
@@ -182,7 +202,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         ) : filteredEntities.length > 0 ? (
           <div className="flex flex-col items-start gap-6">
             <div className="flex flex-wrap justify-center gap-8">
-              {twiceFilteredEntities
+              {tripleFilteredEntities
                 .slice((page - 1) * pageSize, page * pageSize)
                 .map((entity) => (
                   <div
@@ -200,7 +220,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
             </div>
             <CustomPagination
               page={page}
-              totalCount={twiceFilteredEntities.length}
+              totalCount={tripleFilteredEntities.length}
               pageSize={pageSize}
               itemName="entidades"
               changePageState={setPage}

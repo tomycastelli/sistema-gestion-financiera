@@ -84,7 +84,25 @@ export const filesRouter = createTRPCRouter({
       }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
 
       if (input.fileType === "csv") {
-        const csv = unparse(data, { delimiter: "," });
+        const csvData = tableData.map((mv) => ({
+          fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
+          origen: mv.selectedEntity,
+          cliente: mv.otherEntity,
+          detalle: `${
+            mv.type === "upload"
+              ? "Carga"
+              : mv.type === "confirmation"
+              ? "Confirmación"
+              : "Cancelación"
+          } de ${mv.txType} - Nro ${mv.id}`,
+          observaciones: mv.observations ?? "",
+          divisa: mv.currency,
+          entrada: mv.ingress === 0 ? "" : numberFormatter(mv.ingress),
+          salida: mv.egress === 0 ? "" : numberFormatter(mv.egress),
+          saldo: numberFormatter(mv.balance),
+        }));
+
+        const csv = unparse(csvData, { delimiter: "," });
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
           Key: `cuentas/${filename}`,

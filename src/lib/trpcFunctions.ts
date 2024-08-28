@@ -803,7 +803,7 @@ export const undoMovements = async (
   >,
   tx: {
     id: number;
-    fromEntity: { id: number };
+    fromEntity: { id: number; tagName: string };
     toEntity: { id: number; tagName: string };
     amount: number;
     currency: string;
@@ -816,6 +816,7 @@ export const undoMovements = async (
     .returning();
 
   for (const deletedMovement of deletedMovements) {
+    let changedAmount = 0;
     // Se que si tiene cashBalanceId entonces tengo que hacer operaciones en la otra tabla
     // En cambio si tiene balanceId, tengo que actuar en la tabla de balances original
     if (deletedMovement.balanceId) {
@@ -823,8 +824,6 @@ export const undoMovements = async (
         .select()
         .from(balances)
         .where(eq(balances.id, deletedMovement.balanceId));
-
-      let changedAmount = 0;
 
       if (deletedMovement.entitiesMovementId) {
         // Si el to es el tagName, como es el POV del tagname, tomo la direccion como viene
@@ -907,8 +906,18 @@ export const undoMovements = async (
         .from(cashBalances)
         .where(eq(cashBalances.id, deletedMovement.cashBalanceId!));
 
-      // Se que estoy en cajas, asi que siempre es ir para atras
-      const changedAmount = -tx.amount;
+      if (
+        tx.fromEntity.id === relatedBalance!.entityId ||
+        tx.fromEntity.tagName === relatedBalance!.tagName
+      ) {
+        // Cuando es el From, invierto la direccion porque es el que envia
+        changedAmount = tx.amount * deletedMovement.direction * -1;
+      } else if (
+        tx.toEntity.id === relatedBalance!.entityId ||
+        tx.toEntity.tagName === relatedBalance!.tagName
+      ) {
+        changedAmount = tx.amount * deletedMovement.direction;
+      }
 
       // Si es de los que tienen entity o los que tienen tagName
       const balanceQuery = relatedBalance!.entityId

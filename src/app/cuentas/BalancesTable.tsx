@@ -227,6 +227,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
     selectedCurrency,
     setSelectedCurrency,
     setOriginEntityId,
+    setDestinationEntityId,
     originEntityId,
     setMovementsTablePage,
   } = useCuentasStore();
@@ -369,6 +370,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                 } else {
                   setSelectedCurrency(undefined);
                   setOriginEntityId(item.entity.id);
+                  setDestinationEntityId(undefined);
                   setMovementsTablePage(1);
                 }
               }}
@@ -395,6 +397,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                     ) {
                       setSelectedCurrency(currency);
                       setOriginEntityId(item.entity.id);
+                      setDestinationEntityId(undefined);
                       setMovementsTablePage(1);
                     } else {
                       setSelectedCurrency(undefined);
