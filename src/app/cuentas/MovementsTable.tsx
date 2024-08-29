@@ -90,8 +90,6 @@ const MovementsTable = ({
   const selectedEntityString = searchParams.get("entidad");
   const timeMachineDate = searchParams.get("dia");
 
-  const [groupInTag, setGroupInTag] = useState<boolean>(true);
-
   enum Ordering {
     ASC = "asc",
     DESC = "desc",
@@ -112,6 +110,8 @@ const MovementsTable = ({
     toDate,
     setToDate,
     isInverted,
+    groupInTag,
+    setGroupInTag,
   } = useCuentasStore();
 
   useEffect(() => {
@@ -127,12 +127,17 @@ const MovementsTable = ({
     } else {
       setOriginEntityId(undefined);
     }
+    if (entityTag) {
+      setGroupInTag(true);
+    }
     setSelectedCurrency(undefined);
     setFromDate(undefined);
     setToDate(undefined);
     setMovementsTablePage(1);
   }, [
     setOriginEntityId,
+    setGroupInTag,
+    entityTag,
     setDestinationEntityId,
     setSelectedCurrency,
     setFromDate,
@@ -371,6 +376,9 @@ const MovementsTable = ({
                 if (value === "todas") {
                   setSelectedCurrency(undefined);
                 } else {
+                  if (value === "usdt") {
+                    setGroupInTag(true);
+                  }
                   setSelectedCurrency(value);
                 }
               }}
@@ -610,6 +618,9 @@ const MovementsTable = ({
             <div className="flex flex-col justify-start gap-y-1">
               <Label className="mb-2">Agrupar</Label>
               <Button
+                disabled={
+                  selectedCurrency === "usdt" && groupInTag && accountType
+                }
                 variant="outline"
                 onClick={() => setGroupInTag(!groupInTag)}
               >

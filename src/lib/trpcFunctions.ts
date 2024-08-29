@@ -1220,8 +1220,21 @@ export const currentAccountsProcedure = async (
     });
 
     if ((input.entityTag && input.groupInTag) || input.account) {
-      // Agarro los movimientos en su version de Tag
+      // Si estas en entityTag y agrupas: todo perf
+      // Si no sucede eso pero aun asi entraste aca es porque estas en caja
+      // Puede ser que estes en entityId, es facil
+      // Si estas en entityTag
       const ids = movementsData.map((obj) => obj.Movements.id);
+
+      let entitiesRelated: number[] = [];
+      // Voy a probar hacerme un array de ids de todos las entidades pertenecientes al tag
+      if (input.account && input.entityTag) {
+        const entitiesQuery = await transaction
+          .select({ id: entities.id })
+          .from(entities)
+          .where(eq(entities.tagName, input.entityTag));
+        entitiesRelated = entitiesQuery.map((e) => e.id);
+      }
 
       const tagBalanceMovements = await transaction
         .select({
@@ -1234,11 +1247,13 @@ export const currentAccountsProcedure = async (
         .where(
           and(
             inArray(movements.entitiesMovementId, ids.length > 0 ? ids : [0]),
-            input.entityTag
+            input.entityTag && input.groupInTag
               ? or(
                   eq(balances.tagName, input.entityTag),
                   eq(cashBalances.tagName, input.entityTag),
                 )
+              : input.entityTag
+              ? inArray(cashBalances.entityId, entitiesRelated)
               : eq(cashBalances.entityId, input.entityId!),
           ),
         );

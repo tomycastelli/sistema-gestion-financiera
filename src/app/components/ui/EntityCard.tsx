@@ -53,9 +53,8 @@ const EntityCard = React.memo(
       };
     } else {
       queryObject = {
-        tag: "Maika",
+        entidad: entity.id,
         cuenta: "cuenta_corriente",
-        origen: entity.id,
       };
     }
 

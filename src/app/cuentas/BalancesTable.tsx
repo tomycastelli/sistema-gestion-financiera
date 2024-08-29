@@ -230,6 +230,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
     setDestinationEntityId,
     originEntityId,
     setMovementsTablePage,
+    setGroupInTag,
   } = useCuentasStore();
 
   return (
@@ -435,54 +436,59 @@ const BalancesTable: FC<BalancesTableProps> = ({
             })}
           </div>
         ))}
-        <div
-          style={{
-            borderColor: uiColor,
-            gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
-          }}
-          className="grid justify-items-center border-t-2 p-4 text-xl font-semibold"
-        >
-          <p className="col-span-1">Total</p>
-          {currenciesOrder.map((currency) => {
-            const total =
-              transformedBalances.totals.find((t) => t.currency === currency)
-                ?.total ?? 0;
-            return (
-              <Button
-                key={currency}
-                onClick={() => {
-                  setOriginEntityId(undefined);
-                  setDestinationEntityId(undefined);
-                  setMovementsTablePage(1);
-                  if (selectedCurrency === currency) {
-                    setSelectedCurrency(undefined);
-                  } else {
-                    setSelectedCurrency(currency);
-                  }
-                }}
-                variant="outline"
-                className="text-xl"
-              >
-                <p
-                  className={cn(
-                    "col-span-1",
-                    total !== 0
-                      ? !isInverted
-                        ? total > 0
+        {selectedTag && (
+          <div
+            style={{
+              borderColor: uiColor,
+              gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
+            }}
+            className="grid justify-items-center border-t-2 p-4 text-xl font-semibold"
+          >
+            <p className="col-span-1">Total</p>
+            {currenciesOrder.map((currency) => {
+              const total =
+                transformedBalances.totals.find((t) => t.currency === currency)
+                  ?.total ?? 0;
+              return (
+                <Button
+                  key={currency}
+                  onClick={() => {
+                    setOriginEntityId(undefined);
+                    setDestinationEntityId(undefined);
+                    setMovementsTablePage(1);
+                    if (selectedCurrency === currency && !originEntityId) {
+                      setSelectedCurrency(undefined);
+                    } else {
+                      if (currency === "usdt") {
+                        setGroupInTag(true);
+                      }
+                      setSelectedCurrency(currency);
+                    }
+                  }}
+                  variant="outline"
+                  className="text-xl"
+                >
+                  <p
+                    className={cn(
+                      "col-span-1",
+                      total !== 0
+                        ? !isInverted
+                          ? total > 0
+                            ? "text-green"
+                            : "text-red"
+                          : -total > 0
                           ? "text-green"
                           : "text-red"
-                        : -total > 0
-                        ? "text-green"
-                        : "text-red"
-                      : undefined,
-                  )}
-                >
-                  {numberFormatter(!isInverted ? total : -total)}
-                </p>
-              </Button>
-            );
-          })}
-        </div>
+                        : undefined,
+                    )}
+                  >
+                    {numberFormatter(!isInverted ? total : -total)}
+                  </p>
+                </Button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -182,36 +182,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       },
     },
     {
-      accessorKey: "balance",
-      header: () => <div className="text-right">Saldo</div>,
-      cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("balance"));
-        const formatted = numberFormatter(amount);
-        return (
-          <div
-            className={cn(
-              "text-right font-medium",
-              amount !== 0
-                ? !isInverted
-                  ? amount > 0
-                    ? "text-green"
-                    : "text-red"
-                  : -amount > 0
-                  ? "text-green"
-                  : "text-red"
-                : undefined,
-            )}
-          >
-            {" "}
-            <span className="font-light text-muted-foreground">
-              {movements.movements[row.index]!.currency.toUpperCase()}
-            </span>{" "}
-            {formatted}
-          </div>
-        );
-      },
-    },
-    {
       id: "actions",
       cell: ({ row }) => {
         const movement = row.original;
