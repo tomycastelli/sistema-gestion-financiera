@@ -80,7 +80,6 @@ export const useTransactionsStore = create<OperationStore>((set) => ({
         const cambioIds = state.transactionsStore
           .filter((tx) => tx.type === "cambio")
           .map((tx) => tx.txId);
-        console.log("Confirmation at upload ids: ", cambioIds);
         return { confirmationAtUpload: cambioIds };
       } else {
         return { confirmationAtUpload: [] };

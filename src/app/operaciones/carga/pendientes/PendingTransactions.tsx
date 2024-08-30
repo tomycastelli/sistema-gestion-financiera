@@ -11,6 +11,8 @@ import { Status } from "~/server/db/schema";
 import { Button } from "~/app/components/ui/button";
 import { toast } from "sonner";
 import { type User } from "lucia";
+import moment from "moment";
+import { useRouter } from "next/navigation";
 
 interface PendingTransactionsProps {
   initialPendingTransactions: RouterOutputs["operations"]["getPendingTransactions"];
@@ -27,6 +29,8 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
     api.operations.getPendingTransactions.useQuery(undefined, {
       initialData: initialPendingTransactions,
     });
+
+  const router = useRouter();
 
   const utils = api.useContext();
 
@@ -66,10 +70,17 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
         void utils.operations.getPendingTransactions.invalidate();
       },
       onSuccess(data) {
+        const opId = data[0]?.Transactions.operationId;
         toast.success(
           `${data.length === 1 ? "Transacción" : "Transacciones"} aprobada${
             data.length === 1 ? "" : "s"
           }`,
+          {
+            action: {
+              label: `Ir a Operación ${opId}`,
+              onClick: () => router.push(`/operaciones/gestion/${opId}`),
+            },
+          },
         );
       },
     },
@@ -152,11 +163,23 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
         >
           <div className="row-span-1 mr-12 flex flex-row items-center justify-between lg:col-span-5">
             <EntityCard entity={pendingTx.operatorEntity} />
-            <div className="flex flex-col items-center justify-center">
-              <p className="text-center text-sm font-light text-muted-foreground">
+            <div className="mx-4 flex flex-col items-center justify-center text-center text-sm font-light text-muted-foreground">
+              <p>
                 Tx
                 <span className="ml-1 text-black dark:text-white">
                   {numberFormatter(pendingTx.id)}
+                </span>
+              </p>
+              <p>
+                Op{" "}
+                <span className="ml-1 text-black dark:text-white">
+                  {pendingTx.operation.id}
+                </span>
+              </p>
+              <p className="">
+                Fecha{" "}
+                <span className="ml-1 text-black dark:text-white">
+                  {moment(pendingTx.operation.date).format("DD-MM-YYYY HH:mm")}
                 </span>
               </p>
             </div>
@@ -253,8 +276,9 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                   numberFormatter(pendingTx.amount)}
               </p>
             </div>
-            <div className="col-span-1 flex items-center justify-center lg:justify-end">
+            <div className="col-span-1 flex items-center justify-center gap-x-4 lg:justify-end">
               <Button
+                tooltip="Cancelar"
                 onClick={() =>
                   deleteAsync({ pendingTransactionsIds: [pendingTx.id] })
                 }
@@ -267,6 +291,7 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 <Icons.cross className="h-5 w-5 text-red" />
               </Button>
               <Button
+                tooltip="Confirmar"
                 onClick={() =>
                   mutateAsync({ pendingTransactionsIds: [pendingTx.id] })
                 }

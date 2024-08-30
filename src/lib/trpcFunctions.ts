@@ -1185,12 +1185,7 @@ export const currentAccountsProcedure = async (
       .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
       .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
       .where(and(movementsConditions, mainConditions))
-      .orderBy(
-        input.dateOrdering === "desc"
-          ? desc(operations.date)
-          : asc(operations.date),
-        input.dateOrdering === "desc" ? desc(movements.id) : asc(movements.id),
-      )
+      .orderBy(desc(operations.date), desc(movements.id))
       .offset(sql.placeholder("queryOffset"))
       .limit(sql.placeholder("queryLimit"))
       .prepare("movements_query");
@@ -1409,6 +1404,10 @@ export const currentAccountsProcedure = async (
 
     return { movementsQuery: nestedData, totalRows: movementsCount!.count };
   });
+
+  if (input.dateOrdering === "asc") {
+    response.movementsQuery.reverse();
+  }
 
   return response;
 };

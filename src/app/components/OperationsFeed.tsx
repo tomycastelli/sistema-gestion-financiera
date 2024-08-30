@@ -35,7 +35,6 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   accountingPeriodDate,
   mainTags,
 }) => {
-  console.log("Input for ops: ", operationsQueryInput)
   const { data, isRefetching, refetch } = api.operations.getOperations.useQuery(
     operationsQueryInput,
     {

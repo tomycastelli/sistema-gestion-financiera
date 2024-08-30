@@ -99,7 +99,6 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     const temporalTxStore: SingleTransactionInStoreSchema[] = [];
-    console.log("Values: ", values.transactions);
     values.transactions.forEach((value, index) => {
       if (value.entityA === value.entityB) {
         setError(

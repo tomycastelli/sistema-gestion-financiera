@@ -155,7 +155,7 @@ export const editingOperationsRouter = createTRPCRouter({
         const deletedMovements = await undoMovements(transaction, {
           id: newTxObj.id,
           fromEntity: {
-            id: input.oldTransactionData.fromEntityId,
+            id: fromEntityObj.id,
             tagName: fromEntityObj.tag.name,
           },
           toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
@@ -320,7 +320,6 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.log("Input of cancelTransactions: ", input);
       const response = await ctx.db.transaction(async (transaction) => {
         const transactionsToCancel =
           await transaction.query.transactions.findMany({

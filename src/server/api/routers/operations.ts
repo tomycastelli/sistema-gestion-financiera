@@ -123,7 +123,7 @@ export const operationsRouter = createTRPCRouter({
                 operationId: opId,
                 status:
                   cashAccountOnlyTypes.has(txToInsert.type) ||
-                    txToInsert.type === "pago por cta cte"
+                  txToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
               })
@@ -213,7 +213,7 @@ export const operationsRouter = createTRPCRouter({
                 amount: txToInsert.amount,
                 status:
                   cashAccountOnlyTypes.has(txToInsert.type) ||
-                    txToInsert.type === "pago por cta cte"
+                  txToInsert.type === "pago por cta cte"
                     ? "confirmed"
                     : "pending",
               })
@@ -389,6 +389,7 @@ export const operationsRouter = createTRPCRouter({
     const pendingOperations = await ctx.db
       .select()
       .from(pendingTransactions)
+      .leftJoin(operations, eq(pendingTransactions.operationId, operations.id))
       .leftJoin(fromEntity, eq(pendingTransactions.fromEntityId, fromEntity.id))
       .leftJoin(toEntity, eq(pendingTransactions.toEntityId, toEntity.id))
       .leftJoin(
@@ -400,8 +401,10 @@ export const operationsRouter = createTRPCRouter({
       .leftJoin(
         operatorEntityTag,
         eq(operatorEntity.tagName, operatorEntityTag.name),
-      );
+      )
+      .orderBy(desc(pendingTransactions.id));
     const response = pendingOperations.map((tx) => ({
+      operation: tx.Operations!,
       ...tx.pendingTransactions!,
       fromEntity: {
         ...tx.fromEntity!,
@@ -513,26 +516,26 @@ export const operationsRouter = createTRPCRouter({
         input.operationId ? eq(operations.id, input.operationId) : undefined,
         input.opDateIsGreater && input.opDateIsLesser
           ? and(
-            gte(
-              operations.date,
-              moment(input.opDateIsGreater)
-                .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-                .toDate(),
-            ),
-            lte(
-              operations.date,
-              moment(input.opDateIsLesser)
-                .set({
-                  hour: 23,
-                  minute: 59,
-                  second: 59,
-                  millisecond: 999,
-                })
-                .toDate(),
-            ),
-          )
+              gte(
+                operations.date,
+                moment(input.opDateIsGreater)
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+                  .toDate(),
+              ),
+              lte(
+                operations.date,
+                moment(input.opDateIsLesser)
+                  .set({
+                    hour: 23,
+                    minute: 59,
+                    second: 59,
+                    millisecond: 999,
+                  })
+                  .toDate(),
+              ),
+            )
           : input.opDateIsGreater
-            ? and(
+          ? and(
               gte(
                 operations.date,
                 moment(input.opDateIsGreater)
@@ -547,7 +550,7 @@ export const operationsRouter = createTRPCRouter({
                   .toDate(),
               ),
             )
-            : undefined,
+          : undefined,
       );
 
       const txMetadataIds: number[] = [0];
@@ -590,9 +593,9 @@ export const operationsRouter = createTRPCRouter({
           : undefined,
         input.entityId
           ? or(
-            inArray(transactions.fromEntityId, input.entityId),
-            inArray(transactions.toEntityId, input.entityId),
-          )
+              inArray(transactions.fromEntityId, input.entityId),
+              inArray(transactions.toEntityId, input.entityId),
+            )
           : undefined,
         input.currency ? eq(transactions.currency, input.currency) : undefined,
         input.status ? eq(transactions.status, input.status) : undefined,
@@ -794,37 +797,9 @@ export const operationsRouter = createTRPCRouter({
         )
           ? true
           : userPermissions?.find((p) => {
-            const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
-            if (
-              p.name === "OPERATIONS_VISUALIZE_SOME" &&
-              op.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.fromEntityId) ||
-                  allAllowedTags.includes(tx.fromEntity.tagName),
-              ) &&
-              op.transactions.find(
-                (tx) =>
-                  p.entitiesIds?.includes(tx.toEntityId) ||
-                  allAllowedTags.includes(tx.toEntity.tagName),
-              )
-            ) {
-              return true;
-            }
-          })
-            ? true
-            : false;
-
-        const isCreateAllowed =
-          isInPeriod &&
-            !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
-            userPermissions?.find(
-              (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
-            )
-            ? true
-            : userPermissions?.find((p) => {
               const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
               if (
-                p.name === "OPERATIONS_CREATE_SOME" &&
+                p.name === "OPERATIONS_VISUALIZE_SOME" &&
                 op.transactions.find(
                   (tx) =>
                     p.entitiesIds?.includes(tx.fromEntityId) ||
@@ -839,8 +814,36 @@ export const operationsRouter = createTRPCRouter({
                 return true;
               }
             })
-              ? true
-              : false;
+          ? true
+          : false;
+
+        const isCreateAllowed =
+          isInPeriod &&
+          !op.transactions.find((tx) => tx.status === Status.enumValues[0]) &&
+          userPermissions?.find(
+            (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
+          )
+            ? true
+            : userPermissions?.find((p) => {
+                const allAllowedTags = getAllChildrenTags(p.entitiesTags, tags);
+                if (
+                  p.name === "OPERATIONS_CREATE_SOME" &&
+                  op.transactions.find(
+                    (tx) =>
+                      p.entitiesIds?.includes(tx.fromEntityId) ||
+                      allAllowedTags.includes(tx.fromEntity.tagName),
+                  ) &&
+                  op.transactions.find(
+                    (tx) =>
+                      p.entitiesIds?.includes(tx.toEntityId) ||
+                      allAllowedTags.includes(tx.toEntity.tagName),
+                  )
+                ) {
+                  return true;
+                }
+              })
+            ? true
+            : false;
 
         return {
           ...op,
@@ -878,28 +881,28 @@ export const operationsRouter = createTRPCRouter({
 
             const isUpdateAllowed =
               isInPeriod &&
-                tx.status !== Status.enumValues[0] &&
-                userPermissions?.find(
-                  (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
-                )
+              tx.status !== Status.enumValues[0] &&
+              userPermissions?.find(
+                (p) => p.name === "ADMIN" || p.name === "TRANSACTIONS_UPDATE",
+              )
                 ? true
                 : userPermissions?.find((p) => {
-                  const allAllowedTags = getAllChildrenTags(
-                    p.entitiesTags,
-                    tags,
-                  );
-                  if (
-                    p.name === "TRANSACTIONS_UPDATE_SOME" &&
-                    (p.entitiesIds?.includes(tx.fromEntityId) ||
-                      allAllowedTags.includes(tx.fromEntity.tagName)) &&
-                    (p.entitiesIds?.includes(tx.toEntityId) ||
-                      allAllowedTags.includes(tx.toEntity.tagName))
-                  ) {
-                    return true;
-                  }
-                })
-                  ? true
-                  : false;
+                    const allAllowedTags = getAllChildrenTags(
+                      p.entitiesTags,
+                      tags,
+                    );
+                    if (
+                      p.name === "TRANSACTIONS_UPDATE_SOME" &&
+                      (p.entitiesIds?.includes(tx.fromEntityId) ||
+                        allAllowedTags.includes(tx.fromEntity.tagName)) &&
+                      (p.entitiesIds?.includes(tx.toEntityId) ||
+                        allAllowedTags.includes(tx.toEntity.tagName))
+                    ) {
+                      return true;
+                    }
+                  })
+                ? true
+                : false;
 
             const isValidateAllowed =
               isInPeriod &&
@@ -1050,15 +1053,15 @@ export const operationsRouter = createTRPCRouter({
                 ),
                 input.entityId
                   ? or(
-                    eq(fromEntity.id, input.entityId),
-                    eq(toEntity.id, input.entityId),
-                  )
+                      eq(fromEntity.id, input.entityId),
+                      eq(toEntity.id, input.entityId),
+                    )
                   : input.entityTag
-                    ? or(
+                  ? or(
                       eq(fromEntity.tagName, input.entityTag),
                       eq(toEntity.tagName, input.entityTag),
                     )
-                    : undefined,
+                  : undefined,
               ),
             );
 
