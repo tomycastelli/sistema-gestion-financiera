@@ -10,6 +10,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,12 +44,14 @@ export default function RootLayout({
             )}
           >
             <TRPCReactProvider headers={headers()}>
-              <Navbar />
-              <main className="h-full pb-8">
-                {children}
-                <Analytics />
-                <Toaster />
-              </main>
+              <TooltipProvider delayDuration={0}>
+                <Navbar />
+                <main className="h-full pb-8">
+                  {children}
+                  <Analytics />
+                  <Toaster />
+                </main>
+              </TooltipProvider>
             </TRPCReactProvider>
           </div>
         </ThemeProvider>

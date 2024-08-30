@@ -35,6 +35,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   accountingPeriodDate,
   mainTags,
 }) => {
+  console.log("Input for ops: ", operationsQueryInput)
   const { data, isRefetching, refetch } = api.operations.getOperations.useQuery(
     operationsQueryInput,
     {
@@ -139,11 +140,12 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
   return (
     <div className="my-4 flex flex-col">
       <Button
+        tooltip="Recargar operaciones"
         className="flex w-min"
         variant="outline"
         onClick={() => refetch()}
       >
-        Recargar operaciones <Icons.reload className="ml-2 h-5" />
+        <Icons.reload className="ml-2 h-5" />
       </Button>
       <div className="flex flex-col gap-y-4">
         <div className="grid grid-rows-2 p-4 lg:grid-cols-9 lg:grid-rows-1">

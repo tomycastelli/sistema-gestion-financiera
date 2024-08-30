@@ -38,7 +38,6 @@ const CustomPagination: FC<CustomPaginationProps> = ({
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  console.log("Search params: ", searchParams.toString());
   const lastPage = Math.ceil(totalCount / pageSize);
 
   const createPageLink = (n: number): string => {

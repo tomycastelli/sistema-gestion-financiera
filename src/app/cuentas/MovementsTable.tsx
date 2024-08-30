@@ -239,9 +239,9 @@ const MovementsTable = ({
               // @ts-ignore
               metadata && isNumeric(metadata.exchange_rate)
                 ? // @ts-ignore
-                  `- $${metadata.exchange_rate}`
+                `- $${metadata.exchange_rate}`
                 : ""
-            }`}</p>
+              }`}</p>
           </>
         );
       },
@@ -313,8 +313,8 @@ const MovementsTable = ({
                     ? "text-green"
                     : "text-red"
                   : -amount > 0
-                  ? "text-green"
-                  : "text-red"
+                    ? "text-green"
+                    : "text-red"
                 : undefined,
             )}
           >
@@ -418,9 +418,9 @@ const MovementsTable = ({
                   >
                     {originEntityId
                       ? truncateString(
-                          entities.find((e) => e.id === originEntityId)?.name,
-                          22,
-                        )
+                        entities.find((e) => e.id === originEntityId)?.name,
+                        22,
+                      )
                       : "Elegir"}
                   </Button>
                 </PopoverTrigger>
@@ -477,10 +477,10 @@ const MovementsTable = ({
                 >
                   {destinationEntityId
                     ? truncateString(
-                        entities.find((e) => e.id === destinationEntityId)
-                          ?.name,
-                        22,
-                      )
+                      entities.find((e) => e.id === destinationEntityId)
+                        ?.name,
+                      22,
+                    )
                     : "Elegir"}
                 </Button>
               </PopoverTrigger>
@@ -537,6 +537,7 @@ const MovementsTable = ({
             <ClientLinkGenerator selectedEntityString={selectedEntityString} />
           )}
           <Button
+            tooltip="Recargar movimientos"
             variant="outline"
             onClick={async () => {
               await utils.movements.getBalancesByEntities.refetch();

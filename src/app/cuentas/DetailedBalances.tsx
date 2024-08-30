@@ -51,10 +51,14 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   selectedTag,
 }) => {
   const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
+  const [isListSelection, setIsListSelection] = useState<boolean>(false);
+
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
 
-  const [isListSelection, setIsListSelection] = useState<boolean>(false);
+  const [isEditListSelection, setIsEditListSelection] = useState<
+    number | undefined
+  >(undefined);
 
   const [onlyListEntities, setOnlyListEntities] = useState<boolean>(false);
 
@@ -216,26 +220,45 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     toast.info(title);
   };
 
-  const addList = async () => {
-    if (user) {
-      const newList = {
-        id: accountsLists ? accountsLists.length + 1 : 1,
-        idList: accountListToAdd,
-        isDefault: true,
-      };
-      const undefaultedList = accountsLists?.map((list) => ({
-        ...list,
-        isDefault: false,
-      }));
-      await addPreference({
-        userId: user.id,
-        preference: {
-          key: "accountsLists",
-          value: accountsLists ? [...undefaultedList!, newList] : [newList],
-        },
-      });
-
-      setIsListSelection(false);
+  const addList = async (id?: number) => {
+    if (user && accountsLists) {
+      if (id) {
+        await addPreference({
+          userId: user.id,
+          preference: {
+            key: "accountsLists",
+            value: accountsLists.map((obj) => {
+              if (obj.id === id) {
+                return {
+                  ...obj,
+                  idList: accountListToAdd,
+                };
+              } else {
+                return { ...obj };
+              }
+            }),
+          },
+        });
+        setIsEditListSelection(undefined);
+      } else {
+        const newList = {
+          id: accountsLists.length + 1,
+          idList: accountListToAdd,
+          isDefault: true,
+        };
+        const undefaultedList = accountsLists?.map((list) => ({
+          ...list,
+          isDefault: false,
+        }));
+        await addPreference({
+          userId: user.id,
+          preference: {
+            key: "accountsLists",
+            value: accountsLists ? [...undefaultedList, newList] : [newList],
+          },
+        });
+        setIsListSelection(false);
+      }
 
       setAccountListToAdd([]);
 
@@ -319,23 +342,30 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-80">
-                <DropdownMenuLabel>Listas</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xl">
+                  Listas
+                </DropdownMenuLabel>
                 {!isAccountsListsLoading ? (
                   <DropdownMenuGroup>
                     {accountsLists &&
                       accountsLists.map((list, index) => (
                         <DropdownMenuItem
                           key={index}
-                          className="flex flex-row space-x-2"
+                          className="flex flex-row gap-x-2 focus:bg-transparent"
+                          onSelect={(e: Event) => e.preventDefault()}
                         >
-                          <span
-                            className={cn(
-                              "rounded-full p-2",
-                              list.isDefault
-                                ? "bg-green"
-                                : "bg-muted-foreground",
-                            )}
-                          ></span>
+                          {isEditListSelection !== list.id ? (
+                            <span
+                              className={cn(
+                                "rounded-full p-2",
+                                list.isDefault
+                                  ? "bg-green"
+                                  : "bg-muted-foreground",
+                              )}
+                            ></span>
+                          ) : (
+                            <Icons.loadingCircle className="h-4 w-4 animate-spin text-black dark:text-white" />
+                          )}
                           <div className="flex flex-col space-y-1">
                             <p className="font-semibold">Lista {list.id}</p>
                             <p className="text-sm">
@@ -350,78 +380,149 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                               })}
                             </p>
                           </div>
-                          {!list.isDefault && (
-                            <Button
-                              className="flex flex-row space-x-1"
-                              variant="outline"
-                              onClick={async () => {
-                                if (user) {
-                                  await addPreference({
-                                    userId: user.id,
-                                    preference: {
-                                      key: "accountsLists",
-                                      value: accountsLists.map((obj) => {
-                                        if (obj.id === list.id) {
-                                          return { ...obj, isDefault: true };
-                                        } else {
-                                          return { ...obj, isDefault: false };
-                                        }
-                                      }),
-                                    },
-                                  });
-                                  await refetchAccountsLists();
+                          {isEditListSelection !== list.id ? (
+                            <div className="flex flex-row gap-x-2">
+                              {list.isDefault ? (
+                                <div className="flex flex-row gap-x-2">
+                                  <Button
+                                    tooltip="Editar lista"
+                                    className="flex flex-row space-x-1"
+                                    variant="outline"
+                                    disabled={
+                                      isListSelection ||
+                                      (!!isEditListSelection &&
+                                        isEditListSelection !== list.id)
+                                    }
+                                    onClick={() => {
+                                      toast.info(
+                                        "Clickeá los circulos amarillos para añadir y un número para eliminar una entidad de la lista",
+                                      );
+                                      setIsEditListSelection(list.id);
+                                      setAccountListToAdd(list.idList);
+                                    }}
+                                  >
+                                    <Icons.editing className="h-4 w-4 text-yellow" />
+                                  </Button>
+                                  <Button
+                                    tooltip="Desactivar lista"
+                                    className="flex flex-row space-x-1"
+                                    variant="outline"
+                                    disabled={
+                                      isListSelection ||
+                                      (!!isEditListSelection &&
+                                        isEditListSelection !== list.id)
+                                    }
+                                    onClick={async () => {
+                                      if (user) {
+                                        await addPreference({
+                                          userId: user.id,
+                                          preference: {
+                                            key: "accountsLists",
+                                            value: accountsLists.map((obj) => {
+                                              if (obj.id === list.id) {
+                                                return {
+                                                  ...obj,
+                                                  isDefault: false,
+                                                };
+                                              } else {
+                                                return { ...obj };
+                                              }
+                                            }),
+                                          },
+                                        });
+                                        await refetchAccountsLists();
+                                      }
+                                    }}
+                                  >
+                                    <Icons.documentMinus className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  tooltip="Activar lista"
+                                  className="flex flex-row space-x-1"
+                                  variant="outline"
+                                  disabled={
+                                    isListSelection ||
+                                    (!!isEditListSelection &&
+                                      isEditListSelection !== list.id)
+                                  }
+                                  onClick={async () => {
+                                    if (user) {
+                                      await addPreference({
+                                        userId: user.id,
+                                        preference: {
+                                          key: "accountsLists",
+                                          value: accountsLists.map((obj) => {
+                                            if (obj.id === list.id) {
+                                              return {
+                                                ...obj,
+                                                isDefault: true,
+                                              };
+                                            } else {
+                                              return {
+                                                ...obj,
+                                                isDefault: false,
+                                              };
+                                            }
+                                          }),
+                                        },
+                                      });
+                                      await refetchAccountsLists();
+                                    }
+                                  }}
+                                >
+                                  <Icons.documentPlus className="h-4 w-4 text-green" />
+                                </Button>
+                              )}
+                              <Button
+                                tooltip="Eliminar lista"
+                                className="flex flex-row space-x-1"
+                                variant="outline"
+                                disabled={
+                                  isListSelection ||
+                                  (!!isEditListSelection &&
+                                    isEditListSelection !== list.id)
                                 }
-                              }}
-                            >
-                              <Icons.documentPlus className="h-4 w-4 text-green" />
-                            </Button>
-                          )}
-                          {list.isDefault && (
-                            <Button
-                              className="flex flex-row space-x-1"
-                              variant="outline"
-                              onClick={async () => {
-                                if (user) {
-                                  await addPreference({
-                                    userId: user.id,
-                                    preference: {
-                                      key: "accountsLists",
-                                      value: accountsLists.map((obj) => {
-                                        if (obj.id === list.id) {
-                                          return { ...obj, isDefault: false };
-                                        } else {
-                                          return { ...obj };
-                                        }
-                                      }),
-                                    },
-                                  });
-                                  await refetchAccountsLists();
+                                onClick={async () => {
+                                  if (user) {
+                                    await addPreference({
+                                      userId: user.id,
+                                      preference: {
+                                        key: "accountsLists",
+                                        value: accountsLists.filter(
+                                          (obj) => obj.id !== list.id,
+                                        ),
+                                      },
+                                    });
+                                    await refetchAccountsLists();
+                                  }
+                                }}
+                              >
+                                <Icons.cross className="h-4 w-4 text-red" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-row gap-x-2">
+                              <Button
+                                tooltip="Cancelar edición"
+                                className="flex flex-row gap-x-2"
+                                variant="outline"
+                                onClick={() =>
+                                  setIsEditListSelection(undefined)
                                 }
-                              }}
-                            >
-                              <Icons.documentMinus className="h-4 w-4 text-muted-foreground" />
-                            </Button>
+                              >
+                                <Icons.cross className="h-4 w-4 text-black dark:text-white" />
+                              </Button>
+                              <Button
+                                tooltip="Confirmar edición"
+                                variant="outline"
+                                onClick={() => addList(list.id)}
+                              >
+                                <Icons.check className="h-4 w-4 text-black dark:text-white" />
+                              </Button>
+                            </div>
                           )}
-                          <Button
-                            className="flex flex-row space-x-1"
-                            variant="outline"
-                            onClick={async () => {
-                              if (user) {
-                                await addPreference({
-                                  userId: user.id,
-                                  preference: {
-                                    key: "accountsLists",
-                                    value: accountsLists.filter(
-                                      (obj) => obj.id !== list.id,
-                                    ),
-                                  },
-                                });
-                                await refetchAccountsLists();
-                              }
-                            }}
-                          >
-                            <Icons.cross className="h-4 w-4 text-red" />
-                          </Button>
                         </DropdownMenuItem>
                       ))}
                   </DropdownMenuGroup>
@@ -429,7 +530,15 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                   <Icons.loadingCircle className="-ml-1 mr-3 h-5 w-5 animate-spin text-black dark:text-white" />
                 )}
                 {!isListSelection ? (
-                  <DropdownMenuItem onClick={() => setIsListSelection(true)}>
+                  <DropdownMenuItem
+                    disabled={!!isEditListSelection}
+                    onClick={() => {
+                      setIsListSelection(true);
+                      toast.info(
+                        "Clickeá los circulos amarillos para seleccionar una entidad",
+                      );
+                    }}
+                  >
                     <Icons.plus className="h-5 w-5 text-black dark:text-white" />
                     <p>Añadir lista</p>
                   </DropdownMenuItem>
@@ -446,7 +555,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                           <span>Confirmar selección</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => setIsListSelection(false)}
+                          onClick={() => {
+                            setAccountListToAdd([]);
+                            setIsListSelection(false);
+                          }}
                         >
                           <Icons.cross className="mr-1 h-4 w-4 text-black dark:text-white" />
                           <span>Cancelar selección</span>
@@ -567,7 +679,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               }}
               className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
-              {isListSelection ? (
+              {isListSelection || isEditListSelection ? (
                 <Button
                   variant="outline"
                   className="col-span-1 border-transparent bg-transparent p-2 transition-all hover:bg-transparent"
@@ -619,10 +731,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                   item.entity.name.length < 12
                     ? "text-xl"
                     : item.entity.name.length < 22
-                    ? "text-lg"
-                    : item.entity.name.length < 28
-                    ? "text-md"
-                    : "text-sm",
+                      ? "text-lg"
+                      : item.entity.name.length < 28
+                        ? "text-md"
+                        : "text-sm",
                 )}
                 variant="outline"
               >
@@ -662,8 +774,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                                 ? "text-green"
                                 : "text-red"
                               : -matchingBalance.balance > 0
-                              ? "text-green"
-                              : "text-red"
+                                ? "text-green"
+                                : "text-red"
                             : undefined,
                         )}
                       >

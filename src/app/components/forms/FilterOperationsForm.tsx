@@ -86,11 +86,11 @@ const FilterOperationsForm = ({
     defaultValues: {
       opDateRange: selectedDateGreater
         ? {
-            from: moment(selectedDateGreater, dateFormatting.day).toDate(),
-            to: selectedDateGreater
-              ? moment(selectedDateLesser, dateFormatting.day).toDate()
-              : undefined,
-          }
+          from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+          to: selectedDateGreater
+            ? moment(selectedDateLesser, dateFormatting.day).toDate()
+            : undefined,
+        }
         : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
@@ -138,7 +138,7 @@ const FilterOperationsForm = ({
     montoMax?: typeof watchAmount;
     tipo?: typeof watchTxType;
     operador?: typeof watchOperator;
-    cargadorPor?: typeof watchUploadUserId;
+    cargadoPor?: typeof watchUploadUserId;
     confirmadoPor?: typeof watchConfirmedUserId;
   }
 
@@ -215,7 +215,7 @@ const FilterOperationsForm = ({
           : undefined,
       tipo: watchTxType,
       operador: watchOperator,
-      cargadorPor: watchUploadUserId,
+      cargadoPor: watchUploadUserId,
       confirmadoPor: watchConfirmedUserId,
     });
   }, [
@@ -454,10 +454,11 @@ const FilterOperationsForm = ({
         <div className="flex flex-row justify-start">
           <Link href={"/operaciones/gestion"}>
             <Button
+              tooltip="Resetear filtros"
               variant="outline"
               onClick={() => reset({ amount: "", amountFilterType: "equal" })}
             >
-              Resetear filtros <Icons.undo className="ml-2 h-5" />
+              <Icons.undo className="ml-2 h-5" />
             </Button>
           </Link>
         </div>

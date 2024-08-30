@@ -36,12 +36,6 @@ import { Separator } from "../ui/separator";
 import { Switch } from "../ui/switch";
 import { Tabs, TabsContent, TabsList } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip";
 import InitialDataOperationForm from "./InitialDataOperationForm";
 const CambioForm = dynamic(() => import("./CambioForm"));
 const CableForm = dynamic(() => import("./CableForm"));
@@ -131,9 +125,9 @@ const AddOperation = ({
         toast.success(
           transaccionesCargadas > 1
             ? transaccionesCargadas.toString() +
-                ` transacciones cargadas a la operación ${data.operation?.id}`
+            ` transacciones cargadas a la operación ${data.operation?.id}`
             : transaccionesCargadas +
-                ` transaccion cargada a la operación ${data.operation?.id}`,
+            ` transaccion cargada a la operación ${data.operation?.id}`,
         );
       },
     },
@@ -191,21 +185,13 @@ const AddOperation = ({
                       {initialOperationStore.opTime}
                     </CardDescription>
                   </div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className="bg-primary"
-                          onClick={() => setIsInitialOperationSubmitted(false)}
-                        >
-                          <Icons.undo className="h-6" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Volver</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    tooltip="Volver"
+                    variant="outline"
+                    onClick={() => setIsInitialOperationSubmitted(false)}
+                  >
+                    <Icons.undo className="h-6" />
+                  </Button>
                 </div>
                 <CardTitle>
                   <span className="mr-2 text-primary">
@@ -345,17 +331,17 @@ const AddOperation = ({
                   <CardFooter className="flex flex-col items-center space-y-2">
                     {transactionsStore.filter((tx) => tx.type === "cambio")
                       .length > 0 && (
-                      <div className="flex flex-row items-center justify-center gap-x-2">
-                        <Label className="text-sm font-light text-muted-foreground">
-                          Confirmar todos
-                        </Label>
-                        <Switch
-                          onCheckedChange={(bool) =>
-                            setAllConfirmationAtUpload(bool)
-                          }
-                        ></Switch>
-                      </div>
-                    )}
+                        <div className="flex flex-row items-center justify-center gap-x-2">
+                          <Label className="text-sm font-light text-muted-foreground">
+                            Confirmar todos
+                          </Label>
+                          <Switch
+                            onCheckedChange={(bool) =>
+                              setAllConfirmationAtUpload(bool)
+                            }
+                          ></Switch>
+                        </div>
+                      )}
                     <Button
                       className="w-full"
                       disabled={transactionsStore.length === 0}
@@ -504,8 +490,8 @@ const AddOperation = ({
                         .find((entity) => entity.name === user.name)!
                         .id.toString()
                         ? entities
-                            .find((entity) => entity.name === user.name)!
-                            .id.toString()
+                          .find((entity) => entity.name === user.name)!
+                          .id.toString()
                         : ""
                     }
                   />

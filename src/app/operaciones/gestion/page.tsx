@@ -33,7 +33,7 @@ const Page = async ({
   const selectedAmount = searchParams.monto as string | undefined;
   const selectedAmountGreater = searchParams.montoMin as string | undefined;
   const selectedAmountLesser = searchParams.montoMax as string | undefined;
-  const selectedUploadUserId = searchParams.cargadoPor as string;
+  const selectedUploadUserId = searchParams.cargadoPor as string | undefined;
   const selectedConfirmationUserId = searchParams.confirmadoPor as string;
 
   const operationsQueryInput: RouterInputs["operations"]["getOperations"] = {
@@ -93,8 +93,9 @@ const Page = async ({
     operationsQueryInput.confirmedById = selectedConfirmationUserId;
   }
 
-  const initialOperations =
-    await api.operations.getOperations.query(operationsQueryInput);
+  const initialOperations = await api.operations.getOperations.query(
+    operationsQueryInput,
+  );
 
   const initialEntities = await api.entities.getAll.query();
 
