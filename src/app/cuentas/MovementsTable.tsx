@@ -191,6 +191,57 @@ const MovementsTable = ({
       },
     });
 
+  const onDownloadClick = (fileType: "pdf" | "csv") => {
+    if (data.totalRows > 1000) {
+      toast.warning("Vas a generar un archivo con mas de 1000 movimientos", {
+        action: {
+          label: "Generar",
+          onClick: () => {
+            const promise = getUrlAsync({
+              account: accountType,
+              entityId: entityId,
+              entityTag: entityTag,
+              currency: selectedCurrency,
+              fromDate: fromDate,
+              toDate: toDate,
+              fileType: "pdf",
+              dayInPast: timeMachineDate ?? undefined,
+              toEntityId: destinationEntityId,
+              dateOrdering,
+            });
+
+            toast.promise(promise, {
+              loading: "Generando archivo...",
+              success(data) {
+                return `Archivo generado: ${data.filename}`;
+              },
+            });
+          },
+        },
+      });
+    } else {
+      const promise = getUrlAsync({
+        account: accountType,
+        entityId: entityId,
+        entityTag: entityTag,
+        currency: selectedCurrency,
+        fromDate: fromDate,
+        toDate: toDate,
+        fileType: "pdf",
+        dayInPast: timeMachineDate ?? undefined,
+        toEntityId: destinationEntityId,
+        dateOrdering,
+      });
+
+      toast.promise(promise, {
+        loading: "Generando archivo...",
+        success(data) {
+          return `Archivo generado: ${data.filename}`;
+        },
+      });
+    }
+  };
+
   const columns: ColumnDef<(typeof data.movements)[number]>[] = [
     {
       accessorKey: "id",
@@ -532,10 +583,6 @@ const MovementsTable = ({
               }}
             />
           </div>
-
-          {user && selectedEntityString && !accountType && (
-            <ClientLinkGenerator selectedEntityString={selectedEntityString} />
-          )}
           <Button
             tooltip="Recargar movimientos"
             variant="outline"
@@ -549,7 +596,9 @@ const MovementsTable = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {!isLoading ? (
-                <Button variant="outline">Generar</Button>
+                <Button variant="outline" tooltip="Descargar">
+                  <Icons.download className="h-5" />
+                </Button>
               ) : (
                 <p>Cargando...</p>
               )}
@@ -557,58 +606,11 @@ const MovementsTable = ({
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Extensión</DropdownMenuLabel>
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onClick={() => {
-                    const promise = getUrlAsync({
-                      account: accountType,
-                      entityId: entityId,
-                      entityTag: entityTag,
-                      currency: selectedCurrency,
-                      fromDate: fromDate,
-                      toDate: toDate,
-                      fileType: "pdf",
-                      dayInPast: timeMachineDate ?? undefined,
-                      toEntityId: destinationEntityId,
-                      dateOrdering,
-                    });
-
-                    toast.promise(promise, {
-                      loading: "Generando archivo...",
-                      success(data) {
-                        return `Archivo generado: ${data.filename}`;
-                      },
-                    });
-                  }}
-                >
+                <DropdownMenuItem onClick={() => onDownloadClick("pdf")}>
                   <Icons.pdf className="h-4" />
                   <span>PDF</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    const promise = getUrlAsync({
-                      account: accountType,
-                      entityId: entityId,
-                      entityTag: entityTag,
-                      currency: selectedCurrency,
-                      fromDate: fromDate,
-                      toDate: toDate,
-                      fileType: "csv",
-                      dayInPast: timeMachineDate ?? undefined,
-                      toEntityId: destinationEntityId,
-                      dateOrdering,
-                    });
-
-                    toast.promise(promise, {
-                      loading: "Generando archivo...",
-                      success(data) {
-                        return `Archivo generado: ${data.filename}`;
-                      },
-                      error() {
-                        return `Error al generar el archivo`;
-                      },
-                    });
-                  }}
-                >
+                <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
                   <Icons.excel className="h-4" />
                   <span>Excel</span>
                 </DropdownMenuItem>

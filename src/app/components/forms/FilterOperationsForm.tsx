@@ -86,11 +86,11 @@ const FilterOperationsForm = ({
     defaultValues: {
       opDateRange: selectedDateGreater
         ? {
-          from: moment(selectedDateGreater, dateFormatting.day).toDate(),
-          to: selectedDateGreater
-            ? moment(selectedDateLesser, dateFormatting.day).toDate()
-            : undefined,
-        }
+            from: moment(selectedDateGreater, dateFormatting.day).toDate(),
+            to: selectedDateGreater
+              ? moment(selectedDateLesser, dateFormatting.day).toDate()
+              : undefined,
+          }
         : undefined,
       transactionType: selectedTransactionType,
       operatorEntityId: selectedOperator,
@@ -103,10 +103,10 @@ const FilterOperationsForm = ({
       amountFilterType: selectedAmount
         ? "equal"
         : selectedMaxAmount
-          ? "lte"
-          : selectedMinAmount
-            ? "gte"
-            : "equal",
+        ? "lte"
+        : selectedMinAmount
+        ? "gte"
+        : "equal",
       uploadedById: selectedUploadUserId,
       confirmedById: selectedConfirmationUserId,
     },
@@ -458,7 +458,7 @@ const FilterOperationsForm = ({
               variant="outline"
               onClick={() => reset({ amount: "", amountFilterType: "equal" })}
             >
-              <Icons.undo className="ml-2 h-5" />
+              <Icons.undo className="h-5" />
             </Button>
           </Link>
         </div>

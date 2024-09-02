@@ -240,7 +240,9 @@ const BalancesTable: FC<BalancesTableProps> = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {!isUrlLoading ? (
-              <Button variant="outline">Generar</Button>
+              <Button variant="outline" tooltip="Descargar">
+                <Icons.download className="h-5" />
+              </Button>
             ) : (
               <p>Cargando...</p>
             )}

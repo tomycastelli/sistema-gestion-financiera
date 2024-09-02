@@ -12,6 +12,18 @@ import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { Status } from "~/server/db/schema";
 import { useFirstRender } from "~/hooks/useFirstRender";
 import Operation from "../operaciones/gestion/Operation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -48,6 +60,67 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+
+  const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
+    api.files.getOperationData.useMutation({
+      onSuccess(newOperation) {
+        const link = document.createElement("a");
+        link.href = newOperation.downloadUrl;
+        link.download = newOperation.filename;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      onError(err) {
+        toast.error("Error al generar el archivo", {
+          description: err.message,
+        });
+      },
+    });
+
+  const onDownloadClick = (fileType: "pdf" | "csv") => {
+    if (data.count > 1000) {
+      toast.warning("Vas a generar un archivo con mas de 1000 operaciones", {
+        action: {
+          label: "Generar",
+          onClick: () => {
+            const promise = getUrlAsync({
+              ...operationsQueryInput,
+              fileType,
+              operationsCount: data.count,
+            });
+
+            toast.promise(promise, {
+              loading: "Generando archivo...",
+              success(data) {
+                return `Archivo generado: ${data.filename}`;
+              },
+              error() {
+                return `Error al generar el archivo`;
+              },
+            });
+          },
+        },
+      });
+    } else {
+      const promise = getUrlAsync({
+        ...operationsQueryInput,
+        fileType: "pdf",
+        operationsCount: data.count,
+      });
+
+      toast.promise(promise, {
+        loading: "Generando archivo...",
+        success(data) {
+          return `Archivo generado: ${data.filename}`;
+        },
+        error() {
+          return `Error al generar el archivo`;
+        },
+      });
+    }
+  };
 
   const utils = api.useContext();
 
@@ -138,14 +211,40 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
 
   return (
     <div className="my-4 flex flex-col">
-      <Button
-        tooltip="Recargar operaciones"
-        className="flex w-min"
-        variant="outline"
-        onClick={() => refetch()}
-      >
-        <Icons.reload className="ml-2 h-5" />
-      </Button>
+      <div className="flex flex-row gap-x-2">
+        <Button
+          tooltip="Recargar operaciones"
+          className="flex w-min"
+          variant="outline"
+          onClick={() => refetch()}
+        >
+          <Icons.reload className="h-5" />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            {!isUrlLoading ? (
+              <Button variant="outline" tooltip="Descargar">
+                <Icons.download className="h-5" />
+              </Button>
+            ) : (
+              <p>Cargando...</p>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => onDownloadClick("pdf")}>
+                <Icons.pdf className="h-4" />
+                <span>PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
+                <Icons.excel className="h-4" />
+                <span>Excel</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="flex flex-col gap-y-4">
         <div className="grid grid-rows-2 p-4 lg:grid-cols-9 lg:grid-rows-1">
           <div className="row-span-1 lg:col-span-5"></div>

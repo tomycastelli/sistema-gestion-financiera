@@ -112,14 +112,26 @@ export const createTRPCRouter = t.router;
  */
 
 /** Reusable middleware that enforces users are logged in before running the procedure. */
-const loggingMiddleware = t.middleware(async ({ path, type, next }) => {
+const loggingMiddleware = t.middleware(async ({ path, type, next, input }) => {
   const start = Date.now();
   const result = await next();
   const durationMs = Date.now() - start;
 
   result.ok
-    ? console.log("OK request timing:", { path, type, durationMs })
-    : console.log("Non-OK request timing", { path, type, durationMs });
+    ? console.log("OK request timing:", {
+        path,
+        input,
+        type,
+        result,
+        durationMs,
+      })
+    : console.log("Non-OK request timing", {
+        path,
+        input,
+        type,
+        result,
+        durationMs,
+      });
   return result;
 });
 

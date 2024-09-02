@@ -13,6 +13,10 @@ import {
 import { numberFormatter } from "~/lib/functions";
 import { getCurrentAccountsInput } from "./movements";
 import { currenciesOrder } from "~/lib/variables";
+import {
+  getOperationsInput,
+  getOperationsProcedure,
+} from "~/lib/operationsTrpcFunctions";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -259,13 +263,22 @@ export const filesRouter = createTRPCRouter({
       }.${input.fileType}`;
 
       if (input.fileType === "csv") {
-        const csvData = input.detailedBalances.flatMap((detailedBalance) =>
-          detailedBalance.data.map((dataItem) => ({
-            entidad: detailedBalance.entity.name,
-            divisa: dataItem.currency,
-            saldo: dataItem.balance,
-          })),
-        );
+        const csvData = input.detailedBalances.map((detailedBalance) => {
+          const entity = detailedBalance.entity.name;
+          const balances: Record<string, number> = {};
+
+          // balances should have numbers as values, rounded to 2 decimal places
+          currenciesOrder.forEach((currency) => {
+            balances[currency] =
+              Math.round(
+                (detailedBalance.data.find(
+                  (dataItem) => dataItem.currency === currency,
+                )?.balance ?? 0) * 100,
+              ) / 100;
+          });
+
+          return { entidad: entity, ...balances };
+        });
         const csv = unparse(csvData, { delimiter: "," });
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
@@ -360,6 +373,177 @@ export const filesRouter = createTRPCRouter({
               cssString,
               bucketName: ctx.s3.bucketNames.reports,
               fileKey: `saldos/${filename}`,
+            }),
+          });
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: JSON.stringify(e),
+          });
+        }
+      }
+
+      const getCommand = new GetObjectCommand({
+        Bucket: ctx.s3.bucketNames.reports,
+        Key: `saldos/${filename}`,
+      });
+
+      const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
+        expiresIn: 300,
+      });
+      return { downloadUrl, filename };
+    }),
+
+  getOperationData: protectedProcedure
+    .input(
+      getOperationsInput
+        .extend({
+          fileType: z.enum(["csv", "pdf"]),
+          operationsCount: z.number().int(),
+        })
+        .omit({ page: true, limit: true }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { operations } = await getOperationsProcedure(ctx, {
+        ...input,
+        page: 1,
+        limit: input.operationsCount,
+      });
+      const transactionsToPrint = operations.flatMap((operation) => {
+        return operation.transactions.map((transaction) => {
+          return {
+            id: operation.id,
+            txId: transaction.id,
+            fecha: moment(operation.date).format("DD-MM-YY HH:mm"),
+            tipo: transaction.type,
+            operador: transaction.operatorEntity.name,
+            origen: transaction.fromEntity.name,
+            destino: transaction.toEntity.name,
+            detalle: operation.observations,
+            divisa: transaction.currency,
+            monto: transaction.amount,
+            estado: transaction.status,
+            cargadoPor: transaction.transactionMetadata.uploadedByUser?.name,
+            confirmadoPor:
+              transaction.transactionMetadata.confirmedByUser?.name,
+          };
+        });
+      });
+
+      const filename = `transacciones_${moment().format(
+        "DD-MM-YYYY-HH:mm:ss",
+      )}.${input.fileType}`;
+
+      if (input.fileType === "csv") {
+        const csv = unparse(transactionsToPrint, { delimiter: "," });
+        const putCommand = new PutObjectCommand({
+          Bucket: ctx.s3.bucketNames.reports,
+          Key: `saldos/${filename}`,
+          Body: Buffer.from(csv, "utf-8"),
+        });
+
+        await ctx.s3.client.send(putCommand);
+      } else if (input.fileType === "pdf") {
+        const htmlString =
+          `<html>
+          <body class="main-container">
+          <div class="header-div">
+            <h1 class="title">Transacciones</h1>
+            <h2 class="subtitle">${moment().format("DD-MM-YY HH:mm")}</h2>
+          </div>` +
+          `
+          <div class="table-container">
+          <table class="table">
+          <thead class="table-header">
+            <tr>
+            <th>Id</th>
+            <th>TxId</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Operador</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Detalle</th>
+            <th>Divisa</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Cargado Por</th>
+            <th>Confirmado Por</th>
+            </tr>
+          </thead>
+          <tbody class="table-body">
+            ${transactionsToPrint
+              .map(
+                (tx, index) =>
+                  `<tr key="${index}">
+                <tr>${tx.id}</tr>
+                <tr>${tx.txId}</tr>
+                <tr>${tx.fecha}</tr>
+                <tr>${tx.tipo}</tr>
+                <tr>${tx.operador}</tr>
+                <tr>${tx.origen}</tr>
+                <tr>${tx.destino}</tr>
+                <tr>${tx.detalle}</tr>
+                <tr>${tx.divisa}</tr>
+                <tr>${tx.monto}</tr>
+                <tr>${tx.estado}</tr>
+                <tr>${tx.cargadoPor}</tr>
+                <tr>${tx.confirmadoPor}</tr>
+                  </tr>`,
+              )
+              .join("")}
+            </tbody>
+            </body>
+            </html>`;
+
+        const cssString = `.table-container{margin-top: 0.5rem;}
+          .table{width: 100%; border-collapse: collapse;}
+          .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
+          .table th,
+          .table td {
+            border-top: 0.5px solid #000;
+            border-bottom: 0.5px solid #000;
+            text-align: right;
+            padding: 0.25rem;
+            vertical-align: top;
+          }
+
+          .table td p {
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+          }
+
+          .table td p + p {
+            margin-top: 0.2rem;
+          }
+          .observations-text{
+            font-weight: 600;
+          }
+          .details-text{
+            font-weight: 400;
+          }
+          .table-body{font-size: 0.75rem;}
+          .header-div{width: 100%; text-align: center;}
+          .title{font-size: 1.5rem; font-weight: 600;}
+          .subtitle{font-size: 1.2rem; font-weight: 400;}
+          .main-container{
+            font-family: serif;
+            margin: 2rem;
+          }`;
+
+        try {
+          await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": env.LAMBDA_API_KEY,
+            },
+            body: JSON.stringify({
+              htmlString,
+              cssString,
+              bucketName: ctx.s3.bucketNames.reports,
+              fileKey: `cuentas/${filename}`,
             }),
           });
         } catch (e) {

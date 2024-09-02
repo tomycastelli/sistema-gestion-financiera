@@ -581,7 +581,9 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 {!isUrlLoading ? (
-                  <Button variant="outline">Generar</Button>
+                  <Button variant="outline" tooltip="Descargar">
+                    <Icons.download className="h-5" />
+                  </Button>
                 ) : (
                   <p>Cargando...</p>
                 )}
@@ -731,10 +733,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                   item.entity.name.length < 12
                     ? "text-xl"
                     : item.entity.name.length < 22
-                      ? "text-lg"
-                      : item.entity.name.length < 28
-                        ? "text-md"
-                        : "text-sm",
+                    ? "text-lg"
+                    : item.entity.name.length < 28
+                    ? "text-md"
+                    : "text-sm",
                 )}
                 variant="outline"
               >
@@ -774,8 +776,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                                 ? "text-green"
                                 : "text-red"
                               : -matchingBalance.balance > 0
-                                ? "text-green"
-                                : "text-red"
+                              ? "text-green"
+                              : "text-red"
                             : undefined,
                         )}
                       >
