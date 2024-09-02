@@ -106,7 +106,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
     } else {
       const promise = getUrlAsync({
         ...operationsQueryInput,
-        fileType: "pdf",
+        fileType,
         operationsCount: data.count,
       });
 

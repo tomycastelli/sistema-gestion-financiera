@@ -476,19 +476,19 @@ export const filesRouter = createTRPCRouter({
               .map(
                 (tx, index) =>
                   `<tr key="${index}">
-                <tr>${tx.id}</tr>
-                <tr>${tx.txId}</tr>
-                <tr>${tx.fecha}</tr>
-                <tr>${tx.tipo}</tr>
-                <tr>${tx.operador}</tr>
-                <tr>${tx.origen}</tr>
-                <tr>${tx.destino}</tr>
-                <tr>${tx.detalle}</tr>
-                <tr>${tx.divisa}</tr>
-                <tr>${tx.monto}</tr>
-                <tr>${tx.estado}</tr>
-                <tr>${tx.cargadoPor}</tr>
-                <tr>${tx.confirmadoPor}</tr>
+                <td>${tx.id}</td>
+                <td>${tx.txId}</td>
+                <td>${tx.fecha}</td>
+                <td>${tx.tipo}</td>
+                <td>${tx.operador}</td>
+                <td>${tx.origen}</td>
+                <td>${tx.destino}</td>
+                <td>${tx.detalle ?? ""}</td>
+                <td>${tx.divisa}</td>
+                <td>${tx.monto}</td>
+                <td>${tx.estado}</td>
+                <td>${tx.cargadoPor ?? ""}</td>
+                <td>${tx.confirmadoPor ?? ""}</td>
                   </tr>`,
               )
               .join("")}
