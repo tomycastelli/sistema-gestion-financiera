@@ -438,7 +438,7 @@ export const filesRouter = createTRPCRouter({
         const csv = unparse(transactionsToPrint, { delimiter: "," });
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
-          Key: `saldos/${filename}`,
+          Key: `transacciones/${filename}`,
           Body: Buffer.from(csv, "utf-8"),
         });
 
@@ -543,7 +543,7 @@ export const filesRouter = createTRPCRouter({
               htmlString,
               cssString,
               bucketName: ctx.s3.bucketNames.reports,
-              fileKey: `cuentas/${filename}`,
+              fileKey: `transacciones/${filename}`,
             }),
           });
         } catch (e) {
@@ -556,7 +556,7 @@ export const filesRouter = createTRPCRouter({
 
       const getCommand = new GetObjectCommand({
         Bucket: ctx.s3.bucketNames.reports,
-        Key: `saldos/${filename}`,
+        Key: `transacciones/${filename}`,
       });
 
       const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
