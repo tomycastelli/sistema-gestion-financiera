@@ -20,7 +20,6 @@ import { type User } from "lucia";
 import ShareOperation from "./ShareOperation";
 import { Button } from "~/app/components/ui/button";
 import { Icons } from "~/app/components/ui/Icons";
-import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { useRouter } from "next/navigation";
 import moment from "moment";
 import dynamic from "next/dynamic";
@@ -30,6 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "~/app/components/ui/collapsible";
+import { useTransactionsStore } from "~/stores/TransactionsStore";
 
 interface OperationButtonsProps {
   op: RouterOutputs["operations"]["getOperations"]["operations"][number];
@@ -45,8 +45,8 @@ const OperationButtons: FC<OperationButtonsProps> = ({
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const router = useRouter();
 
-  const { setIsInitialOperationSubmitted, setInitialOperationStore } =
-    useInitialOperationStore();
+  const { setIsInitialDataSubmitted, setObservations, setOpDate } =
+    useTransactionsStore();
 
   const utils = api.useContext();
 
@@ -243,14 +243,15 @@ const OperationButtons: FC<OperationButtonsProps> = ({
               <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  setInitialOperationStore({
-                    opDate: op.date,
-                    opTime: moment(op.date).format("HH:mm"),
-                    opObservations: op.observations
-                      ? op.observations
-                      : undefined,
+                  setObservations(op.observations ?? "");
+                  setOpDate({
+                    date: "custom",
+                    data: {
+                      opDate: op.date,
+                      opTime: moment(op.date).format("HH:mm"),
+                    },
                   });
-                  setIsInitialOperationSubmitted(true);
+                  setIsInitialDataSubmitted(false);
                   router.push(`/operaciones/carga?operacion=${op.id}`);
                 }}
                 className="bg-green"

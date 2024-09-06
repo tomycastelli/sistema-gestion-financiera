@@ -48,8 +48,6 @@ interface UpdateOperationProps {
 
 const FormSchema = z.object({
   opObservations: z.string().optional(),
-  opDate: z.date(),
-  opTime: z.string(),
 });
 
 const UpdateOperation: FC<UpdateOperationProps> = ({
@@ -57,7 +55,6 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
   opDate,
   opObservations,
   operationsQueryInput,
-  accountingPeriodDate,
 }) => {
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -66,8 +63,6 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       opObservations: opObservations ?? undefined,
-      opDate,
-      opTime: moment(opDate).format("HH:mm"),
     },
   });
 
@@ -85,7 +80,6 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
             return {
               ...operation,
               observations: newOperation.opObservations ?? null,
-              date: newOperation.opDate,
             };
           } else {
             return operation;
@@ -120,12 +114,9 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
   const { handleSubmit, reset } = form;
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    const dateString = moment(values.opDate).format("DD-MM-YYYY");
     await mutateAsync({
       opId,
       opObservations: values.opObservations,
-      opDate: moment(dateString + values.opTime, "DD-MM-YYYY HH:mm").toDate(),
-      oldOpDate: opDate,
     });
   };
 
@@ -183,64 +174,6 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
                   </FormItem>
                 )}
               />
-              <div className="flex flex-row items-end space-x-2">
-                <FormField
-                  control={form.control}
-                  defaultValue={new Date()}
-                  name="opDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="mb-1">Fecha</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
-                                !field.value && "text-muted-foreground",
-                              )}
-                            >
-                              {field.value ? (
-                                moment(field.value).format("DD-MM-YYYY")
-                              ) : (
-                                <span>Elegir</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < accountingPeriodDate ||
-                              date > moment().startOf("day").toDate()
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="opTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tiempo</FormLabel>
-                      <FormControl>
-                        <Input className="w-[88px]" type="time" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
               <div className="flex w-full items-center justify-end">
                 <Button className="mt-4" type="submit">
                   Modificar operación

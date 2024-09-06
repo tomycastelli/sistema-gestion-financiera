@@ -54,7 +54,7 @@ const EntityCard = React.memo(
     } else {
       queryObject = {
         entidad: entity.id,
-        cuenta: "cuenta_corriente",
+        cuenta: "caja",
       };
     }
 

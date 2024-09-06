@@ -1,160 +1,23 @@
-import { relations } from "drizzle-orm";
 import {
+  pgTable,
+  foreignKey,
+  integer,
+  timestamp,
+  text,
+  date,
+  jsonb,
+  index,
   bigint,
   boolean,
-  customType,
-  date,
-  foreignKey,
-  index,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  primaryKey,
-  serial,
-  text,
-  timestamp,
   uniqueIndex,
+  primaryKey,
+  pgEnum,
+  customType,
 } from "drizzle-orm/pg-core";
 
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-
-export const Status = pgEnum("Status", ["cancelled", "confirmed", "pending"]);
-export const requestStatus = pgEnum("RequestStatus", [
-  "finished",
-  "working",
-  "pending",
-]);
-
-export const transactionsMetadata = pgTable(
-  "TransactionsMetadata",
-  {
-    transactionId: integer("transactionId")
-      .notNull()
-      .references(() => transactions.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    relatedTransactionId: integer("relatedTransactionId").references(
-      () => transactions.id,
-      {
-        onDelete: "set null",
-        onUpdate: "no action",
-      },
-    ),
-    uploadedBy: text("uploadedBy")
-      .notNull()
-      .references(() => user.id, { onDelete: "restrict", onUpdate: "cascade" }),
-    uploadedDate: timestamp("uploadedDate", { mode: "date" })
-      .defaultNow()
-      .notNull(),
-    confirmedBy: text("confirmedBy").references(() => user.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    confirmedDate: timestamp("confirmedDate", { mode: "date" }),
-    history: jsonb("history"),
-    metadata: jsonb("metadata"),
-    cancelledBy: text("cancelledBy").references(() => user.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    cancelledDate: timestamp("cancelledDate", { mode: "date" }),
-  },
-  (table) => {
-    return {
-      transactionIdKey: uniqueIndex(
-        "TransactionsMetadata_transactionId_key",
-      ).on(table.transactionId),
-      transactionIdUploadedByConfirmedByIdx: index(
-        "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx",
-      ).on(table.transactionId, table.uploadedBy, table.confirmedBy),
-    };
-  },
-);
-
-export const verificationToken = pgTable(
-  "VerificationToken",
-  {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: timestamp("expires", { precision: 3, mode: "string" }).notNull(),
-  },
-  (table) => {
-    return {
-      tokenKey: uniqueIndex("VerificationToken_token_key").on(table.token),
-      identifierTokenKey: uniqueIndex(
-        "VerificationToken_identifier_token_key",
-      ).on(table.identifier, table.token),
-    };
-  },
-);
-
-export const operations = pgTable(
-  "Operations",
-  {
-    id: serial("id").primaryKey().notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
-    observations: text("observations"),
-  },
-  (table) => {
-    return {
-      dateIdx: index("Operations_date_idx").on(table.date),
-    };
-  },
-);
-
-export const chat = pgTable("Chat", {
-  id: serial("id").primaryKey().notNull(),
-  name: text("name"),
-});
-
-export const chatToUsers = pgTable(
-  "chatToUsers",
-  {
-    chatId: integer("chatId")
-      .notNull()
-      .references(() => chat.id),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id),
-    lastConnection: bigint("lastConnection", { mode: "number" })
-      .notNull()
-      .default(0),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.userId, table.chatId] }),
-    };
-  },
-);
-
-export const messages = pgTable(
-  "Messages",
-  {
-    id: serial("id").primaryKey().notNull(),
-    chatId: integer("chatId")
-      .notNull()
-      .references(() => chat.id),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
-    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
-    message: text("message").notNull(),
-  },
-  (table) => {
-    return {
-      chatTimestampIdx: index("chat_timestamp_idx").on(
-        table.chatId,
-        table.timestamp,
-      ),
-    };
-  },
-);
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm/relations";
 
 const decimalNumber = customType<{ data: number }>({
   dataType() {
@@ -165,50 +28,295 @@ const decimalNumber = customType<{ data: number }>({
   },
 });
 
-export const pendingTransactions = pgTable(
-  "pendingTransactions",
+export const requestStatus = pgEnum("RequestStatus", [
+  "finished",
+  "working",
+  "pending",
+]);
+
+export const Status = pgEnum("Status", ["cancelled", "confirmed", "pending"]);
+
+export const cashBalances = pgTable(
+  "CashBalances",
   {
-    id: serial("id").primaryKey().notNull(),
-    operationId: integer("operationId")
-      .notNull()
-      .references(() => operations.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    type: text("type").notNull(),
-    operatorEntityId: integer("operatorEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    fromEntityId: integer("fromEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    toEntityId: integer("toEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    balance: decimalNumber("balance").notNull(),
     currency: text("currency").notNull(),
-    amount: decimalNumber("amount").notNull(),
-    observations: text("observations"),
-    status: Status("status").default("pending").notNull(),
+    entityId: integer("entityId"),
+    tagName: text("tagName"),
   },
   (table) => {
     return {
-      operationIdFromEntityIdToEntityIdDateCurreIdx: index(
-        "pendingTransactions_operationId_fromEntityId_toEntityId_date_curre_idx",
-      ).on(
-        table.operationId,
-        table.fromEntityId,
-        table.toEntityId,
-        table.currency,
+      cashBalancesEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.entityId],
+        foreignColumns: [entities.id],
+        name: "CashBalances_entityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      cashBalancesTagNameTagNameFk: foreignKey({
+        columns: [table.tagName],
+        foreignColumns: [tag.name],
+        name: "CashBalances_tagName_Tag_name_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("restrict"),
+    };
+  },
+);
+
+export const links = pgTable(
+  "Links",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    sharedEntityId: integer("sharedEntityId").notNull(),
+    password: text("password").notNull(),
+    expiration: date("date", { mode: "date" }).notNull(),
+  },
+  (table) => {
+    return {
+      linksSharedEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.sharedEntityId],
+        foreignColumns: [entities.id],
+        name: "Links_sharedEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+    };
+  },
+);
+
+export const chat = pgTable("Chat", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name"),
+});
+
+export const globalSettings = pgTable("GlobalSettings", {
+  name: text("name").primaryKey().notNull(),
+  data: jsonb("data").notNull(),
+});
+
+export const messages = pgTable(
+  "Messages",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    chatId: integer("chatId").notNull(),
+    userId: text("userId").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+    message: text("message").notNull(),
+  },
+  (table) => {
+    return {
+      chatTimestampIdx: index("chat_timestamp_idx").using(
+        "btree",
+        table.chatId.asc().nullsLast(),
+        table.timestamp.asc().nullsLast(),
       ),
+      messagesChatIdChatIdFk: foreignKey({
+        columns: [table.chatId],
+        foreignColumns: [chat.id],
+        name: "Messages_chatId_Chat_id_fk",
+      }),
+      messagesUserIdUserIdFk: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [user.id],
+        name: "Messages_userId_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+    };
+  },
+);
+
+export const requests = pgTable(
+  "Requests",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    uploadedBy: text("uploadedBy").notNull(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    status: requestStatus("status").default("pending").notNull(),
+    developerMessage: text("developerMessage"),
+  },
+  (table) => {
+    return {
+      requestsUploadedByUserIdFk: foreignKey({
+        columns: [table.uploadedBy],
+        foreignColumns: [user.id],
+        name: "Requests_uploadedBy_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("restrict"),
+    };
+  },
+);
+
+export const operations = pgTable(
+  "Operations",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    observations: text("observations"),
+  },
+  (table) => {
+    return {
+      dateIdx: index("Operations_date_idx").using(
+        "btree",
+        table.date.asc().nullsLast(),
+      ),
+    };
+  },
+);
+
+export const movements = pgTable(
+  "Movements",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    transactionId: integer("transactionId").notNull(),
+    direction: integer("direction").notNull(),
+    type: text("type").notNull(),
+    account: boolean("account").notNull(),
+    balance: decimalNumber("balance").notNull(),
+    balanceId: integer("balanceId"),
+    cashBalanceId: integer("cashBalanceId"),
+    entitiesMovementId: integer("entitiesMovementId"),
+    date: timestamp("date", { mode: "date" }).notNull(),
+  },
+  (table) => {
+    return {
+      transactionIdAccountIdx: index(
+        "Movements_transactionId_account_idx",
+      ).using(
+        "btree",
+        table.transactionId.asc().nullsLast(),
+        table.account.asc().nullsLast(),
+      ),
+      movementsBalanceIdBalancesIdFk: foreignKey({
+        columns: [table.balanceId],
+        foreignColumns: [balances.id],
+        name: "Movements_balanceId_Balances_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      movementsCashBalanceIdCashBalancesIdFk: foreignKey({
+        columns: [table.cashBalanceId],
+        foreignColumns: [cashBalances.id],
+        name: "Movements_cashBalanceId_CashBalances_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      movementsTransactionIdTransactionsIdFk: foreignKey({
+        columns: [table.transactionId],
+        foreignColumns: [transactions.id],
+        name: "Movements_transactionId_Transactions_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      entitiesMovementFk: foreignKey({
+        columns: [table.entitiesMovementId],
+        foreignColumns: [table.id],
+        name: "entities_movement_fk",
+      }),
+    };
+  },
+);
+
+export const entities = pgTable(
+  "Entities",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    name: text("name").notNull(),
+    tagName: text("tagName").notNull(),
+  },
+  (table) => {
+    return {
+      nameIdx: index("Entities_name_idx").using(
+        "btree",
+        table.name.asc().nullsLast(),
+      ),
+      nameKey: uniqueIndex("Entities_name_key").using(
+        "btree",
+        table.name.asc().nullsLast(),
+      ),
+      tagNameIdx: index("Entities_tagName_idx").using(
+        "btree",
+        table.tagName.asc().nullsLast(),
+      ),
+      entitiesTagNameTagNameFk: foreignKey({
+        columns: [table.tagName],
+        foreignColumns: [tag.name],
+        name: "Entities_tagName_Tag_name_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("restrict"),
+    };
+  },
+);
+
+export const transactionsMetadata = pgTable(
+  "TransactionsMetadata",
+  {
+    transactionId: integer("transactionId").notNull(),
+    relatedTransactionId: integer("relatedTransactionId"),
+    uploadedBy: text("uploadedBy").notNull(),
+    uploadedDate: timestamp("uploadedDate", { mode: "date" })
+      .defaultNow()
+      .notNull(),
+    confirmedBy: text("confirmedBy"),
+    confirmedDate: timestamp("confirmedDate", { mode: "date" }),
+    history: jsonb("history"),
+    metadata: jsonb("metadata"),
+    cancelledBy: text("cancelledBy"),
+    cancelledDate: timestamp("cancelledDate", { mode: "date" }),
+  },
+  (table) => {
+    return {
+      transactionIdKey: uniqueIndex(
+        "TransactionsMetadata_transactionId_key",
+      ).using("btree", table.transactionId.asc().nullsLast()),
+      transactionIdUploadedByConfirmedByIdx: index(
+        "TransactionsMetadata_transactionId_uploadedBy_confirmedBy_idx",
+      ).using(
+        "btree",
+        table.transactionId.asc().nullsLast(),
+        table.uploadedBy.asc().nullsLast(),
+        table.confirmedBy.asc().nullsLast(),
+      ),
+      transactionsMetadataCancelledByUserIdFk: foreignKey({
+        columns: [table.cancelledBy],
+        foreignColumns: [user.id],
+        name: "TransactionsMetadata_cancelledBy_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
+      transactionsMetadataConfirmedByUserIdFk: foreignKey({
+        columns: [table.confirmedBy],
+        foreignColumns: [user.id],
+        name: "TransactionsMetadata_confirmedBy_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
+      transactionsMetadataRelatedTransactionIdTransactionsIdFk: foreignKey({
+        columns: [table.relatedTransactionId],
+        foreignColumns: [transactions.id],
+        name: "TransactionsMetadata_relatedTransactionId_Transactions_id_fk",
+      }).onDelete("set null"),
+      transactionsMetadataTransactionIdTransactionsIdFk: foreignKey({
+        columns: [table.transactionId],
+        foreignColumns: [transactions.id],
+        name: "TransactionsMetadata_transactionId_Transactions_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      transactionsMetadataUploadedByUserIdFk: foreignKey({
+        columns: [table.uploadedBy],
+        foreignColumns: [user.id],
+        name: "TransactionsMetadata_uploadedBy_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("restrict"),
     };
   },
 );
@@ -216,32 +324,12 @@ export const pendingTransactions = pgTable(
 export const transactions = pgTable(
   "Transactions",
   {
-    id: serial("id").primaryKey().notNull(),
-    operationId: integer("operationId")
-      .notNull()
-      .references(() => operations.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    operationId: integer("operationId").notNull(),
     type: text("type").notNull(),
-    operatorEntityId: integer("operatorEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    fromEntityId: integer("fromEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    toEntityId: integer("toEntityId")
-      .notNull()
-      .references(() => entities.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
+    operatorEntityId: integer("operatorEntityId").notNull(),
+    fromEntityId: integer("fromEntityId").notNull(),
+    toEntityId: integer("toEntityId").notNull(),
     currency: text("currency").notNull(),
     amount: decimalNumber("amount").notNull(),
     observations: text("observations"),
@@ -251,141 +339,62 @@ export const transactions = pgTable(
     return {
       operationIdFromEntityIdToEntityIdDateCurreIdx: index(
         "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx",
-      ).on(
-        table.operationId,
-        table.fromEntityId,
-        table.toEntityId,
-        table.currency,
+      ).using(
+        "btree",
+        table.operationId.asc().nullsLast(),
+        table.fromEntityId.asc().nullsLast(),
+        table.toEntityId.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
       ),
+      transactionsFromEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.fromEntityId],
+        foreignColumns: [entities.id],
+        name: "Transactions_fromEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      transactionsOperationIdOperationsIdFk: foreignKey({
+        columns: [table.operationId],
+        foreignColumns: [operations.id],
+        name: "Transactions_operationId_Operations_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      transactionsOperatorEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.operatorEntityId],
+        foreignColumns: [entities.id],
+        name: "Transactions_operatorEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      transactionsToEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.toEntityId],
+        foreignColumns: [entities.id],
+        name: "Transactions_toEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
     };
   },
 );
 
-export const links = pgTable("Links", {
-  id: serial("id").primaryKey().notNull(),
-  sharedEntityId: integer("sharedEntityId")
-    .notNull()
-    .references(() => entities.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-  password: text("password").notNull(),
-  expiration: date("date", { mode: "date" }).notNull(),
-});
-
-export const balances = pgTable(
-  "Balances",
+export const session = pgTable(
+  "Session",
   {
-    id: serial("id").primaryKey().notNull(),
-    account: boolean("account").notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
-    balance: decimalNumber("balance").notNull(),
-    otherEntityId: integer("otherEntityId").references(() => entities.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    selectedEntityId: integer("selectedEntityId").references(
-      () => entities.id,
-      {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      },
-    ),
-    tagName: text("tagName").references(() => tag.name, {
-      onUpdate: "cascade",
-      onDelete: "cascade",
-    }),
-    currency: text("currency").notNull(),
+    id: text("id").primaryKey().notNull(),
+    userId: text("user_id").notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
   },
   (table) => {
     return {
-      selectedEntityIdOtherEntityIdDateAccountCurrenIdx: index(
-        "Balances_selectedEntityId_otherEntityId_date_account_curren_idx",
-      ).on(
-        table.account,
-        table.date,
-        table.otherEntityId,
-        table.selectedEntityId,
-        table.tagName,
-        table.currency,
-      ),
-    };
-  },
-);
-
-export const cashBalances = pgTable("CashBalances", {
-  id: serial("id").primaryKey().notNull(),
-  date: timestamp("date", { mode: "date" }).notNull(),
-  balance: decimalNumber("balance").notNull(),
-  currency: text("currency").notNull(),
-  entityId: integer("entityId").references(() => entities.id, {
-    onDelete: "cascade",
-    onUpdate: "cascade",
-  }),
-  tagName: text("tagName").references(() => tag.name, {
-    onDelete: "restrict",
-    onUpdate: "cascade",
-  }),
-});
-
-export const entities = pgTable(
-  "Entities",
-  {
-    id: serial("id").primaryKey().notNull(),
-    name: text("name").notNull(),
-    tagName: text("tagName")
-      .notNull()
-      .references(() => tag.name, {
-        onDelete: "restrict",
-        onUpdate: "cascade",
+      sessionUserIdUserIdFk: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [user.id],
+        name: "Session_user_id_User_id_fk",
       }),
-  },
-  (table) => {
-    return {
-      nameIdx: index("Entities_name_idx").on(table.name),
-      nameKey: uniqueIndex("Entities_name_key").on(table.name),
-      tagNameIdx: index("Entities_tagName_idx").on(table.tagName),
-    };
-  },
-);
-
-export const oauth_account = pgTable(
-  "oauth_account",
-  {
-    providerId: text("provider", { enum: ["microsoft", "google"] }).notNull(),
-    providerUserId: text("provider_id").notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.providerId, table.providerUserId] }),
-  }),
-);
-
-export const user = pgTable(
-  "User",
-  {
-    id: text("id").primaryKey(),
-    name: text("name"),
-    email: text("email"),
-    photoUrl: text("photo_url"),
-    permissions: jsonb("permissions"),
-    roleId: integer("roleId").references(() => role.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    entityId: integer("entityId").references(() => entities.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-  },
-  (table) => {
-    return {
-      emailKey: uniqueIndex("User_email_key").on(table.email),
-      nameKey: uniqueIndex("User_name_key").on(table.name),
-      entityIdKey: uniqueIndex("User_entityId_key").on(table.entityId),
-      emailNameIdx: index("User_email_name_idx").on(table.name, table.email),
     };
   },
 );
@@ -393,15 +402,21 @@ export const user = pgTable(
 export const role = pgTable(
   "Role",
   {
-    id: serial("id").primaryKey().notNull(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     name: text("name").notNull(),
     permissions: jsonb("permissions").notNull(),
     color: text("color"),
   },
   (table) => {
     return {
-      nameKey: uniqueIndex("Role_name_key").on(table.name),
-      nameIdx: index("Role_name_idx").on(table.name),
+      nameIdx: index("Role_name_idx").using(
+        "btree",
+        table.name.asc().nullsLast(),
+      ),
+      nameKey: uniqueIndex("Role_name_key").using(
+        "btree",
+        table.name.asc().nullsLast(),
+      ),
     };
   },
 );
@@ -426,70 +441,259 @@ export const tag = pgTable(
   },
 );
 
-export const session = pgTable("Session", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id),
-  expiresAt: timestamp("expires_at", {
-    withTimezone: true,
-    mode: "date",
-  }).notNull(),
-});
-
-export const movements = pgTable(
-  "Movements",
+export const verificationToken = pgTable(
+  "VerificationToken",
   {
-    id: serial("id").primaryKey().notNull(),
-    transactionId: integer("transactionId")
-      .notNull()
-      .references(() => transactions.id, {
-        onDelete: "cascade",
-        onUpdate: "cascade",
-      }),
-    direction: integer("direction").notNull(),
-    type: text("type").notNull(),
-    account: boolean("account").notNull(),
-    balance: decimalNumber("balance").notNull(),
-    balanceId: integer("balanceId").references(() => balances.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    cashBalanceId: integer("cashBalanceId").references(() => cashBalances.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    entitiesMovementId: integer("entitiesMovementId"),
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { precision: 3, mode: "string" }).notNull(),
   },
   (table) => {
     return {
-      entitiesMovementReference: foreignKey({
-        columns: [table.entitiesMovementId],
-        foreignColumns: [table.id],
-        name: "entities_movement_fk",
-      }),
-      transactionIdDirectionIdx: index(
-        "Movements_transactionId_account_idx",
-      ).on(table.transactionId, table.account),
+      identifierTokenKey: uniqueIndex(
+        "VerificationToken_identifier_token_key",
+      ).using(
+        "btree",
+        table.identifier.asc().nullsLast(),
+        table.token.asc().nullsLast(),
+      ),
+      tokenKey: uniqueIndex("VerificationToken_token_key").using(
+        "btree",
+        table.token.asc().nullsLast(),
+      ),
     };
   },
 );
 
-export const requests = pgTable("Requests", {
-  id: serial("id").primaryKey().notNull(),
-  uploadedBy: text("uploadedBy")
-    .notNull()
-    .references(() => user.id, { onDelete: "restrict", onUpdate: "cascade" }),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  status: requestStatus("status").default("pending").notNull(),
-  developerMessage: text("developerMessage"),
+export const user = pgTable(
+  "User",
+  {
+    id: text("id").primaryKey().notNull(),
+    name: text("name"),
+    email: text("email"),
+    photoUrl: text("photo_url"),
+    permissions: jsonb("permissions"),
+    roleId: integer("roleId"),
+    entityId: integer("entityId"),
+  },
+  (table) => {
+    return {
+      emailKey: uniqueIndex("User_email_key").using(
+        "btree",
+        table.email.asc().nullsLast(),
+      ),
+      emailNameIdx: index("User_email_name_idx").using(
+        "btree",
+        table.name.asc().nullsLast(),
+        table.email.asc().nullsLast(),
+      ),
+      entityIdKey: uniqueIndex("User_entityId_key").using(
+        "btree",
+        table.entityId.asc().nullsLast(),
+      ),
+      nameKey: uniqueIndex("User_name_key").using(
+        "btree",
+        table.name.asc().nullsLast(),
+      ),
+      userEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.entityId],
+        foreignColumns: [entities.id],
+        name: "User_entityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
+      userRoleIdRoleIdFk: foreignKey({
+        columns: [table.roleId],
+        foreignColumns: [role.id],
+        name: "User_roleId_Role_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
+    };
+  },
+);
+
+export const pendingTransactions = pgTable(
+  "pendingTransactions",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    operationId: integer("operationId").notNull(),
+    type: text("type").notNull(),
+    operatorEntityId: integer("operatorEntityId").notNull(),
+    fromEntityId: integer("fromEntityId").notNull(),
+    toEntityId: integer("toEntityId").notNull(),
+    currency: text("currency").notNull(),
+    amount: decimalNumber("amount").notNull(),
+    observations: text("observations"),
+    status: Status("status").default("pending").notNull(),
+  },
+  (table) => {
+    return {
+      operationIdFromEntityIdToEntityIdDateCu: index(
+        "pendingTransactions_operationId_fromEntityId_toEntityId_date_cu",
+      ).using(
+        "btree",
+        table.operationId.asc().nullsLast(),
+        table.fromEntityId.asc().nullsLast(),
+        table.toEntityId.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
+      ),
+      pendingTransactionsFromEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.fromEntityId],
+        foreignColumns: [entities.id],
+        name: "pendingTransactions_fromEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      pendingTransactionsOperationIdOperationsIdFk: foreignKey({
+        columns: [table.operationId],
+        foreignColumns: [operations.id],
+        name: "pendingTransactions_operationId_Operations_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      pendingTransactionsOperatorEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.operatorEntityId],
+        foreignColumns: [entities.id],
+        name: "pendingTransactions_operatorEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      pendingTransactionsToEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.toEntityId],
+        foreignColumns: [entities.id],
+        name: "pendingTransactions_toEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+    };
+  },
+);
+
+export const balances = pgTable(
+  "Balances",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    account: boolean("account").notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    balance: decimalNumber("balance").notNull(),
+    otherEntityId: integer("otherEntityId"),
+    selectedEntityId: integer("selectedEntityId"),
+    tagName: text("tagName"),
+    currency: text("currency").notNull(),
+  },
+  (table) => {
+    return {
+      selectedEntityIdOtherEntityIdDateAccountCurrenIdx: index(
+        "Balances_selectedEntityId_otherEntityId_date_account_curren_idx",
+      ).using(
+        "btree",
+        table.account.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.otherEntityId.asc().nullsLast(),
+        table.selectedEntityId.asc().nullsLast(),
+        table.tagName.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
+      ),
+      balancesOtherEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.otherEntityId],
+        foreignColumns: [entities.id],
+        name: "Balances_otherEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      balancesSelectedEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.selectedEntityId],
+        foreignColumns: [entities.id],
+        name: "Balances_selectedEntityId_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      balancesTagNameTagNameFk: foreignKey({
+        columns: [table.tagName],
+        foreignColumns: [tag.name],
+        name: "Balances_tagName_Tag_name_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+    };
+  },
+);
+
+export const oauth_account = pgTable(
+  "oauth_account",
+  {
+    providerId: text("provider", { enum: ["microsoft", "google"] }).notNull(),
+    providerUserId: text("provider_id").notNull(),
+    userId: text("user_id").notNull(),
+  },
+  (table) => {
+    return {
+      oauthAccountUserIdUserIdFk: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [user.id],
+        name: "oauth_account_user_id_User_id_fk",
+      }),
+      oauthAccountProviderProviderIdPk: primaryKey({
+        columns: [table.providerId, table.providerUserId],
+        name: "oauth_account_provider_provider_id_pk",
+      }),
+    };
+  },
+);
+
+export const chatToUsers = pgTable(
+  "chatToUsers",
+  {
+    chatId: integer("chatId").notNull(),
+    userId: text("userId").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    lastConnection: bigint("lastConnection", { mode: "number" })
+      .default(0)
+      .notNull(),
+  },
+  (table) => {
+    return {
+      chatToUsersChatIdChatIdFk: foreignKey({
+        columns: [table.chatId],
+        foreignColumns: [chat.id],
+        name: "chatToUsers_chatId_Chat_id_fk",
+      }),
+      chatToUsersUserIdUserIdFk: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [user.id],
+        name: "chatToUsers_userId_User_id_fk",
+      }),
+      chatToUsersUserIdChatIdPk: primaryKey({
+        columns: [table.chatId, table.userId],
+        name: "chatToUsers_userId_chatId_pk",
+      }),
+    };
+  },
+);
+
+export const insertTransactionsSchema = createInsertSchema(transactions).extend(
+  { amount: z.number() },
+);
+export const insertMovementsSchema = createInsertSchema(movements).extend({
+  balance: z.number(),
 });
 
-export const globalSettings = pgTable("GlobalSettings", {
-  name: text("name").primaryKey().notNull(),
-  data: jsonb("data").notNull(),
+export const returnedBalancesSchema = createSelectSchema(balances).extend({
+  balance: z.number(),
 });
+export const returnedMovementsSchema = createSelectSchema(movements).extend({
+  balance: z.number(),
+});
+export const returnedTransactionsSchema = createSelectSchema(
+  transactions,
+).extend({ amount: z.number() });
+export const returnedOperationsSchema = createSelectSchema(operations);
+export const returnedEntitiesSchema = createSelectSchema(entities);
+export const returnedTransactionsMetadataSchema =
+  createSelectSchema(transactionsMetadata);
+export const returnedUserSchema = createSelectSchema(user);
+export const returnedTagSchema = createSelectSchema(tag);
 
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
@@ -637,26 +841,3 @@ export const requestsOneRelations = relations(requests, ({ one }) => ({
     references: [user.id],
   }),
 }));
-
-export const insertTransactionsSchema = createInsertSchema(transactions).extend(
-  { amount: z.number() },
-);
-export const insertMovementsSchema = createInsertSchema(movements).extend({
-  balance: z.number(),
-});
-
-export const returnedBalancesSchema = createSelectSchema(balances).extend({
-  balance: z.number(),
-});
-export const returnedMovementsSchema = createSelectSchema(movements).extend({
-  balance: z.number(),
-});
-export const returnedTransactionsSchema = createSelectSchema(
-  transactions,
-).extend({ amount: z.number() });
-export const returnedOperationsSchema = createSelectSchema(operations);
-export const returnedEntitiesSchema = createSelectSchema(entities);
-export const returnedTransactionsMetadataSchema =
-  createSelectSchema(transactionsMetadata);
-export const returnedUserSchema = createSelectSchema(user);
-export const returnedTagSchema = createSelectSchema(tag);

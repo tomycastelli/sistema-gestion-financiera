@@ -190,7 +190,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       },
     });
 
-  const { txIdsStore, resetTxIds } = useOperationsPageStore();
+  const { txIdsStore, resetTxIds, changeTxIds } = useOperationsPageStore();
 
   const firstRender = useFirstRender();
 
@@ -201,7 +201,10 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
         description: txIdsStore.join(", "),
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
-          onClick: () => void updateTransaction({ transactionIds: txIdsStore }),
+          onClick: () => {
+            void updateTransaction({ transactionIds: txIdsStore });
+            resetTxIds();
+          },
         },
       });
     } else {
@@ -211,39 +214,75 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
 
   return (
     <div className="my-4 flex flex-col">
-      <div className="flex flex-row gap-x-2">
-        <Button
-          tooltip="Recargar operaciones"
-          className="flex w-min"
-          variant="outline"
-          onClick={() => refetch()}
-        >
-          <Icons.reload className="h-5" />
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            {!isUrlLoading ? (
-              <Button variant="outline" tooltip="Descargar">
-                <Icons.download className="h-5" />
+      <div className="flex flex-row justify-between gap-x-2">
+        <div className="flex flex-row gap-x-2">
+          <Button
+            tooltip="Recargar operaciones"
+            className="flex w-min"
+            variant="outline"
+            onClick={() => refetch()}
+          >
+            <Icons.reload className="h-5" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {!isUrlLoading ? (
+                <Button variant="outline" tooltip="Descargar">
+                  <Icons.download className="h-5" />
+                </Button>
+              ) : (
+                <p>Cargando...</p>
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => onDownloadClick("pdf")}>
+                  <Icons.pdf className="h-4" />
+                  <span>PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
+                  <Icons.excel className="h-4" />
+                  <span>Excel</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {txIdsStore.length > 0 && (
+          <div className="flex flex-col justify-end gap-y-2">
+            <p className="font-semibold">Transacciones a confirmar</p>
+            <div className="ml-2 flex flex-row gap-x-1">
+              {txIdsStore.map((txId) => (
+                <Button
+                  tooltip="Eliminar de la cola"
+                  onClick={() => changeTxIds(txId)}
+                  key={txId}
+                  variant="outline"
+                >
+                  {txId}
+                </Button>
+              ))}
+              <Button
+                tooltip="Confirmar transacciones"
+                onClick={() => {
+                  void updateTransaction({ transactionIds: txIdsStore });
+                  resetTxIds();
+                }}
+                variant="outline"
+              >
+                <Icons.documentPlus className="h-5 text-green" />
               </Button>
-            ) : (
-              <p>Cargando...</p>
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuLabel>Extensión</DropdownMenuLabel>
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => onDownloadClick("pdf")}>
-                <Icons.pdf className="h-4" />
-                <span>PDF</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
-                <Icons.excel className="h-4" />
-                <span>Excel</span>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Button
+                tooltip="Eliminar cola de transacciones"
+                variant="outline"
+                onClick={() => resetTxIds()}
+              >
+                <Icons.documentMinus className="h-5 text-red" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-y-4">
         <div className="grid grid-rows-2 p-4 lg:grid-cols-9 lg:grid-rows-1">

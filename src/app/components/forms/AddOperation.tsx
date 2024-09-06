@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import { Status } from "~/server/db/schema";
-import { useInitialOperationStore } from "~/stores/InitialOperationStore";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -74,13 +73,6 @@ const AddOperation = ({
   const utils = api.useContext();
 
   const {
-    isInitialOperationSubmitted,
-    setInitialOperationStore,
-    initialOperationStore,
-    resetInitialOperationStore,
-    setIsInitialOperationSubmitted,
-  } = useInitialOperationStore();
-  const {
     transactionsStore,
     removeTransactionFromStore,
     resetTransactionsStore,
@@ -89,6 +81,12 @@ const AddOperation = ({
     resetConfirmationAtUpload,
     removeConfirmationAtUpload,
     setAllConfirmationAtUpload,
+    isInitialDataSubmitted,
+    setIsInitialDataSubmitted,
+    resetOperationData,
+    opDate,
+    observations,
+    setObservations,
   } = useTransactionsStore();
 
   const { mutateAsync: updateStatus } =
@@ -115,19 +113,19 @@ const AddOperation = ({
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
-        setIsInitialOperationSubmitted(false);
-        resetTransactionsStore();
-        resetInitialOperationStore();
-        resetConfirmationAtUpload();
       },
       onSuccess(data) {
+        setIsInitialDataSubmitted(false);
+        resetTransactionsStore();
+        resetOperationData();
+        resetConfirmationAtUpload();
         const transaccionesCargadas = data.transactions.length;
         toast.success(
           transaccionesCargadas > 1
             ? transaccionesCargadas.toString() +
-            ` transacciones cargadas a la operación ${data.operation?.id}`
+                ` transacciones cargadas a la operación ${data.operation?.id}`
             : transaccionesCargadas +
-            ` transaccion cargada a la operación ${data.operation?.id}`,
+                ` transaccion cargada a la operación ${data.operation?.id}`,
         );
       },
     },
@@ -167,28 +165,33 @@ const AddOperation = ({
     },
   ];
 
+  const dateToRender =
+    opDate.date === "now"
+      ? "Ahora"
+      : moment(opDate.data.opDate).format("DD-MM-YYYY");
+  const timeToRender =
+    opDate.date === "now"
+      ? "La fecha sera el momento de carga"
+      : opDate.data.opTime;
+
   return (
     <div className="mx-4 grid grid-cols-1 gap-8 lg:mx-auto lg:grid-cols-4">
       <div className="lg:col-span-1">
         <Card>
-          {isInitialOperationSubmitted || selectedOpId ? (
+          {isInitialDataSubmitted || selectedOpId ? (
             <>
               <CardHeader>
                 <div className="flex flex-row justify-between">
                   <div className="flex flex-col">
-                    <CardTitle>
-                      {moment(initialOperationStore.opDate).format(
-                        "DD-MM-YYYY",
-                      )}{" "}
-                    </CardTitle>
-                    <CardDescription className="text-2xl font-semibold text-muted-foreground">
-                      {initialOperationStore.opTime}
+                    <CardTitle>{dateToRender}</CardTitle>
+                    <CardDescription className="text-1xl mt-1 font-semibold text-muted-foreground">
+                      {timeToRender}
                     </CardDescription>
                   </div>
                   <Button
                     tooltip="Volver"
                     variant="outline"
-                    onClick={() => setIsInitialOperationSubmitted(false)}
+                    onClick={() => setIsInitialDataSubmitted(false)}
                   >
                     <Icons.undo className="h-6" />
                   </Button>
@@ -253,19 +256,6 @@ const AddOperation = ({
                             >
                               {capitalizeFirstLetter(transaction.type)}
                             </Badge>
-                            <Badge
-                              variant="outline"
-                              className="mr-auto flex flex-row justify-center space-x-1"
-                            >
-                              <p>
-                                {moment(initialOperationStore.opDate).format(
-                                  "DD-MM-YYYY",
-                                )}
-                              </p>
-                              <span className="text-muted-foreground">
-                                {initialOperationStore.opTime}
-                              </span>
-                            </Badge>
                           </div>
                           <div className="flex flex-row justify-between">
                             <div className="flex flex-col justify-start space-y-1">
@@ -319,43 +309,39 @@ const AddOperation = ({
                     <Textarea
                       className="h-16 w-full resize-none"
                       placeholder="Observaciones..."
-                      value={initialOperationStore.opObservations}
-                      onChange={(e) =>
-                        setInitialOperationStore({
-                          ...initialOperationStore,
-                          opObservations: e.target.value,
-                        })
-                      }
+                      value={observations}
+                      onChange={(e) => setObservations(e.target.value)}
                     />
                   </CardContent>
                   <CardFooter className="flex flex-col items-center space-y-2">
                     {transactionsStore.filter((tx) => tx.type === "cambio")
                       .length > 0 && (
-                        <div className="flex flex-row items-center justify-center gap-x-2">
-                          <Label className="text-sm font-light text-muted-foreground">
-                            Confirmar todos
-                          </Label>
-                          <Switch
-                            onCheckedChange={(bool) =>
-                              setAllConfirmationAtUpload(bool)
-                            }
-                          ></Switch>
-                        </div>
-                      )}
+                      <div className="flex flex-row items-center justify-center gap-x-2">
+                        <Label className="text-sm font-light text-muted-foreground">
+                          Confirmar todos
+                        </Label>
+                        <Switch
+                          onCheckedChange={(bool) =>
+                            setAllConfirmationAtUpload(bool)
+                          }
+                        ></Switch>
+                      </div>
+                    )}
                     <Button
                       className="w-full"
                       disabled={transactionsStore.length === 0}
                       onClick={async () => {
-                        const opDate = moment(
-                          moment(initialOperationStore.opDate).format(
-                            "DD-MM-YYYY",
-                          ) + initialOperationStore.opTime,
-                          "DD-MM-YYYY HH:mm",
-                        ).toDate();
-
                         const response = await mutateAsync({
-                          opDate,
-                          opObservations: initialOperationStore.opObservations,
+                          opDate:
+                            opDate.date === "now"
+                              ? new Date()
+                              : moment(
+                                  moment(opDate.data.opDate).format(
+                                    "DD-MM-YYYY",
+                                  ) + opDate.data.opTime,
+                                  "DD-MM-YYYY HH:mm",
+                                ).toDate(),
+                          opObservations: observations,
                           opId: selectedOpId,
                           transactions: transactionsStore.map(
                             (transaction) => ({
@@ -439,7 +425,7 @@ const AddOperation = ({
         </Card>
       </div>
       <div className="lg:col-span-2">
-        {isInitialOperationSubmitted || selectedOpId ? (
+        {isInitialDataSubmitted || selectedOpId ? (
           entities &&
           user && (
             <div>
@@ -490,8 +476,8 @@ const AddOperation = ({
                         .find((entity) => entity.name === user.name)!
                         .id.toString()
                         ? entities
-                          .find((entity) => entity.name === user.name)!
-                          .id.toString()
+                            .find((entity) => entity.name === user.name)!
+                            .id.toString()
                         : ""
                     }
                   />

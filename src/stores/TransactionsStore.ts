@@ -16,12 +16,24 @@ const TransactionsStoreSchema = z.array(
   }),
 );
 
+const dateType = z.discriminatedUnion("date", [
+  z.object({ date: z.literal("now") }),
+  z.object({
+    date: z.literal("custom"),
+    data: z.object({ opDate: z.date(), opTime: z.string() }),
+  }),
+]);
+
 export type SingleTransactionInStoreSchema = z.infer<
   typeof TransactionsStoreSchema
 >[number];
 
 interface OperationStore {
   transactionsStore: SingleTransactionInStoreSchema[];
+  opDate: z.infer<typeof dateType>;
+  setOpDate: (date: z.infer<typeof dateType>) => void;
+  observations: string;
+  setObservations: (observations: string) => void;
   resetTransactionsStore: () => void;
   addTransactionToStore: (transaction: SingleTransactionInStoreSchema) => void;
   removeTransactionFromStore: (txId: number) => void;
@@ -30,10 +42,28 @@ interface OperationStore {
   resetConfirmationAtUpload: () => void;
   removeConfirmationAtUpload: (txId: number) => void;
   setAllConfirmationAtUpload: (bool: boolean) => void;
+  isInitialDataSubmitted: boolean;
+  setIsInitialDataSubmitted: (bool: boolean) => void;
+  resetOperationData: () => void;
 }
 
 export const useTransactionsStore = create<OperationStore>((set) => ({
   transactionsStore: [],
+  opDate: { date: "now" },
+  setOpDate: (date) => {
+    set(() => ({ opDate: date }));
+  },
+  observations: "",
+  setObservations: (obs) => {
+    set(() => ({ observations: obs }));
+  },
+  isInitialDataSubmitted: false,
+  setIsInitialDataSubmitted: (bool) => {
+    set(() => ({ isInitialDataSubmitted: bool }));
+  },
+  resetOperationData: () => {
+    set(() => ({ observations: "", opDate: { date: "now" } }));
+  },
   resetTransactionsStore: () => {
     set(() => ({
       transactionsStore: [],

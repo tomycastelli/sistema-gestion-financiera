@@ -211,7 +211,8 @@ export const generateMovements = async (
 ) => {
   const movementsResponse = [];
 
-  const mvDate = tx.operation.date;
+  // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
+  const mvDate = account ? new Date() : tx.operation.date;
 
   const selectedEntity =
     tx.fromEntityId < tx.toEntityId ? tx.fromEntity : tx.toEntity;
@@ -360,6 +361,7 @@ export const generateMovements = async (
 
         movementsArray.push({
           transactionId: tx.id,
+          date: mvDate,
           direction,
           type,
           account,
@@ -404,6 +406,7 @@ export const generateMovements = async (
               // Creo un movimiento con el nuevo balance creado
               movementsArray.push({
                 transactionId: tx.id,
+                date: mvDate,
                 direction: direction,
                 account: account,
                 type: type,
@@ -435,6 +438,7 @@ export const generateMovements = async (
             // Creo un movimiento con el balance cambiado
             movementsArray.push({
               transactionId: tx.id,
+              date: mvDate,
               direction,
               account,
               type,
@@ -488,6 +492,7 @@ export const generateMovements = async (
           // Creo un movimiento con el balance cambiado
           movementsArray.push({
             transactionId: tx.id,
+            date: mvDate,
             direction,
             account,
             type,
@@ -515,6 +520,7 @@ export const generateMovements = async (
           if (newBalance) {
             movementsArray.push({
               transactionId: tx.id,
+              date: mvDate,
               direction,
               account,
               type,
@@ -597,6 +603,7 @@ export const generateMovements = async (
 
         movementsArray.push({
           transactionId: tx.id,
+          date: mvDate,
           direction,
           type,
           account,
@@ -639,6 +646,7 @@ export const generateMovements = async (
               // Creo un movimiento con el nuevo balance creado
               movementsArray.push({
                 transactionId: tx.id,
+                date: mvDate,
                 direction: direction,
                 account: account,
                 type: type,
@@ -670,6 +678,7 @@ export const generateMovements = async (
             // Creo un movimiento con el balance cambiado
             movementsArray.push({
               transactionId: tx.id,
+              date: mvDate,
               direction,
               account,
               type,
@@ -722,6 +731,7 @@ export const generateMovements = async (
           // Creo un movimiento con el balance cambiado
           movementsArray.push({
             transactionId: tx.id,
+            date: mvDate,
             direction,
             account,
             type,
@@ -748,6 +758,7 @@ export const generateMovements = async (
           if (newBalance) {
             movementsArray.push({
               transactionId: tx.id,
+              date: mvDate,
               direction,
               account,
               type,
@@ -807,7 +818,6 @@ export const undoMovements = async (
     toEntity: { id: number; tagName: string };
     amount: number;
     currency: string;
-    operation: { date: Date };
   },
 ) => {
   const deletedMovements = await transaction
@@ -874,8 +884,6 @@ export const undoMovements = async (
       const mvsToUpdate = await transaction
         .select({ id: movements.id })
         .from(movements)
-        .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-        .leftJoin(operations, eq(transactions.operationId, operations.id))
         .leftJoin(balances, eq(movements.balanceId, balances.id))
         .where(
           and(
@@ -883,9 +891,9 @@ export const undoMovements = async (
             eq(balances.currency, tx.currency),
             balanceQuery,
             or(
-              gt(operations.date, tx.operation.date),
+              gt(movements.date, deletedMovement.date),
               and(
-                eq(operations.date, tx.operation.date),
+                eq(movements.date, deletedMovement.date),
                 gt(movements.id, deletedMovement.id),
               ),
             ),
@@ -951,9 +959,9 @@ export const undoMovements = async (
             eq(cashBalances.currency, tx.currency),
             balanceQuery,
             or(
-              gt(operations.date, tx.operation.date),
+              gt(movements.date, deletedMovement.date),
               and(
-                eq(operations.date, tx.operation.date),
+                eq(movements.date, deletedMovement.date),
                 gt(movements.id, deletedMovement.id),
               ),
             ),
@@ -1086,7 +1094,7 @@ export const currentAccountsProcedure = async (
     input.currency ? eq(transactions.currency, input.currency) : undefined,
     input.dayInPast
       ? lte(
-          operations.date,
+          movements.date,
           moment(input.dayInPast, dateFormatting.day)
             .set({
               hour: 23,
@@ -1100,7 +1108,7 @@ export const currentAccountsProcedure = async (
     input.fromDate && input.toDate
       ? and(
           gte(
-            operations.date,
+            movements.date,
             moment(input.fromDate)
               .set({
                 hour: 0,
@@ -1111,7 +1119,7 @@ export const currentAccountsProcedure = async (
               .toDate(),
           ),
           lte(
-            operations.date,
+            movements.date,
             moment(input.toDate)
               .set({
                 hour: 23,
@@ -1126,7 +1134,7 @@ export const currentAccountsProcedure = async (
     input.fromDate && !input.toDate
       ? and(
           gte(
-            operations.date,
+            movements.date,
             moment(input.fromDate)
               .set({
                 hour: 0,
@@ -1137,7 +1145,7 @@ export const currentAccountsProcedure = async (
               .toDate(),
           ),
           lte(
-            operations.date,
+            movements.date,
             moment(input.fromDate)
               .set({
                 hour: 0,
@@ -1166,7 +1174,6 @@ export const currentAccountsProcedure = async (
       .leftJoin(transactions, eq(movements.transactionId, transactions.id))
       .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
       .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
-      .leftJoin(operations, eq(transactions.operationId, operations.id))
       .where(and(movementsConditions, mainConditions))
       .prepare("movements_count");
 
@@ -1185,7 +1192,7 @@ export const currentAccountsProcedure = async (
       .leftJoin(fromEntity, eq(fromEntity.id, balances.selectedEntityId))
       .leftJoin(toEntity, eq(toEntity.id, balances.otherEntityId))
       .where(and(movementsConditions, mainConditions))
-      .orderBy(desc(operations.date), desc(movements.id))
+      .orderBy(desc(movements.date), desc(movements.id))
       .offset(sql.placeholder("queryOffset"))
       .limit(sql.placeholder("queryLimit"))
       .prepare("movements_query");
@@ -1306,7 +1313,7 @@ export const currentAccountsProcedure = async (
 
           const tableData: z.infer<typeof tableDataType> = {
             id: mv.id,
-            date: moment(mv.transaction.operation.date).format("DD-MM-YYYY"),
+            date: moment(mv.date).format("DD-MM-YYYY"),
             operationId: mv.transaction.operationId,
             type: mv.type,
             txType: mv.transaction.type,
@@ -1382,7 +1389,7 @@ export const currentAccountsProcedure = async (
 
         const tableData: z.infer<typeof tableDataType> = {
           id: mv.id,
-          date: moment(mv.transaction.operation.date).format("DD-MM-YYYY"),
+          date: moment(mv.date).format("DD-MM-YYYY"),
           operationId: mv.transaction.operationId,
           type: mv.type,
           txType: mv.transaction.type,
