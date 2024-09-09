@@ -421,18 +421,13 @@ export const generateMovements = async (
             const [movement] = await transaction
               .select({ amount: movements.balance })
               .from(movements)
-              .leftJoin(
-                transactions,
-                eq(movements.transactionId, transactions.id),
-              )
-              .leftJoin(operations, eq(transactions.operationId, operations.id))
               .where(
                 and(
                   eq(movements.balanceId, oldBalance.id),
-                  lte(operations.date, mvDate),
+                  lte(movements.date, mvDate),
                 ),
               )
-              .orderBy(desc(operations.date), desc(movements.id))
+              .orderBy(desc(movements.date), desc(movements.id))
               .limit(1);
 
             // Creo un movimiento con el balance cambiado
@@ -475,18 +470,13 @@ export const generateMovements = async (
           const [movement] = await transaction
             .select({ amount: movements.balance })
             .from(movements)
-            .leftJoin(
-              transactions,
-              eq(movements.transactionId, transactions.id),
-            )
-            .leftJoin(operations, eq(transactions.operationId, operations.id))
             .where(
               and(
                 eq(movements.balanceId, balance.id),
-                lte(operations.date, mvDate),
+                lte(movements.date, mvDate),
               ),
             )
-            .orderBy(desc(operations.date), desc(movements.id))
+            .orderBy(desc(movements.date), desc(movements.id))
             .limit(1);
 
           // Creo un movimiento con el balance cambiado
@@ -537,14 +527,13 @@ export const generateMovements = async (
         .select({ id: movements.id })
         .from(movements)
         .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-        .leftJoin(operations, eq(transactions.operationId, operations.id))
         .leftJoin(balances, eq(movements.balanceId, balances.id))
         .where(
           and(
             eq(movements.account, account),
             eq(transactions.currency, tx.currency),
             entitiesQuery,
-            gt(operations.date, mvDate),
+            gt(movements.date, mvDate),
           ),
         );
 
@@ -661,18 +650,13 @@ export const generateMovements = async (
             const [movement] = await transaction
               .select({ amount: movements.balance })
               .from(movements)
-              .leftJoin(
-                transactions,
-                eq(movements.transactionId, transactions.id),
-              )
-              .leftJoin(operations, eq(transactions.operationId, operations.id))
               .where(
                 and(
                   eq(movements.cashBalanceId, oldBalance.id),
-                  lte(operations.date, mvDate),
+                  lte(movements.date, mvDate),
                 ),
               )
-              .orderBy(desc(operations.date), desc(movements.id))
+              .orderBy(desc(movements.date), desc(movements.id))
               .limit(1);
 
             // Creo un movimiento con el balance cambiado
@@ -714,18 +698,13 @@ export const generateMovements = async (
           const [movement] = await transaction
             .select({ amount: movements.balance })
             .from(movements)
-            .leftJoin(
-              transactions,
-              eq(movements.transactionId, transactions.id),
-            )
-            .leftJoin(operations, eq(transactions.operationId, operations.id))
             .where(
               and(
                 eq(movements.cashBalanceId, balance.id),
-                lte(operations.date, mvDate),
+                lte(movements.date, mvDate),
               ),
             )
-            .orderBy(desc(operations.date), desc(movements.id))
+            .orderBy(desc(movements.date), desc(movements.id))
             .limit(1);
 
           // Creo un movimiento con el balance cambiado
@@ -775,14 +754,13 @@ export const generateMovements = async (
         .select({ id: movements.id })
         .from(movements)
         .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-        .leftJoin(operations, eq(transactions.operationId, operations.id))
         .leftJoin(cashBalances, eq(movements.cashBalanceId, cashBalances.id))
         .where(
           and(
             eq(movements.account, account),
             eq(transactions.currency, tx.currency),
             entitiesQuery,
-            gt(operations.date, mvDate),
+            gt(movements.date, mvDate),
           ),
         );
 
@@ -951,8 +929,6 @@ export const undoMovements = async (
       const mvsToUpdate = await transaction
         .select({ id: movements.id })
         .from(movements)
-        .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-        .leftJoin(operations, eq(transactions.operationId, operations.id))
         .leftJoin(cashBalances, eq(movements.cashBalanceId, cashBalances.id))
         .where(
           and(

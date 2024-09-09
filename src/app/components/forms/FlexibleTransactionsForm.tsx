@@ -352,8 +352,8 @@ const FlexibleTransactionsForm = ({
                 variant="outline"
                 onClick={() =>
                   append({
-                    fromEntityId: "",
-                    toEntityId: "",
+                    fromEntityId: watchTransactions[index]?.fromEntityId ?? "",
+                    toEntityId: watchTransactions[index]?.toEntityId ?? "",
                     amount: "",
                     currency: "ars",
                     direction: !!watchTransactions[index]?.direction,
