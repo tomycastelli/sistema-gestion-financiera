@@ -1,6 +1,6 @@
-# Sistema Maika
+# Sistema de Gestión Financiera
 
-Web application for Maika (financial services). Using the T3 stack:
+Web application for financial services. Using the T3 stack:
 
 - [NextJS 14](https://nextjs.org/)
 - [TRPC](https://trpc.io)
