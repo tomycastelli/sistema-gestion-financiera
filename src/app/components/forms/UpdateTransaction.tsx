@@ -37,8 +37,10 @@ import { toast } from "sonner";
 import { useNumberFormat } from "@react-input/number-format";
 import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { Label } from "../ui/label";
+import { User } from "lucia";
 
 interface UpdateTransactionProps {
+  user: User;
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
   entities: RouterOutputs["entities"]["getAll"];
   operationsQueryInput: RouterInputs["operations"]["getOperations"];
@@ -53,6 +55,7 @@ const FormSchema = z.object({
 });
 
 const UpdateTransaction = ({
+  user,
   transaction: tx,
   entities,
   operationsQueryInput,
@@ -157,6 +160,7 @@ const UpdateTransaction = ({
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     mutate({
       txId: tx.id,
+      txType: tx.type,
       newTransactionData: {
         fromEntityId: parseInt(values.fromEntityId),
         toEntityId: parseInt(values.toEntityId),
@@ -176,13 +180,19 @@ const UpdateTransaction = ({
 
   const inputRef = useNumberFormat({ locales: "es-AR" });
 
+  const disabled =
+    !tx.isUpdateAllowed || tx.type === "cuenta corriente"
+      ? user.email !== "christian@ifc.com.ar" &&
+        user.email !== "tomas.castelli@ifc.com.ar"
+      : false;
+
   return (
     <Dialog open={isOpen} onOpenChange={() => reset()}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
           type="button"
-          disabled={!tx.isUpdateAllowed}
+          disabled={disabled}
           onClick={() => setIsOpen(true)}
           className="rounded-full border-2 border-transparent bg-transparent p-2"
         >

@@ -25,6 +25,7 @@ export const editingOperationsRouter = createTRPCRouter({
     .input(
       z.object({
         txId: z.number().int(),
+        txType: z.string(),
         newTransactionData: z.object({
           fromEntityId: z.number(),
           toEntityId: z.number(),
@@ -43,6 +44,16 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        input.txType === "cuenta corriente" &&
+        ctx.user.email !== "christian@ifc.com.ar" &&
+        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
+        });
+      }
       const response = await ctx.db.transaction(async (transaction) => {
         if (input.isPendingUpdate) {
           const [newTxObj] = await transaction

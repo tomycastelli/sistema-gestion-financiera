@@ -472,8 +472,8 @@ export const operationsRouter = createTRPCRouter({
       const monthCountSchema = z.array(
         z.object({
           day: z.string().refine((str) => moment(str).toDate()),
-          operationsCount: z.string().refine((str) => parseInt(str)),
-          transactionsCount: z.string().refine((str) => parseInt(str)),
+          operationsCount: z.string().refine((str) => Number.parseInt(str)),
+          transactionsCount: z.string().refine((str) => Number.parseInt(str)),
         }),
       );
 
@@ -554,7 +554,7 @@ export const operationsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       switch (input.type) {
-        case "exchangeRate":
+        case "exchangeRate": {
           const fromEntity = alias(entities, "fromEntity");
           const toEntity = alias(entities, "toEntity");
 
@@ -592,13 +592,14 @@ export const operationsRouter = createTRPCRouter({
             );
 
           if (exchangeAvg?.average) {
-            return parseFloat(exchangeAvg.average);
+            return Number.parseFloat(exchangeAvg.average);
           } else {
             throw new TRPCError({
               code: "NOT_FOUND",
               message: "Exchange rate average not found",
             });
           }
+        }
         default:
           throw new TRPCError({
             code: "BAD_REQUEST",
