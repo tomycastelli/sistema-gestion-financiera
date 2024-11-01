@@ -103,7 +103,6 @@ const OperationDrawer: FC<OperationDrawerProps> = ({
                   Movimientos
                 </h1>
                 <DetailMovementsTable
-                  operationDate={op ? op.date : opDate!}
                   movements={movements}
                   operationId={op ? op.id : opId!}
                 />

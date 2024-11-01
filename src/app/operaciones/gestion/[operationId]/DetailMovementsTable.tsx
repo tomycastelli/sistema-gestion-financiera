@@ -8,15 +8,11 @@ import { mvTypeFormatting } from "~/lib/variables";
 import { type RouterOutputs } from "~/trpc/shared";
 
 interface DetailMovementsTableProps {
-  operationDate: RouterOutputs["operations"]["getOperations"]["operations"][number]["date"];
   movements: RouterOutputs["movements"]["getMovementsByOpId"];
   operationId: number;
 }
 
-const DetailMovementsTable: FC<DetailMovementsTableProps> = ({
-  movements,
-  operationDate,
-}) => {
+const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ movements }) => {
   const [page, setPage] = useState<number>(1);
   const pageSize = 12;
 

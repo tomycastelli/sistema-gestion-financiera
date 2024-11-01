@@ -158,7 +158,7 @@ export const editingOperationsRouter = createTRPCRouter({
           });
         }
 
-        const [opData] = await transaction
+        await transaction
           .select()
           .from(operations)
           .where(eq(operations.id, newTxObj.operationId));

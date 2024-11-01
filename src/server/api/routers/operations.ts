@@ -17,7 +17,6 @@ import { z } from "zod";
 import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
-  Status,
   entities,
   movements,
   operations,
