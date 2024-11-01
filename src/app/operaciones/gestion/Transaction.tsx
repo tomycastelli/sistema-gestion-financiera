@@ -62,8 +62,8 @@ const Transaction = memo(
                     tx.status === Status.enumValues[0]
                       ? "text-red"
                       : tx.status === Status.enumValues[1]
-                        ? "text-green"
-                        : "text-gray",
+                      ? "text-green"
+                      : "text-gray",
                   )}
                 />
               ) : (
@@ -73,8 +73,8 @@ const Transaction = memo(
                     tx.status === Status.enumValues[0]
                       ? "text-red"
                       : tx.status === Status.enumValues[1]
-                        ? "text-green"
-                        : "text-gray",
+                      ? "text-green"
+                      : "text-gray",
                   )}
                 />
               )}

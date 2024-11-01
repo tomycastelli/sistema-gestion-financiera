@@ -49,9 +49,9 @@ const Operation = memo(
             .length === op.transactions.length
             ? "border-red"
             : op.transactions.filter((tx) => tx.status === Status.enumValues[1])
-                  .length === op.transactions.length
-              ? "border-green"
-              : "",
+                .length === op.transactions.length
+            ? "border-green"
+            : "",
         )}
       >
         <div className="flex w-full items-start justify-between">

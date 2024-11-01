@@ -399,7 +399,14 @@ export const getOperationsProcedure = async (
       isVisualizeAllowed,
       isCreateAllowed,
       transactions: op.transactions.map((tx) => {
+        const cuentaCorrienteAllow =
+          tx.type === "cuenta corriente"
+            ? ctx.user?.email === "christian@ifc.com.ar" ||
+              ctx.user?.email === "tomas.castelli@ifc.com.ar"
+            : true;
+
         const isCancelAllowed =
+          cuentaCorrienteAllow &&
           isInPeriod &&
           tx.status !== "cancelled" &&
           (cashAccountOnlyTypes.has(tx.type) ||
@@ -425,6 +432,7 @@ export const getOperationsProcedure = async (
         const isDeleteAllowed = false;
 
         const isUpdateAllowed =
+          cuentaCorrienteAllow &&
           isInPeriod &&
           tx.status !== schema.Status.enumValues[0] &&
           userPermissions?.find(
@@ -447,6 +455,7 @@ export const getOperationsProcedure = async (
             : false;
 
         const isValidateAllowed =
+          cuentaCorrienteAllow &&
           isInPeriod &&
           tx.type === "cambio" &&
           tx.status === schema.Status.enumValues[2] &&
