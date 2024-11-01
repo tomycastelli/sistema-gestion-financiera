@@ -2,7 +2,7 @@ import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
-import { createTRPCContext } from "~/server/api/trpc";
+import { type createTRPCContext } from "~/server/api/trpc";
 import * as schema from "../server/db/schema";
 import { getAccountingPeriodDate, getAllChildrenTags } from "./functions";
 import {

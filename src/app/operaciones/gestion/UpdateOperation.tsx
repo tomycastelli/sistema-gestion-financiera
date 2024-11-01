@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon } from "lucide-react";
 import moment from "moment";
 import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
@@ -9,7 +8,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
 import { Button } from "~/app/components/ui/button";
-import { Calendar } from "~/app/components/ui/calendar";
 import {
   Dialog,
   DialogClose,
@@ -27,14 +25,7 @@ import {
   FormLabel,
   FormMessage,
 } from "~/app/components/ui/form";
-import { Input } from "~/app/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/app/components/ui/popover";
 import { Textarea } from "~/app/components/ui/textarea";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterInputs } from "~/trpc/shared";
 

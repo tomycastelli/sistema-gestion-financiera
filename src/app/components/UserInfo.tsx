@@ -1,9 +1,6 @@
 import { type User } from "lucia";
 import { type FC } from "react";
-import { getInitials } from "~/lib/functions";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { logOut } from "~/server/auth";
 import {
   DropdownMenu,
