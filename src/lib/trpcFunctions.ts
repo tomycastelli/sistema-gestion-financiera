@@ -241,6 +241,7 @@ export const generateMovements = async (
       ? 3
       : 5
     : 3;
+
   for (let index = 0; index < indexLimit; index++) {
     // Por defecto es el amount y listo
     let changeAmount = 0;

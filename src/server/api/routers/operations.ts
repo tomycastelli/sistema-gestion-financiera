@@ -79,187 +79,206 @@ export const operationsRouter = createTRPCRouter({
       if (input.opId) {
         const opId = input.opId;
 
-        const response = await ctx.db.transaction(async (tx) => {
-          const list = [];
-          const operation = await tx.query.operations.findFirst({
-            where: eq(operations.id, opId),
-          });
-
-          if (!operation) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "The provided operation ID is not in the database",
+        const response = await ctx.db.transaction(
+          async (tx) => {
+            const list = [];
+            const operation = await tx.query.operations.findFirst({
+              where: eq(operations.id, opId),
             });
-          }
 
-          // Inserto las pending que estan relacionadas a esa operación, se subiran con status: pending automaticamente
-          // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
-          if (pendingInput.length > 0) {
-            const pendingToInsert = pendingInput.map((pendingTx) => ({
-              operationId: opId,
-              ...pendingTx,
-            }));
-            await tx.insert(pendingTransactions).values(pendingToInsert);
-          }
-
-          for (const txToInsert of directTransactions) {
-            const [txIdObj] = await tx
-              .insert(transactions)
-              .values({
-                ...txToInsert,
-                operationId: opId,
-                status:
-                  cashAccountOnlyTypes.has(txToInsert.type) ||
-                  txToInsert.type === "pago por cta cte"
-                    ? "confirmed"
-                    : "pending",
-              })
-              .returning({ id: transactions.id });
-
-            relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
-
-            const [insertedTxResponse] = await tx
-              .select()
-              .from(transactions)
-              .leftJoin(
-                fromEntity,
-                eq(transactions.fromEntityId, fromEntity.id),
-              )
-              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-              .where(eq(transactions.id, txIdObj!.id));
-
-            const insertedTx = {
-              ...insertedTxResponse!.Transactions,
-              formId: txToInsert.formId,
-              fromEntity: insertedTxResponse!.fromEntity!,
-              toEntity: insertedTxResponse!.toEntity!,
-            };
-
-            list.push(insertedTx);
-
-            const txForMovement = { ...insertedTx, operation };
-
-            if (cashAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
-            } else if (insertedTx.type === "pago por cta cte") {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
-              await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (insertedTx.type === "cambio") {
-              await generateMovements(tx, txForMovement, false, -1, "upload");
+            if (!operation) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "The provided operation ID is not in the database",
+              });
             }
-          }
 
-          if (directTransactions.length > 0) {
-            const txMetadataToInsert = directTransactions.map((txToInsert) => ({
-              transactionId: relatedTxIdMap.get(txToInsert.formId)!,
-              uploadedBy: ctx.user.id,
-              uploadedDate: new Date(),
-              metadata: txToInsert.metadata,
-              relatedTransactionId: txToInsert.relatedTransactionId
-                ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
-                : undefined,
-            }));
+            // Inserto las pending que estan relacionadas a esa operación, se subiran con status: pending automaticamente
+            // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
+            if (pendingInput.length > 0) {
+              const pendingToInsert = pendingInput.map((pendingTx) => ({
+                operationId: opId,
+                ...pendingTx,
+              }));
+              await tx.insert(pendingTransactions).values(pendingToInsert);
+            }
 
-            await tx.insert(transactionsMetadata).values(txMetadataToInsert);
-          }
+            for (const txToInsert of directTransactions) {
+              const [txIdObj] = await tx
+                .insert(transactions)
+                .values({
+                  ...txToInsert,
+                  operationId: opId,
+                  status:
+                    cashAccountOnlyTypes.has(txToInsert.type) ||
+                    txToInsert.type === "pago por cta cte"
+                      ? "confirmed"
+                      : "pending",
+                })
+                .returning({ id: transactions.id });
 
-          return { operation, transactions: list };
-        });
+              relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
+
+              const [insertedTxResponse] = await tx
+                .select()
+                .from(transactions)
+                .leftJoin(
+                  fromEntity,
+                  eq(transactions.fromEntityId, fromEntity.id),
+                )
+                .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+                .where(eq(transactions.id, txIdObj!.id));
+
+              const insertedTx = {
+                ...insertedTxResponse!.Transactions,
+                formId: txToInsert.formId,
+                fromEntity: insertedTxResponse!.fromEntity!,
+                toEntity: insertedTxResponse!.toEntity!,
+              };
+
+              list.push(insertedTx);
+
+              const txForMovement = { ...insertedTx, operation };
+
+              if (cashAccountOnlyTypes.has(insertedTx.type)) {
+                await generateMovements(tx, txForMovement, true, 1, "upload");
+              } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
+                await generateMovements(tx, txForMovement, false, 1, "upload");
+              } else if (insertedTx.type === "pago por cta cte") {
+                await generateMovements(tx, txForMovement, false, 1, "upload");
+                await generateMovements(tx, txForMovement, true, 1, "upload");
+              } else if (insertedTx.type === "cambio") {
+                await generateMovements(tx, txForMovement, false, -1, "upload");
+              }
+            }
+
+            if (directTransactions.length > 0) {
+              const txMetadataToInsert = directTransactions.map(
+                (txToInsert) => ({
+                  transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+                  uploadedBy: ctx.user.id,
+                  uploadedDate: new Date(),
+                  metadata: txToInsert.metadata,
+                  relatedTransactionId: txToInsert.relatedTransactionId
+                    ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
+                    : undefined,
+                }),
+              );
+
+              await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+            }
+
+            return { operation, transactions: list };
+          },
+          {
+            isolationLevel: "serializable",
+            deferrable: true,
+          },
+        );
 
         return response;
       } else {
-        const response = await ctx.db.transaction(async (tx) => {
-          const list = [];
-          const [op] = await tx
-            .insert(operations)
-            .values({ date: input.opDate, observations: input.opObservations })
-            .returning();
-
-          // Inserto las pending que estan relacionadas a esta nueva operación, se subiran con status: pending automaticamente
-          // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
-          if (pendingInput.length > 0) {
-            const pendingToInsert = pendingInput.map((pendingTx) => ({
-              operationId: op!.id,
-              ...pendingTx,
-            }));
-            await tx.insert(pendingTransactions).values(pendingToInsert);
-          }
-
-          for (const txToInsert of directTransactions) {
-            const [txIdObj] = await tx
-              .insert(transactions)
+        const response = await ctx.db.transaction(
+          async (tx) => {
+            const list = [];
+            const [op] = await tx
+              .insert(operations)
               .values({
-                operationId: op!.id,
-                type: txToInsert.type,
-                operatorEntityId: txToInsert.operatorEntityId,
-                fromEntityId: txToInsert.fromEntityId,
-                toEntityId: txToInsert.toEntityId,
-                currency: txToInsert.currency,
-                amount: txToInsert.amount,
-                status:
-                  cashAccountOnlyTypes.has(txToInsert.type) ||
-                  txToInsert.type === "pago por cta cte"
-                    ? "confirmed"
-                    : "pending",
+                date: input.opDate,
+                observations: input.opObservations,
               })
-              .returning({ id: transactions.id });
+              .returning();
 
-            relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
-
-            const [insertedTxResponse] = await tx
-              .select()
-              .from(transactions)
-              .leftJoin(
-                fromEntity,
-                eq(transactions.fromEntityId, fromEntity.id),
-              )
-              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-              .where(eq(transactions.id, txIdObj!.id));
-
-            const insertedTx = {
-              ...insertedTxResponse!.Transactions,
-              formId: txToInsert.formId,
-              fromEntity: insertedTxResponse!.fromEntity!,
-              toEntity: insertedTxResponse!.toEntity!,
-            };
-
-            list.push(insertedTx);
-
-            const txForMovement = {
-              ...insertedTx,
-              operation: { date: op!.date },
-            };
-
-            if (cashAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
-            } else if (insertedTx.type === "pago por cta cte") {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
-              await generateMovements(tx, txForMovement, true, 1, "upload");
-            } else if (insertedTx.type === "cambio") {
-              await generateMovements(tx, txForMovement, false, -1, "upload");
+            // Inserto las pending que estan relacionadas a esta nueva operación, se subiran con status: pending automaticamente
+            // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
+            if (pendingInput.length > 0) {
+              const pendingToInsert = pendingInput.map((pendingTx) => ({
+                operationId: op!.id,
+                ...pendingTx,
+              }));
+              await tx.insert(pendingTransactions).values(pendingToInsert);
             }
-          }
 
-          if (directTransactions.length > 0) {
-            const txMetadataToInsert = directTransactions.map((txToInsert) => ({
-              transactionId: relatedTxIdMap.get(txToInsert.formId)!,
-              uploadedBy: ctx.user.id,
-              uploadedDate: new Date(),
-              metadata: txToInsert.metadata,
-              relatedTransactionId: txToInsert.relatedTransactionId
-                ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
-                : undefined,
-            }));
+            for (const txToInsert of directTransactions) {
+              const [txIdObj] = await tx
+                .insert(transactions)
+                .values({
+                  operationId: op!.id,
+                  type: txToInsert.type,
+                  operatorEntityId: txToInsert.operatorEntityId,
+                  fromEntityId: txToInsert.fromEntityId,
+                  toEntityId: txToInsert.toEntityId,
+                  currency: txToInsert.currency,
+                  amount: txToInsert.amount,
+                  status:
+                    cashAccountOnlyTypes.has(txToInsert.type) ||
+                    txToInsert.type === "pago por cta cte"
+                      ? "confirmed"
+                      : "pending",
+                })
+                .returning({ id: transactions.id });
 
-            await tx.insert(transactionsMetadata).values(txMetadataToInsert);
-          }
+              relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
 
-          return { operation: op!, transactions: list };
-        });
+              const [insertedTxResponse] = await tx
+                .select()
+                .from(transactions)
+                .leftJoin(
+                  fromEntity,
+                  eq(transactions.fromEntityId, fromEntity.id),
+                )
+                .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+                .where(eq(transactions.id, txIdObj!.id));
+
+              const insertedTx = {
+                ...insertedTxResponse!.Transactions,
+                formId: txToInsert.formId,
+                fromEntity: insertedTxResponse!.fromEntity!,
+                toEntity: insertedTxResponse!.toEntity!,
+              };
+
+              list.push(insertedTx);
+
+              const txForMovement = {
+                ...insertedTx,
+                operation: { date: op!.date },
+              };
+
+              if (cashAccountOnlyTypes.has(insertedTx.type)) {
+                await generateMovements(tx, txForMovement, true, 1, "upload");
+              } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
+                await generateMovements(tx, txForMovement, false, 1, "upload");
+              } else if (insertedTx.type === "pago por cta cte") {
+                await generateMovements(tx, txForMovement, false, 1, "upload");
+                await generateMovements(tx, txForMovement, true, 1, "upload");
+              } else if (insertedTx.type === "cambio") {
+                await generateMovements(tx, txForMovement, false, -1, "upload");
+              }
+            }
+
+            if (directTransactions.length > 0) {
+              const txMetadataToInsert = directTransactions.map(
+                (txToInsert) => ({
+                  transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+                  uploadedBy: ctx.user.id,
+                  uploadedDate: new Date(),
+                  metadata: txToInsert.metadata,
+                  relatedTransactionId: txToInsert.relatedTransactionId
+                    ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
+                    : undefined,
+                }),
+              );
+
+              await tx.insert(transactionsMetadata).values(txMetadataToInsert);
+            }
+
+            return { operation: op!, transactions: list };
+          },
+          {
+            isolationLevel: "serializable",
+            deferrable: true,
+          },
+        );
 
         await logIO(
           ctx.dynamodb,
