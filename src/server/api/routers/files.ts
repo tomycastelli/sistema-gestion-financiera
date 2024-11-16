@@ -46,29 +46,6 @@ export const filesRouter = createTRPCRouter({
         ctx,
       );
 
-      const data = tableData.map((mv) => ({
-        fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
-        origen: mv.selectedEntity,
-        cliente: mv.otherEntity,
-        detalle: `${
-          mv.type === "upload"
-            ? "Carga"
-            : mv.type === "confirmation"
-            ? "Confirmación"
-            : "Cancelación"
-        } de ${mv.txType} - Nro ${mv.id}`,
-        observaciones: mv.observations ?? "",
-        entrada:
-          mv.ingress === 0
-            ? ""
-            : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
-        salida:
-          mv.egress === 0
-            ? ""
-            : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
-        saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
-      }));
-
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
       const filename = `${
@@ -101,9 +78,9 @@ export const filesRouter = createTRPCRouter({
           } de ${mv.txType} - Nro ${mv.id}`,
           observaciones: mv.observations ?? "",
           divisa: mv.currency,
-          entrada: mv.ingress === 0 ? "" : numberFormatter(mv.ingress),
-          salida: mv.egress === 0 ? "" : numberFormatter(mv.egress),
-          saldo: numberFormatter(mv.balance),
+          entrada: mv.ingress,
+          salida: mv.egress,
+          saldo: mv.balance,
         }));
 
         const csv = unparse(csvData, { delimiter: "," });
@@ -115,6 +92,28 @@ export const filesRouter = createTRPCRouter({
 
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
+        const data = tableData.map((mv) => ({
+          fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
+          origen: mv.selectedEntity,
+          cliente: mv.otherEntity,
+          detalle: `${
+            mv.type === "upload"
+              ? "Carga"
+              : mv.type === "confirmation"
+              ? "Confirmación"
+              : "Cancelación"
+          } de ${mv.txType} - Nro ${mv.id}`,
+          observaciones: mv.observations ?? "",
+          entrada:
+            mv.ingress === 0
+              ? ""
+              : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
+          salida:
+            mv.egress === 0
+              ? ""
+              : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
+          saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
+        }));
         const htmlString =
           `<html>
           <body class="main-container">
@@ -485,7 +484,7 @@ export const filesRouter = createTRPCRouter({
                 <td>${tx.destino}</td>
                 <td>${tx.detalle ?? ""}</td>
                 <td>${tx.divisa}</td>
-                <td>${tx.monto}</td>
+                <td>${numberFormatter(tx.monto)}</td>
                 <td>${tx.estado}</td>
                 <td>${tx.cargadoPor ?? ""}</td>
                 <td>${tx.confirmadoPor ?? ""}</td>

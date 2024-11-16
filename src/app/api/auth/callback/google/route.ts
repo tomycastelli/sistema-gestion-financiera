@@ -52,7 +52,6 @@ export async function GET(request: Request) {
       picture: z.string(),
       email: z.string(),
       email_verified: z.boolean(),
-      locale: z.string(),
     });
 
     const googleUser = userSchema.parse(await response.json());
