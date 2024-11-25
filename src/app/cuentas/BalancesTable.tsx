@@ -26,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/ui/tooltip";
+import { User } from "lucia";
 
 const transformedBalancesSchema = z.object({
   tableData: z.array(
@@ -50,6 +51,7 @@ interface BalancesTableProps {
   selectedEntityId: number | undefined;
   selectedTag: string | undefined;
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
+  user: User;
 }
 
 const BalancesTable: FC<BalancesTableProps> = ({
@@ -61,6 +63,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
   selectedEntityId,
   selectedTag,
   latestExchangeRates,
+  user,
 }) => {
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
@@ -283,7 +286,14 @@ const BalancesTable: FC<BalancesTableProps> = ({
       >,
     );
 
-  const tableCurrencies = [...currenciesOrder, "unified"];
+  const userCanUnify =
+    user.permissions?.some(
+      (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+    ) ?? false;
+
+  const tableCurrencies = userCanUnify
+    ? [...currenciesOrder, "unified"]
+    : currenciesOrder;
 
   const columnAmount = tableCurrencies.length + 1;
 
