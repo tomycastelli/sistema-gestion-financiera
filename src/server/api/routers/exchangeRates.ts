@@ -55,6 +55,33 @@ export const exchangeRatesRouter = createTRPCRouter({
 
       return exchangeRatesData;
     }),
+
+  getLatestExchangeRates: publicProcedure.query(async ({ ctx }) => {
+    const rankedRates = ctx.db.$with("ranked_rates").as(
+      ctx.db
+        .select({
+          currency: exchangeRates.currency,
+          date: exchangeRates.date,
+          rate: exchangeRates.rate,
+          rn: sql`ROW_NUMBER() OVER (PARTITION BY ${exchangeRates.currency} ORDER BY ${exchangeRates.date} DESC)`.as(
+            "rn",
+          ),
+        })
+        .from(exchangeRates),
+    );
+
+    const latestRates = await ctx.db
+      .with(rankedRates)
+      .select({
+        currency: rankedRates.currency,
+        date: rankedRates.date,
+        rate: rankedRates.rate,
+      })
+      .from(rankedRates)
+      .where(sql`${rankedRates.rn} = 1`);
+
+    return latestRates;
+  }),
   addExchangeRates: protectedLoggedProcedure
     .input(
       z

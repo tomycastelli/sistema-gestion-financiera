@@ -53,6 +53,9 @@ const AccountsTable = async ({
     dayInPast: dayInPast ?? undefined,
   });
 
+  const latestExchangeRates =
+    await api.exchangeRates.getLatestExchangeRates.query();
+
   return (
     <div className="flex flex-grow flex-col space-y-8">
       <div suppressHydrationWarning={true}>
@@ -70,6 +73,7 @@ const AccountsTable = async ({
             user={user}
             entities={entities}
             uiColor={uiColor}
+            latestExchangeRates={latestExchangeRates}
           />
         )}
       </div>

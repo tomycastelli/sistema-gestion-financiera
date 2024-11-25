@@ -20,6 +20,12 @@ import {
 import { Button } from "../components/ui/button";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import moment from "moment";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
 
 const transformedBalancesSchema = z.object({
   tableData: z.array(
@@ -43,15 +49,18 @@ interface BalancesTableProps {
   isFetching: boolean;
   selectedEntityId: number | undefined;
   selectedTag: string | undefined;
+  latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
 }
 
 const BalancesTable: FC<BalancesTableProps> = ({
   balances,
   isInverted,
+  accountType,
   isFetching,
   uiColor,
   selectedEntityId,
   selectedTag,
+  latestExchangeRates,
 }) => {
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
@@ -71,6 +80,21 @@ const BalancesTable: FC<BalancesTableProps> = ({
       },
     });
 
+  const unifyAmount = (
+    currency: string,
+    amount: number,
+    type: "entity" | "total",
+  ) => {
+    if (currency === "usd") return amount;
+    const rate =
+      latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
+    if (currency === "usdt") {
+      if (type === "entity" && accountType) return 0;
+      return amount * (1 + rate / 100);
+    }
+    return amount / rate;
+  };
+
   const transformedBalances: z.infer<typeof transformedBalancesSchema> =
     balances.reduce(
       (acc, balance) => {
@@ -89,7 +113,12 @@ const BalancesTable: FC<BalancesTableProps> = ({
                 selectedEntityId === balance.selectedEntityId
                   ? balance.selectedEntity
                   : balance.otherEntity,
-              data: [],
+              data: [
+                {
+                  currency: "unified",
+                  balance: 0,
+                },
+              ],
             };
             acc.tableData.push(entityEntry);
           }
@@ -110,6 +139,11 @@ const BalancesTable: FC<BalancesTableProps> = ({
           }
 
           dataEntry.balance += balance.balance * balanceMultiplier;
+          entityEntry.data[0]!.balance += unifyAmount(
+            balance.currency,
+            balance.balance * balanceMultiplier,
+            "entity",
+          );
         } else if (selectedTag) {
           // Handle entities with the same tag
           const myPOVEntity =
@@ -131,7 +165,12 @@ const BalancesTable: FC<BalancesTableProps> = ({
             if (!otherEntityEntry) {
               otherEntityEntry = {
                 entity: myOtherEntity,
-                data: [],
+                data: [
+                  {
+                    balance: 0,
+                    currency: "unified",
+                  },
+                ],
               };
               acc.tableData.push(otherEntityEntry);
             }
@@ -151,6 +190,11 @@ const BalancesTable: FC<BalancesTableProps> = ({
             }
 
             dataEntry.balance += balance.balance * balanceMultiplier;
+            otherEntityEntry.data[0]!.balance += unifyAmount(
+              balance.currency,
+              balance.balance * balanceMultiplier,
+              "entity",
+            );
 
             // Update totals
             let totalEntry = acc.totals.find(
@@ -165,6 +209,11 @@ const BalancesTable: FC<BalancesTableProps> = ({
             }
 
             totalEntry.total += balance.balance * balanceMultiplier;
+            acc.totals[0]!.total += unifyAmount(
+              balance.currency,
+              balance.balance * balanceMultiplier,
+              "total",
+            );
           }
 
           // Process myPOVEntity
@@ -175,7 +224,12 @@ const BalancesTable: FC<BalancesTableProps> = ({
           if (!entityEntry) {
             entityEntry = {
               entity: myPOVEntity,
-              data: [],
+              data: [
+                {
+                  currency: "unified",
+                  balance: 0,
+                },
+              ],
             };
             acc.tableData.push(entityEntry);
           }
@@ -196,6 +250,11 @@ const BalancesTable: FC<BalancesTableProps> = ({
           }
 
           dataEntry.balance += balance.balance * balanceMultiplier;
+          entityEntry.data[0]!.balance += unifyAmount(
+            balance.currency,
+            balance.balance * balanceMultiplier,
+            "entity",
+          );
 
           // Update totals
           let totalEntry = acc.totals.find(
@@ -210,16 +269,23 @@ const BalancesTable: FC<BalancesTableProps> = ({
           }
 
           totalEntry.total += balance.balance * balanceMultiplier;
+          acc.totals[0]!.total += unifyAmount(
+            balance.currency,
+            balance.balance * balanceMultiplier,
+            "total",
+          );
         }
 
         return acc;
       },
-      { tableData: [], totals: [] } as z.infer<
+      { tableData: [], totals: [{ currency: "unified", total: 0 }] } as z.infer<
         typeof transformedBalancesSchema
       >,
     );
 
-  const columnAmount = currenciesOrder.length + 1;
+  const tableCurrencies = [...currenciesOrder, "unified"];
+
+  const columnAmount = tableCurrencies.length + 1;
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -346,9 +412,9 @@ const BalancesTable: FC<BalancesTableProps> = ({
           className="grid justify-items-center rounded-xl border-2 p-2"
         >
           <p className="col-span-1">Entidad</p>
-          {currenciesOrder.map((currency) => (
+          {tableCurrencies.map((currency) => (
             <p key={currency} className="col-span-1">
-              {currency.toUpperCase()}
+              {currency === "unified" ? "Unificado" : currency.toUpperCase()}
             </p>
           ))}
         </div>
@@ -382,7 +448,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
             >
               <p>{item.entity.name}</p>
             </Button>
-            {currenciesOrder.map((currency) => {
+            {tableCurrencies.map((currency) => {
               const matchingBalance = item.data.find(
                 (balance) => balance.currency === currency,
               );
@@ -390,6 +456,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
               return matchingBalance && currency !== "usdt" ? (
                 <Button
                   onClick={() => {
+                    if (currency === "unified") return;
                     if (
                       selectedCurrency !== currency ||
                       originEntityId !== item.entity.id
@@ -447,11 +514,47 @@ const BalancesTable: FC<BalancesTableProps> = ({
             className="grid justify-items-center border-t-2 p-4 text-xl font-semibold"
           >
             <p className="col-span-1">Total</p>
-            {currenciesOrder.map((currency) => {
+            {tableCurrencies.map((currency) => {
               const total =
                 transformedBalances.totals.find((t) => t.currency === currency)
                   ?.total ?? 0;
-              return (
+              return currency === "unified" ? (
+                <Tooltip key={currency}>
+                  <TooltipTrigger>
+                    <Button
+                      key={currency}
+                      variant="outline"
+                      className="text-xl"
+                    >
+                      <p
+                        className={cn(
+                          "col-span-1",
+                          total !== 0
+                            ? !isInverted
+                              ? total > 0
+                                ? "text-green"
+                                : "text-red"
+                              : -total > 0
+                              ? "text-green"
+                              : "text-red"
+                            : undefined,
+                        )}
+                      >
+                        {numberFormatter(!isInverted ? total : -total)}
+                      </p>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="flex flex-col gap-x-4">
+                    {latestExchangeRates.map((r) => (
+                      <p key={r.currency}>
+                        {r.currency.toUpperCase()} - {numberFormatter(r.rate)}
+                        {r.currency === "usdt" ? " %" : " $"} -{" "}
+                        {moment(r.date).format("DD-MM-YYYY")}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
                 <Button
                   key={currency}
                   onClick={() => {

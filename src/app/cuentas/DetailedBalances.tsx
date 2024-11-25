@@ -30,6 +30,12 @@ import {
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
+import moment from "moment";
 
 interface DetailedBalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
@@ -39,6 +45,7 @@ interface DetailedBalancesProps {
   user: User | null;
   balances: RouterOutputs["movements"]["getBalancesByEntities"];
   selectedTag: string | undefined;
+  latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
 }
 
 const DetailedBalances: FC<DetailedBalancesProps> = ({
@@ -49,6 +56,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   selectedEntity,
   balances,
   selectedTag,
+  latestExchangeRates,
 }) => {
   const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
   const [isListSelection, setIsListSelection] = useState<boolean>(false);
@@ -75,6 +83,16 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
 
+  const unifyAmount = (currency: string, amount: number) => {
+    if (currency === "usd") return amount;
+    const rate =
+      latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
+    if (currency === "usdt") {
+      return amount * (1 + rate / 100);
+    }
+    return amount / rate;
+  };
+
   let detailedBalances: z.infer<typeof transformedBalancesSchema>[] = [];
 
   if (selectedEntity?.id) {
@@ -94,7 +112,12 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               balance.selectedEntity?.id === selectedEntity.id
                 ? balance.otherEntity
                 : balance.selectedEntity,
-            data: [],
+            data: [
+              {
+                balance: 0,
+                currency: "unified",
+              },
+            ],
           };
           acc.push(entityEntry);
         }
@@ -115,6 +138,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
         }
 
         dataEntry.balance += balance.balance * balanceMultiplier;
+        entityEntry.data[0]!.balance += unifyAmount(
+          balance.currency,
+          balance.balance * balanceMultiplier,
+        );
 
         return acc;
       },
@@ -137,7 +164,12 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
           if (!entityEntry) {
             entityEntry = {
               entity: myPOVEntity,
-              data: [],
+              data: [
+                {
+                  currency: "unified",
+                  balance: 0,
+                },
+              ],
             };
             acc.push(entityEntry);
           }
@@ -158,6 +190,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
           }
 
           dataEntry.balance += balance.balance * balanceMultiplier;
+          entityEntry.data[0]!.balance += unifyAmount(
+            balance.currency,
+            balance.balance * balanceMultiplier,
+          );
 
           return acc;
         },
@@ -268,8 +304,6 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     }
   };
 
-  const columnAmount = (currenciesOrder.length + 1) * 2 + 1;
-
   const defaultList = accountsLists?.find((list) => list.isDefault);
 
   const filteredBalances = searchedBalances
@@ -314,6 +348,10 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     isInverted,
     setMovementsTablePage,
   } = useCuentasStore();
+
+  const tableCurrencies = [...currenciesOrder, "unified"];
+
+  const columnAmount = (tableCurrencies.length + 1) * 2 + 1;
 
   return (
     <div className="flex flex-col space-y-4">
@@ -657,9 +695,9 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
         >
           <p className="col-span-1"></p>
           <p className="col-span-2">Entidad</p>
-          {currenciesOrder.map((currency) => (
+          {tableCurrencies.map((currency) => (
             <p key={currency} className="col-span-2">
-              {currency.toUpperCase()}
+              {currency === "unified" ? "Unificado" : currency.toUpperCase()}
             </p>
           ))}
         </div>
@@ -742,55 +780,101 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               >
                 <p>{item.entity.name}</p>
               </Button>
-              {currenciesOrder.map((currency) => {
+              {tableCurrencies.map((currency) => {
                 const matchingBalance = item.data.find(
                   (balance) => balance.currency === currency,
                 );
 
                 return matchingBalance ? (
-                  <Button
-                    onClick={() => {
-                      if (
-                        selectedCurrency !== currency ||
-                        destinationEntityId !== item.entity.id
-                      ) {
-                        setSelectedCurrency(currency);
-                        setDestinationEntityId(item.entity.id);
-                        setMovementsTablePage(1);
-                      } else {
-                        setSelectedCurrency(undefined);
-                        setDestinationEntityId(undefined);
-                        setMovementsTablePage(1);
-                      }
-                    }}
-                    key={currency}
-                    className="col-span-2 border-transparent text-xl"
-                    variant="outline"
-                  >
-                    {!isFetching ? (
-                      <p
-                        className={cn(
-                          matchingBalance.balance !== 0
-                            ? !isInverted
-                              ? matchingBalance.balance > 0
+                  currency === "unified" ? (
+                    <Tooltip key={currency}>
+                      <TooltipTrigger className="col-span-2">
+                        <Button
+                          key={currency}
+                          className="border-transparent text-xl"
+                          variant="outline"
+                        >
+                          {!isFetching ? (
+                            <p
+                              className={cn(
+                                matchingBalance.balance !== 0
+                                  ? !isInverted
+                                    ? matchingBalance.balance > 0
+                                      ? "text-green"
+                                      : "text-red"
+                                    : -matchingBalance.balance > 0
+                                    ? "text-green"
+                                    : "text-red"
+                                  : undefined,
+                              )}
+                            >
+                              {numberFormatter(
+                                !isInverted
+                                  ? matchingBalance.balance
+                                  : -matchingBalance.balance,
+                              )}
+                            </p>
+                          ) : (
+                            <p>Cargando...</p>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="flex flex-col gap-x-4">
+                        {latestExchangeRates.map((r) => (
+                          <p key={r.currency}>
+                            {r.currency.toUpperCase()} -{" "}
+                            {numberFormatter(r.rate)}
+                            {r.currency === "usdt" ? " %" : " $"} -{" "}
+                            {moment(r.date).format("DD-MM-YYYY")}
+                          </p>
+                        ))}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        if (
+                          selectedCurrency !== currency ||
+                          destinationEntityId !== item.entity.id
+                        ) {
+                          setSelectedCurrency(currency);
+                          setDestinationEntityId(item.entity.id);
+                          setMovementsTablePage(1);
+                        } else {
+                          setSelectedCurrency(undefined);
+                          setDestinationEntityId(undefined);
+                          setMovementsTablePage(1);
+                        }
+                      }}
+                      key={currency}
+                      className="col-span-2 border-transparent text-xl"
+                      variant="outline"
+                    >
+                      {!isFetching ? (
+                        <p
+                          className={cn(
+                            matchingBalance.balance !== 0
+                              ? !isInverted
+                                ? matchingBalance.balance > 0
+                                  ? "text-green"
+                                  : "text-red"
+                                : -matchingBalance.balance > 0
                                 ? "text-green"
                                 : "text-red"
-                              : -matchingBalance.balance > 0
-                              ? "text-green"
-                              : "text-red"
-                            : undefined,
-                        )}
-                      >
-                        {numberFormatter(
-                          !isInverted
-                            ? matchingBalance.balance
-                            : -matchingBalance.balance,
-                        )}
-                      </p>
-                    ) : (
-                      <p>Cargando...</p>
-                    )}
-                  </Button>
+                              : undefined,
+                          )}
+                        >
+                          {numberFormatter(
+                            !isInverted
+                              ? matchingBalance.balance
+                              : -matchingBalance.balance,
+                          )}
+                        </p>
+                      ) : (
+                        <p>Cargando...</p>
+                      )}
+                    </Button>
+                  )
                 ) : (
                   <p className="col-span-2" key={currency}></p>
                 );

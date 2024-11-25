@@ -21,6 +21,7 @@ interface BalancesProps {
   uiColor: string | undefined;
   dayInPast: string | undefined;
   mainTags: string[];
+  latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
 }
 
 const Balances: FC<BalancesProps> = ({
@@ -35,6 +36,7 @@ const Balances: FC<BalancesProps> = ({
   accountType,
   dayInPast,
   mainTags,
+  latestExchangeRates,
 }) => {
   const { isInverted, setIsInverted } = useCuentasStore();
 
@@ -80,6 +82,7 @@ const Balances: FC<BalancesProps> = ({
           isInverted={isInverted}
           isFetching={isFetching}
           uiColor={uiColor}
+          latestExchangeRates={latestExchangeRates}
         />
       ) : (
         <DetailedBalances
@@ -90,6 +93,7 @@ const Balances: FC<BalancesProps> = ({
           balances={balances}
           selectedEntity={selectedEntity}
           selectedTag={selectedTag}
+          latestExchangeRates={latestExchangeRates}
         />
       )}
     </div>
