@@ -88,6 +88,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
     amount: number,
     type: "entity" | "total",
   ) => {
+    if (latestExchangeRates.length === 0) return 0;
     if (currency === "usd") return amount;
     const rate =
       latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
