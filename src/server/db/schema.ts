@@ -153,6 +153,23 @@ export const requests = pgTable(
   },
 );
 
+export const exchangeRates = pgTable(
+  "exchange_rates",
+  {
+    currency: text("currency").notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    rate: decimalNumber("rate").notNull(),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({
+        columns: [table.currency, table.date],
+        name: "currency_date_pk",
+      }),
+    };
+  },
+);
+
 export const operations = pgTable(
   "Operations",
   {

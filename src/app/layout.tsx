@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 
 import { cn } from "~/lib/utils";
 import { TRPCReactProvider } from "~/trpc/react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
@@ -47,7 +48,7 @@ export default function RootLayout({
               <TooltipProvider delayDuration={0}>
                 <Navbar />
                 <main className="h-full pb-8">
-                  {children}
+                  <NuqsAdapter>{children}</NuqsAdapter>
                   <Analytics />
                   <Toaster />
                 </main>

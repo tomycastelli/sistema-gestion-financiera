@@ -132,13 +132,10 @@ const AddOperation = ({
   );
 
   const { isLoading: isEntitiesLoading, data: entities } =
-    api.entities.getFiltered.useQuery(
-      { permissionName: "OPERATIONS_CREATE" },
-      {
-        initialData: initialEntities,
-        refetchOnWindowFocus: false,
-      },
-    );
+    api.entities.getAll.useQuery(undefined, {
+      initialData: initialEntities,
+      refetchOnWindowFocus: false,
+    });
 
   const tabs = ["flexible", "cambio", "cable"];
 

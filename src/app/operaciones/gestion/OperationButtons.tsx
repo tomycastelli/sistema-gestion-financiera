@@ -16,7 +16,6 @@ import {
 } from "~/app/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Status } from "~/server/db/schema";
-import { type User } from "lucia";
 import ShareOperation from "./ShareOperation";
 import { Button } from "~/app/components/ui/button";
 import { Icons } from "~/app/components/ui/Icons";

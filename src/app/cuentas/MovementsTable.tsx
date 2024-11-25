@@ -45,7 +45,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import ClientLinkGenerator from "./ClientLinkGenerator";
 import { DataTable } from "./DataTable";
 import { toast } from "sonner";
 import CustomPagination from "../components/CustomPagination";
@@ -87,7 +86,6 @@ const MovementsTable = ({
   const utils = api.useContext();
 
   const searchParams = useSearchParams();
-  const selectedEntityString = searchParams.get("entidad");
   const timeMachineDate = searchParams.get("dia");
 
   enum Ordering {

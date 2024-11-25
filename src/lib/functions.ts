@@ -34,8 +34,9 @@ export const numberFormatter = (
   n: number,
   maximumFractionDigits = 2,
 ): string => {
+  const formatter = new Intl.NumberFormat("es-AR", { maximumFractionDigits });
   if (n === 0) return "0";
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits }).format(n);
+  return formatter.format(n);
 };
 
 export const safeJsonParse = <T>(str: string) => {
@@ -71,7 +72,9 @@ export function lightenColor(color: string, lightness: number): string {
   const newB = Math.floor(Math.max(0, b + (255 - b) * lightnessFactor));
 
   // Convert lightened RGB values back to hex format (0-F)
-  const newHex = `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+  const newHex = `#${newR.toString(16).padStart(2, "0")}${newG
+    .toString(16)
+    .padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 
   return newHex;
 }

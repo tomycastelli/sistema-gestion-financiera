@@ -13,6 +13,7 @@ import { userPreferencesRouter } from "./routers/userPreferences";
 import { usersRouter } from "./routers/users";
 import { messagesRouter } from "./routers/messages";
 import { globalSettingsRouter } from "./routers/globalSettings";
+import { exchangeRatesRouter } from "./routers/exchangeRates";
 
 /**
  * This is the primary router for your server.
@@ -34,6 +35,7 @@ export const appRouter = createTRPCRouter({
   userPreferences: userPreferencesRouter,
   messages: messagesRouter,
   globalSettings: globalSettingsRouter,
+  exchangeRates: exchangeRatesRouter,
 });
 
 // export type definition of API

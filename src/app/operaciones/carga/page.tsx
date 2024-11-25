@@ -5,9 +5,7 @@ import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 
 const Page = async () => {
-  const initialEntities = await api.entities.getFiltered.query({
-    permissionName: "OPERATIONS_CREATE",
-  });
+  const initialEntities = await api.entities.getAll.query();
 
   const user = await getUser();
 

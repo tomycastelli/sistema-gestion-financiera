@@ -32,8 +32,10 @@ const FormSchema = z
     emittingEntity: z.string(),
     receivingEntity: z.string(),
     middleEntity: z.string(),
+    bridgeEntity: z.string().optional(),
     operatorEntity: z.string(),
-    currency: z.string(),
+    emittingCurrency: z.string(),
+    receivingCurrency: z.string(),
     amount: z.string(),
     emittingFee: z.string().optional(),
     receivingFee: z.string().optional(),
@@ -67,9 +69,12 @@ const CableForm: FC<CableFormProps> = ({
   const watchEmittingEntity = watch("emittingEntity");
   const watchReceivingEntity = watch("receivingEntity");
   const watchMiddleEntity = watch("middleEntity");
+  const watchBridgeEntity = watch("bridgeEntity");
   const watchEmittingFee = watch("emittingFee");
   const watchReceivingFee = watch("receivingFee");
   const watchAmount = parseFormattedFloat(watch("amount"));
+  const watchEmittingCurrency = watch("emittingCurrency");
+  const watchReceivingCurrency = watch("receivingCurrency");
 
   const parsedWatchEmittingFee = watchEmittingFee
     ? parseFormattedFloat(watchEmittingFee)
@@ -90,6 +95,7 @@ const CableForm: FC<CableFormProps> = ({
       : 0;
 
     const parsedEmittingEntity = parseInt(values.emittingEntity);
+    const parsedBridgeEntity = parseInt(values.bridgeEntity ?? "0");
     const parsedMiddleEntity = parseInt(values.middleEntity);
     const parsedOperatorEntity = parseInt(values.operatorEntity);
     const parsedReceivingEntity = parseInt(values.receivingEntity);
@@ -104,7 +110,7 @@ const CableForm: FC<CableFormProps> = ({
         type: "cable",
         fromEntityId: parsedEmittingEntity,
         toEntityId: parsedMiddleEntity,
-        currency: values.currency,
+        currency: values.emittingCurrency,
         amount: parsedAmount,
         operatorId: parsedOperatorEntity,
         relatedTxId: greatestId + 2,
@@ -114,7 +120,7 @@ const CableForm: FC<CableFormProps> = ({
         type: "cable",
         fromEntityId: parsedMiddleEntity,
         toEntityId: parsedReceivingEntity,
-        currency: values.currency,
+        currency: values.receivingCurrency,
         amount: parsedAmount,
         operatorId: parsedOperatorEntity,
         relatedTxId: greatestId + 1,
@@ -128,7 +134,7 @@ const CableForm: FC<CableFormProps> = ({
           parsedEmittingFee < 0 ? parsedEmittingEntity : parsedMiddleEntity,
         toEntityId:
           parsedEmittingFee > 0 ? parsedEmittingEntity : parsedMiddleEntity,
-        currency: values.currency,
+        currency: values.emittingCurrency,
         amount: Math.abs((parsedAmount * parsedEmittingFee) / 100),
         operatorId: parseInt(values.operatorEntity),
         relatedTxId: greatestId + 1,
@@ -142,11 +148,44 @@ const CableForm: FC<CableFormProps> = ({
           parsedReceivingFee > 0 ? parsedReceivingEntity : parsedMiddleEntity,
         toEntityId:
           parsedReceivingFee < 0 ? parsedReceivingEntity : parsedMiddleEntity,
-        currency: values.currency,
+        currency: values.receivingCurrency,
         amount: Math.abs((parsedAmount * parsedReceivingFee) / 100),
         operatorId: parsedOperatorEntity,
         relatedTxId: greatestId + 2,
       });
+    }
+    if (
+      values.emittingCurrency !== values.receivingCurrency &&
+      parsedBridgeEntity !== 0
+    ) {
+      transactions.push(
+        {
+          txId: greatestId + 5,
+          type: "cable",
+          fromEntityId: parsedMiddleEntity,
+          toEntityId: parsedBridgeEntity,
+          currency:
+            values.emittingCurrency !== "usd"
+              ? values.emittingCurrency
+              : values.receivingCurrency,
+          amount: parsedAmount,
+          operatorId: parsedOperatorEntity,
+          relatedTxId: greatestId + 1,
+        },
+        {
+          txId: greatestId + 6,
+          type: "cable",
+          fromEntityId: parsedBridgeEntity,
+          toEntityId: parsedMiddleEntity,
+          currency:
+            values.emittingCurrency !== "usd"
+              ? values.receivingCurrency
+              : values.emittingCurrency,
+          amount: parsedAmount,
+          operatorId: parsedOperatorEntity,
+          relatedTxId: greatestId + 2,
+        },
+      );
     }
 
     const middleEntityTag = entities.find(
@@ -219,6 +258,22 @@ const CableForm: FC<CableFormProps> = ({
             />
             <FormField
               control={control}
+              name="emittingCurrency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Divisa</FormLabel>
+                  <CustomSelector
+                    buttonClassName="w-18"
+                    data={currencies}
+                    field={field}
+                    fieldName="emittingCurrency"
+                    placeholder="Elegir"
+                  />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
               name="emittingFee"
               render={({ field }) => (
                 <FormItem>
@@ -256,22 +311,6 @@ const CableForm: FC<CableFormProps> = ({
           </div>
           <div className="flex flex-col space-y-3">
             <div className="flex flex-row items-end justify-center space-x-2">
-              <FormField
-                control={control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Divisa</FormLabel>
-                    <CustomSelector
-                      buttonClassName="w-18"
-                      data={currencies}
-                      field={field}
-                      fieldName="currency"
-                      placeholder="Elegir"
-                    />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={control}
                 name="amount"
@@ -325,6 +364,39 @@ const CableForm: FC<CableFormProps> = ({
                 </FormItem>
               )}
             />
+            {watchReceivingCurrency !== watchEmittingCurrency && (
+              <FormField
+                control={control}
+                name="bridgeEntity"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Entidad Puente</FormLabel>
+                    <>
+                      <CustomSelector
+                        data={entities.map((entity) => ({
+                          value: entity.id.toString(),
+                          label: entity.name,
+                        }))}
+                        field={field}
+                        fieldName="bridgeEntity"
+                        placeholder="Elegir"
+                      />
+                      {watchBridgeEntity && (
+                        <EntityCard
+                          disableLinks={true}
+                          entity={
+                            entities.find(
+                              (obj) => obj.id.toString() === watchBridgeEntity,
+                            )!
+                          }
+                        />
+                      )}
+                    </>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={control}
               name="operatorEntity"
@@ -376,6 +448,22 @@ const CableForm: FC<CableFormProps> = ({
                     )}
                   </>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="receivingCurrency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Divisa</FormLabel>
+                  <CustomSelector
+                    buttonClassName="w-18"
+                    data={currencies}
+                    field={field}
+                    fieldName="receivingCurrency"
+                    placeholder="Elegir"
+                  />
                 </FormItem>
               )}
             />

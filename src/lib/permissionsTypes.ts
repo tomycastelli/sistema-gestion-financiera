@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const PermissionsNames = [
   "ADMIN",
+  "EXCHANGERATES_CREATE",
   "OPERATIONS_CREATE",
   "OPERATIONS_CREATE_SOME",
   "OPERATIONS_VISUALIZE",
@@ -95,6 +96,11 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     name: "ADMIN",
     label: "Administrador",
     description: "Todos los permisos",
+  },
+  {
+    name: "EXCHANGERATES_CREATE",
+    label: "Cargar y modificar cotizaciones",
+    description: "Cargar y modificar las cotizaciones de divisas",
   },
   {
     name: "OPERATIONS_CREATE",

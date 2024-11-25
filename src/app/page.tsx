@@ -34,6 +34,12 @@ export default async function Home() {
                 <Icons.info className="h-4" />
               </Button>
             </Link>
+            <Link href={"/cotizaciones"} prefetch={false}>
+              <Button variant="outline" className="flex flex-row space-x-2 p-6">
+                <p>Cotizaciones</p>
+                <Icons.exchangeArrows className="h-4" />
+              </Button>
+            </Link>
             <Link href={"/logs"} prefetch={false}>
               <Button variant="outline" className="flex flex-row space-x-2 p-6">
                 <p>Logs</p>

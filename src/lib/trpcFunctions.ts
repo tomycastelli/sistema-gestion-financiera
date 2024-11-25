@@ -236,33 +236,34 @@ export const generateMovements = async (
   // Index 2: caja del toEntity
   // Index 3: caja del fromEntity.tagName
   // Index 4: caja del toEntity.tagName
-  const indexLimit = account
-    ? tx.fromEntity.tagName === tx.toEntity.tagName
-      ? 3
-      : 5
-    : 3;
+  const indexLimit = account ? 5 : 3;
+
+  const sameTags = tx.fromEntity.tagName === tx.toEntity.tagName;
 
   for (let index = 0; index < indexLimit; index++) {
     // Por defecto es el amount y listo
-    let changeAmount = 0;
+    let newBalanceAmount = 0;
 
     if (index === 0) {
       // Esto lo uso para calcular direccion el primer caso de from --> to
-      changeAmount =
+      newBalanceAmount =
         movementBalanceDirection(tx.fromEntityId, tx.toEntityId, direction) *
         tx.amount;
     } else if (!account && index === 1) {
       // Defino que el POV sera el tagName, porque cuando es el To, uso la misma direccion porque es el que recibe
-      changeAmount = tx.amount * direction;
+      newBalanceAmount = tx.amount * direction;
     } else if (!account && index === 2) {
       // Y cuando es el From, invierto la direccion porque es el que envia
-      changeAmount = tx.amount * direction * -1;
-    } else if (account && (index === 1 || index === 3)) {
+      newBalanceAmount = tx.amount * direction * -1;
+    } else if (account && (index === 1 || (index === 3 && !sameTags))) {
       // Y cuando es el From, invierto la direccion porque es el que envia
-      changeAmount = tx.amount * direction * -1;
-    } else if (account && (index === 2 || index === 4)) {
+      newBalanceAmount = tx.amount * direction * -1;
+    } else if (account && (index === 2 || (index === 4 && !sameTags))) {
       // Y cuando es el To, la misma direccion porque recibe
-      changeAmount = tx.amount * direction;
+      newBalanceAmount = tx.amount * direction;
+    } else if (account && sameTags && (index === 3 || index === 4)) {
+      // No cambia el balance porque es la caja del mismo tag
+      newBalanceAmount = tx.amount;
     }
 
     const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
@@ -355,7 +356,7 @@ export const generateMovements = async (
             account: account,
             currency: tx.currency,
             date: moment(mvDate).startOf("day").toDate(),
-            balance: changeAmount,
+            balance: newBalanceAmount,
           })
           .returning();
 
@@ -376,7 +377,7 @@ export const generateMovements = async (
           // Buscare si existe un balance de esa fecha previa y lo actualizo
           const [oldBalance] = await transaction
             .update(balances)
-            .set({ balance: sql`${balances.balance} + ${changeAmount}` })
+            .set({ balance: sql`${balances.balance} + ${newBalanceAmount}` })
             .where(
               and(
                 eq(balances.account, account),
@@ -397,8 +398,8 @@ export const generateMovements = async (
                 date: moment(mvDate).startOf("day").toDate(),
                 ...balanceEntitiesToInsert!,
                 balance: beforeBalance
-                  ? beforeBalance.amount + changeAmount
-                  : changeAmount,
+                  ? beforeBalance.amount + newBalanceAmount
+                  : newBalanceAmount,
               })
               .returning({ id: balances.id, amount: balances.balance });
 
@@ -438,10 +439,10 @@ export const generateMovements = async (
               account,
               type,
               balance: movement
-                ? movement.amount + changeAmount
+                ? movement.amount + newBalanceAmount
                 : beforeBalance
-                ? beforeBalance.amount + changeAmount
-                : changeAmount,
+                ? beforeBalance.amount + newBalanceAmount
+                : newBalanceAmount,
               balanceId: oldBalance.id,
               entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
             });
@@ -450,7 +451,7 @@ export const generateMovements = async (
           // Actualizo todos los balances posteriores a la fecha previa cambiada
           await transaction
             .update(balances)
-            .set({ balance: sql`${balances.balance} + ${changeAmount}` })
+            .set({ balance: sql`${balances.balance} + ${newBalanceAmount}` })
             .where(
               and(
                 gt(balances.date, moment(mvDate).startOf("day").toDate()),
@@ -463,7 +464,7 @@ export const generateMovements = async (
           // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
           await transaction
             .update(balances)
-            .set({ balance: sql`${balances.balance} + ${changeAmount}` })
+            .set({ balance: sql`${balances.balance} + ${newBalanceAmount}` })
             .where(eq(balances.id, balance.id));
 
           // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
@@ -487,10 +488,10 @@ export const generateMovements = async (
             account,
             type,
             balance: movement
-              ? movement.amount + changeAmount
+              ? movement.amount + newBalanceAmount
               : beforeBalance
-              ? beforeBalance.amount + changeAmount
-              : changeAmount,
+              ? beforeBalance.amount + newBalanceAmount
+              : newBalanceAmount,
             balanceId: balance.id,
             entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
           });
@@ -503,7 +504,7 @@ export const generateMovements = async (
               currency: tx.currency,
               ...balanceEntitiesToInsert!,
               date: moment(mvDate).startOf("day").toDate(),
-              balance: balance.amount + changeAmount,
+              balance: balance.amount + newBalanceAmount,
             })
             .returning({ id: balances.id, amount: balances.balance });
 
@@ -542,7 +543,7 @@ export const generateMovements = async (
 
       await transaction
         .update(movements)
-        .set({ balance: sql`${movements.balance} + ${changeAmount}` })
+        .set({ balance: sql`${movements.balance} + ${newBalanceAmount}` })
         .where(inArray(movements.id, movementsIds));
 
       const [createdMovement] = await transaction
@@ -586,7 +587,7 @@ export const generateMovements = async (
             ...balanceEntitiesToInsert!,
             currency: tx.currency,
             date: moment(mvDate).startOf("day").toDate(),
-            balance: changeAmount,
+            balance: newBalanceAmount,
           })
           .returning();
 
@@ -607,7 +608,9 @@ export const generateMovements = async (
           // Buscare si existe un balance de esa fecha previa y lo actualizo
           const [oldBalance] = await transaction
             .update(cashBalances)
-            .set({ balance: sql`${cashBalances.balance} + ${changeAmount}` })
+            .set({
+              balance: sql`${cashBalances.balance} + ${newBalanceAmount}`,
+            })
             .where(
               and(
                 eq(cashBalances.currency, tx.currency),
@@ -626,8 +629,8 @@ export const generateMovements = async (
                 date: moment(mvDate).startOf("day").toDate(),
                 ...balanceEntitiesToInsert!,
                 balance: beforeBalance
-                  ? beforeBalance.amount + changeAmount
-                  : changeAmount,
+                  ? beforeBalance.amount + newBalanceAmount
+                  : newBalanceAmount,
               })
               .returning({ id: cashBalances.id, amount: cashBalances.balance });
 
@@ -667,10 +670,10 @@ export const generateMovements = async (
               account,
               type,
               balance: movement
-                ? movement.amount + changeAmount
+                ? movement.amount + newBalanceAmount
                 : beforeBalance
-                ? beforeBalance.amount + changeAmount
-                : changeAmount,
+                ? beforeBalance.amount + newBalanceAmount
+                : newBalanceAmount,
               cashBalanceId: oldBalance.id,
               entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
             });
@@ -679,7 +682,9 @@ export const generateMovements = async (
           // Actualizo todos los balances posteriores a la fecha previa cambiada
           await transaction
             .update(cashBalances)
-            .set({ balance: sql`${cashBalances.balance} + ${changeAmount}` })
+            .set({
+              balance: sql`${cashBalances.balance} + ${newBalanceAmount}`,
+            })
             .where(
               and(
                 gt(cashBalances.date, moment(mvDate).startOf("day").toDate()),
@@ -691,7 +696,9 @@ export const generateMovements = async (
           // Si la fecha de la tx o op es la misma que el ultimo balance, cambio el ultimo balance
           await transaction
             .update(cashBalances)
-            .set({ balance: sql`${cashBalances.balance} + ${changeAmount}` })
+            .set({
+              balance: sql`${cashBalances.balance} + ${newBalanceAmount}`,
+            })
             .where(eq(cashBalances.id, balance.id));
 
           // Busco el balance del movimiento realizado ese dia que este justo antes del que voy a insertar en cuanto a fecha
@@ -715,10 +722,10 @@ export const generateMovements = async (
             account,
             type,
             balance: movement
-              ? movement.amount + changeAmount
+              ? movement.amount + newBalanceAmount
               : beforeBalance
-              ? beforeBalance.amount + changeAmount
-              : changeAmount,
+              ? beforeBalance.amount + newBalanceAmount
+              : newBalanceAmount,
             cashBalanceId: balance.id,
             entitiesMovementId: index !== 0 ? movementsResponse[0]!.id : null,
           });
@@ -730,7 +737,7 @@ export const generateMovements = async (
               currency: tx.currency,
               ...balanceEntitiesToInsert!,
               date: moment(mvDate).startOf("day").toDate(),
-              balance: balance.amount + changeAmount,
+              balance: balance.amount + newBalanceAmount,
             })
             .returning({ id: cashBalances.id, amount: cashBalances.balance });
 
@@ -769,7 +776,7 @@ export const generateMovements = async (
 
       await transaction
         .update(movements)
-        .set({ balance: sql`${movements.balance} + ${changeAmount}` })
+        .set({ balance: sql`${movements.balance} + ${newBalanceAmount}` })
         .where(inArray(movements.id, movementsIds));
 
       const [createdMovement] = await transaction
