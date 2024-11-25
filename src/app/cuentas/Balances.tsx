@@ -83,6 +83,7 @@ const Balances: FC<BalancesProps> = ({
           isFetching={isFetching}
           uiColor={uiColor}
           latestExchangeRates={latestExchangeRates}
+          user={user}
         />
       ) : (
         <DetailedBalances

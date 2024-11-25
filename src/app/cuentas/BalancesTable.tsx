@@ -51,7 +51,7 @@ interface BalancesTableProps {
   selectedEntityId: number | undefined;
   selectedTag: string | undefined;
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
-  user: User;
+  user: User | null;
 }
 
 const BalancesTable: FC<BalancesTableProps> = ({
@@ -287,7 +287,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
     );
 
   const userCanUnify =
-    user.permissions?.some(
+    user?.permissions?.some(
       (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
     ) ?? false;
 

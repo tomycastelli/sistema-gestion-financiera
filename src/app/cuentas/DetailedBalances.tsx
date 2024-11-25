@@ -349,7 +349,14 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     setMovementsTablePage,
   } = useCuentasStore();
 
-  const tableCurrencies = [...currenciesOrder, "unified"];
+  const userCanUnify =
+    user?.permissions?.some(
+      (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+    ) ?? false;
+
+  const tableCurrencies = userCanUnify
+    ? [...currenciesOrder, "unified"]
+    : currenciesOrder;
 
   const columnAmount = (tableCurrencies.length + 1) * 2 + 1;
 
