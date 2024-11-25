@@ -220,7 +220,7 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
                     onSelect={(value) => {
                       field.onChange(value);
                       if (value) {
-                        setDate(moment(value).format("DD-MM-YYYY"));
+                        void setDate(moment(value).format("DD-MM-YYYY"));
                       }
                     }}
                     disabled={(date) => date > moment().startOf("day").toDate()}
