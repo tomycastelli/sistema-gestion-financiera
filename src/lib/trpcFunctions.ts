@@ -263,7 +263,7 @@ export const generateMovements = async (
       newBalanceAmount = tx.amount * direction;
     } else if (account && sameTags && (index === 3 || index === 4)) {
       // No cambia el balance porque es la caja del mismo tag
-      newBalanceAmount = tx.amount;
+      newBalanceAmount = 0;
     }
 
     const movementsArray: z.infer<typeof insertMovementsSchema>[] = [];
