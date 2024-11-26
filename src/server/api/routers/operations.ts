@@ -60,6 +60,12 @@ export const operationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.transactions.some((tx) => tx.fromEntityId === tx.toEntityId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Transactions must have different entities",
+        });
+      }
       // Estas transacciones seran insertadas directamente en la tabla comun
       const directTransactions = input.transactions.filter(
         (tx) => tx.type !== "cuenta corriente",
