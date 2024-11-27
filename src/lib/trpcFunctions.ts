@@ -10,7 +10,6 @@ import {
   isNull,
   lt,
   lte,
-  not,
   or,
   sql,
   type ExtractTablesWithRelations,
@@ -24,11 +23,13 @@ import type Redis from "ioredis";
 import { type User } from "lucia";
 import moment from "moment";
 import { ZodError, z } from "zod";
+import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
 import { type createTRPCContext } from "~/server/api/trpc";
 import { type dynamodb } from "~/server/dynamodb";
 import type * as schema from "../server/db/schema";
 import {
   balances,
+  cashBalances,
   entities,
   globalSettings,
   links,
@@ -39,12 +40,10 @@ import {
   transactionsMetadata,
   type insertMovementsSchema,
   type returnedTransactionsSchema,
-  cashBalances,
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
 import { dateFormatting } from "./variables";
-import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
 
 export const getAllPermissions = async (
   redis: Redis,
@@ -899,6 +898,16 @@ export const undoMovements = async (
         .from(cashBalances)
         .where(eq(cashBalances.id, deletedMovement.cashBalanceId!));
 
+      console.log({ relatedBalance });
+
+      // Si tiene tagName y ambas entidades son del mismo tagname, no hay balance que retroceder
+      if (
+        relatedBalance!.tagName &&
+        tx.fromEntity.tagName === tx.toEntity.tagName
+      ) {
+        continue;
+      }
+
       if (
         tx.fromEntity.id === relatedBalance!.entityId ||
         tx.fromEntity.tagName === relatedBalance!.tagName
@@ -1052,25 +1061,27 @@ export const currentAccountsProcedure = async (
         )
       : undefined,
     input.entityTag
-      ? and(
+      ? // Estados deseados:
+        // OriginEntityId presente: Movimientos donde el origin este en algun lado
+        // ToEntityId presente: Movimientos donde el destino este en algun lado
+        // Como base, elegir movimientos donde participe el tagname en algun lado
+        and(
           or(
-            and(
-              input.originEntityId
-                ? eq(fromEntity.id, input.originEntityId)
-                : inArray(fromEntity.tagName, tagAndChildren),
-              input.toEntityId
-                ? eq(toEntity.id, input.toEntityId)
-                : not(inArray(toEntity.tagName, tagAndChildren)),
-            ),
-            and(
-              input.originEntityId
-                ? eq(toEntity.id, input.originEntityId)
-                : inArray(toEntity.tagName, tagAndChildren),
-              input.toEntityId
-                ? eq(fromEntity.id, input.toEntityId)
-                : not(inArray(fromEntity.tagName, tagAndChildren)),
-            ),
+            inArray(fromEntity.tagName, tagAndChildren),
+            inArray(toEntity.tagName, tagAndChildren),
           ),
+          input.originEntityId
+            ? or(
+                eq(fromEntity.id, input.originEntityId),
+                eq(toEntity.id, input.originEntityId),
+              )
+            : undefined,
+          input.toEntityId
+            ? or(
+                eq(toEntity.id, input.toEntityId),
+                eq(fromEntity.id, input.toEntityId),
+              )
+            : undefined,
           isNull(movements.entitiesMovementId),
         )
       : undefined,
@@ -1234,8 +1245,8 @@ export const currentAccountsProcedure = async (
             inArray(movements.entitiesMovementId, ids.length > 0 ? ids : [0]),
             input.entityTag && input.groupInTag
               ? or(
-                  eq(balances.tagName, input.entityTag),
-                  eq(cashBalances.tagName, input.entityTag),
+                  inArray(balances.tagName, tagAndChildren),
+                  inArray(cashBalances.tagName, tagAndChildren),
                 )
               : input.entityTag
               ? inArray(cashBalances.entityId, entitiesRelated)
@@ -1243,7 +1254,14 @@ export const currentAccountsProcedure = async (
           ),
         );
 
+      console.log({ ids, tagBalanceMovements });
+
       const nestedData = movementsData
+        .filter((obj) =>
+          tagBalanceMovements.find(
+            (mv) => mv.entitiesMovementId === obj.Movements!.id,
+          ),
+        )
         .map((obj) => ({
           ...obj.Movements!,
           balance: tagBalanceMovements.find(
