@@ -8,6 +8,8 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const provider = requestUrl.searchParams.get("provider");
 
+  const cookieStore = await cookies();
+
   const state = generateState();
   const codeVerifier = generateCodeVerifier();
 
@@ -20,14 +22,14 @@ export async function GET(request: Request) {
       },
     );
 
-    cookies().set("state", state, {
+    cookieStore.set("state", state, {
       secure: env.NODE_ENV !== "development", // false in case of local development
       path: "/",
       httpOnly: true,
       maxAge: 60 * 10, // 10 min
     });
 
-    cookies().set("code_verifier", codeVerifier, {
+    cookieStore.set("code_verifier", codeVerifier, {
       secure: env.NODE_ENV !== "development",
       path: "/",
       httpOnly: true,
@@ -45,14 +47,14 @@ export async function GET(request: Request) {
       scopes: ["profile", "email"],
     });
 
-    cookies().set("state", state, {
+    cookieStore.set("state", state, {
       secure: env.NODE_ENV !== "development", // false in case of local development
       path: "/",
       httpOnly: true,
       maxAge: 60 * 10, // 10 min
     });
 
-    cookies().set("code_verifier", codeVerifier, {
+    cookieStore.set("code_verifier", codeVerifier, {
       secure: env.NODE_ENV !== "development",
       path: "/",
       httpOnly: true,

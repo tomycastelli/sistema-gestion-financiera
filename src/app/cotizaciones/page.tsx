@@ -5,12 +5,12 @@ import moment from "moment";
 import { api } from "~/trpc/server";
 import { dateFormat } from "~/lib/variables";
 
-const Page = async ({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) => {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const Page = async (props: { searchParams: SearchParams }) => {
   const user = await getUser();
+
+  const searchParams = await props.searchParams;
 
   const page = searchParams.pagina as string | null;
   const formatedPage = page ? parseInt(page) : 1;

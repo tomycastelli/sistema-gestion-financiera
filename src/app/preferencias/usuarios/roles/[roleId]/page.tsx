@@ -4,7 +4,10 @@ import ChangeRole from "./ChangeRole";
 import ManageUsers from "./ManageUsers";
 import RoleHeader from "./RoleHeader";
 
-const Page = async ({ params }: { params: { roleId: string } }) => {
+type Params = Promise<{ roleId: string }>;
+
+const Page = async (props: { params: Params }) => {
+  const params = await props.params;
   const user = await getUser();
   const role = await api.roles.getById.query({ id: parseInt(params.roleId) });
   const entities = await api.entities.getAll.query();

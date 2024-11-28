@@ -1,7 +1,10 @@
 import { api } from "~/trpc/server";
 import PermissionsForm from "./PermissionsForm";
 
-export default async function Page({ params }: { params: { userId: string } }) {
+type Params = Promise<{ userId: string }>;
+
+export default async function Page(props: { params: Params }) {
+  const params = await props.params;
   const permissions = await api.users.getUserPermissions.query({
     id: params.userId,
   });

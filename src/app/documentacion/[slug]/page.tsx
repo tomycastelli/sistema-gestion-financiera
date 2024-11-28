@@ -2,7 +2,10 @@ export const dynamic = "force-static";
 import rehypeSlug from "rehype-slug";
 import DocsTemplate from "~/app/components/DocsTemplate";
 
-const Page = async ({ params }: { params: { slug: string } }) => {
+type Params = Promise<{ slug: string }>;
+
+const Page = async (props: { params: Params }) => {
+  const params = await props.params;
   const res = await fetch(
     `https://du502cbk6jn66.cloudfront.net/content/docs/${params.slug}.mdx`,
   );

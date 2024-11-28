@@ -24,13 +24,14 @@ export const metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headerList = await headers();
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider
           attribute="class"
@@ -44,7 +45,7 @@ export default function RootLayout({
               "min-h-screen bg-background px-4 lg:px-8",
             )}
           >
-            <TRPCReactProvider headers={headers()}>
+            <TRPCReactProvider headers={headerList}>
               <TooltipProvider delayDuration={0}>
                 <Navbar />
                 <main className="h-full pb-8">

@@ -2,7 +2,13 @@
 const nextConfig = {
   pageExtensions: ["ts", "tsx"],
   output: "standalone",
-  experimental: { instrumentationHook: true },
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
+  bundlePagesRouterDependencies: true,
   images: {
     remotePatterns: [
       {

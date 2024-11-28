@@ -12,16 +12,14 @@ import CurrentAccountsTotalsSwitch from "./CurrentAccountsTotalsSwitch";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
-const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), {
-  ssr: false,
-});
+const SummarizedBalances = dynamic(() => import("./SummarizedBalances"));
 
-const Page = async ({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) => {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const Page = async (props: { searchParams: SearchParams }) => {
   const user = await getUser();
+
+  const searchParams = await props.searchParams;
 
   const selectedTag = searchParams.tag as string | null;
   const selectedEntityId = searchParams.entidad as string | null;
@@ -174,7 +172,6 @@ const Page = async ({
                   selectedEntity={selectedEntityObj}
                   entityTag={selectedTagObj?.name}
                   accountType={selectedTab === "caja" ? true : false}
-                  searchParams={searchParams}
                   initialBalances={initialBalances}
                   initialTags={filteredTags}
                   linkId={linkId}

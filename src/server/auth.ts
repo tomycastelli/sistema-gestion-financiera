@@ -69,13 +69,14 @@ declare module "lucia" {
 }
 
 export const getUser = cache(async () => {
-  const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
   if (!sessionId) return null;
   const { session, user } = await lucia.validateSession(sessionId);
   try {
     if (session?.fresh) {
       const sessionCookie = lucia.createSessionCookie(session.id);
-      cookies().set(
+      cookieStore.set(
         sessionCookie.name,
         sessionCookie.value,
         sessionCookie.attributes,
@@ -83,7 +84,7 @@ export const getUser = cache(async () => {
     }
     if (!session) {
       const sessionCookie = lucia.createBlankSessionCookie();
-      cookies().set(
+      cookieStore.set(
         sessionCookie.name,
         sessionCookie.value,
         sessionCookie.attributes,
@@ -96,7 +97,8 @@ export const getUser = cache(async () => {
 });
 
 export const logOut = async () => {
-  const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
   if (!sessionId) return null;
   const { session } = await lucia.validateSession(sessionId);
   if (!session) {
@@ -108,7 +110,7 @@ export const logOut = async () => {
   await lucia.invalidateSession(session.id);
 
   const sessionCookie = lucia.createBlankSessionCookie();
-  cookies().set(
+  cookieStore.set(
     sessionCookie.name,
     sessionCookie.value,
     sessionCookie.attributes,

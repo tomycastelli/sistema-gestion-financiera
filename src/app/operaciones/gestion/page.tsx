@@ -14,12 +14,12 @@ const LoadingAnimation = dynamic(
   () => import("~/app/components/LoadingAnimation"),
 );
 
-const Page = async ({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) => {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const Page = async (props: { searchParams: SearchParams }) => {
   const user = await getUser();
+
+  const searchParams = await props.searchParams;
 
   const selectedPage = (searchParams.pagina as string) ?? "1";
   const selectedEntity = searchParams.entidad;

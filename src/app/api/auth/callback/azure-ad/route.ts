@@ -14,8 +14,10 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
-  const storedState = cookies().get("state")?.value ?? null;
-  const storedCodeVerifier = cookies().get("code_verifier")?.value ?? null;
+  const cookieStore = await cookies();
+
+  const storedState = cookieStore.get("state")?.value ?? null;
+  const storedCodeVerifier = cookieStore.get("code_verifier")?.value ?? null;
 
   if (
     !code ||

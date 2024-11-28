@@ -2,10 +2,8 @@ import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterOutputs } from "~/trpc/shared";
 import dynamic from "next/dynamic";
-const MovementsTable = dynamic(() => import("./MovementsTable"), {
-  ssr: false,
-});
-const Balances = dynamic(() => import("./Balances"), { ssr: false });
+const MovementsTable = dynamic(() => import("./MovementsTable"));
+const Balances = dynamic(() => import("./Balances"));
 
 const AccountsTable = async ({
   initialBalances,
@@ -21,7 +19,6 @@ const AccountsTable = async ({
   users,
   accountingPeriodDate,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
   accountType: boolean;
   initialTags: RouterOutputs["tags"]["getAll"];

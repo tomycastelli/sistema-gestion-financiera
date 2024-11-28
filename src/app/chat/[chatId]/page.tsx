@@ -4,7 +4,10 @@ import { api } from "~/trpc/server";
 import Chat from "./Chat";
 import { env } from "~/env.mjs";
 
-const Page = async ({ params }: { params: { chatId: string } }) => {
+type Params = Promise<{ chatId: string }>;
+
+const Page = async (props: { params: Params }) => {
+  const params = await props.params;
   const user = await getUser();
   if (!user) {
     return <h1>El usuario no está autentificado</h1>;

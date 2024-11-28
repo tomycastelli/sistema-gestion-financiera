@@ -3,11 +3,10 @@ import { api } from "~/trpc/server";
 import OperationDetails from "./OperationDetails";
 import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 
-export default async function Page({
-  params,
-}: {
-  params: { operationId: string };
-}) {
+type Params = Promise<{ operationId: string }>;
+
+export default async function Page(props: { params: Params }) {
+  const params = await props.params;
   const operationId = params.operationId;
 
   const operation = await api.operations.getOperations.query({
