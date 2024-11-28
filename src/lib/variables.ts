@@ -53,31 +53,37 @@ export const currencies = [
     value: "usd",
     label: "USD",
     strong: 4,
+    color: "#95cf92",
   },
   {
     value: "usdt",
     label: "USDT",
     strong: 4,
+    color: "#369acc",
   },
   {
     value: "ars",
     label: "ARS",
     strong: 1,
+    color: "#f4895f",
   },
   {
     value: "eur",
     label: "EUR",
     strong: 3,
+    color: "#9656a2",
   },
   {
     value: "brl",
     label: "BRL",
     strong: 2,
+    color: "#de324c",
   },
   {
     value: "gbp",
     label: "GBP",
     strong: 3,
+    color: "#f8e16f",
   },
 ];
 

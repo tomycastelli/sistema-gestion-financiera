@@ -119,6 +119,12 @@ const Page = async ({
     accountingPeriod.graceDays,
   );
 
+  const initialBalanceCharts = await api.movements.balanceChart.query({
+    daysBackAmount: 30,
+    entityId: selectedEntityObj?.id,
+    tagName: selectedTag,
+  });
+
   return mainTags.includes(selectedTag ?? "") ||
     mainTags.includes(selectedEntityObj?.tag.name ?? "") ? (
     <div>
@@ -199,6 +205,7 @@ const Page = async ({
                       selectedEntity={selectedEntityObj}
                       initialBalancesForCard={initialBalancesForCard}
                       dayInPast={dayInPast ?? undefined}
+                      initialBalanceCharts={initialBalanceCharts}
                     />
                   )}
                 </div>

@@ -206,7 +206,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
     } else {
       toast.dismiss();
     }
-  }, [txIdsStore, updateTransaction, firstRender]);
+  }, [txIdsStore, updateTransaction, firstRender, resetTxIds]);
 
   return (
     <div className="my-4 flex flex-col">

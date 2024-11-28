@@ -2,10 +2,10 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, type FC } from "react";
-import { numberFormatter } from "~/lib/functions";
+import { useEffect, type FC, useState } from "react";
+import { formatNumberLabel, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currenciesOrder, mvTypeFormatting } from "~/lib/variables";
+import { currencies, currenciesOrder, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -28,6 +28,17 @@ import { DataTable } from "./DataTable";
 import LoadingAnimation from "../components/LoadingAnimation";
 const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
 import { type User } from "lucia";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  BarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Bar,
+} from "recharts";
+import moment from "moment";
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -43,6 +54,7 @@ interface SummarizedBalancesProps {
   user: User | null;
   users: RouterOutputs["users"]["getAll"];
   accountingPeriodDate: Date;
+  initialBalanceCharts: RouterOutputs["movements"]["balanceChart"];
 }
 
 const SummarizedBalances: FC<SummarizedBalancesProps> = ({
@@ -58,7 +70,22 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   user,
   users,
   accountingPeriodDate,
+  initialBalanceCharts,
 }) => {
+  const [balanceChartDays, setBalanceChartDays] = useState("30");
+
+  const { data: balanceChart } = api.movements.balanceChart.useQuery(
+    {
+      daysBackAmount: parseInt(balanceChartDays),
+      entityId: selectedEntity?.id,
+      tagName: selectedTag,
+    },
+    {
+      initialData: initialBalanceCharts,
+      refetchOnWindowFocus: false,
+    },
+  );
+
   const { selectedCurrency, setSelectedCurrency, isInverted, setIsInverted } =
     useCuentasStore();
 
@@ -291,6 +318,64 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
           <div className="items-cente col-span-2 flex justify-center lg:col-span-3">
             <LoadingAnimation size="lg" text="Cargando balances" />
           </div>
+        )}
+      </div>
+      <div className="grid w-full grid-cols-1 gap-8">
+        {selectedCurrency ? (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Balance de Caja</CardTitle>
+              <Tabs
+                value={balanceChartDays}
+                onValueChange={setBalanceChartDays}
+                defaultValue="30"
+                className="w-min"
+              >
+                <TabsList>
+                  <TabsTrigger value="30">30d</TabsTrigger>
+                  <TabsTrigger value="45">45d</TabsTrigger>
+                  <TabsTrigger value="90">90d</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={balanceChart
+                    .find((b) => b.currency === selectedCurrency)!
+                    .balances.map((b) => ({
+                      name: moment(b.date).format("DD-MM"),
+                      value: b.balance,
+                    }))}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis
+                    tickFormatter={(number: number) =>
+                      formatNumberLabel(number)
+                    }
+                  />
+                  <Tooltip
+                    cursor={{ fill: "transparent" }}
+                    isAnimationActive={true}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill={
+                      currencies.find((c) => c.value === selectedCurrency)!
+                        .color
+                    }
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Elegir divisa</CardTitle>
+            </CardHeader>
+          </Card>
         )}
       </div>
       <div className="flex">

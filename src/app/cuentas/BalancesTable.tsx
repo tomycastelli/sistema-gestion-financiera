@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/ui/tooltip";
-import { User } from "lucia";
+import type { User } from "lucia";
 
 const transformedBalancesSchema = z.object({
   tableData: z.array(

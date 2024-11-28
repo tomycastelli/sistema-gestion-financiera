@@ -495,3 +495,18 @@ export const getAccountingPeriodDate = (
       .toDate();
   }
 };
+
+export function formatNumberLabel(num: number): string {
+  const absNum = Math.abs(num);
+  let formatted: string;
+
+  if (absNum >= 1_000_000) {
+    formatted = (absNum / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  } else if (absNum >= 1_000) {
+    formatted = (absNum / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  } else {
+    formatted = absNum.toString();
+  }
+
+  return num < 0 ? `-${formatted}` : formatted;
+}

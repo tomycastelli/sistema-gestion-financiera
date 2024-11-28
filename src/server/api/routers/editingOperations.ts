@@ -229,98 +229,89 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        const response = await ctx.db.transaction(async (transaction) => {
-          const confirmedTxs = [];
+      const response = await ctx.db.transaction(async (transaction) => {
+        const confirmedTxs = [];
 
-          const fromEntity = alias(entities, "fromEntity");
-          const toEntity = alias(entities, "toEntity");
+        const fromEntity = alias(entities, "fromEntity");
+        const toEntity = alias(entities, "toEntity");
 
-          for (const txId of input.transactionIds) {
-            const [transactionData] = await transaction
-              .select()
-              .from(transactions)
-              .leftJoin(
-                fromEntity,
-                eq(transactions.fromEntityId, fromEntity.id),
-              )
-              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-              .leftJoin(operations, eq(transactions.operationId, operations.id))
-              .where(eq(transactions.id, txId));
+        for (const txId of input.transactionIds) {
+          const [transactionData] = await transaction
+            .select()
+            .from(transactions)
+            .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+            .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+            .leftJoin(operations, eq(transactions.operationId, operations.id))
+            .where(eq(transactions.id, txId));
 
-            if (!transactionData || !transactionData.Operations) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: `Transaction ${txId} does not exist`,
-              });
-            }
-
-            if (
-              transactionData.Transactions.status !== Status.enumValues[2] ||
-              currentAccountOnlyTypes.has(transactionData.Transactions.type)
-            ) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "This transaction cannot be confirmed",
-              });
-            }
-            await transaction
-              .update(transactions)
-              .set({
-                status: "confirmed",
-              })
-              .where(eq(transactions.id, txId));
-
-            await transaction
-              .update(transactionsMetadata)
-              .set({
-                confirmedBy: ctx.user.id,
-                confirmedDate: new Date(),
-              })
-              .where(eq(transactionsMetadata.transactionId, txId));
-
-            const mappedTransaction = {
-              ...transactionData.Transactions,
-              operation: { date: transactionData.Operations.date },
-              fromEntity: transactionData.fromEntity!,
-              toEntity: transactionData.toEntity!,
-            };
-
-            await generateMovements(
-              transaction,
-              mappedTransaction,
-              false,
-              1,
-              "confirmation",
-            );
-            await generateMovements(
-              transaction,
-              mappedTransaction,
-              true,
-              1,
-              "confirmation",
-            );
-
-            confirmedTxs.push(mappedTransaction.id);
+          if (!transactionData || !transactionData.Operations) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Transaction ${txId} does not exist`,
+            });
           }
 
-          return confirmedTxs;
-        });
+          if (
+            transactionData.Transactions.status !== Status.enumValues[2] ||
+            currentAccountOnlyTypes.has(transactionData.Transactions.type)
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "This transaction cannot be confirmed",
+            });
+          }
+          await transaction
+            .update(transactions)
+            .set({
+              status: "confirmed",
+            })
+            .where(eq(transactions.id, txId));
 
-        await logIO(
-          ctx.dynamodb,
-          ctx.user.id,
-          "Confirmar transacción",
-          input,
-          response,
-        );
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              confirmedBy: ctx.user.id,
+              confirmedDate: new Date(),
+            })
+            .where(eq(transactionsMetadata.transactionId, txId));
 
-        return response;
-      } catch (error) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-        });
-      }
+          const mappedTransaction = {
+            ...transactionData.Transactions,
+            operation: { date: transactionData.Operations.date },
+            fromEntity: transactionData.fromEntity!,
+            toEntity: transactionData.toEntity!,
+          };
+
+          await generateMovements(
+            transaction,
+            mappedTransaction,
+            false,
+            1,
+            "confirmation",
+          );
+          await generateMovements(
+            transaction,
+            mappedTransaction,
+            true,
+            1,
+            "confirmation",
+          );
+
+          confirmedTxs.push(mappedTransaction.id);
+        }
+
+        return confirmedTxs;
+      });
+
+      await logIO(
+        ctx.dynamodb,
+        ctx.user.id,
+        "Confirmar transacción",
+        input,
+        response,
+      );
+
+      return response;
     }),
   cancelTransaction: protectedLoggedProcedure
     .input(

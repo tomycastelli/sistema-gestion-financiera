@@ -1,5 +1,16 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gte, inArray, isNull, lte, not, or } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  not,
+  or,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
@@ -10,9 +21,10 @@ import {
   getAllPermissions,
   getAllTags,
 } from "~/lib/trpcFunctions";
-import { dateFormatting } from "~/lib/variables";
+import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import {
   balances,
+  cashBalances,
   entities,
   links,
   movements,
@@ -563,5 +575,156 @@ export const movementsRouter = createTRPCRouter({
       });
 
       return response;
+    }),
+  balanceChart: protectedProcedure
+    .input(
+      z.object({
+        entityId: z.number().int().optional().nullish(),
+        tagName: z.string().optional().nullish(),
+        daysBackAmount: z.number().default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const fromDate = moment()
+        .startOf("day")
+        .subtract(input.daysBackAmount, "days")
+        .toDate();
+      // Caja
+      const balancesData = await ctx.db
+        .select()
+        .from(cashBalances)
+        .where(
+          and(
+            input.entityId
+              ? eq(cashBalances.entityId, input.entityId)
+              : undefined,
+            input.tagName ? eq(cashBalances.tagName, input.tagName) : undefined,
+            gte(cashBalances.date, fromDate),
+          ),
+        );
+
+      const totalBalances: {
+        id: number;
+        date: Date;
+        balance: number;
+        currency: string;
+        entityId: number | null;
+        tagName: string | null;
+      }[] = [];
+
+      // Now I will check if there is a value in the fromDate for each currency.
+      // Otherwise set the value to the first date immediately before
+      for (const currency of currenciesOrder) {
+        const currencyBalances = balancesData.filter(
+          (b) => b.currency === currency,
+        );
+
+        if (
+          !currencyBalances.find(
+            (b) =>
+              b.currency === currency &&
+              b.date.getTime() === fromDate.getTime(),
+          )
+        ) {
+          const [lastAvailableBalance] = await ctx.db
+            .select()
+            .from(cashBalances)
+            .where(
+              and(
+                input.entityId
+                  ? eq(cashBalances.entityId, input.entityId)
+                  : undefined,
+                input.tagName
+                  ? eq(cashBalances.tagName, input.tagName)
+                  : undefined,
+                eq(cashBalances.currency, currency),
+                lt(cashBalances.date, fromDate),
+              ),
+            )
+            .orderBy(desc(cashBalances.date))
+            .limit(1);
+
+          // I push this balance in the first position of the array
+          currencyBalances.unshift({
+            balance: lastAvailableBalance?.balance ?? 0,
+            currency,
+            date: fromDate,
+            entityId: input.entityId ?? null,
+            tagName: input.tagName ?? null,
+            id: 0,
+          });
+        }
+
+        if (currencyBalances.length === input.daysBackAmount) {
+          totalBalances.push(...currencyBalances);
+          continue;
+        }
+
+        let dateCursor = fromDate.getTime() + 86400000;
+        while (dateCursor < moment().startOf("day").toDate().getTime()) {
+          const cursorBalance = currencyBalances.find(
+            (b) => b.date.getTime() === dateCursor,
+          );
+          if (!cursorBalance) {
+            const newBalance = {
+              id: 0,
+              currency,
+              date: new Date(dateCursor),
+              entityId: input.entityId ?? null,
+              tagName: input.tagName ?? null,
+              balance: currencyBalances.find(
+                (b) => b.date.getTime() === dateCursor - 86400000,
+              )!.balance,
+            };
+
+            currencyBalances.push(newBalance);
+          }
+
+          dateCursor += 86400000;
+        }
+
+        totalBalances.push(...currencyBalances);
+      }
+
+      totalBalances.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      const groupedBalances = totalBalances.reduce(
+        (acc, item) => {
+          const currencyBalances = acc.find(
+            (a) => a.currency === item.currency,
+          );
+
+          const mappedItem = {
+            id: item.id,
+            balance: item.balance,
+            date: item.date,
+            entityId: item.entityId,
+            tagName: item.tagName,
+          };
+
+          if (currencyBalances) {
+            currencyBalances.balances.push(mappedItem);
+          } else {
+            acc.push({
+              currency: item.currency,
+              balances: [mappedItem],
+            });
+          }
+
+          return acc;
+        },
+        [] as {
+          currency: string;
+          balances: {
+            id: number;
+            date: Date;
+            balance: number;
+            entityId: number | null;
+            tagName: string | null;
+          }[];
+        }[],
+      );
+
+      return groupedBalances;
     }),
 });
