@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 settings:
-  autoInstallPeers: true
+  autoInstallPeers: false
   excludeLinksFromLockfile: false
 
 dependencies:
@@ -133,7 +133,7 @@ dependencies:
     version: 1.1.1
   '@vercel/otel':
     specifier: ^1.8.1
-    version: 1.10.0(@opentelemetry/api-logs@0.52.1)(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.28.0)(@opentelemetry/sdk-metrics@1.28.0)(@opentelemetry/sdk-trace-base@1.28.0)
+    version: 1.10.0(@opentelemetry/api-logs@0.52.1)(@opentelemetry/api@1.8.0)
   arctic:
     specifier: 1.2.1
     version: 1.2.1
@@ -220,7 +220,7 @@ dependencies:
     version: 11.10.1(@types/react@18.2.33)(react-dom@18.2.0)(react@18.2.0)
   recharts:
     specifier: 2.9.3
-    version: 2.9.3(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
+    version: 2.9.3(react-dom@18.2.0)(react@18.2.0)
   rehype-slug:
     specifier: 6.0.0
     version: 6.0.0
@@ -2718,55 +2718,6 @@ packages:
   /@opentelemetry/api@1.8.0:
     resolution: {integrity: sha512-I/s6F7yKUDdtMsoBWXJe8Qz40Tui5vsuKCWJEWVL+5q9sSWRzzx6v2KeNsOBEwd94j0eWkpWCH4yB6rZg9Mf0w==}
     engines: {node: '>=8.0.0'}
-
-  /@opentelemetry/core@1.28.0(@opentelemetry/api@1.8.0):
-    resolution: {integrity: sha512-ZLwRMV+fNDpVmF2WYUdBHlq0eOWtEaUJSusrzjGnBt7iSRvfjFE3RXYUZJrqou/wIDWV0DwQ5KIfYe9WXg9Xqw==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.0.0 <1.10.0'
-    dependencies:
-      '@opentelemetry/api': 1.8.0
-      '@opentelemetry/semantic-conventions': 1.27.0
-    dev: false
-
-  /@opentelemetry/resources@1.28.0(@opentelemetry/api@1.8.0):
-    resolution: {integrity: sha512-cIyXSVJjGeTICENN40YSvLDAq4Y2502hGK3iN7tfdynQLKWb3XWZQEkPc+eSx47kiy11YeFAlYkEfXwR1w8kfw==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.0.0 <1.10.0'
-    dependencies:
-      '@opentelemetry/api': 1.8.0
-      '@opentelemetry/core': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/semantic-conventions': 1.27.0
-    dev: false
-
-  /@opentelemetry/sdk-metrics@1.28.0(@opentelemetry/api@1.8.0):
-    resolution: {integrity: sha512-43tqMK/0BcKTyOvm15/WQ3HLr0Vu/ucAl/D84NO7iSlv6O4eOprxSHa3sUtmYkaZWHqdDJV0AHVz/R6u4JALVQ==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.3.0 <1.10.0'
-    dependencies:
-      '@opentelemetry/api': 1.8.0
-      '@opentelemetry/core': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/resources': 1.28.0(@opentelemetry/api@1.8.0)
-    dev: false
-
-  /@opentelemetry/sdk-trace-base@1.28.0(@opentelemetry/api@1.8.0):
-    resolution: {integrity: sha512-ceUVWuCpIao7Y5xE02Xs3nQi0tOGmMea17ecBdwtCvdo9ekmO+ijc9RFDgfifMl7XCBf41zne/1POM3LqSTZDA==}
-    engines: {node: '>=14'}
-    peerDependencies:
-      '@opentelemetry/api': '>=1.0.0 <1.10.0'
-    dependencies:
-      '@opentelemetry/api': 1.8.0
-      '@opentelemetry/core': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/resources': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/semantic-conventions': 1.27.0
-    dev: false
-
-  /@opentelemetry/semantic-conventions@1.27.0:
-    resolution: {integrity: sha512-sAay1RrB+ONOem0OZanAR1ZI/k7yDpnOQSQmTMuGImUQb2y8EbSaCJ94FQluM74xoU03vlb2d2U90hZluL6nQg==}
-    engines: {node: '>=14'}
-    dev: false
 
   /@oxlint/darwin-arm64@0.3.5:
     resolution: {integrity: sha512-5sAjGQh7EDQbKODNqL9ZEWtxx2y1px7rMwrUvglQZasP4LdLLCrnDx5OjQEtVnrdG0TQTjLyjLbt7p3bI3Mu2Q==}
@@ -5309,7 +5260,7 @@ packages:
       server-only: 0.0.1
     dev: false
 
-  /@vercel/otel@1.10.0(@opentelemetry/api-logs@0.52.1)(@opentelemetry/api@1.8.0)(@opentelemetry/resources@1.28.0)(@opentelemetry/sdk-metrics@1.28.0)(@opentelemetry/sdk-trace-base@1.28.0):
+  /@vercel/otel@1.10.0(@opentelemetry/api-logs@0.52.1)(@opentelemetry/api@1.8.0):
     resolution: {integrity: sha512-bv1FXbFZlFbB89vyA2P9/kr6eZ42bMtXgqBJpgi+8yOrZU8rkg9wMi0TL//AgAf/qKtaryDm1sbCnkLHgCI3PQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -5323,9 +5274,6 @@ packages:
     dependencies:
       '@opentelemetry/api': 1.8.0
       '@opentelemetry/api-logs': 0.52.1
-      '@opentelemetry/resources': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/sdk-metrics': 1.28.0(@opentelemetry/api@1.8.0)
-      '@opentelemetry/sdk-trace-base': 1.28.0(@opentelemetry/api@1.8.0)
     dev: false
 
   /acorn-jsx@5.3.2(acorn@8.14.0):
@@ -8670,7 +8618,7 @@ packages:
       react-dom: 18.2.0(react@18.2.0)
     dev: false
 
-  /react-smooth@2.0.5(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
+  /react-smooth@2.0.5(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-BMP2Ad42tD60h0JW6BFaib+RJuV5dsXJK9Baxiv/HlNFjvRLqA9xrNKxVWnUIZPQfzUwGXIlU/dSYLU+54YGQA==}
     peerDependencies:
       prop-types: ^15.6.0
@@ -8678,7 +8626,6 @@ packages:
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
     dependencies:
       fast-equals: 5.0.1
-      prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-transition-group: 2.9.0(react-dom@18.2.0)(react@18.2.0)
@@ -8780,7 +8727,7 @@ packages:
       decimal.js-light: 2.5.1
     dev: false
 
-  /recharts@2.9.3(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0):
+  /recharts@2.9.3(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-B61sKrDlTxHvYwOCw8eYrD6rTA2a2hJg0avaY8qFI1ZYdHKvU18+J5u7sBMFg//wfJ/C5RL5+HsXt5e8tcJNLg==}
     engines: {node: '>=12'}
     peerDependencies:
@@ -8791,12 +8738,11 @@ packages:
       classnames: 2.5.1
       eventemitter3: 4.0.7
       lodash: 4.17.21
-      prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-is: 16.13.1
       react-resize-detector: 8.1.0(react-dom@18.2.0)(react@18.2.0)
-      react-smooth: 2.0.5(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
+      react-smooth: 2.0.5(react-dom@18.2.0)(react@18.2.0)
       recharts-scale: 0.4.5
       tiny-invariant: 1.3.3
       victory-vendor: 36.9.2

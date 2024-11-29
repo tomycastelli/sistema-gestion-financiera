@@ -22,7 +22,7 @@ const Page = async ({
 
   const canEditExchangeRates =
     user?.permissions?.some(
-      (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+      (p) => p.name === "ADMIN" || p.name === "UNIFIED_CURRENCIES_EDIT",
     ) ?? false;
 
   const initialExchangeRates =

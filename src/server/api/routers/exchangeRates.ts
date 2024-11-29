@@ -96,7 +96,7 @@ export const exchangeRatesRouter = createTRPCRouter({
       if (
         !(
           ctx.user.permissions?.some(
-            (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+            (p) => p.name === "ADMIN" || p.name === "UNIFIED_CURRENCIES_EDIT",
           ) ?? false
         )
       ) {
@@ -126,7 +126,7 @@ export const exchangeRatesRouter = createTRPCRouter({
       if (
         !(
           ctx.user.permissions?.some(
-            (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+            (p) => p.name === "ADMIN" || p.name === "UNIFIED_CURRENCIES_EDIT",
           ) ?? false
         )
       ) {

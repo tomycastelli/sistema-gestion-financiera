@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const PermissionsNames = [
   "ADMIN",
-  "EXCHANGERATES_CREATE",
+  "UNIFIED_CURRENCIES_VISUALIZE",
+  "UNIFIED_CURRENCIES_EDIT",
   "OPERATIONS_CREATE",
   "OPERATIONS_CREATE_SOME",
   "OPERATIONS_VISUALIZE",
@@ -98,9 +99,14 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     description: "Todos los permisos",
   },
   {
-    name: "EXCHANGERATES_CREATE",
-    label: "Cargar y modificar cotizaciones",
-    description: "Cargar y modificar las cotizaciones de divisas",
+    name: "UNIFIED_CURRENCIES_VISUALIZE",
+    label: "Prof",
+    description: "Visualizar la unificación de divisas",
+  },
+  {
+    name: "UNIFIED_CURRENCIES_EDIT",
+    label: "Editar los tipos de cambio",
+    description: "Editar los tipos de cambio para la unificación de divisas",
   },
   {
     name: "OPERATIONS_CREATE",

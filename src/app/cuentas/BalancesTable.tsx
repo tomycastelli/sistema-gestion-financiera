@@ -289,7 +289,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
 
   const userCanUnify =
     user?.permissions?.some(
-      (p) => p.name === "ADMIN" || p.name === "EXCHANGERATES_CREATE",
+      (p) => p.name === "ADMIN" || p.name === "UNIFIED_CURRENCIES_VISUALIZE",
     ) ?? false;
 
   const tableCurrencies = userCanUnify
