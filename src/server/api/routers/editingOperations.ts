@@ -54,10 +54,61 @@ export const editingOperationsRouter = createTRPCRouter({
           message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
         });
       }
-      const response = await ctx.db.transaction(async (transaction) => {
-        if (input.isPendingUpdate) {
+      const response = await ctx.db.transaction(
+        async (transaction) => {
+          if (input.isPendingUpdate) {
+            const [newTxObj] = await transaction
+              .update(pendingTransactions)
+              .set({
+                fromEntityId: input.newTransactionData.fromEntityId,
+                toEntityId: input.newTransactionData.toEntityId,
+                operatorEntityId: input.newTransactionData.operatorEntityId,
+                currency: input.newTransactionData.currency,
+                amount: input.newTransactionData.amount,
+              })
+              .where(eq(pendingTransactions.id, input.txId))
+              .returning({
+                id: pendingTransactions.id,
+                operationId: pendingTransactions.operationId,
+              });
+
+            if (!newTxObj) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Transaction to update not found",
+              });
+            }
+
+            return newTxObj;
+          }
+          const [historyResponse2] = await transaction
+            .select({ history: transactionsMetadata.history })
+            .from(transactionsMetadata)
+            .where(eq(transactionsMetadata.transactionId, input.txId));
+
+          const oldHistoryJson2 = historyResponse2?.history;
+
+          const changesMade = findDifferences(
+            input.oldTransactionData,
+            input.newTransactionData,
+            ctx.user.id,
+          );
+
+          // @ts-ignore
+          let newHistoryJson2 = [];
+
+          if (
+            oldHistoryJson2 &&
+            typeof oldHistoryJson2 === "object" &&
+            Array.isArray(oldHistoryJson2)
+          ) {
+            newHistoryJson2 = [...oldHistoryJson2, changesMade];
+          } else if (oldHistoryJson2 !== undefined) {
+            newHistoryJson2 = [changesMade];
+          }
+
           const [newTxObj] = await transaction
-            .update(pendingTransactions)
+            .update(transactions)
             .set({
               fromEntityId: input.newTransactionData.fromEntityId,
               toEntityId: input.newTransactionData.toEntityId,
@@ -65,10 +116,10 @@ export const editingOperationsRouter = createTRPCRouter({
               currency: input.newTransactionData.currency,
               amount: input.newTransactionData.amount,
             })
-            .where(eq(pendingTransactions.id, input.txId))
+            .where(eq(transactions.id, input.txId))
             .returning({
-              id: pendingTransactions.id,
-              operationId: pendingTransactions.operationId,
+              id: transactions.id,
+              operationId: transactions.operationId,
             });
 
           if (!newTxObj) {
@@ -77,138 +128,93 @@ export const editingOperationsRouter = createTRPCRouter({
               message: "Transaction to update not found",
             });
           }
+          await transaction
+            .update(transactionsMetadata)
+            .set({
+              // @ts-ignore
+              history: newHistoryJson2,
+            })
+            .where(eq(transactionsMetadata.transactionId, input.txId));
 
-          return newTxObj;
-        }
-        const [historyResponse2] = await transaction
-          .select({ history: transactionsMetadata.history })
-          .from(transactionsMetadata)
-          .where(eq(transactionsMetadata.transactionId, input.txId));
+          const entitiesData = await getAllEntities(ctx.redis, ctx.db);
 
-        const oldHistoryJson2 = historyResponse2?.history;
-
-        const changesMade = findDifferences(
-          input.oldTransactionData,
-          input.newTransactionData,
-          ctx.user.id,
-        );
-
-        // @ts-ignore
-        let newHistoryJson2 = [];
-
-        if (
-          oldHistoryJson2 &&
-          typeof oldHistoryJson2 === "object" &&
-          Array.isArray(oldHistoryJson2)
-        ) {
-          newHistoryJson2 = [...oldHistoryJson2, changesMade];
-        } else if (oldHistoryJson2 !== undefined) {
-          newHistoryJson2 = [changesMade];
-        }
-
-        const [newTxObj] = await transaction
-          .update(transactions)
-          .set({
-            fromEntityId: input.newTransactionData.fromEntityId,
-            toEntityId: input.newTransactionData.toEntityId,
-            operatorEntityId: input.newTransactionData.operatorEntityId,
-            currency: input.newTransactionData.currency,
-            amount: input.newTransactionData.amount,
-          })
-          .where(eq(transactions.id, input.txId))
-          .returning({
-            id: transactions.id,
-            operationId: transactions.operationId,
-          });
-
-        if (!newTxObj) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Transaction to update not found",
-          });
-        }
-        await transaction
-          .update(transactionsMetadata)
-          .set({
-            // @ts-ignore
-            history: newHistoryJson2,
-          })
-          .where(eq(transactionsMetadata.transactionId, input.txId));
-
-        const entitiesData = await getAllEntities(ctx.redis, ctx.db);
-
-        const toEntityObj = entitiesData.find(
-          (e) => e.id === input.oldTransactionData.toEntityId,
-        );
-
-        const fromEntityObj = entitiesData.find(
-          (e) => e.id === input.oldTransactionData.fromEntityId,
-        );
-
-        if (!toEntityObj) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
-          });
-        }
-        if (!fromEntityObj) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `La entidad con ID ${input.oldTransactionData.fromEntityId} no fue encontrada`,
-          });
-        }
-
-        await transaction
-          .select()
-          .from(operations)
-          .where(eq(operations.id, newTxObj.operationId));
-
-        const deletedMovements = await undoMovements(transaction, {
-          id: newTxObj.id,
-          fromEntity: {
-            id: fromEntityObj.id,
-            tagName: fromEntityObj.tag.name,
-          },
-          toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
-          currency: input.oldTransactionData.currency,
-          amount: input.oldTransactionData.amount,
-        });
-
-        const fromEntity = alias(entities, "fromEntity");
-        const toEntity = alias(entities, "toEntity");
-
-        const [newTxResponse] = await transaction
-          .select()
-          .from(transactions)
-          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-          .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(eq(transactions.id, newTxObj.id));
-
-        const txForMovement = {
-          ...newTxResponse!.Transactions,
-          fromEntity: newTxResponse!.fromEntity!,
-          toEntity: newTxResponse!.toEntity!,
-          operation: newTxResponse!.Operations!,
-        };
-
-        const filteredMovements = deletedMovements.filter(
-          (mv) => mv.entitiesMovementId === null,
-        );
-
-        // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
-        for (const deletedMovement of filteredMovements) {
-          await generateMovements(
-            transaction,
-            txForMovement,
-            deletedMovement.account,
-            deletedMovement.direction,
-            deletedMovement.type,
+          const toEntityObj = entitiesData.find(
+            (e) => e.id === input.oldTransactionData.toEntityId,
           );
-        }
 
-        return newTxResponse!.Transactions;
-      });
+          const fromEntityObj = entitiesData.find(
+            (e) => e.id === input.oldTransactionData.fromEntityId,
+          );
+
+          if (!toEntityObj) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
+            });
+          }
+          if (!fromEntityObj) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `La entidad con ID ${input.oldTransactionData.fromEntityId} no fue encontrada`,
+            });
+          }
+
+          await transaction
+            .select()
+            .from(operations)
+            .where(eq(operations.id, newTxObj.operationId));
+
+          const deletedMovements = await undoMovements(transaction, {
+            id: newTxObj.id,
+            fromEntity: {
+              id: fromEntityObj.id,
+              tagName: fromEntityObj.tag.name,
+            },
+            toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
+            currency: input.oldTransactionData.currency,
+            amount: input.oldTransactionData.amount,
+          });
+
+          const fromEntity = alias(entities, "fromEntity");
+          const toEntity = alias(entities, "toEntity");
+
+          const [newTxResponse] = await transaction
+            .select()
+            .from(transactions)
+            .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+            .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+            .leftJoin(operations, eq(transactions.operationId, operations.id))
+            .where(eq(transactions.id, newTxObj.id));
+
+          const txForMovement = {
+            ...newTxResponse!.Transactions,
+            fromEntity: newTxResponse!.fromEntity!,
+            toEntity: newTxResponse!.toEntity!,
+            operation: newTxResponse!.Operations!,
+          };
+
+          const filteredMovements = deletedMovements.filter(
+            (mv) => mv.entitiesMovementId === null,
+          );
+
+          // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
+          for (const deletedMovement of filteredMovements) {
+            await generateMovements(
+              transaction,
+              txForMovement,
+              deletedMovement.account,
+              deletedMovement.direction,
+              deletedMovement.type,
+            );
+          }
+
+          return newTxResponse!.Transactions;
+        },
+        {
+          isolationLevel: "serializable",
+          deferrable: true,
+        },
+      );
 
       if (response) {
         await logIO(
