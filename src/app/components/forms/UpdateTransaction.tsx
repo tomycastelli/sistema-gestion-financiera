@@ -211,7 +211,10 @@ const UpdateTransaction = ({
         <div>
           <Form {...form}>
             <form
-              onSubmit={handleSubmit(onSubmit)}
+              onSubmit={(e) => {
+                e.stopPropagation();
+                handleSubmit(onSubmit)(e);
+              }}
               className="flex flex-col space-y-2"
             >
               <div className="grid grid-cols-6">

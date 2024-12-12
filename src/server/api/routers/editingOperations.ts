@@ -159,11 +159,6 @@ export const editingOperationsRouter = createTRPCRouter({
             });
           }
 
-          await transaction
-            .select()
-            .from(operations)
-            .where(eq(operations.id, newTxObj.operationId));
-
           const deletedMovements = await undoMovements(transaction, {
             id: newTxObj.id,
             fromEntity: {

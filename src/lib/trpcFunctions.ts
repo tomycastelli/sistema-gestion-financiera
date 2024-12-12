@@ -898,8 +898,6 @@ export const undoMovements = async (
         .from(cashBalances)
         .where(eq(cashBalances.id, deletedMovement.cashBalanceId!));
 
-      console.log({ relatedBalance });
-
       // Si tiene tagName y ambas entidades son del mismo tagname, no hay balance que retroceder
       if (
         relatedBalance!.tagName &&
