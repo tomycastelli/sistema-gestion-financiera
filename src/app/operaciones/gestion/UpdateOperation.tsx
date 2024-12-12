@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CalendarIcon } from "lucide-react";
 import moment from "moment";
 import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Icons } from "~/app/components/ui/Icons";
 import { Button } from "~/app/components/ui/button";
+import { Calendar } from "~/app/components/ui/calendar";
 import {
   Dialog,
   DialogClose,
@@ -25,7 +27,11 @@ import {
   FormLabel,
   FormMessage,
 } from "~/app/components/ui/form";
+import { Input } from "~/app/components/ui/input";
+import { Popover, PopoverTrigger } from "~/app/components/ui/popover";
+import { PopoverContent } from "~/app/components/ui/popover-dialog";
 import { Textarea } from "~/app/components/ui/textarea";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterInputs } from "~/trpc/shared";
 
@@ -39,6 +45,8 @@ interface UpdateOperationProps {
 
 const FormSchema = z.object({
   opObservations: z.string().optional(),
+  opDate: z.date(),
+  opTime: z.string(),
 });
 
 const UpdateOperation: FC<UpdateOperationProps> = ({
@@ -46,6 +54,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
   opDate,
   opObservations,
   operationsQueryInput,
+  accountingPeriodDate,
 }) => {
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -54,6 +63,8 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       opObservations: opObservations ?? undefined,
+      opDate,
+      opTime: moment(opDate).format("HH:mm"),
     },
   });
 
@@ -105,9 +116,14 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
   const { handleSubmit, reset } = form;
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
+    const formDate = moment(
+      moment(values.opDate).format("DD-MM-YYYY") + values.opTime,
+      "DD-MM-YYYY HH:mm",
+    ).toDate();
     await mutateAsync({
       opId,
       opObservations: values.opObservations,
+      opDate: opDate.getTime() !== formDate.getTime() ? formDate : undefined,
     });
   };
 
@@ -152,6 +168,66 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
               onSubmit={handleSubmit(onSubmit)}
               className="flex flex-col justify-start space-y-2"
             >
+              {opDate >= accountingPeriodDate && (
+                <div className="flex flex-row items-end gap-x-2">
+                  <FormField
+                    control={form.control}
+                    defaultValue={new Date()}
+                    name="opDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel className="mb-1">Fecha</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-[120px] bg-transparent pl-3 text-left font-normal hover:bg-transparent",
+                                  !field.value && "text-muted-foreground",
+                                )}
+                              >
+                                {field.value ? (
+                                  moment(field.value).format("DD-MM-YYYY")
+                                ) : (
+                                  <span>Elegir</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < accountingPeriodDate ||
+                                date > moment().startOf("day").toDate()
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="opTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tiempo</FormLabel>
+                        <FormControl>
+                          <Input className="w-[107px]" type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
               <FormField
                 control={form.control}
                 name="opObservations"

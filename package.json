@@ -54,7 +54,6 @@
     "@trpc/react-query": "10.37.1",
     "@trpc/server": "10.37.1",
     "@vercel/analytics": "1.1.1",
-    "@vercel/otel": "^1.8.1",
     "arctic": "1.2.1",
     "bufferutil": "4.0.8",
     "class-variance-authority": "0.7.0",

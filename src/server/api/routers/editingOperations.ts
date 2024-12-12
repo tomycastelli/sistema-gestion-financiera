@@ -419,53 +419,54 @@ export const editingOperationsRouter = createTRPCRouter({
       z.object({
         opId: z.number(),
         opObservations: z.string().optional(),
+        opDate: z.date().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const response = await ctx.db.transaction(async (transaction) => {
         const [updatedOperation] = await transaction
           .update(operations)
-          .set({ observations: input.opObservations })
+          .set({ observations: input.opObservations, date: input.opDate })
           .where(eq(operations.id, input.opId))
           .returning();
 
-        // if (input.oldOpDate.valueOf() !== input.opDate.valueOf()) {
-        //   const fromEntity = alias(entities, "fromEntity");
-        //   const toEntity = alias(entities, "toEntity");
-        //   const relatedTxs = await transaction
-        //     .select()
-        //     .from(transactions)
-        //     .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
-        //     .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
-        //     .where(eq(transactions.operationId, input.opId));
+        if (input.opDate) {
+          const fromEntity = alias(entities, "fromEntity");
+          const toEntity = alias(entities, "toEntity");
+          const relatedTxs = await transaction
+            .select()
+            .from(transactions)
+            .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+            .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+            .where(eq(transactions.operationId, input.opId));
 
-        //   for (const relatedTx of relatedTxs) {
-        //     const deletedMvs = await undoMovements(transaction, {
-        //       ...relatedTx.Transactions,
-        //       fromEntity: relatedTx.fromEntity!,
-        //       toEntity: relatedTx.toEntity!,
-        //     });
+          for (const relatedTx of relatedTxs) {
+            const deletedMvs = await undoMovements(transaction, {
+              ...relatedTx.Transactions,
+              fromEntity: relatedTx.fromEntity!,
+              toEntity: relatedTx.toEntity!,
+            });
 
-        //     const filteredMovements = deletedMvs.filter(
-        //       (mv) => mv.entitiesMovementId === null,
-        //     );
+            const filteredMovements = deletedMvs.filter(
+              (mv) => mv.entitiesMovementId === null,
+            );
 
-        //     for (const deletedMv of filteredMovements) {
-        //       await generateMovements(
-        //         transaction,
-        //         {
-        //           ...relatedTx.Transactions,
-        //           fromEntity: relatedTx.fromEntity!,
-        //           toEntity: relatedTx.toEntity!,
-        //           operation: { date: input.opDate },
-        //         },
-        //         deletedMv.account,
-        //         deletedMv.direction,
-        //         deletedMv.type,
-        //       );
-        //     }
-        //   }
-        // }
+            for (const deletedMv of filteredMovements) {
+              await generateMovements(
+                transaction,
+                {
+                  ...relatedTx.Transactions,
+                  fromEntity: relatedTx.fromEntity!,
+                  toEntity: relatedTx.toEntity!,
+                  operation: { date: input.opDate },
+                },
+                deletedMv.account,
+                deletedMv.direction,
+                deletedMv.type,
+              );
+            }
+          }
+        }
 
         return updatedOperation;
       });

@@ -25,7 +25,6 @@ const OperationDrawer: FC<OperationDrawerProps> = ({
   children,
   op,
   opId,
-  opDate,
   user,
   entities,
   users,
