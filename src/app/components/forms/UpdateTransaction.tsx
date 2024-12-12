@@ -213,7 +213,7 @@ const UpdateTransaction = ({
             <form
               onSubmit={(e) => {
                 e.stopPropagation();
-                handleSubmit(onSubmit)(e);
+                void handleSubmit(onSubmit)(e);
               }}
               className="flex flex-col space-y-2"
             >
