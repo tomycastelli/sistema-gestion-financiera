@@ -21,7 +21,7 @@ export default async function Home() {
         Bienvenido al portal de Maika
       </h1>
       {user && !user.preferredEntity && (
-        <Link href={"/preferencias/usuario"}>
+        <Link href={"/preferencias/usuarios"} className="mb-8">
           <h2>
             Elegí una entidad preferida en <Badge>Mi Usuario</Badge>
           </h2>
