@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getUser } from "~/server/auth";
 import { Icons } from "./components/ui/Icons";
 import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
 const AuthForm = dynamic(() => import("./components/AuthForm"));
 const EntitiesMenuCard = dynamic(() => import("./components/EntitiesMenuCard"));
 const OperationsMenuCard = dynamic(
@@ -19,6 +20,13 @@ export default async function Home() {
       <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight">
         Bienvenido al portal de Maika
       </h1>
+      {user && !user.preferredEntity && (
+        <Link href={"/preferencias/usuario"}>
+          <h2>
+            Elegí una entidad preferida en <Badge>Mi Usuario</Badge>
+          </h2>
+        </Link>
+      )}
       {user ? (
         <div className="flex flex-col items-center justify-center space-y-8">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

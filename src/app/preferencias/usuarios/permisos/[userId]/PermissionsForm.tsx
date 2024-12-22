@@ -217,27 +217,25 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                         )
                           ? false
                           : userPermissions?.find(
-                                (p) =>
-                                  (p.name ===
-                                    "USERS_PERMISSIONS_MANAGE_ACCOUNTS" &&
-                                    loopField.name.startsWith("ACCOUNTS")) ||
-                                  (p.name ===
-                                    "USERS_PERMISSIONS_MANAGE_OPERATIONS" &&
-                                    loopField.name.startsWith("OPERATIONS")) ||
-                                  (p.name ===
-                                    "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
-                                    loopField.name.startsWith(
-                                      "TRANSACTIONS",
-                                    )) ||
-                                  (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
-                                    user?.role?.name &&
-                                    p.entitiesTags?.includes(user.role.name)) ||
-                                  (p.name ===
-                                    "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
-                                    loopField.name.startsWith("ENTITIES")),
-                              )
-                            ? false
-                            : true
+                              (p) =>
+                                (p.name ===
+                                  "USERS_PERMISSIONS_MANAGE_ACCOUNTS" &&
+                                  loopField.name.startsWith("ACCOUNTS")) ||
+                                (p.name ===
+                                  "USERS_PERMISSIONS_MANAGE_OPERATIONS" &&
+                                  loopField.name.startsWith("OPERATIONS")) ||
+                                (p.name ===
+                                  "USERS_PERMISSIONS_MANAGE_TRANSACTIONS" &&
+                                  loopField.name.startsWith("TRANSACTIONS")) ||
+                                (p.name === "USERS_PERMISSIONS_MANAGE_SOME" &&
+                                  user?.role?.name &&
+                                  p.entitiesTags?.includes(user.role.name)) ||
+                                (p.name ===
+                                  "USERS_PERMISSIONS_MANAGE_ENTITIES" &&
+                                  loopField.name.startsWith("ENTITIES")),
+                            )
+                          ? false
+                          : true
                       }
                       checked={field.value}
                       onCheckedChange={field.onChange}
@@ -349,8 +347,8 @@ const PermissionsForm: FC<PermissionsFormProps> = ({
                                     </p>
                                   ))
                                 : loopField.name.startsWith("USERS_")
-                                  ? "Añadir rol"
-                                  : "Añadir Tag"}
+                                ? "Añadir rol"
+                                : "Añadir Tag"}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>

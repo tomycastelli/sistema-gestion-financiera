@@ -351,6 +351,7 @@ export const transactions = pgTable(
     amount: decimalNumber("amount").notNull(),
     observations: text("observations"),
     status: Status("status").default("pending").notNull(),
+    is_approved: boolean("is_approved").notNull(),
   },
   (table) => {
     return {
@@ -492,6 +493,10 @@ export const user = pgTable(
     permissions: jsonb("permissions"),
     roleId: integer("roleId"),
     entityId: integer("entityId"),
+    preferredEntity: integer("preferred_entity").references(() => entities.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
   },
   (table) => {
     return {
@@ -526,63 +531,6 @@ export const user = pgTable(
       })
         .onUpdate("cascade")
         .onDelete("set null"),
-    };
-  },
-);
-
-export const pendingTransactions = pgTable(
-  "pendingTransactions",
-  {
-    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    operationId: integer("operationId").notNull(),
-    type: text("type").notNull(),
-    operatorEntityId: integer("operatorEntityId").notNull(),
-    fromEntityId: integer("fromEntityId").notNull(),
-    toEntityId: integer("toEntityId").notNull(),
-    currency: text("currency").notNull(),
-    amount: decimalNumber("amount").notNull(),
-    observations: text("observations"),
-    status: Status("status").default("pending").notNull(),
-  },
-  (table) => {
-    return {
-      operationIdFromEntityIdToEntityIdDateCu: index(
-        "pendingTransactions_operationId_fromEntityId_toEntityId_date_cu",
-      ).using(
-        "btree",
-        table.operationId.asc().nullsLast(),
-        table.fromEntityId.asc().nullsLast(),
-        table.toEntityId.asc().nullsLast(),
-        table.currency.asc().nullsLast(),
-      ),
-      pendingTransactionsFromEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.fromEntityId],
-        foreignColumns: [entities.id],
-        name: "pendingTransactions_fromEntityId_Entities_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      pendingTransactionsOperationIdOperationsIdFk: foreignKey({
-        columns: [table.operationId],
-        foreignColumns: [operations.id],
-        name: "pendingTransactions_operationId_Operations_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      pendingTransactionsOperatorEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.operatorEntityId],
-        foreignColumns: [entities.id],
-        name: "pendingTransactions_operatorEntityId_Entities_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      pendingTransactionsToEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.toEntityId],
-        foreignColumns: [entities.id],
-        name: "pendingTransactions_toEntityId_Entities_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
     };
   },
 );

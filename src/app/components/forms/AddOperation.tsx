@@ -468,15 +468,7 @@ const AddOperation = ({
                   <CableForm
                     mainTags={mainTags}
                     entities={entities}
-                    userEntityId={
-                      entities
-                        .find((entity) => entity.name === user.name)!
-                        .id.toString()
-                        ? entities
-                            .find((entity) => entity.name === user.name)!
-                            .id.toString()
-                        : ""
-                    }
+                    user={user}
                   />
                 </TabsContent>
               </Tabs>

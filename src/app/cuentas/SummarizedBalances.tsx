@@ -79,6 +79,7 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       daysBackAmount: parseInt(balanceChartDays),
       entityId: selectedEntity?.id,
       tagName: selectedTag,
+      dayInPast: dayInPast ? new Date(dayInPast) : undefined,
     },
     {
       initialData: initialBalanceCharts,

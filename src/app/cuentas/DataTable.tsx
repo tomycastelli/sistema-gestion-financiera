@@ -20,6 +20,9 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useOperationsPageStore } from "~/stores/OperationsPage";
+import { dayGreater } from "~/lib/functions";
+import moment from "moment";
+import { dateFormat } from "~/lib/variables";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -56,6 +59,8 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const currentDate = new Date();
+
   return (
     <div>
       <div className="rounded-md border">
@@ -89,6 +94,10 @@ export function DataTable<TData, TValue>({
                     typeof selectedTxForMvs === "number" &&
                       row.getValue("transactionId") === selectedTxForMvs &&
                       "bg-blue-200 dark:bg-blue-900",
+                    dayGreater(
+                      moment(row.getValue("date"), dateFormat).toDate(),
+                      currentDate,
+                    ) && "border-4 border-amber-200 dark:border-amber-800",
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (

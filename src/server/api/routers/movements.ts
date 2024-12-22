@@ -194,7 +194,7 @@ export const movementsRouter = createTRPCRouter({
                       .startOf("day")
                       .toDate(),
                   )
-                : undefined,
+                : lte(balances.date, new Date()),
             ),
           )
           .orderBy(
@@ -244,7 +244,7 @@ export const movementsRouter = createTRPCRouter({
                     balances.date,
                     moment(input.dayInPast, dateFormatting.day).toDate(),
                   )
-                : undefined,
+                : lte(balances.date, new Date()),
             ),
           )
           .orderBy(
@@ -367,7 +367,7 @@ export const movementsRouter = createTRPCRouter({
                     balances.date,
                     moment(input.dayInPast, dateFormatting.day).toDate(),
                   )
-                : undefined,
+                : lte(balances.date, new Date()),
             ),
           )
           .orderBy(
@@ -468,7 +468,7 @@ export const movementsRouter = createTRPCRouter({
                     balances.date,
                     moment(input.dayInPast, dateFormatting.day).toDate(),
                   )
-                : undefined,
+                : lte(balances.date, new Date()),
             ),
           )
           .orderBy(
@@ -582,10 +582,14 @@ export const movementsRouter = createTRPCRouter({
         entityId: z.number().int().optional().nullish(),
         tagName: z.string().optional().nullish(),
         daysBackAmount: z.number().default(30),
+        dayInPast: z.date().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const fromDate = moment()
+      const fromDateMoment = input.dayInPast
+        ? moment(input.dayInPast)
+        : moment();
+      const fromDate = fromDateMoment
         .startOf("day")
         .subtract(input.daysBackAmount, "days")
         .toDate();
@@ -600,6 +604,9 @@ export const movementsRouter = createTRPCRouter({
               : undefined,
             input.tagName ? eq(cashBalances.tagName, input.tagName) : undefined,
             gte(cashBalances.date, fromDate),
+            input.dayInPast
+              ? lte(cashBalances.date, input.dayInPast)
+              : lte(cashBalances.date, new Date()),
           ),
         );
 

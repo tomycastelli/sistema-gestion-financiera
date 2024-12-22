@@ -70,7 +70,7 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
         void utils.operations.getPendingTransactions.invalidate();
       },
       onSuccess(data) {
-        const opId = data[0]?.Transactions.operationId;
+        const opId = data[0]!.operationId;
         toast.success(
           `${data.length === 1 ? "Transacción" : "Transacciones"} aprobada${
             data.length === 1 ? "" : "s"
@@ -284,8 +284,11 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 }
                 variant="outline"
                 disabled={
-                  user.email !== "christian@ifc.com.ar" &&
-                  user.email !== "tomas.castelli@ifc.com.ar"
+                  !user.permissions?.some(
+                    (p) =>
+                      p.name === "OPERATIONS_PENDING_APPROVE" ||
+                      p.name === "ADMIN",
+                  )
                 }
               >
                 <Icons.cross className="h-5 w-5 text-red" />
@@ -297,8 +300,11 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 }
                 variant="outline"
                 disabled={
-                  user.email !== "christian@ifc.com.ar" &&
-                  user.email !== "tomas.castelli@ifc.com.ar"
+                  !user.permissions?.some(
+                    (p) =>
+                      p.name === "OPERATIONS_PENDING_APPROVE" ||
+                      p.name === "ADMIN",
+                  )
                 }
               >
                 <Icons.check className="h-5 w-5 text-green" />

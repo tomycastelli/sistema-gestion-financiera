@@ -26,6 +26,7 @@ import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
 import { useNumberFormat } from "@react-input/number-format";
 import { toast } from "sonner";
+import { User } from "lucia";
 
 const FormSchema = z
   .object({
@@ -46,20 +47,21 @@ const FormSchema = z
   });
 
 interface CableFormProps {
-  userEntityId: string;
   entities: RouterOutputs["entities"]["getAll"];
   mainTags: string[];
+  user: User;
 }
 
-const CableForm: FC<CableFormProps> = ({
-  userEntityId,
-  entities,
-  mainTags,
-}) => {
+const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      operatorEntity: userEntityId,
+      operatorEntity: entities
+        .find((entity) => entity.name === user.name)!
+        .id.toString()
+        ? entities.find((entity) => entity.name === user.name)!.id.toString()
+        : "",
+      middleEntity: user.preferredEntity?.toString() ?? undefined,
       amount: "",
     },
   });

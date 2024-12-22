@@ -201,10 +201,7 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < accountingPeriodDate ||
-                                date > moment().startOf("day").toDate()
-                              }
+                              disabled={(date) => date < accountingPeriodDate}
                               initialFocus
                             />
                           </PopoverContent>

@@ -35,7 +35,12 @@ const Transaction = memo(
       mainEntity.id === tx.toEntityId ? tx.fromEntity : tx.toEntity;
 
     return (
-      <div className="grid w-full grid-rows-2 lg:grid-cols-9 lg:grid-rows-1">
+      <div
+        className={cn(
+          "grid w-full grid-rows-2 lg:grid-cols-9 lg:grid-rows-1",
+          !tx.is_approved && "opacity-50",
+        )}
+      >
         <div className="row-span-1 mr-12 flex flex-row items-center justify-between lg:col-span-5">
           <EntityCard entity={tx.operatorEntity} />
           <div className="flex flex-col items-center justify-center">

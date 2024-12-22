@@ -43,7 +43,7 @@ import {
 } from "../server/db/schema";
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
-import { dateFormatting } from "./variables";
+import { dateFormat, dateFormatting } from "./variables";
 
 export const getAllPermissions = async (
   redis: Redis,
@@ -1312,7 +1312,7 @@ export const currentAccountsProcedure = async (
 
           const tableData: z.infer<typeof tableDataType> = {
             id: mv.id,
-            date: moment(mv.date).format("DD-MM-YYYY"),
+            date: moment(mv.date).format(dateFormat),
             operationId: mv.transaction.operationId,
             type: mv.type,
             txType: mv.transaction.type,

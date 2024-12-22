@@ -81,6 +81,7 @@ const FlexibleTransactionsForm = ({
           operatorId: userEntityId ? userEntityId.toString() : undefined,
           currency: "ars",
           direction: true,
+          fromEntityId: user.preferredEntity?.toString() ?? undefined,
         },
       ],
     },

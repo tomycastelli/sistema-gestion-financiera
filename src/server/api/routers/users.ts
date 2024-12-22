@@ -7,39 +7,48 @@ import { entities, user } from "~/server/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const usersRouter = createTRPCRouter({
-  changeName: protectedProcedure
+  changeUser: protectedProcedure
     .input(
       z.object({
         userId: z.string(),
         name: z.string().max(25),
         oldName: z.string().max(25),
+        preferredEntityId: z.number().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.transaction(async (transaction) => {
-        const [userUpdate] = await transaction
-          .update(user)
-          .set({
-            name: input.name,
-          })
-          .where(eq(user.id, input.userId))
-          .returning();
+      if (input.name !== input.oldName) {
+        const response = await ctx.db.transaction(async (transaction) => {
+          const [userUpdate] = await transaction
+            .update(user)
+            .set({
+              name: input.name,
+            })
+            .where(eq(user.id, input.userId))
+            .returning();
 
-        const [entityUpdate] = await transaction
-          .update(entities)
-          .set({
-            name: input.name,
-          })
-          .where(eq(entities.name, input.oldName))
-          .returning();
+          const [entityUpdate] = await transaction
+            .update(entities)
+            .set({
+              name: input.name,
+            })
+            .where(eq(entities.name, input.oldName))
+            .returning();
 
-        return { userUpdate, entityUpdate };
-      });
+          return { userUpdate, entityUpdate };
+        });
 
-      if (response) {
-        await deletePattern(ctx.redis, "entities|*");
+        if (response) {
+          await deletePattern(ctx.redis, "entities|*");
+        }
       }
-      return response;
+
+      await ctx.db
+        .update(user)
+        .set({
+          preferredEntity: input.preferredEntityId,
+        })
+        .where(eq(user.id, ctx.user.id));
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const response = await ctx.db.query.user.findMany({

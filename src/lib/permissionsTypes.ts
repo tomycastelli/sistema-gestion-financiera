@@ -4,6 +4,8 @@ export const PermissionsNames = [
   "ADMIN",
   "UNIFIED_CURRENCIES_VISUALIZE",
   "UNIFIED_CURRENCIES_EDIT",
+  "OPERATIONS_PENDING_APPROVE",
+  "OPERATIONS_DIRECT_UPLOAD",
   "OPERATIONS_CREATE",
   "OPERATIONS_CREATE_SOME",
   "OPERATIONS_VISUALIZE",
@@ -107,6 +109,16 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     name: "UNIFIED_CURRENCIES_EDIT",
     label: "Editar los tipos de cambio",
     description: "Editar los tipos de cambio para la unificación de divisas",
+  },
+  {
+    name: "OPERATIONS_PENDING_APPROVE",
+    label: "Aprobar operaciones pendientes",
+    description: "Aprobar las operaciones en la cola de pendientes",
+  },
+  {
+    name: "OPERATIONS_DIRECT_UPLOAD",
+    label: "Cargar operaciones directamente",
+    description: "Cargar las operaciones saltandose la cola de pendientes",
   },
   {
     name: "OPERATIONS_CREATE",

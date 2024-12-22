@@ -83,6 +83,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
           amountA: "",
           amountB: "",
           exchangeRate: "",
+          entityA: user.preferredEntity?.toString() ?? undefined,
         },
       ],
     },
@@ -99,7 +100,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     const temporalTxStore: SingleTransactionInStoreSchema[] = [];
-    values.transactions.forEach((value, index) => {
+    for (const [index, value] of values.transactions.entries()) {
       if (value.entityA === value.entityB) {
         setError(
           `transactions.${index}.entityB`,
@@ -109,6 +110,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
           },
           { shouldFocus: true },
         );
+        return;
       }
 
       const entityAObj = entities.find(
@@ -167,7 +169,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
       ];
 
       temporalTxStore.push(...transactions);
-    });
+    }
 
     temporalTxStore.forEach((transaction) => {
       addTransactionToStore(transaction);

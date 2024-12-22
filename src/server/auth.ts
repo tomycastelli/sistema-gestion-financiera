@@ -50,6 +50,7 @@ export const lucia = new Lucia(adapter, {
       permissions: attributes.permissions,
       roleId: attributes.roleId,
       entityId: attributes.entityId,
+      preferredEntity: attributes.preferredEntity,
     };
   },
 });
@@ -64,6 +65,7 @@ declare module "lucia" {
       permissions?: z.infer<typeof PermissionSchema> | null;
       entityId: number;
       roleId?: number | null;
+      preferredEntity: number | null;
     };
   }
 }

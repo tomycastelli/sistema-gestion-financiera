@@ -20,7 +20,6 @@ import {
   entities,
   movements,
   operations,
-  pendingTransactions,
   tag,
   transactions,
   transactionsMetadata,
@@ -66,190 +65,85 @@ export const operationsRouter = createTRPCRouter({
           message: "Transactions must have different entities",
         });
       }
-      // Estas transacciones seran insertadas directamente en la tabla comun
-      const directTransactions = input.transactions.filter(
-        (tx) => tx.type !== "cuenta corriente",
-      );
 
-      // Estas seran insertadas a la tabla de pending
-      const pendingInput = input.transactions.filter(
-        (tx) => tx.type === "cuenta corriente",
-      );
+      const transactionsToInsert = input.transactions.map((tx) => ({
+        ...tx,
+        is_approved:
+          tx.type !== "cuenta corriente" &&
+          (ctx.user.permissions?.some(
+            (p) => p.name === "OPERATIONS_DIRECT_UPLOAD" || p.name === "ADMIN",
+          ) ??
+            false),
+      }));
 
       // Un map del tipo txFormId-insertedTxId donde txFormId es el id temporal generado en el form
       // Y el insertedTxId es el id generado por la base de datos
-      const relatedTxIdMap = new Map<number, number>();
       const fromEntity = alias(entities, "fromEntity");
       const toEntity = alias(entities, "toEntity");
 
-      if (input.opId) {
-        const opId = input.opId;
+      const response = await ctx.db.transaction(
+        async (tx) => {
+          const relatedTxIdMap = new Map<number, number>();
+          const list = [];
 
-        const response = await ctx.db.transaction(
-          async (tx) => {
-            const list = [];
-            const operation = await tx.query.operations.findFirst({
-              where: eq(operations.id, opId),
+          const [operation] = input.opId
+            ? await tx
+                .select()
+                .from(operations)
+                .where(eq(operations.id, input.opId))
+            : await tx
+                .insert(operations)
+                .values({
+                  date: input.opDate,
+                  observations: input.opObservations,
+                })
+                .returning();
+
+          if (!operation) {
+            throw new TRPCError({
+              message: "Couldn't create or find operation",
+              code: "BAD_REQUEST",
             });
+          }
 
-            if (!operation) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "The provided operation ID is not in the database",
-              });
-            }
-
-            // Inserto las pending que estan relacionadas a esa operación, se subiran con status: pending automaticamente
-            // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
-            if (pendingInput.length > 0) {
-              const pendingToInsert = pendingInput.map((pendingTx) => ({
-                operationId: opId,
-                ...pendingTx,
-              }));
-              await tx.insert(pendingTransactions).values(pendingToInsert);
-            }
-
-            for (const txToInsert of directTransactions) {
-              const [txIdObj] = await tx
-                .insert(transactions)
-                .values({
-                  ...txToInsert,
-                  operationId: opId,
-                  status:
-                    cashAccountOnlyTypes.has(txToInsert.type) ||
-                    txToInsert.type === "pago por cta cte"
-                      ? "confirmed"
-                      : "pending",
-                })
-                .returning({ id: transactions.id });
-
-              relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
-
-              const [insertedTxResponse] = await tx
-                .select()
-                .from(transactions)
-                .leftJoin(
-                  fromEntity,
-                  eq(transactions.fromEntityId, fromEntity.id),
-                )
-                .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-                .where(eq(transactions.id, txIdObj!.id));
-
-              const insertedTx = {
-                ...insertedTxResponse!.Transactions,
-                formId: txToInsert.formId,
-                fromEntity: insertedTxResponse!.fromEntity!,
-                toEntity: insertedTxResponse!.toEntity!,
-              };
-
-              list.push(insertedTx);
-
-              const txForMovement = { ...insertedTx, operation };
-
-              if (cashAccountOnlyTypes.has(insertedTx.type)) {
-                await generateMovements(tx, txForMovement, true, 1, "upload");
-              } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
-                await generateMovements(tx, txForMovement, false, 1, "upload");
-              } else if (insertedTx.type === "pago por cta cte") {
-                await generateMovements(tx, txForMovement, false, 1, "upload");
-                await generateMovements(tx, txForMovement, true, 1, "upload");
-              } else if (insertedTx.type === "cambio") {
-                await generateMovements(tx, txForMovement, false, -1, "upload");
-              }
-            }
-
-            if (directTransactions.length > 0) {
-              const txMetadataToInsert = directTransactions.map(
-                (txToInsert) => ({
-                  transactionId: relatedTxIdMap.get(txToInsert.formId)!,
-                  uploadedBy: ctx.user.id,
-                  uploadedDate: new Date(),
-                  metadata: txToInsert.metadata,
-                  relatedTransactionId: txToInsert.relatedTransactionId
-                    ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
-                    : undefined,
-                }),
-              );
-
-              await tx.insert(transactionsMetadata).values(txMetadataToInsert);
-            }
-
-            return { operation, transactions: list };
-          },
-          {
-            isolationLevel: "serializable",
-            deferrable: true,
-          },
-        );
-
-        return response;
-      } else {
-        const response = await ctx.db.transaction(
-          async (tx) => {
-            const list = [];
-            const [op] = await tx
-              .insert(operations)
+          for (const txToInsert of transactionsToInsert) {
+            const [txIdObj] = await tx
+              .insert(transactions)
               .values({
-                date: input.opDate,
-                observations: input.opObservations,
+                ...txToInsert,
+                operationId: operation.id,
+                status:
+                  cashAccountOnlyTypes.has(txToInsert.type) ||
+                  txToInsert.type === "pago por cta cte"
+                    ? "confirmed"
+                    : "pending",
               })
-              .returning();
+              .returning({ id: transactions.id });
 
-            // Inserto las pending que estan relacionadas a esta nueva operación, se subiran con status: pending automaticamente
-            // Aclaro que el status pending no tiene nada que ver con el pending de que vayan a la cola de aprobación
-            if (pendingInput.length > 0) {
-              const pendingToInsert = pendingInput.map((pendingTx) => ({
-                operationId: op!.id,
-                ...pendingTx,
-              }));
-              await tx.insert(pendingTransactions).values(pendingToInsert);
-            }
+            relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
 
-            for (const txToInsert of directTransactions) {
-              const [txIdObj] = await tx
-                .insert(transactions)
-                .values({
-                  operationId: op!.id,
-                  type: txToInsert.type,
-                  operatorEntityId: txToInsert.operatorEntityId,
-                  fromEntityId: txToInsert.fromEntityId,
-                  toEntityId: txToInsert.toEntityId,
-                  currency: txToInsert.currency,
-                  amount: txToInsert.amount,
-                  status:
-                    cashAccountOnlyTypes.has(txToInsert.type) ||
-                    txToInsert.type === "pago por cta cte"
-                      ? "confirmed"
-                      : "pending",
-                })
-                .returning({ id: transactions.id });
+            const [insertedTxResponse] = await tx
+              .select()
+              .from(transactions)
+              .leftJoin(
+                fromEntity,
+                eq(transactions.fromEntityId, fromEntity.id),
+              )
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+              .where(eq(transactions.id, txIdObj!.id));
 
-              relatedTxIdMap.set(txToInsert.formId, txIdObj!.id);
+            const insertedTx = {
+              ...insertedTxResponse!.Transactions,
+              formId: txToInsert.formId,
+              fromEntity: insertedTxResponse!.fromEntity!,
+              toEntity: insertedTxResponse!.toEntity!,
+            };
 
-              const [insertedTxResponse] = await tx
-                .select()
-                .from(transactions)
-                .leftJoin(
-                  fromEntity,
-                  eq(transactions.fromEntityId, fromEntity.id),
-                )
-                .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-                .where(eq(transactions.id, txIdObj!.id));
+            list.push(insertedTx);
 
-              const insertedTx = {
-                ...insertedTxResponse!.Transactions,
-                formId: txToInsert.formId,
-                fromEntity: insertedTxResponse!.fromEntity!,
-                toEntity: insertedTxResponse!.toEntity!,
-              };
+            const txForMovement = { ...insertedTx, operation };
 
-              list.push(insertedTx);
-
-              const txForMovement = {
-                ...insertedTx,
-                operation: { date: op!.date },
-              };
-
+            if (txToInsert.is_approved) {
               if (cashAccountOnlyTypes.has(insertedTx.type)) {
                 await generateMovements(tx, txForMovement, true, 1, "upload");
               } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
@@ -261,41 +155,37 @@ export const operationsRouter = createTRPCRouter({
                 await generateMovements(tx, txForMovement, false, -1, "upload");
               }
             }
+          }
 
-            if (directTransactions.length > 0) {
-              const txMetadataToInsert = directTransactions.map(
-                (txToInsert) => ({
-                  transactionId: relatedTxIdMap.get(txToInsert.formId)!,
-                  uploadedBy: ctx.user.id,
-                  uploadedDate: new Date(),
-                  metadata: txToInsert.metadata,
-                  relatedTransactionId: txToInsert.relatedTransactionId
-                    ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
-                    : undefined,
-                }),
-              );
+          const txMetadataToInsert = transactionsToInsert.map((txToInsert) => ({
+            transactionId: relatedTxIdMap.get(txToInsert.formId)!,
+            uploadedBy: ctx.user.id,
+            uploadedDate: new Date(),
+            metadata: txToInsert.metadata,
+            relatedTransactionId: txToInsert.relatedTransactionId
+              ? relatedTxIdMap.get(txToInsert.relatedTransactionId)
+              : undefined,
+          }));
 
-              await tx.insert(transactionsMetadata).values(txMetadataToInsert);
-            }
+          await tx.insert(transactionsMetadata).values(txMetadataToInsert);
 
-            return { operation: op!, transactions: list };
-          },
-          {
-            isolationLevel: "serializable",
-            deferrable: true,
-          },
-        );
+          return { operation, transactions: list };
+        },
+        {
+          isolationLevel: "serializable",
+          deferrable: true,
+        },
+      );
 
-        await logIO(
-          ctx.dynamodb,
-          ctx.user.id,
-          "Insertar operación",
-          input,
-          response,
-        );
+      await logIO(
+        ctx.dynamodb,
+        ctx.user.id,
+        "Insertar operación",
+        input,
+        response,
+      );
 
-        return response;
-      }
+      return response;
     }),
   approvePendingTransactions: protectedLoggedProcedure
     .input(
@@ -305,8 +195,9 @@ export const operationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (
-        ctx.user.email !== "christian@ifc.com.ar" &&
-        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+        !ctx.user.permissions?.some(
+          (p) => p.name === "OPERATIONS_PENDING_APPROVE" || p.name === "ADMIN",
+        )
       ) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -315,78 +206,83 @@ export const operationsRouter = createTRPCRouter({
         });
       }
 
-      // Vamos a insertar las pending en la tabla común de transacciones y generar los movimientos
-      const response = await ctx.db.transaction(async (tx) => {
-        const fromEntity = alias(entities, "fromEntity");
-        const toEntity = alias(entities, "toEntity");
+      const fromEntity = alias(entities, "fromEntity");
+      const toEntity = alias(entities, "toEntity");
 
-        // Agarro las transacciones pending y las elimino de la tabla ya que dejaran de ser pending
-        const pendingTransactionsToInsert = await tx
-          .delete(pendingTransactions)
-          .where(inArray(pendingTransactions.id, input.pendingTransactionsIds))
-          .returning({
-            operationId: pendingTransactions.operationId,
-            type: pendingTransactions.type,
-            operatorEntityId: pendingTransactions.operatorEntityId,
-            fromEntityId: pendingTransactions.fromEntityId,
-            toEntityId: pendingTransactions.toEntityId,
-            currency: pendingTransactions.currency,
-            amount: pendingTransactions.amount,
-            observations: pendingTransactions.observations,
-            status: pendingTransactions.status,
-          });
+      const response = await ctx.db.transaction(
+        async (tx) => {
+          const list = [];
+          for (const txId of input.pendingTransactionsIds) {
+            const [insertedTxResponse] = await tx
+              .select()
+              .from(transactions)
+              .leftJoin(
+                fromEntity,
+                eq(transactions.fromEntityId, fromEntity.id),
+              )
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+              .where(eq(transactions.id, txId));
 
-        // Las inserto en la tabla comun
-        const insertedTxsIds = await tx
-          .insert(transactions)
-          .values(pendingTransactionsToInsert)
-          .returning({ id: transactions.id });
-        const mappedTxIds = insertedTxsIds.map((tx) => tx.id);
+            if (!insertedTxResponse) {
+              throw new TRPCError({
+                message: "Invalid transaction id",
+                code: "BAD_REQUEST",
+              });
+            } else if (insertedTxResponse.Transactions.is_approved) {
+              throw new TRPCError({
+                message: "Transaction id is already approved",
+                code: "BAD_REQUEST",
+              });
+            }
 
-        const insertedTxsResponse = await tx
-          .select()
-          .from(transactions)
-          .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-          .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-          .where(inArray(transactions.id, mappedTxIds));
+            await tx
+              .update(transactions)
+              .set({ is_approved: true })
+              .where(eq(transactions.id, txId));
 
-        // Genero los movimientos
-        for (const insertedTxResponse of insertedTxsResponse) {
-          const [op] = await tx
-            .select({ date: operations.date })
-            .from(operations)
-            .where(
-              eq(operations.id, insertedTxResponse.Transactions.operationId),
-            );
-          const txForMovement = {
-            ...insertedTxResponse.Transactions,
-            fromEntity: insertedTxResponse.fromEntity!,
-            toEntity: insertedTxResponse.toEntity!,
-            operation: { date: op!.date },
-          };
+            const [operation] = await tx
+              .select()
+              .from(operations)
+              .where(
+                eq(operations.id, insertedTxResponse.Transactions.operationId),
+              );
 
-          if (cashAccountOnlyTypes.has(txForMovement.type)) {
-            await generateMovements(tx, txForMovement, true, 1, "upload");
-          } else if (currentAccountOnlyTypes.has(txForMovement.type)) {
-            await generateMovements(tx, txForMovement, false, 1, "upload");
-          } else if (txForMovement.type === "pago por cta cte") {
-            await generateMovements(tx, txForMovement, false, 1, "upload");
-            await generateMovements(tx, txForMovement, true, 1, "upload");
-          } else if (txForMovement.type === "cambio") {
-            await generateMovements(tx, txForMovement, false, -1, "upload");
+            const insertedTx = {
+              ...insertedTxResponse.Transactions,
+              fromEntity: insertedTxResponse.fromEntity!,
+              toEntity: insertedTxResponse.toEntity!,
+            };
+
+            list.push(insertedTx);
+
+            const txForMovement = { ...insertedTx, operation: operation! };
+            if (cashAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, true, 1, "upload");
+            } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
+              await generateMovements(tx, txForMovement, false, 1, "upload");
+            } else if (insertedTx.type === "pago por cta cte") {
+              await generateMovements(tx, txForMovement, false, 1, "upload");
+              await generateMovements(tx, txForMovement, true, 1, "upload");
+            } else if (insertedTx.type === "cambio") {
+              await generateMovements(tx, txForMovement, false, -1, "upload");
+            }
           }
-        }
 
-        const txMetadataToInsert = insertedTxsResponse.map((pendingTx) => ({
-          transactionId: pendingTx.Transactions.id,
-          uploadedBy: ctx.user.id,
-          uploadedDate: new Date(),
-        }));
+          return list;
+        },
+        {
+          isolationLevel: "serializable",
+          deferrable: true,
+        },
+      );
 
-        await tx.insert(transactionsMetadata).values(txMetadataToInsert);
-
-        return insertedTxsResponse;
-      });
+      await logIO(
+        ctx.dynamodb,
+        ctx.user.id,
+        "Aprobar transacción",
+        input,
+        response,
+      );
 
       return response;
     }),
@@ -400,13 +296,13 @@ export const operationsRouter = createTRPCRouter({
 
     const pendingOperations = await ctx.db
       .select()
-      .from(pendingTransactions)
-      .leftJoin(operations, eq(pendingTransactions.operationId, operations.id))
-      .leftJoin(fromEntity, eq(pendingTransactions.fromEntityId, fromEntity.id))
-      .leftJoin(toEntity, eq(pendingTransactions.toEntityId, toEntity.id))
+      .from(transactions)
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+      .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
       .leftJoin(
         operatorEntity,
-        eq(pendingTransactions.operatorEntityId, operatorEntity.id),
+        eq(transactions.operatorEntityId, operatorEntity.id),
       )
       .leftJoin(fromEntityTag, eq(fromEntity.tagName, fromEntityTag.name))
       .leftJoin(toEntityTag, eq(toEntity.tagName, toEntityTag.name))
@@ -414,10 +310,11 @@ export const operationsRouter = createTRPCRouter({
         operatorEntityTag,
         eq(operatorEntity.tagName, operatorEntityTag.name),
       )
-      .orderBy(desc(pendingTransactions.id));
+      .where(eq(transactions.is_approved, false))
+      .orderBy(desc(transactions.id));
     const response = pendingOperations.map((tx) => ({
       operation: tx.Operations!,
-      ...tx.pendingTransactions!,
+      ...tx.Transactions!,
       fromEntity: {
         ...tx.fromEntity!,
         tag: tx.fromEntityTag!,
@@ -441,8 +338,9 @@ export const operationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (
-        ctx.user.email !== "christian@ifc.com.ar" &&
-        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+        !ctx.user.permissions?.some(
+          (p) => p.name === "OPERATIONS_PENDING_APPROVE" || p.name === "ADMIN",
+        )
       ) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -451,10 +349,28 @@ export const operationsRouter = createTRPCRouter({
         });
       }
 
+      // Chequeo que sean todos sin aprobar
+      const [unapproved] = await ctx.db
+        .select({ count: count() })
+        .from(transactions)
+        .where(
+          and(
+            inArray(transactions.id, input.pendingTransactionsIds),
+            eq(transactions.is_approved, false),
+          ),
+        );
+
+      if (unapproved?.count !== input.pendingTransactionsIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Not all pased tx ids are unapproved",
+        });
+      }
+
       const deletedPendingTransactions = await ctx.db
-        .delete(pendingTransactions)
-        .where(inArray(pendingTransactions.id, input.pendingTransactionsIds))
-        .returning({ id: pendingTransactions.id });
+        .delete(transactions)
+        .where(inArray(transactions.id, input.pendingTransactionsIds))
+        .returning({ id: transactions.id });
 
       return deletedPendingTransactions;
     }),

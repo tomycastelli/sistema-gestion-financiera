@@ -510,3 +510,7 @@ export function formatNumberLabel(num: number): string {
 
   return num < 0 ? `-${formatted}` : formatted;
 }
+
+export function dayGreater(date1: Date, date2: Date): boolean {
+  return moment(date1).isAfter(date2, "day");
+}

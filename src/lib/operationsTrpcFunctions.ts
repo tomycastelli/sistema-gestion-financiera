@@ -406,6 +406,7 @@ export const getOperationsProcedure = async (
             : true;
 
         const isCancelAllowed =
+          tx.is_approved &&
           cuentaCorrienteAllow &&
           isInPeriod &&
           tx.status !== "cancelled" &&
@@ -432,6 +433,7 @@ export const getOperationsProcedure = async (
         const isDeleteAllowed = false;
 
         const isUpdateAllowed =
+          tx.is_approved &&
           cuentaCorrienteAllow &&
           isInPeriod &&
           tx.status !== schema.Status.enumValues[0] &&
@@ -455,6 +457,7 @@ export const getOperationsProcedure = async (
             : false;
 
         const isValidateAllowed =
+          tx.is_approved &&
           cuentaCorrienteAllow &&
           isInPeriod &&
           tx.type === "cambio" &&

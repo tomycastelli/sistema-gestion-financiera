@@ -5,6 +5,8 @@ import {
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
+import { entities, user } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 
 const accountsListsSchema = z.array(
   z.object({
@@ -92,9 +94,33 @@ export const userPreferencesRouter = createTRPCRouter({
         } catch (error) {
           throw new TRPCError({
             message: "Preference schema is not correct",
+            cause: error,
             code: "UNPROCESSABLE_CONTENT",
           });
         }
       }
+    }),
+
+  setPreferredEntity: protectedProcedure
+    .input(z.object({ preferredEntity: z.number().int().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.preferredEntity) {
+        const [entity] = await ctx.db
+          .select()
+          .from(entities)
+          .where(eq(entities.id, input.preferredEntity))
+          .limit(1);
+        if (!entity) {
+          throw new TRPCError({
+            message: "Invalid entityId",
+            code: "BAD_REQUEST",
+          });
+        }
+      }
+
+      await ctx.db
+        .update(user)
+        .set({ preferredEntity: input.preferredEntity })
+        .where(eq(user.id, ctx.user.id));
     }),
 });

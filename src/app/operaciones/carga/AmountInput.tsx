@@ -41,6 +41,8 @@ const AmountInput: FC<AmountInputProps> = ({
           <FormControl>
             <Input
               ref={inputRef}
+              type="text"
+              inputMode="decimal"
               className="w-32"
               name={field.name}
               placeholder={placeholder ?? "$"}
