@@ -1,6 +1,6 @@
 "use client";
 
-import { type FC } from "react";
+import { useState, type FC } from "react";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { type User } from "lucia";
 import moment from "moment";
 import { useRouter } from "next/navigation";
+import CustomPagination from "~/app/components/CustomPagination";
 
 interface PendingTransactionsProps {
   initialPendingTransactions: RouterOutputs["operations"]["getPendingTransactions"];
@@ -25,10 +26,15 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
   mainTags,
   user,
 }) => {
-  const { data: pendingTransactions } =
-    api.operations.getPendingTransactions.useQuery(undefined, {
+  const [page, setPage] = useState(1);
+  const { data } = api.operations.getPendingTransactions.useQuery(
+    { page },
+    {
       initialData: initialPendingTransactions,
-    });
+    },
+  );
+
+  const { transactions, count } = data;
 
   const router = useRouter();
 
@@ -42,17 +48,18 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
 
         const prevData = utils.operations.getPendingTransactions.getData();
 
-        utils.operations.getPendingTransactions.setData(undefined, (old) =>
-          old!.filter((pendingTx) =>
+        utils.operations.getPendingTransactions.setData({ page }, (old) => ({
+          count: old!.count - 1,
+          transactions: old!.transactions.filter((pendingTx) =>
             newOperation.pendingTransactionsIds.includes(pendingTx.id),
           ),
-        );
+        }));
 
         return { prevData };
       },
       onError(err, newOperation, ctx) {
         utils.operations.getPendingTransactions.setData(
-          undefined,
+          { page },
           ctx?.prevData,
         );
 
@@ -94,17 +101,18 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
 
         const prevData = utils.operations.getPendingTransactions.getData();
 
-        utils.operations.getPendingTransactions.setData(undefined, (old) =>
-          old!.filter((pendingTx) =>
+        utils.operations.getPendingTransactions.setData({ page }, (old) => ({
+          count: old!.count - 1,
+          transactions: old!.transactions.filter((pendingTx) =>
             newOperation.pendingTransactionsIds.includes(pendingTx.id),
           ),
-        );
+        }));
 
         return { prevData };
       },
       onError(err, newOperation, ctx) {
         utils.operations.getPendingTransactions.setData(
-          undefined,
+          { page },
           ctx?.prevData,
         );
 
@@ -134,7 +142,7 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
     fromEntity: RouterOutputs["entities"]["getAll"][number],
     toEntity: RouterOutputs["entities"]["getAll"][number],
     type: "main" | "other",
-    tx: RouterOutputs["operations"]["getPendingTransactions"][number],
+    tx: RouterOutputs["operations"]["getPendingTransactions"]["transactions"][number],
   ): RouterOutputs["entities"]["getAll"][number] => {
     const mainEntity = mainTags.includes(toEntity.tag.name)
       ? toEntity
@@ -156,7 +164,7 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
           <div className="col-span-1"></div>
         </div>
       </div>
-      {pendingTransactions.map((pendingTx) => (
+      {transactions.map((pendingTx) => (
         <div
           key={pendingTx.id}
           className="grid w-full grid-rows-2 lg:grid-cols-9 lg:grid-rows-1"
@@ -313,6 +321,13 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
           </div>
         </div>
       ))}
+      <CustomPagination
+        itemName="transacciones"
+        page={page}
+        pageSize={30}
+        totalCount={count}
+        changePageState={setPage}
+      />
     </div>
   );
 };

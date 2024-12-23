@@ -123,7 +123,7 @@ const Navbar = async () => {
             Maika.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.2.6
+            v0.5.0
           </p>
         </div>
         <div className="hidden lg:block">

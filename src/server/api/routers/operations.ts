@@ -286,50 +286,65 @@ export const operationsRouter = createTRPCRouter({
 
       return response;
     }),
-  getPendingTransactions: protectedProcedure.query(async ({ ctx }) => {
-    const fromEntity = alias(entities, "fromEntity");
-    const toEntity = alias(entities, "toEntity");
-    const operatorEntity = alias(entities, "operatorEntity");
-    const fromEntityTag = alias(tag, "fromEntityTag");
-    const toEntityTag = alias(tag, "toEntityTag");
-    const operatorEntityTag = alias(tag, "operatorEntityTag");
+  getPendingTransactions: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const pageSize = 30;
 
-    const pendingOperations = await ctx.db
-      .select()
-      .from(transactions)
-      .leftJoin(operations, eq(transactions.operationId, operations.id))
-      .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-      .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-      .leftJoin(
-        operatorEntity,
-        eq(transactions.operatorEntityId, operatorEntity.id),
-      )
-      .leftJoin(fromEntityTag, eq(fromEntity.tagName, fromEntityTag.name))
-      .leftJoin(toEntityTag, eq(toEntity.tagName, toEntityTag.name))
-      .leftJoin(
-        operatorEntityTag,
-        eq(operatorEntity.tagName, operatorEntityTag.name),
-      )
-      .where(eq(transactions.is_approved, false))
-      .orderBy(desc(transactions.id));
-    const response = pendingOperations.map((tx) => ({
-      operation: tx.Operations!,
-      ...tx.Transactions!,
-      fromEntity: {
-        ...tx.fromEntity!,
-        tag: tx.fromEntityTag!,
-      },
-      toEntity: {
-        ...tx.toEntity!,
-        tag: tx.toEntityTag!,
-      },
-      operatorEntity: {
-        ...tx.operatorEntity!,
-        tag: tx.operatorEntityTag!,
-      },
-    }));
-    return response;
-  }),
+      const fromEntity = alias(entities, "fromEntity");
+      const toEntity = alias(entities, "toEntity");
+      const operatorEntity = alias(entities, "operatorEntity");
+      const fromEntityTag = alias(tag, "fromEntityTag");
+      const toEntityTag = alias(tag, "toEntityTag");
+      const operatorEntityTag = alias(tag, "operatorEntityTag");
+
+      const [pendingTransactionsCount] = await ctx.db
+        .select({ count: count() })
+        .from(transactions)
+        .where(eq(transactions.is_approved, false));
+
+      const pendingTransactions = await ctx.db
+        .select()
+        .from(transactions)
+        .leftJoin(operations, eq(transactions.operationId, operations.id))
+        .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
+        .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+        .leftJoin(
+          operatorEntity,
+          eq(transactions.operatorEntityId, operatorEntity.id),
+        )
+        .leftJoin(fromEntityTag, eq(fromEntity.tagName, fromEntityTag.name))
+        .leftJoin(toEntityTag, eq(toEntity.tagName, toEntityTag.name))
+        .leftJoin(
+          operatorEntityTag,
+          eq(operatorEntity.tagName, operatorEntityTag.name),
+        )
+        .where(eq(transactions.is_approved, false))
+        .limit(pageSize)
+        .offset((input.page - 1) * pageSize)
+        .orderBy(desc(transactions.id));
+      const response = pendingTransactions.map((tx) => ({
+        operation: tx.Operations!,
+        ...tx.Transactions!,
+        fromEntity: {
+          ...tx.fromEntity!,
+          tag: tx.fromEntityTag!,
+        },
+        toEntity: {
+          ...tx.toEntity!,
+          tag: tx.toEntityTag!,
+        },
+        operatorEntity: {
+          ...tx.operatorEntity!,
+          tag: tx.operatorEntityTag!,
+        },
+      }));
+      return { transactions: response, count: pendingTransactionsCount!.count };
+    }),
   deletePendingTransactions: protectedLoggedProcedure
     .input(
       z.object({

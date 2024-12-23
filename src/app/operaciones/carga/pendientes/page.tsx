@@ -21,9 +21,9 @@ const Page = async () => {
   const mainTags = getAllChildrenTags(mainTag.tag, filteredTags);
 
   const initialPendingTransactions =
-    await api.operations.getPendingTransactions.query();
+    await api.operations.getPendingTransactions.query({ page: 1 });
 
-  return initialPendingTransactions.length > 0 ? (
+  return initialPendingTransactions.transactions.length > 0 ? (
     <div className="mt-6 flex flex-col gap-y-8">
       <h1 className="text-3xl font-semibold">
         Transacciones pendientes de aprobación
