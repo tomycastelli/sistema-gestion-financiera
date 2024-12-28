@@ -132,16 +132,20 @@ export const editingOperationsRouter = createTRPCRouter({
             });
           }
 
-          const deletedMovements = await undoMovements(transaction, {
-            id: newTxObj.id,
-            fromEntity: {
-              id: fromEntityObj.id,
-              tagName: fromEntityObj.tag.name,
+          const deletedMovements = await undoMovements(
+            transaction,
+            {
+              id: newTxObj.id,
+              fromEntity: {
+                id: fromEntityObj.id,
+                tagName: fromEntityObj.tag.name,
+              },
+              toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
+              currency: input.oldTransactionData.currency,
+              amount: input.oldTransactionData.amount,
             },
-            toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
-            currency: input.oldTransactionData.currency,
-            amount: input.oldTransactionData.amount,
-          });
+            ctx.redlock,
+          );
 
           const fromEntity = alias(entities, "fromEntity");
           const toEntity = alias(entities, "toEntity");
@@ -173,6 +177,7 @@ export const editingOperationsRouter = createTRPCRouter({
               deletedMovement.account,
               deletedMovement.direction,
               deletedMovement.type,
+              ctx.redlock,
             );
           }
 
@@ -262,6 +267,7 @@ export const editingOperationsRouter = createTRPCRouter({
             false,
             1,
             "confirmation",
+            ctx.redlock,
           );
           await generateMovements(
             transaction,
@@ -269,6 +275,7 @@ export const editingOperationsRouter = createTRPCRouter({
             true,
             1,
             "confirmation",
+            ctx.redlock,
           );
 
           confirmedTxs.push(mappedTransaction.id);
@@ -365,6 +372,7 @@ export const editingOperationsRouter = createTRPCRouter({
               mv.account,
               mv.direction * -1,
               "cancellation",
+              ctx.redlock,
             );
           }
         }
@@ -391,53 +399,67 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.transaction(async (transaction) => {
-        const [updatedOperation] = await transaction
-          .update(operations)
-          .set({ observations: input.opObservations, date: input.opDate })
-          .where(eq(operations.id, input.opId))
-          .returning();
+      const response = await ctx.db.transaction(
+        async (transaction) => {
+          const [updatedOperation] = await transaction
+            .update(operations)
+            .set({ observations: input.opObservations, date: input.opDate })
+            .where(eq(operations.id, input.opId))
+            .returning();
 
-        if (input.opDate) {
-          const fromEntity = alias(entities, "fromEntity");
-          const toEntity = alias(entities, "toEntity");
-          const relatedTxs = await transaction
-            .select()
-            .from(transactions)
-            .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
-            .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
-            .where(eq(transactions.operationId, input.opId));
+          if (input.opDate) {
+            const fromEntity = alias(entities, "fromEntity");
+            const toEntity = alias(entities, "toEntity");
+            const relatedTxs = await transaction
+              .select()
+              .from(transactions)
+              .leftJoin(
+                fromEntity,
+                eq(fromEntity.id, transactions.fromEntityId),
+              )
+              .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+              .where(eq(transactions.operationId, input.opId));
 
-          for (const relatedTx of relatedTxs) {
-            const deletedMvs = await undoMovements(transaction, {
-              ...relatedTx.Transactions,
-              fromEntity: relatedTx.fromEntity!,
-              toEntity: relatedTx.toEntity!,
-            });
-
-            const filteredMovements = deletedMvs.filter(
-              (mv) => mv.entitiesMovementId === null,
-            );
-
-            for (const deletedMv of filteredMovements) {
-              await generateMovements(
+            for (const relatedTx of relatedTxs) {
+              const deletedMvs = await undoMovements(
                 transaction,
                 {
                   ...relatedTx.Transactions,
                   fromEntity: relatedTx.fromEntity!,
                   toEntity: relatedTx.toEntity!,
-                  operation: { date: input.opDate },
                 },
-                deletedMv.account,
-                deletedMv.direction,
-                deletedMv.type,
+                ctx.redlock,
               );
+
+              const filteredMovements = deletedMvs.filter(
+                (mv) => mv.entitiesMovementId === null,
+              );
+
+              for (const deletedMv of filteredMovements) {
+                await generateMovements(
+                  transaction,
+                  {
+                    ...relatedTx.Transactions,
+                    fromEntity: relatedTx.fromEntity!,
+                    toEntity: relatedTx.toEntity!,
+                    operation: { date: input.opDate },
+                  },
+                  deletedMv.account,
+                  deletedMv.direction,
+                  deletedMv.type,
+                  ctx.redlock,
+                );
+              }
             }
           }
-        }
 
-        return updatedOperation;
-      });
+          return updatedOperation;
+        },
+        {
+          isolationLevel: "serializable",
+          deferrable: true,
+        },
+      );
 
       return response;
     }),

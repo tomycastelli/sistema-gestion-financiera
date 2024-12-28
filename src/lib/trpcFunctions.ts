@@ -15,12 +15,12 @@ import {
   type ExtractTablesWithRelations,
 } from "drizzle-orm";
 import { alias, type PgTransaction } from "drizzle-orm/pg-core";
-import {
-  type PostgresJsDatabase,
-  type PostgresJsQueryResultHKT,
+import type {
+  PostgresJsDatabase,
+  PostgresJsQueryResultHKT,
 } from "drizzle-orm/postgres-js";
 import type Redis from "ioredis";
-import { type User } from "lucia";
+import type { User } from "lucia";
 import moment from "moment";
 import { ZodError, z } from "zod";
 import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
@@ -44,6 +44,7 @@ import {
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
 import { dateFormat, dateFormatting } from "./variables";
+import type Redlock from "redlock";
 
 export const getAllPermissions = async (
   redis: Redis,
@@ -192,6 +193,8 @@ export const getAllEntities = async (
   return sortedEntities;
 };
 
+const MOVEMENTS_KEY = "sharedMovementsKey";
+
 export const generateMovements = async (
   transaction: PgTransaction<
     PostgresJsQueryResultHKT,
@@ -206,7 +209,10 @@ export const generateMovements = async (
   account: boolean,
   direction: number,
   type: string,
+  redlock: Redlock,
 ) => {
+  const lock = await redlock.acquire([MOVEMENTS_KEY], 10_000);
+
   const movementsResponse = [];
 
   // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
@@ -787,6 +793,8 @@ export const generateMovements = async (
     }
   }
 
+  await lock.release();
+
   return movementsResponse;
 };
 
@@ -803,7 +811,10 @@ export const undoMovements = async (
     amount: number;
     currency: string;
   },
+  redlock: Redlock,
 ) => {
+  const lock = await redlock.acquire([MOVEMENTS_KEY], 10_000);
+
   const deletedMovements = await transaction
     .delete(movements)
     .where(eq(movements.transactionId, tx.id))
@@ -967,6 +978,8 @@ export const undoMovements = async (
         .where(inArray(movements.id, mvsIds));
     }
   }
+
+  await lock.release();
 
   return deletedMovements;
 };

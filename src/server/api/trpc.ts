@@ -17,6 +17,7 @@ import { redis } from "~/server/redis";
 import { getUser } from "../auth";
 import { dynamodb } from "../dynamodb";
 import { s3 } from "../s3";
+import { redlock } from "../redlock";
 
 /**
  * 1. CONTEXT
@@ -50,6 +51,7 @@ export const createInnerTRPCContext = async (opts: CreateContextOptions) => {
     redis,
     s3,
     dynamodb,
+    redlock,
   };
 };
 

@@ -145,14 +145,49 @@ export const operationsRouter = createTRPCRouter({
 
             if (txToInsert.is_approved) {
               if (cashAccountOnlyTypes.has(insertedTx.type)) {
-                await generateMovements(tx, txForMovement, true, 1, "upload");
+                await generateMovements(
+                  tx,
+                  txForMovement,
+                  true,
+                  1,
+                  "upload",
+                  ctx.redlock,
+                );
               } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
-                await generateMovements(tx, txForMovement, false, 1, "upload");
+                await generateMovements(
+                  tx,
+                  txForMovement,
+                  false,
+                  1,
+                  "upload",
+                  ctx.redlock,
+                );
               } else if (insertedTx.type === "pago por cta cte") {
-                await generateMovements(tx, txForMovement, false, 1, "upload");
-                await generateMovements(tx, txForMovement, true, 1, "upload");
+                await generateMovements(
+                  tx,
+                  txForMovement,
+                  false,
+                  1,
+                  "upload",
+                  ctx.redlock,
+                );
+                await generateMovements(
+                  tx,
+                  txForMovement,
+                  true,
+                  1,
+                  "upload",
+                  ctx.redlock,
+                );
               } else if (insertedTx.type === "cambio") {
-                await generateMovements(tx, txForMovement, false, -1, "upload");
+                await generateMovements(
+                  tx,
+                  txForMovement,
+                  false,
+                  -1,
+                  "upload",
+                  ctx.redlock,
+                );
               }
             }
           }
@@ -257,14 +292,49 @@ export const operationsRouter = createTRPCRouter({
 
             const txForMovement = { ...insertedTx, operation: operation! };
             if (cashAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, true, 1, "upload");
+              await generateMovements(
+                tx,
+                txForMovement,
+                true,
+                1,
+                "upload",
+                ctx.redlock,
+              );
             } else if (currentAccountOnlyTypes.has(insertedTx.type)) {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
+              await generateMovements(
+                tx,
+                txForMovement,
+                false,
+                1,
+                "upload",
+                ctx.redlock,
+              );
             } else if (insertedTx.type === "pago por cta cte") {
-              await generateMovements(tx, txForMovement, false, 1, "upload");
-              await generateMovements(tx, txForMovement, true, 1, "upload");
+              await generateMovements(
+                tx,
+                txForMovement,
+                false,
+                1,
+                "upload",
+                ctx.redlock,
+              );
+              await generateMovements(
+                tx,
+                txForMovement,
+                true,
+                1,
+                "upload",
+                ctx.redlock,
+              );
             } else if (insertedTx.type === "cambio") {
-              await generateMovements(tx, txForMovement, false, -1, "upload");
+              await generateMovements(
+                tx,
+                txForMovement,
+                false,
+                -1,
+                "upload",
+                ctx.redlock,
+              );
             }
           }
 
