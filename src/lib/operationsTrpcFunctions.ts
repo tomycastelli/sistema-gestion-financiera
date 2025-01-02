@@ -366,9 +366,6 @@ export const getOperationsProcedure = async (
 
     const isCreateAllowed =
       isInPeriod &&
-      !op.transactions.find(
-        (tx) => tx.status === schema.Status.enumValues[0],
-      ) &&
       userPermissions?.find(
         (p) => p.name === "ADMIN" || p.name === "OPERATIONS_CREATE",
       )
