@@ -75,7 +75,14 @@ export const operationsRouter = createTRPCRouter({
           message: "La cantidad de transacciones de cambio debe ser par",
         });
       }
-      const duplicates = findDuplicateObjects(input.transactions);
+      const duplicates = findDuplicateObjects(input.transactions, [
+        "amount",
+        "currency",
+        "fromEntityId",
+        "toEntityId",
+        "operatorEntityId",
+        "type",
+      ]);
       if (duplicates.length > 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",

@@ -515,13 +515,24 @@ export function dayGreater(date1: Date, date2: Date): boolean {
   return moment(date1).isAfter(date2, "day");
 }
 
-export function findDuplicateObjects<T>(array: T[]): T[] {
+export function findDuplicateObjects<T>(
+  array: T[],
+  keysToConsider?: (keyof T)[],
+): T[] {
   const seen = new Set<string>();
   const duplicates: T[] = [];
 
   for (const obj of array) {
+    // Create a new object with only the keys to consider
+    const objToCompare = keysToConsider
+      ? keysToConsider.reduce((acc, key) => {
+          acc[key] = obj[key];
+          return acc;
+        }, {} as Partial<T>)
+      : obj;
+
     // Convert the object to a JSON string
-    const jsonString = JSON.stringify(obj);
+    const jsonString = JSON.stringify(objToCompare);
 
     // Check if the JSON string is already in the Set
     if (seen.has(jsonString)) {
