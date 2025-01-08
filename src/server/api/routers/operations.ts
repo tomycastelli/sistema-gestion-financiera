@@ -16,6 +16,7 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
+import { findDuplicateObjects } from "~/lib/functions";
 import {
   entities,
   movements,
@@ -62,7 +63,25 @@ export const operationsRouter = createTRPCRouter({
       if (input.transactions.some((tx) => tx.fromEntityId === tx.toEntityId)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Transactions must have different entities",
+          message: "Cada transacción deben tener distintas entidades",
+        });
+      }
+      if (
+        input.transactions.filter((tx) => tx.type === "cambio").length % 2 !==
+        0
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "La cantidad de transacciones de cambio debe ser par",
+        });
+      }
+      const duplicates = findDuplicateObjects(input.transactions);
+      if (duplicates.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Hay transacciones repetidas en el carrito: ${JSON.stringify(
+            duplicates,
+          )}`,
         });
       }
 

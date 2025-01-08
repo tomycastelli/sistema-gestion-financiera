@@ -514,3 +514,23 @@ export function formatNumberLabel(num: number): string {
 export function dayGreater(date1: Date, date2: Date): boolean {
   return moment(date1).isAfter(date2, "day");
 }
+
+export function findDuplicateObjects<T>(array: T[]): T[] {
+  const seen = new Set<string>();
+  const duplicates: T[] = [];
+
+  for (const obj of array) {
+    // Convert the object to a JSON string
+    const jsonString = JSON.stringify(obj);
+
+    // Check if the JSON string is already in the Set
+    if (seen.has(jsonString)) {
+      duplicates.push(obj); // Add the duplicate object to the duplicates array
+    } else {
+      // Add the JSON string to the Set
+      seen.add(jsonString);
+    }
+  }
+
+  return duplicates; // Return the array of duplicate objects
+}

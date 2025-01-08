@@ -66,7 +66,7 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
     },
   });
 
-  const { handleSubmit, control, reset, watch } = form;
+  const { handleSubmit, control, reset, watch, setError } = form;
 
   const watchEmittingEntity = watch("emittingEntity");
   const watchReceivingEntity = watch("receivingEntity");
@@ -95,6 +95,24 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
     const parsedEmittingFee = values.emittingFee
       ? parseFormattedFloat(values.emittingFee)
       : 0;
+
+    if (
+      values.emittingCurrency !== values.receivingCurrency &&
+      !values.bridgeEntity
+    ) {
+      setError(
+        "bridgeEntity",
+        {
+          type: "required",
+          message:
+            "Si las divisas son distintas, se requiere una entidad puente.",
+        },
+        {
+          shouldFocus: true,
+        },
+      );
+      return;
+    }
 
     const parsedEmittingEntity = parseInt(values.emittingEntity);
     const parsedBridgeEntity = parseInt(values.bridgeEntity ?? "0");
@@ -195,10 +213,17 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
     )!.tag.name;
 
     if (!mainTags.includes(middleEntityTag)) {
-      toast.error(
-        `La entidad mediadora tiene que pertencer al tag: ${mainTags.join(
-          ", ",
-        )}`,
+      const message = `La entidad mediadora tiene que pertencer al tag: ${mainTags.join(
+        ", ",
+      )}`;
+      toast.error(message);
+      setError(
+        "middleEntity",
+        {
+          type: "pattern",
+          message,
+        },
+        { shouldFocus: true },
       );
       return;
     }
