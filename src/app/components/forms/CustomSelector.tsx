@@ -14,7 +14,7 @@ import {
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
-import { truncateString } from "~/lib/functions";
+import { normalizeString, truncateString } from "~/lib/functions";
 
 interface Data {
   value: string;
@@ -58,18 +58,18 @@ const CustomSelector = ({
           {isLoading
             ? "Cargando..."
             : field.value
-              ? Array.isArray(field.value)
-                ? field.value.length > 1
-                  ? field.value.length + " " + "elementos"
-                  : truncateString(
-                      data.find((d) => d.value === field.value[0])?.label,
-                      15,
-                    )
+            ? Array.isArray(field.value)
+              ? field.value.length > 1
+                ? field.value.length + " " + "elementos"
                 : truncateString(
-                    data.find((d) => d.value === field.value)?.label,
+                    data.find((d) => d.value === field.value[0])?.label,
                     15,
                   )
-              : placeholder}
+              : truncateString(
+                  data.find((d) => d.value === field.value)?.label,
+                  15,
+                )
+            : placeholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0">
@@ -96,7 +96,7 @@ const CustomSelector = ({
                 .map((obj) => (
                   <CommandItem
                     key={obj.value}
-                    value={obj.label}
+                    value={normalizeString(obj.label)}
                     onSelect={() => {
                       if (isMultiSelect) {
                         if (field.value && Array.isArray(field.value)) {

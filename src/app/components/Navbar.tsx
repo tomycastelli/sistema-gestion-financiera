@@ -12,6 +12,7 @@ import { getAllChildrenTags } from "~/lib/functions";
 import { Button } from "./ui/button";
 import { Icons } from "./ui/Icons";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { env } from "~/env.mjs";
 import {
   Accordion,
   AccordionContent,
@@ -120,7 +121,7 @@ const Navbar = async () => {
             href="/"
             className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
           >
-            Maika.
+            {env.NEXT_PUBLIC_MAIN_NAME}.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
             v0.5.0

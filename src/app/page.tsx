@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getUser } from "~/server/auth";
 import { Icons } from "./components/ui/Icons";
 import { Button } from "./components/ui/button";
+import { env } from "~/env.mjs";
 import { Badge } from "./components/ui/badge";
 const AuthForm = dynamic(() => import("./components/AuthForm"));
 const EntitiesMenuCard = dynamic(() => import("./components/EntitiesMenuCard"));
@@ -18,7 +19,7 @@ export default async function Home() {
   return (
     <div className="mt-12 flex h-full w-full flex-col items-center justify-center">
       <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight">
-        Bienvenido al portal de Maika
+        Bienvenido al portal de {env.NEXT_PUBLIC_MAIN_NAME}
       </h1>
       {user && !user.preferredEntity && (
         <Link href={"/preferencias/usuarios"} className="mb-8">

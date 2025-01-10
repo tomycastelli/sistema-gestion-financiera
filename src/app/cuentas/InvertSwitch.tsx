@@ -9,6 +9,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../components/ui/hover-card";
+import { env } from "~/env.mjs";
 import { Switch } from "../components/ui/switch";
 
 interface InvertSwitchProps {
@@ -29,8 +30,9 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
 
   useEffect(() => {
     if (
-      entities.find((e) => e.id === selectedEntityId)?.tag.name === "Maika" ||
-      selectedTag === "Maika"
+      entities.find((e) => e.id === selectedEntityId)?.tag.name ===
+        env.NEXT_PUBLIC_MAIN_NAME ||
+      selectedTag === env.NEXT_PUBLIC_MAIN_NAME
     ) {
       setIsInverted(false);
       setIsSwitchDisabled(true);
@@ -56,8 +58,8 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
       <HoverCardContent>
         <p className="font-semibold">Punto de vista</p>
         <p className="text-sm text-gray-700">
-          La cuenta esta invertida para verlo desde el punto de vista de Maika y
-          no de{" "}
+          La cuenta esta invertida para verlo desde el punto de vista de{" "}
+          {env.NEXT_PUBLIC_MAIN_NAME} y no de{" "}
           {selectedEntityId
             ? entities.find((obj) => obj.id === selectedEntityId)?.name
             : "la otra entidad"}

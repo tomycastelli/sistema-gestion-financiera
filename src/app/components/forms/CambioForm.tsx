@@ -4,6 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { User } from "lucia";
 import { useCallback, useEffect } from "react";
+import { env } from "~/env.mjs";
 import {
   useFieldArray,
   type UseFieldArrayAppend,
@@ -467,7 +468,9 @@ const CambioPair = ({
               <FormLabel>Cliente</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter((entity) => entity.tag.name !== "Maika")
+                  .filter(
+                    (entity) => entity.tag.name !== env.NEXT_PUBLIC_MAIN_NAME,
+                  )
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,
@@ -496,7 +499,9 @@ const CambioPair = ({
               <FormLabel>Sucursal</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter((entity) => entity.tag.name === "Maika")
+                  .filter(
+                    (entity) => entity.tag.name === env.NEXT_PUBLIC_MAIN_NAME,
+                  )
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,

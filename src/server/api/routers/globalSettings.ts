@@ -7,6 +7,7 @@ import {
   settingEnum,
 } from "~/lib/trpcFunctions";
 import { globalSettings } from "~/server/db/schema";
+import { env } from "~/env.mjs";
 
 export const globalSettingsRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -22,7 +23,10 @@ export const globalSettingsRouter = createTRPCRouter({
       });
     }
     if (!foundMainTag) {
-      response.push({ name: "mainTag", data: { tag: "Maika" } });
+      response.push({
+        name: "mainTag",
+        data: { tag: env.NEXT_PUBLIC_MAIN_NAME },
+      });
     }
 
     const parsedResponse = globalSettingSchema.array().safeParse(response);

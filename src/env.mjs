@@ -8,6 +8,7 @@ export const env = createEnv({
    */
   server: {
     DATABASE_URL: z.string(),
+    DYNAMODB_TABLE: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -38,7 +39,8 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_MAIN_NAME: z.string(),
+    NEXT_PUBLIC_MAIN_URL: z.string(),
   },
 
   /**
@@ -46,6 +48,9 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    DYNAMODB_TABLE: process.env.DYNAMODB_TABLE,
+    NEXT_PUBLIC_MAIN_NAME: process.env.NEXT_PUBLIC_MAIN_NAME,
+    NEXT_PUBLIC_MAIN_URL: process.env.NEXT_PUBLIC_MAIN_URL,
     VERCEL_URL: process.env.VERCEL_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,

@@ -14,6 +14,10 @@ export const getInitials = (name: string): string => {
   }
 };
 
+export const normalizeString = (str: string) => {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
 export const truncateString = (input: string | undefined, N: number) => {
   if (input === undefined) {
     return undefined;

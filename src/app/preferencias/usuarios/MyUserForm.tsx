@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import CustomSelector from "~/app/components/forms/CustomSelector";
 import { RouterOutputs } from "~/trpc/shared";
 import EntityCard from "~/app/components/ui/EntityCard";
+import { env } from "~/env.mjs";
 
 interface MyUserFormProps {
   user: User;
@@ -109,7 +110,9 @@ const MyUserForm: FC<MyUserFormProps> = ({ user, entities }) => {
                 <FormLabel>Entidad preferida</FormLabel>
                 <CustomSelector
                   data={entities
-                    .filter((entity) => entity.tag.name === "Maika")
+                    .filter(
+                      (entity) => entity.tag.name === env.NEXT_PUBLIC_MAIN_NAME,
+                    )
                     .map((entity) => ({
                       value: entity.id.toString(),
                       label: entity.name,

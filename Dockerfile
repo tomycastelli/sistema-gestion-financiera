@@ -24,7 +24,10 @@ ENV S3_PUBLIC_KEY=default9
 ENV S3_SECRET_KEY=default10
 ENV LAMBDA_API_ENDPOINT=default11
 ENV LAMBDA_API_KEY=default12
-ENV CHAT_URL=default14
+ENV CHAT_URL=default13
+ENV NEXT_PUBLIC_MAIN_NAME=default14
+ENV NEXT_PUBLIC_MAIN_URL=default15
+ENV DYNAMODB_TABLE=default16
 
 # These variables are passed on build time
 ARG REDIS_URL

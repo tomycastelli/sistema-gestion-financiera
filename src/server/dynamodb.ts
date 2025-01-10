@@ -28,5 +28,5 @@ export const dynamodb = {
   PutCommand,
   QueryCommand,
   UpdateCommand,
-  tableName: "sistema-maika",
+  tableName: env.DYNAMODB_TABLE,
 };

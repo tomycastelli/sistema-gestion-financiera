@@ -27,6 +27,7 @@ import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
 import { type createTRPCContext } from "~/server/api/trpc";
 import { type dynamodb } from "~/server/dynamodb";
 import type * as schema from "../server/db/schema";
+import { env } from "~/env.mjs";
 import {
   balances,
   cashBalances,
@@ -1492,7 +1493,10 @@ export const getGlobalSettings = async (
       };
     }
     if (setting === settingEnum.enum.mainTag) {
-      return { name: settingEnum.enum.mainTag, data: { tag: "Maika" } };
+      return {
+        name: settingEnum.enum.mainTag,
+        data: { tag: env.NEXT_PUBLIC_MAIN_NAME },
+      };
     }
   }
 

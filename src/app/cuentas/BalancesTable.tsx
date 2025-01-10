@@ -9,6 +9,7 @@ import { currenciesOrder } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
+import { env } from "~/env.mjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -345,7 +346,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                         entity: {
                           id: 0,
                           name: "Total",
-                          tagName: "Maika",
+                          tagName: env.NEXT_PUBLIC_MAIN_NAME,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
@@ -388,7 +389,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                         entity: {
                           id: 0,
                           name: "Total",
-                          tagName: "Maika",
+                          tagName: env.NEXT_PUBLIC_MAIN_NAME,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
