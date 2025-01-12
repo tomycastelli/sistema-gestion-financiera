@@ -1,5 +1,3 @@
-import { env } from "~/env.mjs";
-
 export const dateFormat = "DD-MM-YYYY";
 
 export const dateFormatting = {
@@ -140,4 +138,4 @@ export const currentAccountOnlyTypes = new Set([
 ]);
 export const cashAccountOnlyTypes = new Set(["ingreso", "gasto"]);
 
-export const fixedTags = [env.NEXT_PUBLIC_MAIN_NAME, "Operadores", "Clientes"];
+export const fixedTags = ["Operadores", "Clientes"];

@@ -61,9 +61,14 @@ import { fixedTags } from "~/lib/variables";
 interface AddTagsFormProps {
   tags: RouterOutputs["tags"]["getFiltered"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
+  main_name: string;
 }
 
-const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
+const AddTagsForm: FC<AddTagsFormProps> = ({
+  tags,
+  userPermissions,
+  main_name,
+}) => {
   enum ActionStatus {
     ADD = "ADD",
     EDIT = "EDIT",
@@ -203,7 +208,10 @@ const AddTagsForm: FC<AddTagsFormProps> = ({ tags, userPermissions }) => {
         color: data.color,
       });
     } else if (actionStatus === ActionStatus.EDIT && tagToEdit) {
-      if (fixedTags.includes(tagToEdit) && tagToEdit !== data.name) {
+      if (
+        [...fixedTags, main_name].includes(tagToEdit) &&
+        tagToEdit !== data.name
+      ) {
         toast.info(`El tag ${tagToEdit} no puede cambiar de nombre`);
       } else {
         await editAsync({

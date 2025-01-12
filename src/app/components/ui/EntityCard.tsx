@@ -12,7 +12,6 @@ import BalanceTotals from "../BalanceTotals";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 import { cn } from "~/lib/utils";
-import { env } from "~/env.mjs";
 
 interface EntityCardProps {
   entity: RouterOutputs["entities"]["getAll"][number];
@@ -45,10 +44,17 @@ const EntityCard = React.memo(
         },
       );
 
+    const { data: main_name } = api.globalSettings.getMainName.useQuery(
+      undefined,
+      {
+        initialData: "Maika",
+      },
+    );
+
     let queryObject = {};
-    if (entity.tag.name !== env.NEXT_PUBLIC_MAIN_NAME) {
+    if (entity.tag.name !== main_name) {
       queryObject = {
-        tag: env.NEXT_PUBLIC_MAIN_NAME,
+        tag: main_name,
         cuenta: "cuenta_corriente",
         cliente: entity.id,
       };
@@ -118,8 +124,7 @@ const EntityCard = React.memo(
               <HoverCard onOpenChange={setEnableQueryTag}>
                 <HoverCardTrigger asChild>
                   <CardDescription>
-                    {!disableLinks &&
-                    entity.tag.name === env.NEXT_PUBLIC_MAIN_NAME ? (
+                    {!disableLinks && entity.tag.name === main_name ? (
                       <Link
                         prefetch={false}
                         className="flex transition-all hover:scale-110"

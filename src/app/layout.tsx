@@ -12,7 +12,6 @@ import Navbar from "./components/Navbar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
-import { env } from "~/env.mjs";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: env.NEXT_PUBLIC_MAIN_NAME,
-  description: `El Sistema de ${env.NEXT_PUBLIC_MAIN_NAME}`,
+  title: "Maika",
+  description: `El Sistema de Maika`,
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

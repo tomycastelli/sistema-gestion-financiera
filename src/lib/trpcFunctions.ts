@@ -1495,7 +1495,7 @@ export const getGlobalSettings = async (
     if (setting === settingEnum.enum.mainTag) {
       return {
         name: settingEnum.enum.mainTag,
-        data: { tag: env.NEXT_PUBLIC_MAIN_NAME },
+        data: { tag: env.MAIN_NAME },
       };
     }
   }

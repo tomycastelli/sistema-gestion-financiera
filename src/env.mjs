@@ -31,6 +31,9 @@ export const env = createEnv({
     VERCEL_URL: z.string().optional(),
 
     CHAT_URL: z.string(),
+
+    MAIN_URL: z.string(),
+    MAIN_NAME: z.string(),
   },
 
   /**
@@ -38,10 +41,7 @@ export const env = createEnv({
    * isn't built with invalid env vars. To expose them to the client, prefix them with
    * `NEXT_PUBLIC_`.
    */
-  client: {
-    NEXT_PUBLIC_MAIN_NAME: z.string(),
-    NEXT_PUBLIC_MAIN_URL: z.string(),
-  },
+  client: {},
 
   /**
    * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
@@ -49,8 +49,8 @@ export const env = createEnv({
    */
   runtimeEnv: {
     DYNAMODB_TABLE: process.env.DYNAMODB_TABLE,
-    NEXT_PUBLIC_MAIN_NAME: process.env.NEXT_PUBLIC_MAIN_NAME,
-    NEXT_PUBLIC_MAIN_URL: process.env.NEXT_PUBLIC_MAIN_URL,
+    MAIN_NAME: process.env.MAIN_NAME,
+    MAIN_URL: process.env.MAIN_URL,
     VERCEL_URL: process.env.VERCEL_URL,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,

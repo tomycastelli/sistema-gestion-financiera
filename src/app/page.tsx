@@ -3,8 +3,8 @@ import Link from "next/link";
 import { getUser } from "~/server/auth";
 import { Icons } from "./components/ui/Icons";
 import { Button } from "./components/ui/button";
-import { env } from "~/env.mjs";
 import { Badge } from "./components/ui/badge";
+import { api } from "~/trpc/server";
 const AuthForm = dynamic(() => import("./components/AuthForm"));
 const EntitiesMenuCard = dynamic(() => import("./components/EntitiesMenuCard"));
 const OperationsMenuCard = dynamic(
@@ -15,11 +15,12 @@ const AccountsMenuCard = dynamic(() => import("./components/AccountsMenuCard"));
 
 export default async function Home() {
   const user = await getUser();
+  const main_name = await api.globalSettings.getMainName.query();
 
   return (
     <div className="mt-12 flex h-full w-full flex-col items-center justify-center">
       <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight">
-        Bienvenido al portal de {env.NEXT_PUBLIC_MAIN_NAME}
+        Bienvenido al portal de {main_name}
       </h1>
       {user && !user.preferredEntity && (
         <Link href={"/preferencias/usuarios"} className="mb-8">

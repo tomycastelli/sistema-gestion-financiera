@@ -10,6 +10,9 @@ import { globalSettings } from "~/server/db/schema";
 import { env } from "~/env.mjs";
 
 export const globalSettingsRouter = createTRPCRouter({
+  getMainName: publicProcedure.query(() => {
+    return env.MAIN_NAME;
+  }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const response = await ctx.db.select().from(globalSettings);
 
@@ -25,7 +28,7 @@ export const globalSettingsRouter = createTRPCRouter({
     if (!foundMainTag) {
       response.push({
         name: "mainTag",
-        data: { tag: env.NEXT_PUBLIC_MAIN_NAME },
+        data: { tag: env.MAIN_NAME },
       });
     }
 

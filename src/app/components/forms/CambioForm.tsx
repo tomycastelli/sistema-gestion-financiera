@@ -4,7 +4,6 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { User } from "lucia";
 import { useCallback, useEffect } from "react";
-import { env } from "~/env.mjs";
 import {
   useFieldArray,
   type UseFieldArrayAppend,
@@ -64,11 +63,17 @@ const FormSchema = z.object({
 interface OperationFormProps {
   user: User;
   entities: RouterOutputs["entities"]["getAll"];
+  main_name: string;
   isLoading: boolean;
   mainTags: string[];
 }
 
-const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
+const CambioForm = ({
+  user,
+  entities,
+  mainTags,
+  main_name,
+}: OperationFormProps) => {
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
     : undefined;
@@ -210,6 +215,7 @@ const CambioForm = ({ user, entities, mainTags }: OperationFormProps) => {
             form={form}
             entities={entities}
             userEntityId={userEntityId}
+            main_name={main_name}
           />
         ))}
         <Button type="submit" className="mx-auto mt-6">
@@ -230,6 +236,7 @@ interface CambioPairProps {
   userEntityId: number | undefined;
   append: UseFieldArrayAppend<z.infer<typeof FormSchema>>;
   remove: UseFieldArrayRemove;
+  main_name: string;
 }
 
 const CambioPair = ({
@@ -239,6 +246,7 @@ const CambioPair = ({
   userEntityId,
   append,
   remove,
+  main_name,
 }: CambioPairProps) => {
   const { watch, control, setValue } = form;
 
@@ -468,9 +476,7 @@ const CambioPair = ({
               <FormLabel>Cliente</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter(
-                    (entity) => entity.tag.name !== env.NEXT_PUBLIC_MAIN_NAME,
-                  )
+                  .filter((entity) => entity.tag.name !== main_name)
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,
@@ -499,9 +505,7 @@ const CambioPair = ({
               <FormLabel>Sucursal</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter(
-                    (entity) => entity.tag.name === env.NEXT_PUBLIC_MAIN_NAME,
-                  )
+                  .filter((entity) => entity.tag.name === main_name)
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,

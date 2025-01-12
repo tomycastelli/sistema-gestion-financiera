@@ -7,6 +7,7 @@ const Page = async () => {
   const entities = await api.entities.getAll.query();
   const initialTags = await api.tags.getFiltered.query();
   const userPermissions = await api.users.getAllPermissions.query();
+  const main_name = await api.globalSettings.getMainName.query();
 
   return (
     <div>
@@ -20,6 +21,7 @@ const Page = async () => {
         <Icons.externalLink className="h-5" />
       </Link>
       <EntitiesFeed
+        main_name={main_name}
         userPermissions={userPermissions}
         initialEntities={entities}
         initialTags={initialTags}

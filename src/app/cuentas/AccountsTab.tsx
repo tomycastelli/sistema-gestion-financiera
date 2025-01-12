@@ -56,11 +56,14 @@ const AccountsTable = async ({
   const latestExchangeRates =
     await api.exchangeRates.getLatestExchangeRates.query();
 
+  const main_name = await api.globalSettings.getMainName.query();
+
   return (
     <div className="flex flex-grow flex-col space-y-8">
       <div suppressHydrationWarning={true}>
         {initialBalances && (
           <Balances
+            main_name={main_name}
             mainTags={mainTags}
             dayInPast={dayInPast ?? undefined}
             tags={initialTags}

@@ -51,6 +51,7 @@ interface AddOperationProps {
   accountingPeriodDate: Date;
   mainTags: string[];
   users: RouterOutputs["users"]["getAll"];
+  main_name: string;
 }
 
 const AddOperation = ({
@@ -60,6 +61,7 @@ const AddOperation = ({
   accountingPeriodDate,
   mainTags,
   users,
+  main_name,
 }: AddOperationProps) => {
   const [parent] = useAutoAnimate();
   const [tabName, setTabName] = useState<string>("flexible");
@@ -458,6 +460,7 @@ const AddOperation = ({
                 </TabsContent>
                 <TabsContent value="cambio">
                   <CambioForm
+                    main_name={main_name}
                     mainTags={mainTags}
                     entities={entities}
                     user={user}

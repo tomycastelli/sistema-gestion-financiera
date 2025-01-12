@@ -22,6 +22,7 @@ interface BalancesProps {
   dayInPast: string | undefined;
   mainTags: string[];
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
+  main_name: string;
 }
 
 const Balances: FC<BalancesProps> = ({
@@ -37,6 +38,7 @@ const Balances: FC<BalancesProps> = ({
   dayInPast,
   mainTags,
   latestExchangeRates,
+  main_name,
 }) => {
   const { isInverted, setIsInverted } = useCuentasStore();
 
@@ -84,6 +86,7 @@ const Balances: FC<BalancesProps> = ({
           uiColor={uiColor}
           latestExchangeRates={latestExchangeRates}
           user={user}
+          main_name={main_name}
         />
       ) : (
         <DetailedBalances

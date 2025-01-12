@@ -9,7 +9,6 @@ import { currenciesOrder } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
-import { env } from "~/env.mjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +52,7 @@ interface BalancesTableProps {
   selectedTag: string | undefined;
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
   user: User | null;
+  main_name: string;
 }
 
 const BalancesTable: FC<BalancesTableProps> = ({
@@ -65,6 +65,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
   selectedTag,
   latestExchangeRates,
   user,
+  main_name,
 }) => {
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
@@ -346,7 +347,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                         entity: {
                           id: 0,
                           name: "Total",
-                          tagName: env.NEXT_PUBLIC_MAIN_NAME,
+                          tagName: main_name,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
@@ -389,7 +390,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                         entity: {
                           id: 0,
                           name: "Total",
-                          tagName: env.NEXT_PUBLIC_MAIN_NAME,
+                          tagName: main_name,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,

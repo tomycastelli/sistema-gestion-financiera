@@ -13,9 +13,7 @@ import { session, user } from "./db/schema";
 const adapter = new DrizzlePostgreSQLAdapter(db, session, user);
 
 const baseUrl =
-  env.NODE_ENV === "production"
-    ? env.NEXT_PUBLIC_MAIN_URL
-    : "http://localhost:3000";
+  env.NODE_ENV === "production" ? env.MAIN_URL : "http://localhost:3000";
 
 const msftRedirectUrl = `${baseUrl}/api/auth/callback/azure-ad`;
 const googleRedirectUrl = `${baseUrl}/api/auth/callback/google`;

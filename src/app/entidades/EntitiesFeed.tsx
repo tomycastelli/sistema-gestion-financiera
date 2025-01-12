@@ -36,12 +36,14 @@ interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   initialTags: RouterOutputs["tags"]["getFiltered"];
+  main_name: string;
 }
 
 const EntitiesFeed: FC<EntitiesFeedProps> = ({
   initialEntities,
   userPermissions,
   initialTags,
+  main_name,
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
   const [tagFilterMode, setTagFilterMode] = useState("children");
@@ -192,7 +194,11 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         {isSuccess && (
           <div className="flex flex-row space-x-4">
             <AddEntitiesForm tags={tags} userPermissions={userPermissions} />
-            <AddTagsForm tags={tags} userPermissions={userPermissions} />
+            <AddTagsForm
+              main_name={main_name}
+              tags={tags}
+              userPermissions={userPermissions}
+            />
           </div>
         )}
       </div>

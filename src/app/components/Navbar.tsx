@@ -12,7 +12,6 @@ import { getAllChildrenTags } from "~/lib/functions";
 import { Button } from "./ui/button";
 import { Icons } from "./ui/Icons";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
-import { env } from "~/env.mjs";
 import {
   Accordion,
   AccordionContent,
@@ -112,6 +111,8 @@ const Navbar = async () => {
     },
   ];
 
+  const main_name = await api.globalSettings.getMainName.query();
+
   return (
     <header className="h-fit w-full py-4 text-foreground">
       <div className="flex flex-row items-center justify-between">
@@ -121,7 +122,7 @@ const Navbar = async () => {
             href="/"
             className="rounded-xl bg-foreground p-2 text-2xl font-extrabold text-background"
           >
-            {env.NEXT_PUBLIC_MAIN_NAME}.
+            {main_name}.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
             v0.5.0

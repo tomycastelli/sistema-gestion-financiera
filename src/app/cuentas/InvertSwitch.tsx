@@ -9,15 +9,19 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../components/ui/hover-card";
-import { env } from "~/env.mjs";
 import { Switch } from "../components/ui/switch";
 
 interface InvertSwitchProps {
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined;
+  main_name: string;
 }
 
-const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
+const InvertSwitch: FC<InvertSwitchProps> = ({
+  entities,
+  uiColor,
+  main_name,
+}) => {
   const { isInverted, setIsInverted } = useCuentasStore();
   const searchParams = useSearchParams();
   const selectedEntityIdString = searchParams.get("entidad");
@@ -30,9 +34,8 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
 
   useEffect(() => {
     if (
-      entities.find((e) => e.id === selectedEntityId)?.tag.name ===
-        env.NEXT_PUBLIC_MAIN_NAME ||
-      selectedTag === env.NEXT_PUBLIC_MAIN_NAME
+      entities.find((e) => e.id === selectedEntityId)?.tag.name === main_name ||
+      selectedTag === main_name
     ) {
       setIsInverted(false);
       setIsSwitchDisabled(true);
@@ -59,7 +62,7 @@ const InvertSwitch: FC<InvertSwitchProps> = ({ entities, uiColor }) => {
         <p className="font-semibold">Punto de vista</p>
         <p className="text-sm text-gray-700">
           La cuenta esta invertida para verlo desde el punto de vista de{" "}
-          {env.NEXT_PUBLIC_MAIN_NAME} y no de{" "}
+          {main_name} y no de{" "}
           {selectedEntityId
             ? entities.find((obj) => obj.id === selectedEntityId)?.name
             : "la otra entidad"}

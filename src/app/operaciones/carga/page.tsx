@@ -13,6 +13,8 @@ const Page = async () => {
     redirect("/");
   }
 
+  const main_name = await api.globalSettings.getMainName.query();
+
   const operations = await api.operations.getOperations.query({
     limit: 5,
     page: 1,
@@ -51,6 +53,7 @@ const Page = async () => {
     <div className="h-full">
       {user && (
         <AddOperation
+          main_name={main_name}
           users={users}
           mainTags={mainTags}
           accountingPeriodDate={accountingPeriodDate}

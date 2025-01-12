@@ -11,6 +11,24 @@ RUN yarn global add pnpm && pnpm i
 # Rebuild the source code only when needed
 FROM deps AS builder
 
+# These variables are passed on run time
+ENV DATABASE_URL=http://default.com
+ENV NEXTAUTH_SECRET=default2
+ENV NEXTAUTH_URL=default3
+ENV GOOGLE_CLIENT_ID=default4
+ENV GOOGLE_CLIENT_SECRET=default5
+ENV AZURE_AD_TENANT_ID=default6
+ENV AZURE_AD_CLIENT_ID=default7
+ENV AZURE_AD_CLIENT_SECRET=default8
+ENV S3_PUBLIC_KEY=default9
+ENV S3_SECRET_KEY=default10
+ENV LAMBDA_API_ENDPOINT=default11
+ENV LAMBDA_API_KEY=default12
+ENV CHAT_URL=default13
+ENV MAIN_NAME=default14
+ENV MAIN_URL=default15
+ENV DYNAMODB_TABLE=default16
+
 # These variables are passed on build time
 ARG REDIS_URL
 
