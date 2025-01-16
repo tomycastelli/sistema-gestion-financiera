@@ -1,32 +1,36 @@
 "use client";
 
-import React, { useEffect, type FC } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { CalendarIcon } from "lucide-react";
 import moment from "moment";
+import React, { useEffect, useState, type FC } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Button } from "~/app/components/ui/button";
+import { Calendar } from "~/app/components/ui/calendar";
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from "~/app/components/ui/form";
-import { currenciesOrder, dateFormat } from "~/lib/variables";
-import { CalendarIcon } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "~/app/components/ui/popover";
-import { Button } from "~/app/components/ui/button";
-import { Calendar } from "~/app/components/ui/calendar";
 import AmountInput from "~/app/operaciones/carga/AmountInput";
+import {
+  getTodayUTCMidnight,
+  numberFormatter,
+  parseFormattedFloat,
+  toUTCMidnight,
+} from "~/lib/functions";
+import { currenciesOrder } from "~/lib/variables";
 import { api } from "~/trpc/react";
-import { toast } from "sonner";
-import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
-import { parseAsString, useQueryState } from "nuqs";
 import { type RouterOutputs } from "~/trpc/shared";
 
 const FormSchema = z.object({
@@ -40,28 +44,18 @@ const FormSchema = z.object({
 });
 
 interface UploadExhchangesProps {
-  list: {
-    page: number;
-    filterCurrency: string | undefined;
-  };
   initialCurrentDateRates: RouterOutputs["exchangeRates"]["getAllExchangeRates"];
 }
 
 const UploadExchanges: FC<UploadExhchangesProps> = ({
-  list,
   initialCurrentDateRates,
 }) => {
-  const [date, setDate] = useQueryState(
-    "fecha",
-    parseAsString.withDefault(moment().format("DD-MM-YYYY")),
-  );
-
-  const parsedDate = moment(date, dateFormat).toDate();
+  const [date, setDate] = useState<Date>(getTodayUTCMidnight());
 
   const { data: currentDateExchangeRates } =
     api.exchangeRates.getDateExchangeRates.useQuery(
       {
-        date: parsedDate,
+        date,
       },
       {
         initialData: initialCurrentDateRates,
@@ -71,7 +65,7 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      date: parsedDate,
+      date,
       rates: currenciesOrder
         .filter((c) => c !== "usd")
         .map((currency) => {
@@ -90,7 +84,15 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
 
   useEffect(() => {
     if (currentDateExchangeRates.length === 0) {
-      reset();
+      reset({
+        date: form.getValues("date"),
+        rates: currenciesOrder
+          .filter((c) => c !== "usd")
+          .map((currency) => ({
+            currency,
+            rate: undefined,
+          })),
+      });
       return;
     }
     form.setValue(
@@ -117,48 +119,20 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
   const utils = api.useContext();
 
   const { mutateAsync } = api.exchangeRates.addExchangeRates.useMutation({
-    async onMutate(newOperation) {
-      // Doing the Optimistic update
-      await utils.exchangeRates.getAllExchangeRates.cancel();
-
-      const prevData = utils.exchangeRates.getAllExchangeRates.getData();
-
-      utils.exchangeRates.getAllExchangeRates.setData(
-        {
-          page: list.page,
-          currency: list.filterCurrency,
-        },
-        (old) => [
-          ...newOperation,
-          ...old!.slice(0, old!.length - newOperation.length),
-        ],
-      );
-
-      return { prevData };
-    },
-    onError(err, _, ctx) {
-      utils.exchangeRates.getAllExchangeRates.setData(
-        {
-          page: list.page,
-          currency: list.filterCurrency,
-        },
-        ctx?.prevData,
-      );
-
+    onError(err) {
       toast.error("No se pudieron añadir los tipos de cambio", {
         description: JSON.stringify(err.message),
       });
     },
-    onSettled() {
-      void utils.exchangeRates.getAllExchangeRates.invalidate();
-    },
     onSuccess(_, variables) {
       const isMultiple = variables.length > 1;
       toast.success(
-        `${variables.length} tipo${isMultiple && "s"} de cambio añadido${
-          isMultiple && "s"
+        `${variables.length} tipo${isMultiple ? "s" : ""} de cambio añadido${
+          isMultiple ? "s" : ""
         }`,
       );
+      void utils.exchangeRates.getAllExchangeRates.invalidate();
+      void utils.exchangeRates.getDateExchangeRates.invalidate();
     },
   });
 
@@ -170,7 +144,7 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
       toast.warning("Se necesita un tipo de cambio como mínimo");
       return;
     }
-    const onlyDate = moment(values.date).startOf("day").toDate();
+    const onlyDate = moment(values.date).utc().startOf("day").toDate();
     await mutateAsync(
       filteredRates.map((r) => ({
         date: onlyDate,
@@ -218,12 +192,17 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
                     mode="single"
                     selected={field.value}
                     onSelect={(value) => {
-                      field.onChange(value);
                       if (value) {
-                        void setDate(moment(value).format("DD-MM-YYYY"));
+                        const utcDate = toUTCMidnight(value);
+                        field.onChange(utcDate);
+                        setDate(utcDate);
+                      } else {
+                        const utcDate = getTodayUTCMidnight();
+                        field.onChange(utcDate);
+                        setDate(utcDate);
                       }
                     }}
-                    disabled={(date) => date > moment().startOf("day").toDate()}
+                    disabled={(date) => date > getTodayUTCMidnight()}
                     initialFocus
                   />
                 </PopoverContent>

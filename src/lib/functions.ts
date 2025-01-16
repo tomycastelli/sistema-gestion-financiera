@@ -549,3 +549,23 @@ export function findDuplicateObjects<T>(
 
   return duplicates; // Return the array of duplicate objects
 }
+
+/**
+ * Converts a Date object to UTC midnight (00:00:00.000)
+ * @param date - The date to convert
+ * @returns A new Date object set to UTC midnight
+ */
+export function toUTCMidnight(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+  );
+}
+
+/**
+ * Gets the current UTC date at midnight
+ * @returns A new Date object set to today's UTC midnight
+ */
+export function getTodayUTCMidnight(): Date {
+  const today = new Date();
+  return toUTCMidnight(today);
+}

@@ -1,9 +1,9 @@
-import { getUser } from "~/server/auth";
-import UploadExchanges from "./UploadExchanges";
-import ExchangesList from "./ExchangesList";
 import moment from "moment";
-import { api } from "~/trpc/server";
 import { dateFormat } from "~/lib/variables";
+import { getUser } from "~/server/auth";
+import { api } from "~/trpc/server";
+import ExchangesList from "./ExchangesList";
+import UploadExchanges from "./UploadExchanges";
 
 const Page = async ({
   searchParams,
@@ -12,8 +12,6 @@ const Page = async ({
 }) => {
   const user = await getUser();
 
-  const page = searchParams.pagina as string | null;
-  const formatedPage = page ? parseInt(page) : 1;
   const currency = searchParams.divisa as string | null;
   const date = searchParams.fecha as string | null;
   const formatedDate = date
@@ -27,7 +25,7 @@ const Page = async ({
 
   const initialExchangeRates =
     await api.exchangeRates.getAllExchangeRates.query({
-      page: formatedPage,
+      page: 1,
       currency,
     });
 
@@ -39,17 +37,10 @@ const Page = async ({
   return (
     <div className="grid w-full grid-rows-2 gap-y-8">
       {canEditExchangeRates && (
-        <UploadExchanges
-          initialCurrentDateRates={currentDateExchangeRates}
-          list={{
-            filterCurrency: currency ?? undefined,
-            page: formatedPage,
-          }}
-        />
+        <UploadExchanges initialCurrentDateRates={currentDateExchangeRates} />
       )}
       <ExchangesList
         initialExchangeRates={initialExchangeRates}
-        page={formatedPage}
         filterCurrency={currency ?? undefined}
       />
     </div>

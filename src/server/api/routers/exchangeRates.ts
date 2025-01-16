@@ -1,25 +1,31 @@
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod";
+import { toUTCMidnight } from "~/lib/functions";
+import { exchangeRates } from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
   publicProcedure,
 } from "../trpc";
-import { TRPCError } from "@trpc/server";
-import { exchangeRates } from "~/server/db/schema";
-import { and, desc, eq, sql } from "drizzle-orm";
 
 export const exchangeRatesRouter = createTRPCRouter({
   getDateExchangeRates: publicProcedure
     .input(
       z.object({
-        date: z.date(),
+        date: z.date().nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (!input.date) {
+        return [];
+      }
+      const utcDate = toUTCMidnight(input.date);
+
       const exchangeRatesData = await ctx.db
         .select()
         .from(exchangeRates)
-        .where(eq(exchangeRates.date, input.date));
+        .where(eq(exchangeRates.date, utcDate));
 
       return exchangeRatesData;
     }),
@@ -28,6 +34,8 @@ export const exchangeRatesRouter = createTRPCRouter({
       z.object({
         page: z.number().int(),
         currency: z.string().nullish(),
+        fromDate: z.date().nullish(),
+        toDate: z.date().nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -39,6 +47,11 @@ export const exchangeRatesRouter = createTRPCRouter({
       }
       const pageSize = 30;
 
+      const utcFromDate = input.fromDate
+        ? toUTCMidnight(input.fromDate)
+        : undefined;
+      const utcToDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
+
       const exchangeRatesData = await ctx.db
         .select()
         .from(exchangeRates)
@@ -47,6 +60,8 @@ export const exchangeRatesRouter = createTRPCRouter({
             input.currency
               ? eq(exchangeRates.currency, input.currency)
               : undefined,
+            utcFromDate ? gte(exchangeRates.date, utcFromDate) : undefined,
+            utcToDate ? lte(exchangeRates.date, utcToDate) : undefined,
           ),
         )
         .limit(pageSize)
@@ -106,9 +121,14 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
+      const utcInput = input.map((item) => ({
+        ...item,
+        date: toUTCMidnight(item.date),
+      }));
+
       await ctx.db
         .insert(exchangeRates)
-        .values(input)
+        .values(utcInput)
         .onConflictDoUpdate({
           target: [exchangeRates.currency, exchangeRates.date],
           set: { rate: sql.raw(`excluded.${exchangeRates.rate.name}`) },
@@ -136,13 +156,15 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
+      const utcDate = toUTCMidnight(input.date);
+
       await ctx.db
         .update(exchangeRates)
         .set({ rate: input.rate })
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, input.date),
+            eq(exchangeRates.date, utcDate),
           ),
         );
     }),
@@ -154,12 +176,14 @@ export const exchangeRatesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const utcDate = toUTCMidnight(input.date);
+
       await ctx.db
         .delete(exchangeRates)
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, input.date),
+            eq(exchangeRates.date, utcDate),
           ),
         );
     }),

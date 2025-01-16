@@ -1,22 +1,24 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
+import { and, gte, lte } from "drizzle-orm";
 import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
+import { numberFormatter, toUTCMidnight } from "~/lib/functions";
+import {
+  getOperationsInput,
+  getOperationsProcedure,
+} from "~/lib/operationsTrpcFunctions";
 import { currentAccountsProcedure, getAllEntities } from "~/lib/trpcFunctions";
+import { currenciesOrder } from "~/lib/variables";
+import { exchangeRates } from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
-import { numberFormatter } from "~/lib/functions";
 import { getCurrentAccountsInput } from "./movements";
-import { currenciesOrder } from "~/lib/variables";
-import {
-  getOperationsInput,
-  getOperationsProcedure,
-} from "~/lib/operationsTrpcFunctions";
 
 export const filesRouter = createTRPCRouter({
   getCurrentAccount: protectedProcedure
@@ -561,6 +563,169 @@ export const filesRouter = createTRPCRouter({
       const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
         expiresIn: 300,
       });
+      return { downloadUrl, filename };
+    }),
+  getExchangeRates: protectedProcedure
+    .input(
+      z.object({
+        fileType: z.enum(["csv", "pdf"]),
+        fromDate: z.date().nullish(),
+        toDate: z.date().nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const utcFromDate = input.fromDate
+        ? toUTCMidnight(input.fromDate)
+        : undefined;
+      const utcToDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
+
+      const data = await ctx.db
+        .select()
+        .from(exchangeRates)
+        .where(
+          and(
+            utcFromDate ? gte(exchangeRates.date, utcFromDate) : undefined,
+            utcToDate ? lte(exchangeRates.date, utcToDate) : undefined,
+          ),
+        );
+
+      const filename = `tipos_de_cambio_${moment().format(
+        "DD-MM-YYYY-HH:mm:ss",
+      )}.${input.fileType}`;
+
+      if (input.fileType === "csv") {
+        const csvData = data
+          .sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf())
+          .map((rate) => ({
+            Fecha: moment(rate.date).format("DD-MM-YYYY"),
+            Divisa: rate.currency.toUpperCase(),
+            Cotización: numberFormatter(rate.rate, 4),
+          }));
+
+        const csvString = unparse(csvData);
+
+        await ctx.s3.client.send(
+          new PutObjectCommand({
+            Bucket: ctx.s3.bucketNames.reports,
+            Key: `cotizaciones/${filename}`,
+            Body: csvString,
+            ContentType: "text/csv",
+          }),
+        );
+      } else {
+        const grouped = data.reduce(
+          (acc: Record<string, Record<string, number>>, curr) => {
+            const dateKey = moment(curr.date).format("YYYY-MM-DD");
+            if (!acc[dateKey]) {
+              acc[dateKey] = Object.fromEntries(
+                currenciesOrder.map((c) => [c, 0]),
+              );
+            }
+            acc[dateKey]![curr.currency.toLowerCase()] = curr.rate;
+            return acc;
+          },
+          {},
+        );
+
+        const htmlString = `
+          <html>
+          <body class="main-container">
+          <div class="header-div">
+            <h1 class="title">Tipos de Cambio</h1>
+            <h2 class="subtitle">Maika</h2>
+          </div>
+          <div class="table-container">
+          <table class="table">
+            <thead class="table-header">
+              <tr>
+                <th>Fecha</th>
+                ${currenciesOrder
+                  .filter((c) => c !== "usd")
+                  .map((c) => `<th>${c.toUpperCase()}</th>`)
+                  .join("")}
+              </tr>
+            </thead>
+            <tbody class="table-body">
+              ${Object.entries(grouped)
+                .sort(([a], [b]) => b.localeCompare(a))
+                .map(
+                  ([date, rates]) => `
+                <tr>
+                  <td>${moment(date).format("DD-MM-YYYY")}</td>
+                  ${currenciesOrder
+                    .filter((c) => c !== "usd")
+                    .map(
+                      (currency) =>
+                        `<td>${
+                          rates[currency]
+                            ? numberFormatter(rates[currency]!, 4)
+                            : "-"
+                        }</td>`,
+                    )
+                    .join("")}
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+          </div>
+          </body>
+          </html>
+        `;
+
+        const cssString = `
+          .table-container{margin-top: 0.5rem;}
+          .table{width: 100%; border-collapse: collapse;}
+          .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
+          .table th,
+          .table td {
+            border-top: 0.5px solid #000;
+            border-bottom: 0.5px solid #000;
+            text-align: right;
+            padding: 0.25rem;
+          }
+          .table-body{font-size: 0.75rem;}
+          .header-div{width: 100%; text-align: center;}
+          .title{font-size: 1.5rem; font-weight: 600;}
+          .subtitle{font-size: 1.2rem; font-weight: 400;}
+          .main-container{
+            font-family: serif;
+            margin: 2rem;
+          }
+        `;
+
+        try {
+          await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": env.LAMBDA_API_KEY,
+            },
+            body: JSON.stringify({
+              htmlString,
+              cssString,
+              bucketName: ctx.s3.bucketNames.reports,
+              fileKey: `cotizaciones/${filename}`,
+            }),
+          });
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: JSON.stringify(e),
+          });
+        }
+      }
+
+      const getCommand = new GetObjectCommand({
+        Bucket: ctx.s3.bucketNames.reports,
+        Key: `cotizaciones/${filename}`,
+      });
+
+      const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
+        expiresIn: 300,
+      });
+
       return { downloadUrl, filename };
     }),
 });
