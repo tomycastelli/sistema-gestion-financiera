@@ -23,18 +23,13 @@ import {
   PopoverTrigger,
 } from "~/app/components/ui/popover";
 import AmountInput from "~/app/operaciones/carga/AmountInput";
-import {
-  getTodayUTCMidnight,
-  numberFormatter,
-  parseFormattedFloat,
-  toUTCMidnight,
-} from "~/lib/functions";
+import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { currenciesOrder } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
 const FormSchema = z.object({
-  date: z.date(),
+  date: z.string(),
   rates: z.array(
     z.object({
       currency: z.string(),
@@ -50,7 +45,7 @@ interface UploadExhchangesProps {
 const UploadExchanges: FC<UploadExhchangesProps> = ({
   initialCurrentDateRates,
 }) => {
-  const [date, setDate] = useState<Date>(getTodayUTCMidnight());
+  const [date, setDate] = useState<string>(moment().format("YYYY-MM-DD"));
 
   const { data: currentDateExchangeRates } =
     api.exchangeRates.getDateExchangeRates.useQuery(
@@ -144,10 +139,9 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
       toast.warning("Se necesita un tipo de cambio como mínimo");
       return;
     }
-    const onlyDate = moment(values.date).utc().startOf("day").toDate();
     await mutateAsync(
       filteredRates.map((r) => ({
-        date: onlyDate,
+        date: values.date,
         currency: r.currency,
         rate: parseFormattedFloat(r.rate!),
       })),
@@ -190,27 +184,20 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={field.value}
+                    selected={moment(field.value, "YYYY-MM-DD").toDate()}
                     onSelect={(value) => {
                       if (value) {
-                        const selectedDate = new Date(
-                          value.setHours(0, 0, 0, 0),
-                        );
-                        console.log({ selectedDate });
-                        field.onChange(selectedDate);
-                        setDate(selectedDate);
+                        const formattedDate =
+                          moment(value).format("YYYY-MM-DD");
+                        field.onChange(formattedDate);
+                        setDate(formattedDate);
                       } else {
-                        const today = new Date();
-                        const todayMidnight = new Date(
-                          today.setHours(0, 0, 0, 0),
-                        );
-                        field.onChange(todayMidnight);
-                        setDate(todayMidnight);
+                        const today = moment().format("YYYY-MM-DD");
+                        field.onChange(today);
+                        setDate(today);
                       }
                     }}
-                    disabled={(date) =>
-                      date.getTime() > new Date().setHours(0, 0, 0, 0)
-                    }
+                    disabled={(date) => date > moment().startOf("day").toDate()}
                     initialFocus
                   />
                 </PopoverContent>

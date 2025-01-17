@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { toUTCMidnight } from "~/lib/functions";
 import { exchangeRates } from "~/server/db/schema";
 import {
   createTRPCRouter,
@@ -13,19 +12,18 @@ export const exchangeRatesRouter = createTRPCRouter({
   getDateExchangeRates: publicProcedure
     .input(
       z.object({
-        date: z.date().nullish(),
+        date: z.string().nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
       if (!input.date) {
         return [];
       }
-      const selectedDate = toUTCMidnight(input.date);
 
       const exchangeRatesData = await ctx.db
         .select()
         .from(exchangeRates)
-        .where(eq(exchangeRates.date, selectedDate));
+        .where(eq(exchangeRates.date, input.date));
 
       return exchangeRatesData;
     }),
@@ -34,8 +32,8 @@ export const exchangeRatesRouter = createTRPCRouter({
       z.object({
         page: z.number().int(),
         currency: z.string().nullish(),
-        fromDate: z.date().nullish(),
-        toDate: z.date().nullish(),
+        fromDate: z.string().nullish(),
+        toDate: z.string().nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -47,11 +45,6 @@ export const exchangeRatesRouter = createTRPCRouter({
       }
       const pageSize = 30;
 
-      const fromDate = input.fromDate
-        ? toUTCMidnight(input.fromDate)
-        : undefined;
-      const toDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
-
       const exchangeRatesData = await ctx.db
         .select()
         .from(exchangeRates)
@@ -60,8 +53,10 @@ export const exchangeRatesRouter = createTRPCRouter({
             input.currency
               ? eq(exchangeRates.currency, input.currency)
               : undefined,
-            fromDate ? gte(exchangeRates.date, fromDate) : undefined,
-            toDate ? lte(exchangeRates.date, toDate) : undefined,
+            input.fromDate
+              ? gte(exchangeRates.date, input.fromDate)
+              : undefined,
+            input.toDate ? lte(exchangeRates.date, input.toDate) : undefined,
           ),
         )
         .limit(pageSize)
@@ -102,7 +97,7 @@ export const exchangeRatesRouter = createTRPCRouter({
       z
         .object({
           currency: z.string(),
-          date: z.date(),
+          date: z.string(),
           rate: z.number(),
         })
         .array(),
@@ -121,14 +116,9 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
-      const normalizedInput = input.map((item) => ({
-        ...item,
-        date: toUTCMidnight(item.date),
-      }));
-
       await ctx.db
         .insert(exchangeRates)
-        .values(normalizedInput)
+        .values(input)
         .onConflictDoUpdate({
           target: [exchangeRates.currency, exchangeRates.date],
           set: { rate: sql.raw(`excluded.${exchangeRates.rate.name}`) },
@@ -138,7 +128,7 @@ export const exchangeRatesRouter = createTRPCRouter({
     .input(
       z.object({
         currency: z.string(),
-        date: z.date(),
+        date: z.string(),
         rate: z.number(),
       }),
     )
@@ -156,15 +146,13 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
-      const selectedDate = toUTCMidnight(input.date);
-
       await ctx.db
         .update(exchangeRates)
         .set({ rate: input.rate })
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, selectedDate),
+            eq(exchangeRates.date, input.date),
           ),
         );
     }),
@@ -172,18 +160,16 @@ export const exchangeRatesRouter = createTRPCRouter({
     .input(
       z.object({
         currency: z.string(),
-        date: z.date(),
+        date: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const selectedDate = toUTCMidnight(input.date);
-
       await ctx.db
         .delete(exchangeRates)
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, selectedDate),
+            eq(exchangeRates.date, input.date),
           ),
         );
     }),

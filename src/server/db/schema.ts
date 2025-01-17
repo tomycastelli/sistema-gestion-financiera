@@ -1,23 +1,23 @@
 import {
-  pgTable,
-  foreignKey,
-  integer,
-  timestamp,
-  text,
-  date,
-  jsonb,
-  index,
   bigint,
   boolean,
-  uniqueIndex,
-  primaryKey,
-  pgEnum,
   customType,
+  date,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-import { z } from "zod";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm/relations";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
 
 const decimalNumber = customType<{ data: number }>({
   dataType() {
@@ -157,7 +157,7 @@ export const exchangeRates = pgTable(
   "exchange_rates",
   {
     currency: text("currency").notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
+    date: text("date").notNull(),
     rate: decimalNumber("rate").notNull(),
   },
   (table) => {

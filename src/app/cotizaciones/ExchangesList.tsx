@@ -58,8 +58,8 @@ const ExchangesList: FC<ExchangesListProps> = ({
     {
       page,
       currency: filterCurrency,
-      fromDate,
-      toDate,
+      fromDate: fromDate ? moment(fromDate).format("YYYY-MM-DD") : undefined,
+      toDate: toDate ? moment(toDate).format("YYYY-MM-DD") : undefined,
     },
     {
       initialData: initialExchangeRates,
@@ -87,29 +87,9 @@ const ExchangesList: FC<ExchangesListProps> = ({
       },
     });
 
-  // Transform the data to group by date
-  const groupedData: GroupedExchangeRate[] = useMemo(() => {
-    const grouped = data.reduce(
-      (acc: Record<string, GroupedExchangeRate>, curr) => {
-        const dateKey = moment(curr.date).format("YYYY-MM-DD");
-        if (!acc[dateKey]) {
-          acc[dateKey] = {
-            date: curr.date,
-            ...Object.fromEntries(currenciesOrder.map((c) => [c, null])),
-          };
-        }
-        acc[dateKey]![curr.currency.toLowerCase()] = curr.rate;
-        return acc;
-      },
-      {},
-    );
-
-    return Object.values(grouped);
-  }, [data]);
-
   const columns: ColumnDef<GroupedExchangeRate>[] = [
     {
-      accessorFn: ({ date }) => moment(date).format("DD-MM-YYYY"),
+      accessorFn: ({ date }) => moment(date, "YYYY-MM-DD").format("DD-MM-YYYY"),
       header: "Fecha",
     },
     ...currenciesOrder
@@ -123,6 +103,25 @@ const ExchangesList: FC<ExchangesListProps> = ({
       ),
   ];
 
+  const groupedData: GroupedExchangeRate[] = useMemo(() => {
+    const grouped = data.reduce(
+      (acc: Record<string, GroupedExchangeRate>, curr) => {
+        const dateKey = curr.date;
+        if (!acc[dateKey]) {
+          acc[dateKey] = {
+            date: new Date(curr.date),
+            ...Object.fromEntries(currenciesOrder.map((c) => [c, null])),
+          };
+        }
+        acc[dateKey]![curr.currency.toLowerCase()] = curr.rate;
+        return acc;
+      },
+      {},
+    );
+
+    return Object.values(grouped);
+  }, [data]);
+
   const table = useReactTable({
     data: groupedData,
     columns,
@@ -133,8 +132,8 @@ const ExchangesList: FC<ExchangesListProps> = ({
   const onDownloadClick = (fileType: "pdf" | "csv") => {
     const promise = getUrlAsync({
       fileType,
-      fromDate,
-      toDate,
+      fromDate: fromDate ? moment(fromDate).format("YYYY-MM-DD") : undefined,
+      toDate: toDate ? moment(toDate).format("YYYY-MM-DD") : undefined,
     });
     toast.promise(promise, {
       loading: "Generando archivo...",

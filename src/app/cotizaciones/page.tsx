@@ -1,5 +1,4 @@
 import moment from "moment";
-import { dateFormat } from "~/lib/variables";
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import ExchangesList from "./ExchangesList";
@@ -13,10 +12,6 @@ const Page = async ({
   const user = await getUser();
 
   const currency = searchParams.divisa as string | null;
-  const date = searchParams.fecha as string | null;
-  const formatedDate = date
-    ? moment(date, dateFormat).toDate()
-    : moment().startOf("day").toDate();
 
   const canEditExchangeRates =
     user?.permissions?.some(
@@ -31,7 +26,7 @@ const Page = async ({
 
   const currentDateExchangeRates =
     await api.exchangeRates.getDateExchangeRates.query({
-      date: formatedDate,
+      date: moment().format("YYYY-MM-DD"),
     });
 
   return (

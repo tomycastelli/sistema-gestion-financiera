@@ -5,7 +5,7 @@ import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
-import { numberFormatter, toUTCMidnight } from "~/lib/functions";
+import { numberFormatter } from "~/lib/functions";
 import {
   getOperationsInput,
   getOperationsProcedure,
@@ -569,23 +569,20 @@ export const filesRouter = createTRPCRouter({
     .input(
       z.object({
         fileType: z.enum(["csv", "pdf"]),
-        fromDate: z.date().nullish(),
-        toDate: z.date().nullish(),
+        fromDate: z.string().nullish(),
+        toDate: z.string().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const utcFromDate = input.fromDate
-        ? toUTCMidnight(input.fromDate)
-        : undefined;
-      const utcToDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
-
       const data = await ctx.db
         .select()
         .from(exchangeRates)
         .where(
           and(
-            utcFromDate ? gte(exchangeRates.date, utcFromDate) : undefined,
-            utcToDate ? lte(exchangeRates.date, utcToDate) : undefined,
+            input.fromDate
+              ? gte(exchangeRates.date, input.fromDate)
+              : undefined,
+            input.toDate ? lte(exchangeRates.date, input.toDate) : undefined,
           ),
         );
 
