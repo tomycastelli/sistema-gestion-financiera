@@ -20,12 +20,12 @@ export const exchangeRatesRouter = createTRPCRouter({
       if (!input.date) {
         return [];
       }
-      const utcDate = toUTCMidnight(input.date);
+      const selectedDate = toUTCMidnight(input.date);
 
       const exchangeRatesData = await ctx.db
         .select()
         .from(exchangeRates)
-        .where(eq(exchangeRates.date, utcDate));
+        .where(eq(exchangeRates.date, selectedDate));
 
       return exchangeRatesData;
     }),
@@ -47,10 +47,10 @@ export const exchangeRatesRouter = createTRPCRouter({
       }
       const pageSize = 30;
 
-      const utcFromDate = input.fromDate
+      const fromDate = input.fromDate
         ? toUTCMidnight(input.fromDate)
         : undefined;
-      const utcToDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
+      const toDate = input.toDate ? toUTCMidnight(input.toDate) : undefined;
 
       const exchangeRatesData = await ctx.db
         .select()
@@ -60,8 +60,8 @@ export const exchangeRatesRouter = createTRPCRouter({
             input.currency
               ? eq(exchangeRates.currency, input.currency)
               : undefined,
-            utcFromDate ? gte(exchangeRates.date, utcFromDate) : undefined,
-            utcToDate ? lte(exchangeRates.date, utcToDate) : undefined,
+            fromDate ? gte(exchangeRates.date, fromDate) : undefined,
+            toDate ? lte(exchangeRates.date, toDate) : undefined,
           ),
         )
         .limit(pageSize)
@@ -121,14 +121,14 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
-      const utcInput = input.map((item) => ({
+      const normalizedInput = input.map((item) => ({
         ...item,
         date: toUTCMidnight(item.date),
       }));
 
       await ctx.db
         .insert(exchangeRates)
-        .values(utcInput)
+        .values(normalizedInput)
         .onConflictDoUpdate({
           target: [exchangeRates.currency, exchangeRates.date],
           set: { rate: sql.raw(`excluded.${exchangeRates.rate.name}`) },
@@ -156,7 +156,7 @@ export const exchangeRatesRouter = createTRPCRouter({
         });
       }
 
-      const utcDate = toUTCMidnight(input.date);
+      const selectedDate = toUTCMidnight(input.date);
 
       await ctx.db
         .update(exchangeRates)
@@ -164,7 +164,7 @@ export const exchangeRatesRouter = createTRPCRouter({
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, utcDate),
+            eq(exchangeRates.date, selectedDate),
           ),
         );
     }),
@@ -176,14 +176,14 @@ export const exchangeRatesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const utcDate = toUTCMidnight(input.date);
+      const selectedDate = toUTCMidnight(input.date);
 
       await ctx.db
         .delete(exchangeRates)
         .where(
           and(
             eq(exchangeRates.currency, input.currency),
-            eq(exchangeRates.date, utcDate),
+            eq(exchangeRates.date, selectedDate),
           ),
         );
     }),

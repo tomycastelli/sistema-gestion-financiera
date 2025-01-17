@@ -193,16 +193,24 @@ const UploadExchanges: FC<UploadExhchangesProps> = ({
                     selected={field.value}
                     onSelect={(value) => {
                       if (value) {
-                        const utcDate = toUTCMidnight(value);
-                        field.onChange(utcDate);
-                        setDate(utcDate);
+                        const selectedDate = new Date(
+                          value.setHours(0, 0, 0, 0),
+                        );
+                        console.log({ selectedDate });
+                        field.onChange(selectedDate);
+                        setDate(selectedDate);
                       } else {
-                        const utcDate = getTodayUTCMidnight();
-                        field.onChange(utcDate);
-                        setDate(utcDate);
+                        const today = new Date();
+                        const todayMidnight = new Date(
+                          today.setHours(0, 0, 0, 0),
+                        );
+                        field.onChange(todayMidnight);
+                        setDate(todayMidnight);
                       }
                     }}
-                    disabled={(date) => date > getTodayUTCMidnight()}
+                    disabled={(date) =>
+                      date.getTime() > new Date().setHours(0, 0, 0, 0)
+                    }
                     initialFocus
                   />
                 </PopoverContent>
