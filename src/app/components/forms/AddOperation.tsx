@@ -8,7 +8,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
+import {
+  capitalizeFirstLetter,
+  findDuplicateObjects,
+  numberFormatter,
+} from "~/lib/functions";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import { Status } from "~/server/db/schema";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
@@ -139,6 +143,16 @@ const AddOperation = ({
       refetchOnWindowFocus: false,
     });
 
+  // Create entities map for faster lookups
+  const entitiesMap =
+    entities?.reduce(
+      (acc, entity) => {
+        acc[entity.id] = entity;
+        return acc;
+      },
+      {} as Record<number, (typeof entities)[0]>,
+    ) ?? {};
+
   const tabs = ["flexible", "cambio", "cable"];
 
   const transactionInfo = [
@@ -222,11 +236,7 @@ const AddOperation = ({
                               className="justify-self-center"
                               variant="outline"
                             >
-                              {
-                                entities.find(
-                                  (obj) => obj.id === transaction.fromEntityId,
-                                )?.name
-                              }
+                              {entitiesMap[transaction.fromEntityId]?.name}
                             </Badge>
                             <div className="flex flex-col items-center justify-self-center">
                               <Icons.arrowRight className="h-6" />
@@ -241,11 +251,7 @@ const AddOperation = ({
                               className="justify-self-center"
                               variant="outline"
                             >
-                              {
-                                entities.find(
-                                  (obj) => obj.id === transaction.toEntityId,
-                                )?.name
-                              }
+                              {entitiesMap[transaction.toEntityId]?.name}
                             </Badge>
                           </div>
                           <div className="flex flex-col items-start space-y-2">
@@ -260,11 +266,7 @@ const AddOperation = ({
                             <div className="flex flex-col justify-start space-y-1">
                               <p className="text-sm font-medium">Operador</p>
                               <Badge variant="outline">
-                                {
-                                  entities.find(
-                                    (obj) => obj.id === transaction.operatorId,
-                                  )?.name
-                                }
+                                {entitiesMap[transaction.operatorId]?.name}
                               </Badge>
                             </div>
 
@@ -330,43 +332,119 @@ const AddOperation = ({
                       className="w-full"
                       disabled={transactionsStore.length === 0}
                       onClick={async () => {
-                        const response = await mutateAsync({
-                          opDate:
-                            opDate.date === "now"
-                              ? new Date()
-                              : moment(
-                                  moment(opDate.data.opDate).format(
-                                    "DD-MM-YYYY",
-                                  ) + opDate.data.opTime,
-                                  "DD-MM-YYYY HH:mm",
-                                ).toDate(),
-                          opObservations: observations,
-                          opId: selectedOpId,
-                          transactions: transactionsStore.map(
-                            (transaction) => ({
-                              formId: transaction.txId,
-                              type: transaction.type,
-                              operatorEntityId: transaction.operatorId,
-                              fromEntityId: transaction.fromEntityId,
-                              toEntityId: transaction.toEntityId,
-                              currency: transaction.currency,
-                              amount: transaction.amount,
-                              metadata: transaction.metadata,
-                              relatedTransactionId: transaction.relatedTxId,
-                            }),
-                          ),
-                        });
-                        if (confirmationAtUpload.length > 0) {
-                          await updateStatus({
-                            transactionIds: response.transactions
-                              .filter(
-                                (tx) =>
-                                  tx.status === Status.enumValues[2] &&
-                                  !currentAccountOnlyTypes.has(tx.type) &&
-                                  confirmationAtUpload.includes(tx.formId),
+                        const transactionsMapped = transactionsStore.map(
+                          (transaction) => ({
+                            formId: transaction.txId,
+                            type: transaction.type,
+                            operatorEntityId: transaction.operatorId,
+                            fromEntityId: transaction.fromEntityId,
+                            toEntityId: transaction.toEntityId,
+                            currency: transaction.currency,
+                            amount: transaction.amount,
+                            metadata: transaction.metadata,
+                            relatedTransactionId: transaction.relatedTxId,
+                          }),
+                        );
+                        const duplicates = findDuplicateObjects(
+                          transactionsMapped,
+                          [
+                            "amount",
+                            "currency",
+                            "fromEntityId",
+                            "toEntityId",
+                            "operatorEntityId",
+                            "type",
+                          ],
+                        );
+                        if (duplicates.length > 0) {
+                          toast(
+                            ["Hay transacciones repetidas en el carrito:"]
+                              .concat(
+                                duplicates.map(
+                                  (tx) =>
+                                    `${entitiesMap[tx.fromEntityId]
+                                      ?.name} -> ${entitiesMap[tx.toEntityId]
+                                      ?.name} - ${tx.amount} ${tx.currency} - ${
+                                      tx.type
+                                    }`,
+                                ),
                               )
-                              .map((tx) => tx.id),
+                              .join("\n"),
+                            {
+                              description:
+                                "¿Querés confirmar las transacciones repetidas?",
+                              duration: 15000,
+                              closeButton: true,
+                              action: {
+                                label: "Confirmar",
+                                onClick: () => {
+                                  void (async () => {
+                                    const response = await mutateAsync({
+                                      opDate:
+                                        opDate.date === "now"
+                                          ? new Date()
+                                          : moment(
+                                              moment(opDate.data.opDate).format(
+                                                "DD-MM-YYYY",
+                                              ) + opDate.data.opTime,
+                                              "DD-MM-YYYY HH:mm",
+                                            ).toDate(),
+                                      opObservations: observations,
+                                      opId: selectedOpId,
+                                      transactions: transactionsMapped,
+                                      confirmRepeatedTransactions: true,
+                                    });
+
+                                    if (confirmationAtUpload.length > 0) {
+                                      await updateStatus({
+                                        transactionIds: response.transactions
+                                          .filter(
+                                            (tx) =>
+                                              tx.status ===
+                                                Status.enumValues[2] &&
+                                              !currentAccountOnlyTypes.has(
+                                                tx.type,
+                                              ) &&
+                                              confirmationAtUpload.includes(
+                                                tx.formId,
+                                              ),
+                                          )
+                                          .map((tx) => tx.id),
+                                      });
+                                    }
+                                  })();
+                                },
+                              },
+                            },
+                          );
+                        } else {
+                          const response = await mutateAsync({
+                            opDate:
+                              opDate.date === "now"
+                                ? new Date()
+                                : moment(
+                                    moment(opDate.data.opDate).format(
+                                      "DD-MM-YYYY",
+                                    ) + opDate.data.opTime,
+                                    "DD-MM-YYYY HH:mm",
+                                  ).toDate(),
+                            opObservations: observations,
+                            opId: selectedOpId,
+                            transactions: transactionsMapped,
+                            confirmRepeatedTransactions: false,
                           });
+                          if (confirmationAtUpload.length > 0) {
+                            await updateStatus({
+                              transactionIds: response.transactions
+                                .filter(
+                                  (tx) =>
+                                    tx.status === Status.enumValues[2] &&
+                                    !currentAccountOnlyTypes.has(tx.type) &&
+                                    confirmationAtUpload.includes(tx.formId),
+                                )
+                                .map((tx) => tx.id),
+                            });
+                          }
                         }
                       }}
                     >

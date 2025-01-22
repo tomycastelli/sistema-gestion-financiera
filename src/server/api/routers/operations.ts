@@ -14,9 +14,13 @@ import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import type postgres from "postgres";
 import { z } from "zod";
+import { findDuplicateObjects } from "~/lib/functions";
+import {
+  getOperationsInput,
+  getOperationsProcedure,
+} from "~/lib/operationsTrpcFunctions";
 import { generateMovements, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
-import { findDuplicateObjects } from "~/lib/functions";
 import {
   entities,
   movements,
@@ -30,10 +34,6 @@ import {
   protectedLoggedProcedure,
   protectedProcedure,
 } from "../trpc";
-import {
-  getOperationsInput,
-  getOperationsProcedure,
-} from "~/lib/operationsTrpcFunctions";
 
 export const operationsRouter = createTRPCRouter({
   insertOperation: protectedLoggedProcedure
@@ -42,6 +42,7 @@ export const operationsRouter = createTRPCRouter({
         opDate: z.date(),
         opObservations: z.string().optional(),
         opId: z.number().int().optional().nullable(),
+        confirmRepeatedTransactions: z.boolean().optional(),
         transactions: z.array(
           z.object({
             formId: z.number().int(),
@@ -83,7 +84,7 @@ export const operationsRouter = createTRPCRouter({
         "operatorEntityId",
         "type",
       ]);
-      if (duplicates.length > 0) {
+      if (duplicates.length > 0 && input.confirmRepeatedTransactions !== true) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Hay transacciones repetidas en el carrito: ${JSON.stringify(
@@ -262,8 +263,7 @@ export const operationsRouter = createTRPCRouter({
       ) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message:
-            "Only these emails can do this: christian@ifc.com.ar, tomas.castelli@ifc.com.ar",
+          message: "User can't approve pending transactions",
         });
       }
 
@@ -293,6 +293,16 @@ export const operationsRouter = createTRPCRouter({
               throw new TRPCError({
                 message: "Transaction id is already approved",
                 code: "BAD_REQUEST",
+              });
+            } else if (
+              insertedTxResponse.Transactions.type === "cuenta corriente" &&
+              ctx.user.email !== "christian@ifc.com.ar" &&
+              ctx.user.email !== "tomas.castelli@ifc.com.ar"
+            ) {
+              throw new TRPCError({
+                message:
+                  "Only these emails can approve cuenta corriente: christian@ifc.com.ar, tomas.castelli@ifc.com.ar",
+                code: "UNAUTHORIZED",
               });
             }
 

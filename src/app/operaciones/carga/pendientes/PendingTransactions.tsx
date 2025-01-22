@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, type FC } from "react";
-import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
-import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
-import { Icons } from "~/app/components/ui/Icons";
-import EntityCard from "~/app/components/ui/EntityCard";
-import { cn } from "~/lib/utils";
-import { Status } from "~/server/db/schema";
-import { Button } from "~/app/components/ui/button";
-import { toast } from "sonner";
 import { type User } from "lucia";
 import moment from "moment";
 import { useRouter } from "next/navigation";
+import { useState, type FC } from "react";
+import { toast } from "sonner";
 import CustomPagination from "~/app/components/CustomPagination";
+import { Button } from "~/app/components/ui/button";
+import EntityCard from "~/app/components/ui/EntityCard";
+import { Icons } from "~/app/components/ui/Icons";
+import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
+import { cn } from "~/lib/utils";
+import { Status } from "~/server/db/schema";
+import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
 
 interface PendingTransactionsProps {
   initialPendingTransactions: RouterOutputs["operations"]["getPendingTransactions"];
@@ -150,6 +150,12 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
     if (type === "main") return mainEntity;
     return mainEntity.id === tx.toEntityId ? tx.fromEntity : tx.toEntity;
   };
+
+  const cuentaCorrienteAllowedAccounts = [
+    "christian@ifc.com.ar",
+    "tomas.castelli@ifc.com.ar",
+  ];
+
   return (
     <div className="flex flex-col gap-y-4">
       <div className="grid grid-rows-2 p-4 lg:grid-cols-9 lg:grid-rows-1">
@@ -292,11 +298,13 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 }
                 variant="outline"
                 disabled={
-                  !user.permissions?.some(
-                    (p) =>
-                      p.name === "OPERATIONS_PENDING_APPROVE" ||
-                      p.name === "ADMIN",
-                  )
+                  pendingTx.type === "cuenta corriente"
+                    ? !cuentaCorrienteAllowedAccounts.includes(user.email)
+                    : !user.permissions?.some(
+                        (p) =>
+                          p.name === "OPERATIONS_PENDING_APPROVE" ||
+                          p.name === "ADMIN",
+                      )
                 }
               >
                 <Icons.cross className="h-5 w-5 text-red" />
@@ -308,11 +316,13 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 }
                 variant="outline"
                 disabled={
-                  !user.permissions?.some(
-                    (p) =>
-                      p.name === "OPERATIONS_PENDING_APPROVE" ||
-                      p.name === "ADMIN",
-                  )
+                  pendingTx.type === "cuenta corriente"
+                    ? !cuentaCorrienteAllowedAccounts.includes(user.email)
+                    : !user.permissions?.some(
+                        (p) =>
+                          p.name === "OPERATIONS_PENDING_APPROVE" ||
+                          p.name === "ADMIN",
+                      )
                 }
               >
                 <Icons.check className="h-5 w-5 text-green" />
