@@ -51,7 +51,7 @@ export const filesRouter = createTRPCRouter({
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
       const filename = `${
-        input.account ? "cuenta_corriente" : "caja"
+        input.account === false ? "cuenta_corriente" : "caja"
       }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${
         input.entityId
           ? entities.find((e) => e.id === input.entityId)?.name
@@ -268,7 +268,13 @@ export const filesRouter = createTRPCRouter({
           const entity = detailedBalance.entity.name;
           const balances: Record<string, number> = {};
 
-          // balances should have numbers as values, rounded to 2 decimal places
+          // Get unified balance but don't add it yet
+          const unifiedBalance =
+            detailedBalance.data.find(
+              (dataItem) => dataItem.currency === "unified",
+            )?.balance ?? 0;
+
+          // Add other currencies first
           currenciesOrder.forEach((currency) => {
             balances[currency] =
               Math.round(
@@ -278,7 +284,12 @@ export const filesRouter = createTRPCRouter({
               ) / 100;
           });
 
-          return { entidad: entity, ...balances };
+          // Add unified balance at the end
+          return {
+            entidad: entity,
+            ...balances,
+            unificado: Math.round(unifiedBalance * 100) / 100,
+          };
         });
         const csv = unparse(csvData, { delimiter: "," });
         const putCommand = new PutObjectCommand({
@@ -302,9 +313,15 @@ export const filesRouter = createTRPCRouter({
             ${currenciesOrder
               .map((currency) => `<p>${currency.toUpperCase()}</p>`)
               .join("")}
+            <p>Unificado</p>
           </div>
           ${input.detailedBalances
             .map((b, index) => {
+              // Get unified balance
+              const unifiedBalance =
+                b.data.find((item) => item.currency === "unified")?.balance ??
+                0;
+
               // Create a map of all currencies with their balances or default to 0
               const currencyMap: Record<string, number> =
                 currenciesOrder.reduce(
@@ -329,6 +346,7 @@ export const filesRouter = createTRPCRouter({
                                 )}</p>`,
                             )
                             .join("")}
+                          <p>${numberFormatter(unifiedBalance)}</p>
                         </div>`;
             })
             .join("")}
@@ -594,7 +612,7 @@ export const filesRouter = createTRPCRouter({
         const csvData = data
           .sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf())
           .map((rate) => ({
-            Fecha: moment(rate.date).format("DD-MM-YYYY"),
+            Fecha: moment.utc(rate.date, "YYYY-MM-DD").format("DD-MM-YYYY"),
             Divisa: rate.currency.toUpperCase(),
             Cotización: numberFormatter(rate.rate, 4),
           }));
@@ -612,7 +630,7 @@ export const filesRouter = createTRPCRouter({
       } else {
         const grouped = data.reduce(
           (acc: Record<string, Record<string, number>>, curr) => {
-            const dateKey = moment(curr.date).format("YYYY-MM-DD");
+            const dateKey = curr.date;
             if (!acc[dateKey]) {
               acc[dateKey] = Object.fromEntries(
                 currenciesOrder.map((c) => [c, 0]),
@@ -648,7 +666,9 @@ export const filesRouter = createTRPCRouter({
                 .map(
                   ([date, rates]) => `
                 <tr>
-                  <td>${moment(date).format("DD-MM-YYYY")}</td>
+                  <td>${moment
+                    .utc(date, "YYYY-MM-DD")
+                    .format("DD-MM-YYYY")}</td>
                   ${currenciesOrder
                     .filter((c) => c !== "usd")
                     .map(

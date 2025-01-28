@@ -23,6 +23,7 @@ import { numberFormatter } from "~/lib/functions";
 import { currenciesOrder } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
+import CustomPagination from "../components/CustomPagination";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { Button } from "../components/ui/button";
 import {
@@ -42,8 +43,8 @@ interface ExchangesListProps {
 }
 
 type GroupedExchangeRate = {
-  date: Date;
-  [key: string]: Date | number | null;
+  date: string;
+  [key: string]: string | number | null;
 };
 
 const ExchangesList: FC<ExchangesListProps> = ({
@@ -89,7 +90,8 @@ const ExchangesList: FC<ExchangesListProps> = ({
 
   const columns: ColumnDef<GroupedExchangeRate>[] = [
     {
-      accessorFn: ({ date }) => moment(date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+      accessorFn: ({ date }) =>
+        moment.utc(date, "YYYY-MM-DD").format("DD-MM-YYYY"),
       header: "Fecha",
     },
     ...currenciesOrder
@@ -109,7 +111,7 @@ const ExchangesList: FC<ExchangesListProps> = ({
         const dateKey = curr.date;
         if (!acc[dateKey]) {
           acc[dateKey] = {
-            date: new Date(curr.date),
+            date: curr.date,
             ...Object.fromEntries(currenciesOrder.map((c) => [c, null])),
           };
         }
@@ -182,7 +184,7 @@ const ExchangesList: FC<ExchangesListProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div>
+      <div className="flex flex-col gap-y-4">
         {isLoading ? (
           <div className="flex h-full w-full items-center justify-center">
             <LoadingAnimation text="Cargando tipos de cambio" size="md" />
@@ -236,6 +238,15 @@ const ExchangesList: FC<ExchangesListProps> = ({
               )}
             </TableBody>
           </Table>
+        )}
+        {data.length > 30 && (
+          <CustomPagination
+            page={page}
+            pageSize={30}
+            itemName="cotizaciones"
+            totalCount={data.length}
+            changePageState={setPage}
+          />
         )}
       </div>
     </div>

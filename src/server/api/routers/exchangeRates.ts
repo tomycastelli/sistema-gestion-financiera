@@ -66,32 +66,43 @@ export const exchangeRatesRouter = createTRPCRouter({
       return exchangeRatesData;
     }),
 
-  getLatestExchangeRates: publicProcedure.query(async ({ ctx }) => {
-    const rankedRates = ctx.db.$with("ranked_rates").as(
-      ctx.db
-        .select({
-          currency: exchangeRates.currency,
-          date: exchangeRates.date,
-          rate: exchangeRates.rate,
-          rn: sql`ROW_NUMBER() OVER (PARTITION BY ${exchangeRates.currency} ORDER BY ${exchangeRates.date} DESC)`.as(
-            "rn",
+  getLatestExchangeRates: publicProcedure
+    .input(
+      z.object({
+        dayInPast: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rankedRates = ctx.db.$with("ranked_rates").as(
+        ctx.db
+          .select({
+            currency: exchangeRates.currency,
+            date: exchangeRates.date,
+            rate: exchangeRates.rate,
+            rn: sql`ROW_NUMBER() OVER (PARTITION BY ${exchangeRates.currency} ORDER BY ${exchangeRates.date} DESC)`.as(
+              "rn",
+            ),
+          })
+          .from(exchangeRates)
+          .where(
+            input.dayInPast
+              ? sql`${exchangeRates.date} <= TO_CHAR(TO_DATE(${input.dayInPast}, 'DD-MM-YYYY'), 'YYYY-MM-DD')`
+              : undefined,
           ),
+      );
+
+      const latestRates = await ctx.db
+        .with(rankedRates)
+        .select({
+          currency: rankedRates.currency,
+          date: rankedRates.date,
+          rate: rankedRates.rate,
         })
-        .from(exchangeRates),
-    );
+        .from(rankedRates)
+        .where(sql`${rankedRates.rn} = 1`);
 
-    const latestRates = await ctx.db
-      .with(rankedRates)
-      .select({
-        currency: rankedRates.currency,
-        date: rankedRates.date,
-        rate: rankedRates.rate,
-      })
-      .from(rankedRates)
-      .where(sql`${rankedRates.rn} = 1`);
-
-    return latestRates;
-  }),
+      return latestRates;
+    }),
   addExchangeRates: protectedLoggedProcedure
     .input(
       z

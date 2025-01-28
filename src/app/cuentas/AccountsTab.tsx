@@ -1,7 +1,7 @@
+import dynamic from "next/dynamic";
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterOutputs } from "~/trpc/shared";
-import dynamic from "next/dynamic";
 const MovementsTable = dynamic(() => import("./MovementsTable"), {
   ssr: false,
 });
@@ -54,7 +54,9 @@ const AccountsTable = async ({
   });
 
   const latestExchangeRates =
-    await api.exchangeRates.getLatestExchangeRates.query();
+    await api.exchangeRates.getLatestExchangeRates.query({
+      dayInPast: dayInPast ?? undefined,
+    });
 
   const main_name = await api.globalSettings.getMainName.query();
 
