@@ -55,6 +55,7 @@ export const getCurrentAccountsInput = z.object({
   dayInPast: z.string().optional(),
   groupInTag: z.boolean().default(true),
   dateOrdering: z.enum(["asc", "desc"]).default("desc"),
+  ignoreSameTag: z.boolean().default(false),
 });
 
 export const movementsRouter = createTRPCRouter({

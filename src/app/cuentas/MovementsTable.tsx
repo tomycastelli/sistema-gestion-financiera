@@ -3,14 +3,18 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
+import moment from "moment";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { isNumeric, numberFormatter, truncateString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currencies, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
+import CustomPagination from "../components/CustomPagination";
 import { DateRangePicker } from "../components/DateRangePicker";
 import LoadingAnimation from "../components/LoadingAnimation";
 import { Icons } from "../components/ui/Icons";
@@ -36,7 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/ui/popover";
-import dynamic from "next/dynamic";
+import { ScrollArea } from "../components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -45,13 +49,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { DataTable } from "./DataTable";
-import { toast } from "sonner";
-import CustomPagination from "../components/CustomPagination";
 import { Switch } from "../components/ui/switch";
+import { DataTable } from "./DataTable";
 const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
-import { ScrollArea } from "../components/ui/scroll-area";
-import moment from "moment";
 
 interface CuentasTableProps {
   initialMovements: RouterOutputs["movements"]["getCurrentAccounts"];
@@ -93,6 +93,7 @@ const MovementsTable = ({
     DESC = "desc",
   }
   const [dateOrdering, setDateOrdering] = useState<Ordering>(Ordering.DESC);
+  const [ignoreSameTag, setIgnoreSameTag] = useState(false);
 
   const {
     movementsTablePage,
@@ -162,6 +163,7 @@ const MovementsTable = ({
         dayInPast: timeMachineDate ?? undefined,
         groupInTag,
         dateOrdering,
+        ignoreSameTag,
       },
       {
         initialData: initialMovements,
@@ -206,6 +208,7 @@ const MovementsTable = ({
               dayInPast: timeMachineDate ?? undefined,
               toEntityId: destinationEntityId,
               dateOrdering,
+              ignoreSameTag,
             });
 
             toast.promise(promise, {
@@ -229,6 +232,7 @@ const MovementsTable = ({
         dayInPast: timeMachineDate ?? undefined,
         toEntityId: destinationEntityId,
         dateOrdering,
+        ignoreSameTag,
       });
 
       toast.promise(promise, {
@@ -319,7 +323,14 @@ const MovementsTable = ({
         const amount = parseFloat(row.getValue("ingress"));
         const formatted = numberFormatter(amount);
         return amount !== 0 ? (
-          <div className="text-right font-medium">
+          <div
+            className={cn(
+              "text-right font-medium",
+              data.movements[row.index]!.transactionStatus === "cancelled"
+                ? "line-through"
+                : "",
+            )}
+          >
             {" "}
             <span className="font-light text-muted-foreground">
               {data.movements[row.index]!.currency.toUpperCase()}
@@ -626,6 +637,19 @@ const MovementsTable = ({
                 onClick={() => setGroupInTag(!groupInTag)}
               >
                 <Switch checked={groupInTag} />
+              </Button>
+            </div>
+          )}
+          {entityTag && (
+            <div className="flex flex-col justify-start gap-y-1">
+              <Label className="mb-2">
+                Ignorar {entityTag}-{entityTag}
+              </Label>
+              <Button
+                variant="outline"
+                onClick={() => setIgnoreSameTag(!ignoreSameTag)}
+              >
+                <Switch checked={ignoreSameTag} />
               </Button>
             </div>
           )}

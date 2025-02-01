@@ -10,6 +10,7 @@ import {
   isNull,
   lt,
   lte,
+  not,
   or,
   sql,
   type ExtractTablesWithRelations,
@@ -22,12 +23,13 @@ import type {
 import type Redis from "ioredis";
 import type { User } from "lucia";
 import moment from "moment";
+import type Redlock from "redlock";
 import { ZodError, z } from "zod";
+import { env } from "~/env.mjs";
 import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
 import { type createTRPCContext } from "~/server/api/trpc";
 import { type dynamodb } from "~/server/dynamodb";
 import type * as schema from "../server/db/schema";
-import { env } from "~/env.mjs";
 import {
   balances,
   cashBalances,
@@ -45,7 +47,6 @@ import {
 import { getAllChildrenTags, movementBalanceDirection } from "./functions";
 import { PermissionSchema, mergePermissions } from "./permissionsTypes";
 import { dateFormat, dateFormatting } from "./variables";
-import type Redlock from "redlock";
 
 export const getAllPermissions = async (
   redis: Redis,
@@ -1095,6 +1096,12 @@ export const currentAccountsProcedure = async (
               )
             : undefined,
           isNull(movements.entitiesMovementId),
+          input.ignoreSameTag
+            ? or(
+                not(inArray(fromEntity.tagName, tagAndChildren)),
+                not(inArray(toEntity.tagName, tagAndChildren)),
+              )
+            : undefined,
         )
       : undefined,
     input.currency ? eq(transactions.currency, input.currency) : undefined,
@@ -1225,6 +1232,7 @@ export const currentAccountsProcedure = async (
       ingress: z.number(),
       egress: z.number(),
       balance: z.number(),
+      transactionStatus: z.enum(["pending", "confirmed", "cancelled"]),
     });
 
     if ((input.entityTag && input.groupInTag) || input.account) {
@@ -1341,6 +1349,7 @@ export const currentAccountsProcedure = async (
             ingress: direction === 1 ? mv.transaction.amount : 0,
             egress: direction === -1 ? mv.transaction.amount : 0,
             balance: mv.balance,
+            transactionStatus: mv.transaction.status,
           };
           return tableData;
         });
@@ -1418,6 +1427,7 @@ export const currentAccountsProcedure = async (
           egress: direction === -1 ? mv.transaction.amount : 0,
           balance:
             selectedEntity.id < otherEntity.id ? mv.balance : -mv.balance,
+          transactionStatus: mv.transaction.status,
         };
         return tableData;
       });

@@ -44,6 +44,7 @@ export const filesRouter = createTRPCRouter({
           toEntityId: input.toEntityId,
           groupInTag: input.groupInTag,
           dateOrdering: input.dateOrdering,
+          ignoreSameTag: input.ignoreSameTag,
         },
         ctx,
       );
