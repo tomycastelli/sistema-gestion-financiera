@@ -5,7 +5,7 @@ import moment from "moment";
 import { unparse } from "papaparse";
 import { z } from "zod";
 import { env } from "~/env.mjs";
-import { numberFormatter } from "~/lib/functions";
+import { isNumeric, numberFormatter } from "~/lib/functions";
 import {
   getOperationsInput,
   getOperationsProcedure,
@@ -69,17 +69,27 @@ export const filesRouter = createTRPCRouter({
 
       if (input.fileType === "csv") {
         const csvData = tableData.map((mv) => ({
+          operacionId: mv.operationId,
+          transaccionId: mv.transactionId,
           fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
-          detalle: `${
+          detalle: mv.observations ?? "",
+          tipo: `${
             mv.type === "upload"
               ? "Carga"
               : mv.type === "confirmation"
               ? "Confirmación"
               : "Cancelación"
-          } de ${mv.txType} - Nro ${mv.id}`,
-          observaciones: mv.observations ?? "",
+          } de ${mv.txType} - Nro ${mv.id}${
+            // @ts-ignore
+            mv.metadata && isNumeric(mv.metadata.exchange_rate)
+              ? // @ts-ignore
+                ` - $${mv.metadata.exchange_rate}`
+              : ""
+          }`,
+          // @ts-ignore
+          tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
           divisa: mv.currency,
           entrada: mv.ingress,
           salida: mv.egress,
@@ -96,17 +106,27 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const data = tableData.map((mv) => ({
+          operacionId: mv.operationId,
+          transaccionId: mv.id,
           fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
-          detalle: `${
-            mv.type === "upload"
-              ? "Carga"
-              : mv.type === "confirmation"
-              ? "Confirmación"
-              : "Cancelación"
-          } de ${mv.txType} - Nro ${mv.id}`,
-          observaciones: mv.observations ?? "",
+          detalle: {
+            observations: mv.observations ?? "",
+            type: `${
+              mv.type === "upload"
+                ? "Carga"
+                : mv.type === "confirmation"
+                ? "Confirmación"
+                : "Cancelación"
+            } de ${mv.txType} - Nro ${mv.id}${
+              // @ts-ignore
+              mv.metadata && isNumeric(mv.metadata.exchange_rate)
+                ? // @ts-ignore
+                  ` - $${mv.metadata.exchange_rate}`
+                : ""
+            }`,
+          },
           entrada:
             mv.ingress === 0
               ? ""
@@ -136,6 +156,8 @@ export const filesRouter = createTRPCRouter({
           <table class="table">
           <thead class="table-header">
             <tr>
+            <th>Op ID</th>
+            <th>Tx ID</th>
             <th>Fecha</th>
             <th>Detalle</th>
             <th>Origen</th>
@@ -150,10 +172,12 @@ export const filesRouter = createTRPCRouter({
               .map(
                 (mv, index) =>
                   `<tr key="${index}">
+                  <td>${mv.operacionId}</td>
+                  <td>${mv.transaccionId}</td>
                   <td>${mv.fecha}</td>
                   <td>
-                    <p class="observations-text">${mv.observaciones}</p>
-                    <p class="details-text">${mv.detalle}</p>
+                    <p class="observations-text">${mv.detalle.observations}</p>
+                    <p class="details-text">${mv.detalle.type}</p>
                   </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
@@ -361,7 +385,7 @@ export const filesRouter = createTRPCRouter({
             }
           .table-row{
           display: grid;
-          grid-template-columns: repeat(${currenciesOrder.length + 1}, 1fr);
+          grid-template-columns: repeat(${currenciesOrder.length + 2}, 1fr);
           gap: 0.1rem;
           border-bottom: 1px solid black;
           padding-bottom: 0.10rem;
@@ -371,7 +395,7 @@ export const filesRouter = createTRPCRouter({
           }
           .table-header{
           display: grid;
-          grid-template-columns: repeat(${currenciesOrder.length + 1}, 1fr);
+          grid-template-columns: repeat(${currenciesOrder.length + 2}, 1fr);
           gap: 0.25rem;
           border-bottom: 2px solid black;
           padding-bottom: 0.25rem;
