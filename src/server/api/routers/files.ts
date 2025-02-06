@@ -71,6 +71,7 @@ export const filesRouter = createTRPCRouter({
         const csvData = tableData.map((mv) => ({
           operacionId: mv.operationId,
           transaccionId: mv.transactionId,
+          movementId: mv.id,
           fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
@@ -106,8 +107,8 @@ export const filesRouter = createTRPCRouter({
         await ctx.s3.client.send(putCommand);
       } else if (input.fileType === "pdf") {
         const data = tableData.map((mv) => ({
-          operacionId: mv.operationId,
-          transaccionId: mv.id,
+          transaccionId: mv.transactionId,
+          id: mv.id,
           fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
@@ -156,8 +157,8 @@ export const filesRouter = createTRPCRouter({
           <table class="table">
           <thead class="table-header">
             <tr>
-            <th>Op ID</th>
             <th>Tx ID</th>
+            <th>ID</th>
             <th>Fecha</th>
             <th>Detalle</th>
             <th>Origen</th>
@@ -172,8 +173,8 @@ export const filesRouter = createTRPCRouter({
               .map(
                 (mv, index) =>
                   `<tr key="${index}">
-                  <td>${mv.operacionId}</td>
                   <td>${mv.transaccionId}</td>
+                  <td>${mv.id}</td>
                   <td>${mv.fecha}</td>
                   <td>
                     <p class="observations-text">${mv.detalle.observations}</p>

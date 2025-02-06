@@ -1,23 +1,23 @@
 import Link from "next/link";
-import { getUser } from "~/server/auth";
-import { ThemeToggler } from "./ThemeToggler";
-import UserInfo from "./UserInfo";
-import CommandMenu from "./ui/CommandMenu";
 import { Suspense } from "react";
-import LoadingAnimation from "./LoadingAnimation";
-import ChatsNav from "./ChatsNav";
-import NavMenu from "./NavMenu";
-import { api } from "~/trpc/server";
 import { getAllChildrenTags } from "~/lib/functions";
-import { Button } from "./ui/button";
-import { Icons } from "./ui/Icons";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { getUser } from "~/server/auth";
+import { api } from "~/trpc/server";
+import ChatsNav from "./ChatsNav";
+import LoadingAnimation from "./LoadingAnimation";
+import NavMenu from "./NavMenu";
+import { ThemeToggler } from "./ThemeToggler";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "./ui/accordion";
+import { Button } from "./ui/button";
+import CommandMenu from "./ui/CommandMenu";
+import { Icons } from "./ui/Icons";
+import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import UserInfo from "./UserInfo";
 
 const Navbar = async () => {
   const user = await getUser();
@@ -125,7 +125,7 @@ const Navbar = async () => {
             {main_name}.
           </Link>
           <p className="text-sm text-muted-foreground dark:text-white">
-            v0.5.0
+            v0.6.0
           </p>
         </div>
         <div className="hidden lg:block">
