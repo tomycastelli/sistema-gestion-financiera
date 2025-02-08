@@ -347,7 +347,14 @@ const MovementsTable = ({
         const amount = parseFloat(row.getValue("egress"));
         const formatted = numberFormatter(amount);
         return amount !== 0 ? (
-          <div className="text-right font-medium">
+          <div
+            className={cn(
+              "text-right font-medium",
+              data.movements[row.index]!.transactionStatus === "cancelled"
+                ? "line-through"
+                : "",
+            )}
+          >
             {" "}
             <span className="font-light text-muted-foreground">
               {data.movements[row.index]!.currency.toUpperCase()}
