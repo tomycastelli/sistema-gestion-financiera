@@ -13,7 +13,7 @@ import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 
 const TimeMachine = () => {
-  const { timeMachineDate, setTimeMachineDate } = useCuentasStore();
+  const { dayInPast, setDayInPast } = useCuentasStore();
 
   return (
     <Popover>
@@ -22,19 +22,39 @@ const TimeMachine = () => {
           variant={"outline"}
           className={cn(
             "w-[240px] justify-start text-left font-normal",
-            !timeMachineDate && "text-muted-foreground",
+            !dayInPast && "text-muted-foreground",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {moment(timeMachineDate).format("DD-MM-YY") ?? "Viajar al pasado"}
+          {dayInPast || "Viajar en el tiempo"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={timeMachineDate}
-          onSelect={setTimeMachineDate}
-          disabled={(date) => date > moment().toDate()}
+          selected={
+            dayInPast
+              ? moment(dayInPast, "DD-MM-YYYY").startOf("day").toDate()
+              : undefined
+          }
+          onSelect={(date) => {
+            if (!date) {
+              setDayInPast(undefined);
+              return;
+            }
+
+            const currentFormatted = dayInPast;
+            const newFormatted = moment(date)
+              .startOf("day")
+              .format("DD-MM-YYYY");
+
+            if (currentFormatted === newFormatted) {
+              setDayInPast(undefined);
+            } else {
+              setDayInPast(newFormatted);
+            }
+          }}
+          disabled={(date) => date > moment().startOf("day").toDate()}
           initialFocus
         />
       </PopoverContent>

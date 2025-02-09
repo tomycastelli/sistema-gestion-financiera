@@ -1,14 +1,14 @@
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
+import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
 import { type RouterInputs } from "~/trpc/shared";
+import AccountsTab from "./AccountsTab";
+import CurrentAccountsTotalsSwitch from "./CurrentAccountsTotalsSwitch";
 import EntitySwitcher from "./EntitySwitcher";
 import TabSwitcher from "./TabSwitcher";
-import AccountsTab from "./AccountsTab";
 import TimeMachine from "./TimeMachine";
-import { getAccountingPeriodDate, getAllChildrenTags } from "~/lib/functions";
-import CurrentAccountsTotalsSwitch from "./CurrentAccountsTotalsSwitch";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -32,7 +32,6 @@ const Page = async ({
 
   const linkIdString = searchParams.id as string | null;
   const linkId = linkIdString ? parseInt(linkIdString) : null;
-  const dayInPast = searchParams.dia as string | null;
 
   const initialEntities = await api.entities.getFiltered.query({
     permissionName: "ACCOUNTS_VISUALIZE",
@@ -69,7 +68,7 @@ const Page = async ({
           : undefined,
       linkToken: linkToken,
       linkId: linkId,
-      dayInPast: dayInPast ?? undefined,
+      dayInPast: undefined,
     };
   const initialBalances = await api.movements.getBalancesByEntities.query(
     initialBalancesInput,
@@ -81,7 +80,7 @@ const Page = async ({
       entityTag: initialBalancesInput.entityTag,
       linkId: initialBalancesInput.linkId,
       linkToken: initialBalancesInput.linkToken,
-      dayInPast: dayInPast ?? undefined,
+      dayInPast: undefined,
     });
 
   const movementsAmount = 5;
@@ -92,7 +91,7 @@ const Page = async ({
     pageNumber: 1,
     entityTag: selectedTag,
     entityId: selectedEntityObj?.id,
-    dayInPast: dayInPast ?? undefined,
+    dayInPast: undefined,
   };
 
   const initialMovements = await api.movements.getCurrentAccounts.query(
@@ -179,7 +178,6 @@ const Page = async ({
                   initialTags={filteredTags}
                   linkId={linkId}
                   linkToken={linkToken}
-                  dayInPast={dayInPast}
                 />
               )}
               {selectedTab === "resumen" && (
@@ -196,7 +194,7 @@ const Page = async ({
                         linkId: linkId,
                         entityId: selectedEntityObj?.id,
                         entityTag: selectedTagObj?.name,
-                        dayInPast: dayInPast ?? undefined,
+                        dayInPast: undefined,
                       }}
                       uiColor={uiColor}
                       tags={filteredTags}
@@ -204,7 +202,6 @@ const Page = async ({
                       selectedTag={selectedTagObj?.name}
                       selectedEntity={selectedEntityObj}
                       initialBalancesForCard={initialBalancesForCard}
-                      dayInPast={dayInPast ?? undefined}
                       initialBalanceCharts={initialBalanceCharts}
                     />
                   )}

@@ -15,7 +15,6 @@ const AccountsTable = async ({
   linkToken,
   selectedEntity,
   entityTag,
-  dayInPast,
   uiColor,
   mainTags,
   users,
@@ -29,7 +28,6 @@ const AccountsTable = async ({
   selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined;
   linkToken: string | null;
   entityTag: string | undefined;
-  dayInPast: string | null;
   uiColor: string | undefined;
   mainTags: string[];
   users: RouterOutputs["users"]["getAll"];
@@ -50,12 +48,12 @@ const AccountsTable = async ({
     entityId: selectedEntity?.id,
     entityTag: entityTag,
     account: accountType,
-    dayInPast: dayInPast ?? undefined,
+    dayInPast: undefined,
   });
 
   const latestExchangeRates =
     await api.exchangeRates.getLatestExchangeRates.query({
-      dayInPast: dayInPast ?? undefined,
+      dayInPast: undefined,
     });
 
   const main_name = await api.globalSettings.getMainName.query();
@@ -67,7 +65,6 @@ const AccountsTable = async ({
           <Balances
             main_name={main_name}
             mainTags={mainTags}
-            dayInPast={dayInPast ?? undefined}
             tags={initialTags}
             accountType={accountType}
             initialBalances={initialBalances}

@@ -1,6 +1,7 @@
 "use client";
 
 import { type User } from "lucia";
+import moment from "moment";
 import { useTheme } from "next-themes";
 import { useState, type FC } from "react";
 import { toast } from "sonner";
@@ -35,7 +36,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/ui/tooltip";
-import moment from "moment";
 
 interface DetailedBalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
@@ -360,6 +360,13 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     : currenciesOrder;
 
   const columnAmount = (tableCurrencies.length + 1) * 2 + 1;
+
+  const formatBalance = (balance: number) => {
+    if (Math.abs(balance) < 0.000001) {
+      return 0;
+    }
+    return balance;
+  };
 
   return (
     <div className="flex flex-col space-y-4">
@@ -805,12 +812,13 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                           {!isFetching ? (
                             <p
                               className={cn(
-                                matchingBalance.balance !== 0
+                                formatBalance(matchingBalance.balance) !== 0
                                   ? !isInverted
-                                    ? matchingBalance.balance > 0
+                                    ? formatBalance(matchingBalance.balance) > 0
                                       ? "text-green"
                                       : "text-red"
-                                    : -matchingBalance.balance > 0
+                                    : formatBalance(-matchingBalance.balance) >
+                                      0
                                     ? "text-green"
                                     : "text-red"
                                   : undefined,
@@ -818,8 +826,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                             >
                               {numberFormatter(
                                 !isInverted
-                                  ? matchingBalance.balance
-                                  : -matchingBalance.balance,
+                                  ? formatBalance(matchingBalance.balance)
+                                  : formatBalance(-matchingBalance.balance),
                               )}
                             </p>
                           ) : (
@@ -861,12 +869,12 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                       {!isFetching ? (
                         <p
                           className={cn(
-                            matchingBalance.balance !== 0
+                            formatBalance(matchingBalance.balance) !== 0
                               ? !isInverted
-                                ? matchingBalance.balance > 0
+                                ? formatBalance(matchingBalance.balance) > 0
                                   ? "text-green"
                                   : "text-red"
-                                : -matchingBalance.balance > 0
+                                : formatBalance(-matchingBalance.balance) > 0
                                 ? "text-green"
                                 : "text-red"
                               : undefined,
@@ -874,8 +882,8 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                         >
                           {numberFormatter(
                             !isInverted
-                              ? matchingBalance.balance
-                              : -matchingBalance.balance,
+                              ? formatBalance(matchingBalance.balance)
+                              : formatBalance(-matchingBalance.balance),
                           )}
                         </p>
                       ) : (

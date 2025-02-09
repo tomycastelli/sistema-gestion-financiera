@@ -1,16 +1,28 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
+import { type User } from "lucia";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, type FC, useState } from "react";
+import moment from "moment";
+import dynamic from "next/dynamic";
+import { useEffect, useState, type FC } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { formatNumberLabel, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currencies, currenciesOrder, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import LoadingAnimation from "../components/LoadingAnimation";
 import { Button } from "../components/ui/button";
-import dynamic from "next/dynamic";
 import {
   Card,
   CardContent,
@@ -24,21 +36,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { DataTable } from "./DataTable";
-import LoadingAnimation from "../components/LoadingAnimation";
-const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
-import { type User } from "lucia";
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
-import {
-  BarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Bar,
-} from "recharts";
-import moment from "moment";
+import { DataTable } from "./DataTable";
+const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
 
 interface SummarizedBalancesProps {
   initialBalancesForCard: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
@@ -48,7 +48,6 @@ interface SummarizedBalancesProps {
   selectedEntity: RouterOutputs["entities"]["getAll"][number] | undefined;
   tags: RouterOutputs["tags"]["getAll"];
   uiColor: string | undefined;
-  dayInPast: string | undefined;
   mainTags: string[];
   entities: RouterOutputs["entities"]["getAll"];
   user: User | null;
@@ -64,7 +63,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   selectedTag,
   selectedEntity,
   uiColor,
-  dayInPast,
   mainTags,
   entities,
   user,
@@ -73,6 +71,14 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
   initialBalanceCharts,
 }) => {
   const [balanceChartDays, setBalanceChartDays] = useState("30");
+
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    isInverted,
+    setIsInverted,
+    dayInPast,
+  } = useCuentasStore();
 
   const { data: balanceChart } = api.movements.balanceChart.useQuery(
     {
@@ -86,9 +92,6 @@ const SummarizedBalances: FC<SummarizedBalancesProps> = ({
       refetchOnWindowFocus: false,
     },
   );
-
-  const { selectedCurrency, setSelectedCurrency, isInverted, setIsInverted } =
-    useCuentasStore();
 
   useEffect(() => {
     if (selectedTag) {

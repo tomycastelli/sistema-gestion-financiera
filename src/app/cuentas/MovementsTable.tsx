@@ -110,7 +110,7 @@ const MovementsTable = ({
     isInverted,
     groupInTag,
     setGroupInTag,
-    timeMachineDate,
+    dayInPast,
   } = useCuentasStore();
 
   useEffect(() => {
@@ -160,8 +160,8 @@ const MovementsTable = ({
         toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
-        dayInPast: timeMachineDate
-          ? moment(timeMachineDate).format("DD-MM-YYYY")
+        dayInPast: dayInPast
+          ? moment(dayInPast).format("DD-MM-YYYY")
           : undefined,
         groupInTag,
         dateOrdering,
@@ -207,9 +207,7 @@ const MovementsTable = ({
               fromDate: fromDate,
               toDate: toDate,
               fileType,
-              dayInPast: timeMachineDate
-                ? moment(timeMachineDate).format("DD-MM-YYYY")
-                : undefined,
+              dayInPast,
               toEntityId: destinationEntityId,
               dateOrdering,
               ignoreSameTag,
@@ -233,9 +231,7 @@ const MovementsTable = ({
         fromDate: fromDate,
         toDate: toDate,
         fileType,
-        dayInPast: timeMachineDate
-          ? moment(timeMachineDate).format("DD-MM-YYYY")
-          : undefined,
+        dayInPast,
         toEntityId: destinationEntityId,
         dateOrdering,
         ignoreSameTag,

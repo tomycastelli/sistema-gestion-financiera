@@ -21,8 +21,8 @@ interface TimeframeStore {
   setToDate: (date: Date | undefined) => void;
   isInverted: boolean;
   setIsInverted: (isInverted: boolean) => void;
-  timeMachineDate: Date | undefined;
-  setTimeMachineDate: (date: Date | undefined) => void;
+  dayInPast: string | undefined;
+  setDayInPast: (date: string | undefined) => void;
   groupInTag: boolean;
   setGroupInTag: (groupInTag: boolean) => void;
 }
@@ -60,9 +60,9 @@ export const useCuentasStore = create<TimeframeStore>((set) => ({
   setIsInverted(isInverted) {
     set({ isInverted });
   },
-  timeMachineDate: undefined,
-  setTimeMachineDate(date) {
-    set({ timeMachineDate: date });
+  dayInPast: undefined,
+  setDayInPast(date) {
+    set({ dayInPast: date });
   },
   groupInTag: false,
   setGroupInTag(groupInTag) {

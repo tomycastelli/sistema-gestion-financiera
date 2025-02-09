@@ -19,7 +19,6 @@ interface BalancesProps {
   user: User | null;
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined;
-  dayInPast: string | undefined;
   mainTags: string[];
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
   main_name: string;
@@ -35,12 +34,11 @@ const Balances: FC<BalancesProps> = ({
   linkId,
   linkToken,
   accountType,
-  dayInPast,
   mainTags,
   latestExchangeRates,
   main_name,
 }) => {
-  const { isInverted, setIsInverted } = useCuentasStore();
+  const { isInverted, setIsInverted, dayInPast } = useCuentasStore();
 
   useEffect(() => {
     if (selectedTag) {
