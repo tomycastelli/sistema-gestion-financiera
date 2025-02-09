@@ -75,7 +75,7 @@ const AccountsTable = async ({
             user={user}
             entities={entities}
             uiColor={uiColor}
-            latestExchangeRates={latestExchangeRates}
+            initialLatestExchangeRates={latestExchangeRates}
           />
         )}
       </div>
