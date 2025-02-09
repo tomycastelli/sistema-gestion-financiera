@@ -86,7 +86,6 @@ const MovementsTable = ({
   const utils = api.useContext();
 
   const searchParams = useSearchParams();
-  const timeMachineDate = searchParams.get("dia");
 
   enum Ordering {
     ASC = "asc",
@@ -111,6 +110,7 @@ const MovementsTable = ({
     isInverted,
     groupInTag,
     setGroupInTag,
+    timeMachineDate,
   } = useCuentasStore();
 
   useEffect(() => {
@@ -160,7 +160,9 @@ const MovementsTable = ({
         toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
-        dayInPast: timeMachineDate ?? undefined,
+        dayInPast: timeMachineDate
+          ? moment(timeMachineDate).format("DD-MM-YYYY")
+          : undefined,
         groupInTag,
         dateOrdering,
         ignoreSameTag,
@@ -205,7 +207,9 @@ const MovementsTable = ({
               fromDate: fromDate,
               toDate: toDate,
               fileType,
-              dayInPast: timeMachineDate ?? undefined,
+              dayInPast: timeMachineDate
+                ? moment(timeMachineDate).format("DD-MM-YYYY")
+                : undefined,
               toEntityId: destinationEntityId,
               dateOrdering,
               ignoreSameTag,
@@ -229,7 +233,9 @@ const MovementsTable = ({
         fromDate: fromDate,
         toDate: toDate,
         fileType,
-        dayInPast: timeMachineDate ?? undefined,
+        dayInPast: timeMachineDate
+          ? moment(timeMachineDate).format("DD-MM-YYYY")
+          : undefined,
         toEntityId: destinationEntityId,
         dateOrdering,
         ignoreSameTag,

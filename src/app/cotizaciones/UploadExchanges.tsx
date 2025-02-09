@@ -8,7 +8,6 @@ import { z } from "zod";
 import { Button } from "~/app/components/ui/button";
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
   FormLabel,
@@ -32,7 +31,7 @@ const FormSchema = z.object({
 });
 
 interface UploadExchangesProps {
-  initialCurrentDateRates: RouterOutputs["exchangeRates"]["getAllExchangeRates"];
+  initialCurrentDateRates: RouterOutputs["exchangeRates"]["getDateExchangeRates"];
 }
 
 const UploadExchanges: FC<UploadExchangesProps> = ({
@@ -148,7 +147,7 @@ const UploadExchanges: FC<UploadExchangesProps> = ({
     <Form {...form}>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col items-center justify-center gap-y-4"
+        className="my-4 flex flex-col items-center justify-center gap-y-4"
       >
         <FormField
           control={control}

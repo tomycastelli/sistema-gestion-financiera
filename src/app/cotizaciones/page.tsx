@@ -4,14 +4,8 @@ import { api } from "~/trpc/server";
 import ExchangesList from "./ExchangesList";
 import UploadExchanges from "./UploadExchanges";
 
-const Page = async ({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) => {
+const Page = async () => {
   const user = await getUser();
-
-  const currency = searchParams.divisa as string | null;
 
   const canEditExchangeRates =
     user?.permissions?.some(
@@ -21,7 +15,6 @@ const Page = async ({
   const initialExchangeRates =
     await api.exchangeRates.getAllExchangeRates.query({
       page: 1,
-      currency,
     });
 
   const currentDateExchangeRates =
@@ -30,14 +23,11 @@ const Page = async ({
     });
 
   return (
-    <div className="grid w-full grid-rows-2 gap-y-8">
+    <div className="flex w-full flex-col gap-y-8">
       {canEditExchangeRates && (
         <UploadExchanges initialCurrentDateRates={currentDateExchangeRates} />
       )}
-      <ExchangesList
-        initialExchangeRates={initialExchangeRates}
-        filterCurrency={currency ?? undefined}
-      />
+      <ExchangesList initialExchangeRates={initialExchangeRates} />
     </div>
   );
 };

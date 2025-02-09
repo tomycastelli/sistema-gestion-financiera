@@ -7,3 +7,8 @@ export type OperationsByUserResponse = {
     transactions: number;
   };
 };
+
+export type GroupedExchangeRate = {
+  date: string;
+  [key: string]: string | number | null;
+};

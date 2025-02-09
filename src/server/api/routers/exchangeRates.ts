@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { exchangeRates } from "~/server/db/schema";
 import {
@@ -7,6 +7,7 @@ import {
   protectedLoggedProcedure,
   publicProcedure,
 } from "../trpc";
+import type { GroupedExchangeRate } from "./types";
 
 export const exchangeRatesRouter = createTRPCRouter({
   getDateExchangeRates: publicProcedure
@@ -31,7 +32,6 @@ export const exchangeRatesRouter = createTRPCRouter({
     .input(
       z.object({
         page: z.number().int(),
-        currency: z.string().nullish(),
         fromDate: z.string().nullish(),
         toDate: z.string().nullish(),
       }),
@@ -43,27 +43,71 @@ export const exchangeRatesRouter = createTRPCRouter({
           message: `Page must be greater than 1 (was ${input.page})`,
         });
       }
-      const pageSize = 30;
+      const pageSize = 12;
 
-      const exchangeRatesData = await ctx.db
-        .select()
+      // Get total count of distinct dates
+      const [countObj] = await ctx.db
+        .select({
+          count: sql<number>`COUNT(DISTINCT ${exchangeRates.date})`,
+        })
         .from(exchangeRates)
         .where(
           and(
-            input.currency
-              ? eq(exchangeRates.currency, input.currency)
+            input.fromDate
+              ? gte(exchangeRates.date, input.fromDate)
               : undefined,
+            input.toDate ? lte(exchangeRates.date, input.toDate) : undefined,
+          ),
+        );
+
+      // Get distinct dates for current page
+      const distinctDates = await ctx.db
+        .select({ date: exchangeRates.date })
+        .from(exchangeRates)
+        .where(
+          and(
             input.fromDate
               ? gte(exchangeRates.date, input.fromDate)
               : undefined,
             input.toDate ? lte(exchangeRates.date, input.toDate) : undefined,
           ),
         )
+        .orderBy(desc(exchangeRates.date))
+        .groupBy(exchangeRates.date)
         .limit(pageSize)
-        .offset((input.page - 1) * pageSize)
+        .offset((input.page - 1) * pageSize);
+
+      const mappedDates = distinctDates.map((d) => d.date);
+
+      // Get exchange rates for these dates
+      const exchangeRatesData = await ctx.db
+        .select()
+        .from(exchangeRates)
+        .where(inArray(exchangeRates.date, mappedDates))
         .orderBy(desc(exchangeRates.date));
 
-      return exchangeRatesData;
+      // Transform data into final format directly
+      const groupedData = distinctDates.map((dateObj) => {
+        const ratesForDate = exchangeRatesData.filter(
+          (rate) => rate.date === dateObj.date,
+        );
+
+        return {
+          date: dateObj.date,
+          ...ratesForDate.reduce(
+            (acc, rate) => ({
+              ...acc,
+              [rate.currency]: rate.rate,
+            }),
+            {},
+          ),
+        } as GroupedExchangeRate;
+      });
+
+      return {
+        data: groupedData,
+        totalDates: countObj!.count,
+      };
     }),
 
   getLatestExchangeRates: publicProcedure

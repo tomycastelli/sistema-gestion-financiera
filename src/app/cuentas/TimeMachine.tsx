@@ -10,46 +10,10 @@ import {
   PopoverTrigger,
 } from "~/app/components/ui/popover";
 import { cn } from "~/lib/utils";
-import { dateFormatting } from "~/lib/variables";
-import { useEffect, useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCuentasStore } from "~/stores/cuentasStore";
 
 const TimeMachine = () => {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  const timeMachineDate = searchParams.get("dia") ?? undefined;
-
-  const parsedDate = timeMachineDate
-    ? moment(timeMachineDate, dateFormatting.day).toDate()
-    : undefined;
-
-  const router = useRouter();
-
-  const setTimeMachineDate = useCallback(
-    (dateInput: Date | undefined) => {
-      const updatedSearchParams = new URLSearchParams(searchParams);
-
-      const dateString = dateInput
-        ? moment(dateInput).format(dateFormatting.day)
-        : undefined;
-
-      if (dateString) {
-        updatedSearchParams.set("dia", dateString);
-      } else {
-        updatedSearchParams.delete("dia");
-      }
-
-      router.push(pathname + "?" + updatedSearchParams.toString());
-    },
-    [router, pathname, searchParams],
-  );
-
-  useEffect(() => {
-    if (timeMachineDate) {
-      setTimeMachineDate(moment(timeMachineDate, dateFormatting.day).toDate());
-    }
-  }, [router, timeMachineDate, setTimeMachineDate]);
+  const { timeMachineDate, setTimeMachineDate } = useCuentasStore();
 
   return (
     <Popover>
@@ -62,13 +26,13 @@ const TimeMachine = () => {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {timeMachineDate ?? "Viajar al pasado"}
+          {moment(timeMachineDate).format("DD-MM-YY") ?? "Viajar al pasado"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={parsedDate}
+          selected={timeMachineDate}
           onSelect={setTimeMachineDate}
           disabled={(date) => date > moment().toDate()}
           initialFocus

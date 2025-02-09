@@ -8,7 +8,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import moment from "moment";
-import { useMemo, useState, type FC } from "react";
+import { useState, type FC } from "react";
 import { toast } from "sonner";
 import LoadingAnimation from "~/app/components/LoadingAnimation";
 import {
@@ -21,6 +21,7 @@ import {
 } from "~/app/components/ui/table";
 import { numberFormatter } from "~/lib/functions";
 import { currenciesOrder } from "~/lib/variables";
+import type { GroupedExchangeRate } from "~/server/api/routers/types";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import CustomPagination from "../components/CustomPagination";
@@ -38,35 +39,26 @@ import { Icons } from "../components/ui/Icons";
 import { Label } from "../components/ui/label";
 
 interface ExchangesListProps {
-  filterCurrency: string | undefined;
   initialExchangeRates: RouterOutputs["exchangeRates"]["getAllExchangeRates"];
 }
 
-type GroupedExchangeRate = {
-  date: string;
-  [key: string]: string | number | null;
-};
-
-const ExchangesList: FC<ExchangesListProps> = ({
-  filterCurrency,
-  initialExchangeRates,
-}) => {
+const ExchangesList: FC<ExchangesListProps> = ({ initialExchangeRates }) => {
   const [page, setPage] = useState<number>(1);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
-  const { data, isLoading } = api.exchangeRates.getAllExchangeRates.useQuery(
-    {
-      page,
-      currency: filterCurrency,
-      fromDate: fromDate ? moment(fromDate).format("YYYY-MM-DD") : undefined,
-      toDate: toDate ? moment(toDate).format("YYYY-MM-DD") : undefined,
-    },
-    {
-      initialData: initialExchangeRates,
-      refetchOnWindowFocus: false,
-    },
-  );
+  const { data: response, isLoading } =
+    api.exchangeRates.getAllExchangeRates.useQuery(
+      {
+        page,
+        fromDate: fromDate ? moment(fromDate).format("YYYY-MM-DD") : undefined,
+        toDate: toDate ? moment(toDate).format("YYYY-MM-DD") : undefined,
+      },
+      {
+        initialData: initialExchangeRates,
+        refetchOnWindowFocus: false,
+      },
+    );
 
   const { mutateAsync: getUrlAsync, isLoading: isDownloading } =
     api.files.getExchangeRates.useMutation({
@@ -99,30 +91,15 @@ const ExchangesList: FC<ExchangesListProps> = ({
       .map(
         (currency): ColumnDef<GroupedExchangeRate> => ({
           accessorFn: (row) =>
-            row[currency] ? numberFormatter(row[currency] as number, 4) : "-",
+            row[currency.toLowerCase()]
+              ? numberFormatter(row[currency.toLowerCase()] as number, 4)
+              : "-",
           header: currency.toUpperCase(),
         }),
       ),
   ];
 
-  const groupedData: GroupedExchangeRate[] = useMemo(() => {
-    const grouped = data.reduce(
-      (acc: Record<string, GroupedExchangeRate>, curr) => {
-        const dateKey = curr.date;
-        if (!acc[dateKey]) {
-          acc[dateKey] = {
-            date: curr.date,
-            ...Object.fromEntries(currenciesOrder.map((c) => [c, null])),
-          };
-        }
-        acc[dateKey]![curr.currency.toLowerCase()] = curr.rate;
-        return acc;
-      },
-      {},
-    );
-
-    return Object.values(grouped);
-  }, [data]);
+  const groupedData = response.data;
 
   const table = useReactTable({
     data: groupedData,
@@ -144,6 +121,8 @@ const ExchangesList: FC<ExchangesListProps> = ({
       },
     });
   };
+
+  console.log({ groupedData });
 
   return (
     <div className="flex flex-col gap-y-4">
@@ -239,12 +218,12 @@ const ExchangesList: FC<ExchangesListProps> = ({
             </TableBody>
           </Table>
         )}
-        {data.length > 30 && (
+        {response.totalDates > 12 && (
           <CustomPagination
             page={page}
-            pageSize={30}
+            pageSize={12}
             itemName="cotizaciones"
-            totalCount={data.length}
+            totalCount={response.totalDates}
             changePageState={setPage}
           />
         )}
