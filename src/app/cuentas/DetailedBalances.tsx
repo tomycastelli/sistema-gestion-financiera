@@ -45,7 +45,7 @@ interface DetailedBalancesProps {
   user: User | null;
   balances: RouterOutputs["movements"]["getBalancesByEntities"];
   selectedTag: string | undefined;
-  latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
+  initialLatestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
 }
 
 const DetailedBalances: FC<DetailedBalancesProps> = ({
@@ -56,10 +56,20 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
   selectedEntity,
   balances,
   selectedTag,
-  latestExchangeRates,
+  initialLatestExchangeRates,
 }) => {
   const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
   const [isListSelection, setIsListSelection] = useState<boolean>(false);
+
+  const {
+    selectedCurrency,
+    setSelectedCurrency,
+    setDestinationEntityId,
+    destinationEntityId,
+    isInverted,
+    setMovementsTablePage,
+    dayInPast,
+  } = useCuentasStore();
 
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
   const pageSize = 8;
@@ -82,6 +92,12 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     }),
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
+
+  const { data: latestExchangeRates } =
+    api.exchangeRates.getLatestExchangeRates.useQuery(
+      { dayInPast },
+      { initialData: initialLatestExchangeRates },
+    );
 
   const unifyAmount = (currency: string, amount: number) => {
     if (latestExchangeRates.length === 0) return 0;
@@ -340,15 +356,6 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
         return true;
       }
     });
-
-  const {
-    selectedCurrency,
-    setSelectedCurrency,
-    setDestinationEntityId,
-    destinationEntityId,
-    isInverted,
-    setMovementsTablePage,
-  } = useCuentasStore();
 
   const userCanUnify =
     user?.permissions?.some(

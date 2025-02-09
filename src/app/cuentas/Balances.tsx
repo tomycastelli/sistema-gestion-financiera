@@ -20,7 +20,7 @@ interface BalancesProps {
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined;
   mainTags: string[];
-  latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
+  initialLatestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
   main_name: string;
 }
 
@@ -35,7 +35,7 @@ const Balances: FC<BalancesProps> = ({
   linkToken,
   accountType,
   mainTags,
-  latestExchangeRates,
+  initialLatestExchangeRates,
   main_name,
 }) => {
   const { isInverted, setIsInverted, dayInPast } = useCuentasStore();
@@ -71,6 +71,12 @@ const Balances: FC<BalancesProps> = ({
 
   const { showCurrentAccountTotals } = useCuentasStore();
 
+  const { data: latestExchangeRates } =
+    api.exchangeRates.getLatestExchangeRates.useQuery(
+      { dayInPast },
+      { initialData: initialLatestExchangeRates },
+    );
+
   return (
     <div className="flex flex-col space-y-4">
       {accountType || showCurrentAccountTotals ? (
@@ -95,7 +101,7 @@ const Balances: FC<BalancesProps> = ({
           balances={balances}
           selectedEntity={selectedEntity}
           selectedTag={selectedTag}
-          latestExchangeRates={latestExchangeRates}
+          initialLatestExchangeRates={initialLatestExchangeRates}
         />
       )}
     </div>
