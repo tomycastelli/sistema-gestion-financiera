@@ -398,7 +398,7 @@ const BalancesTable: FC<BalancesTableProps> = ({
                         })),
                       },
                     ],
-                    fileType: "csv",
+                    fileType: "xlsx",
                   });
 
                   toast.promise(promise, {

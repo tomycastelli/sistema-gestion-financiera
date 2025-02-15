@@ -108,7 +108,7 @@ const ExchangesList: FC<ExchangesListProps> = ({ initialExchangeRates }) => {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const onDownloadClick = (fileType: "pdf" | "csv") => {
+  const onDownloadClick = (fileType: "pdf" | "xlsx") => {
     const promise = getUrlAsync({
       fileType,
       fromDate: fromDate ? moment(fromDate).format("YYYY-MM-DD") : undefined,
@@ -155,7 +155,7 @@ const ExchangesList: FC<ExchangesListProps> = ({ initialExchangeRates }) => {
                 <Icons.pdf className="h-4" />
                 <span>PDF</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
+              <DropdownMenuItem onClick={() => onDownloadClick("xlsx")}>
                 <Icons.excel className="h-4" />
                 <span>Excel</span>
               </DropdownMenuItem>

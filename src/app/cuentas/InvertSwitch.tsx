@@ -43,7 +43,7 @@ const InvertSwitch: FC<InvertSwitchProps> = ({
       setIsInverted(true);
       setIsSwitchDisabled(true);
     }
-  }, [setIsInverted, selectedEntityId, selectedTag, entities]);
+  }, [setIsInverted, selectedEntityId, selectedTag, entities, main_name]);
 
   return (
     <HoverCard>

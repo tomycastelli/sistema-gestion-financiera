@@ -2,7 +2,7 @@ import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { TRPCError } from "@trpc/server";
 import { and, gte, lte } from "drizzle-orm";
 import moment from "moment";
-import { unparse } from "papaparse";
+import XLSX from "xlsx";
 import { z } from "zod";
 import { env } from "~/env.mjs";
 import { isNumeric, numberFormatter } from "~/lib/functions";
@@ -25,7 +25,7 @@ export const filesRouter = createTRPCRouter({
     .input(
       getCurrentAccountsInput
         .extend({
-          fileType: z.enum(["csv", "pdf"]),
+          fileType: z.enum(["xlsx", "pdf"]),
         })
         .omit({ pageSize: true, pageNumber: true }),
     )
@@ -67,7 +67,7 @@ export const filesRouter = createTRPCRouter({
           : ""
       }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
 
-      if (input.fileType === "csv") {
+      if (input.fileType === "xlsx") {
         const csvData = tableData.map((mv) => ({
           operacionId: mv.operationId,
           transaccionId: mv.transactionId,
@@ -97,11 +97,20 @@ export const filesRouter = createTRPCRouter({
           saldo: mv.balance,
         }));
 
-        const csv = unparse(csvData, { delimiter: "," });
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(csvData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+        const xlsxBuffer = XLSX.write(workbook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
+
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
           Key: `cuentas/${filename}`,
-          Body: Buffer.from(csv, "utf-8"),
+          Body: xlsxBuffer,
+          ContentType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
 
         await ctx.s3.client.send(putCommand);
@@ -264,7 +273,7 @@ export const filesRouter = createTRPCRouter({
       z.object({
         entityId: z.number().int().optional().nullish(),
         entityTag: z.string().optional().nullish(),
-        fileType: z.enum(["csv", "pdf"]),
+        fileType: z.enum(["xlsx", "pdf"]),
         detailedBalances: z.array(
           z.object({
             entity: z.object({
@@ -289,7 +298,7 @@ export const filesRouter = createTRPCRouter({
           : input.entityTag
       }.${input.fileType}`;
 
-      if (input.fileType === "csv") {
+      if (input.fileType === "xlsx") {
         const csvData = input.detailedBalances.map((detailedBalance) => {
           const entity = detailedBalance.entity.name;
           const balances: Record<string, number> = {};
@@ -317,11 +326,21 @@ export const filesRouter = createTRPCRouter({
             unificado: Math.round(unifiedBalance * 100) / 100,
           };
         });
-        const csv = unparse(csvData, { delimiter: "," });
+
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(csvData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+        const xlsxBuffer = XLSX.write(workbook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
+
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
           Key: `saldos/${filename}`,
-          Body: Buffer.from(csv, "utf-8"),
+          Body: xlsxBuffer,
+          ContentType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
 
         await ctx.s3.client.send(putCommand);
@@ -443,7 +462,7 @@ export const filesRouter = createTRPCRouter({
     .input(
       getOperationsInput
         .extend({
-          fileType: z.enum(["csv", "pdf"]),
+          fileType: z.enum(["xlsx", "pdf"]),
           operationsCount: z.number().int(),
         })
         .omit({ page: true, limit: true }),
@@ -479,12 +498,21 @@ export const filesRouter = createTRPCRouter({
         "DD-MM-YYYY-HH:mm:ss",
       )}.${input.fileType}`;
 
-      if (input.fileType === "csv") {
-        const csv = unparse(transactionsToPrint, { delimiter: "," });
+      if (input.fileType === "xlsx") {
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(transactionsToPrint);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+        const xlsxBuffer = XLSX.write(workbook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
+
         const putCommand = new PutObjectCommand({
           Bucket: ctx.s3.bucketNames.reports,
           Key: `transacciones/${filename}`,
-          Body: Buffer.from(csv, "utf-8"),
+          Body: xlsxBuffer,
+          ContentType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
 
         await ctx.s3.client.send(putCommand);
@@ -612,7 +640,7 @@ export const filesRouter = createTRPCRouter({
   getExchangeRates: protectedProcedure
     .input(
       z.object({
-        fileType: z.enum(["csv", "pdf"]),
+        fileType: z.enum(["xlsx", "pdf"]),
         fromDate: z.string().nullish(),
         toDate: z.string().nullish(),
       }),
@@ -634,7 +662,7 @@ export const filesRouter = createTRPCRouter({
         "DD-MM-YYYY-HH:mm:ss",
       )}.${input.fileType}`;
 
-      if (input.fileType === "csv") {
+      if (input.fileType === "xlsx") {
         const csvData = data
           .sort((a, b) => moment(b.date).valueOf() - moment(a.date).valueOf())
           .map((rate) => ({
@@ -643,14 +671,21 @@ export const filesRouter = createTRPCRouter({
             Cotización: numberFormatter(rate.rate, 4),
           }));
 
-        const csvString = unparse(csvData);
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(csvData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+        const xlsxBuffer = XLSX.write(workbook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
 
         await ctx.s3.client.send(
           new PutObjectCommand({
             Bucket: ctx.s3.bucketNames.reports,
             Key: `cotizaciones/${filename}`,
-            Body: csvString,
-            ContentType: "text/csv",
+            Body: xlsxBuffer,
+            ContentType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           }),
         );
       } else {

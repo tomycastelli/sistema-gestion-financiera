@@ -680,7 +680,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
                         entityId: selectedEntity?.id,
                         entityTag: selectedTag,
                         detailedBalances: filteredBalances,
-                        fileType: "csv",
+                        fileType: "xlsx",
                       });
 
                       toast.promise(promise, {

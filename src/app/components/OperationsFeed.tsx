@@ -3,15 +3,12 @@
 import { type User } from "lucia";
 import dynamic from "next/dynamic";
 import { type FC, useEffect } from "react";
+import { toast } from "sonner";
+import { useFirstRender } from "~/hooks/useFirstRender";
+import { Status } from "~/server/db/schema";
+import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
-import { Icons } from "./ui/Icons";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
-import { useOperationsPageStore } from "~/stores/OperationsPage";
-import { Status } from "~/server/db/schema";
-import { useFirstRender } from "~/hooks/useFirstRender";
-import Operation from "../operaciones/gestion/Operation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +17,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import Operation from "../operaciones/gestion/Operation";
+import { Icons } from "./ui/Icons";
+import { Button } from "./ui/button";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
@@ -75,7 +75,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       },
     });
 
-  const onDownloadClick = (fileType: "pdf" | "csv") => {
+  const onDownloadClick = (fileType: "pdf" | "xlsx") => {
     if (data.count > 1000) {
       toast.warning("Vas a generar un archivo con mas de 1000 operaciones", {
         action: {
@@ -237,7 +237,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
                   <Icons.pdf className="h-4" />
                   <span>PDF</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDownloadClick("csv")}>
+                <DropdownMenuItem onClick={() => onDownloadClick("xlsx")}>
                   <Icons.excel className="h-4" />
                   <span>Excel</span>
                 </DropdownMenuItem>

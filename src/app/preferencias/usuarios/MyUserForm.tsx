@@ -1,11 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { User } from "lucia";
 import { type FC } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
-import { api } from "~/trpc/react";
+import CustomSelector from "~/app/components/forms/CustomSelector";
 import { Button } from "~/app/components/ui/button";
+import EntityCard from "~/app/components/ui/EntityCard";
 import {
   Form,
   FormControl,
@@ -15,11 +18,8 @@ import {
   FormMessage,
 } from "~/app/components/ui/form";
 import { Input } from "~/app/components/ui/input";
-import { type User } from "lucia";
-import { toast } from "sonner";
-import CustomSelector from "~/app/components/forms/CustomSelector";
+import { api } from "~/trpc/react";
 import { RouterOutputs } from "~/trpc/shared";
-import EntityCard from "~/app/components/ui/EntityCard";
 
 interface MyUserFormProps {
   user: User;
