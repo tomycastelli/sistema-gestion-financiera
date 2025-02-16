@@ -90,8 +90,8 @@ export const movementsRouter = createTRPCRouter({
         }),
     )
     .query(async ({ ctx, input }) => {
+      // Validate request
       let isRequestValid = false;
-
       if (ctx.user) {
         const userPermissions = await getAllPermissions(
           ctx.redis,
@@ -99,13 +99,12 @@ export const movementsRouter = createTRPCRouter({
           ctx.db,
         );
         const tags = await getAllTags(ctx.redis, ctx.db);
-
         const entities = await getAllEntities(ctx.redis, ctx.db);
         const entityTag = entities.find((e) => e.id === input.entityId)?.tag
           .name;
 
-        if (
-          userPermissions?.find(
+        isRequestValid =
+          userPermissions?.some(
             (p) =>
               p.name === "ADMIN" ||
               p.name === "ACCOUNTS_VISUALIZE" ||
@@ -121,12 +120,7 @@ export const movementsRouter = createTRPCRouter({
                       input.entityTag,
                     )
                   : false)),
-          )
-        ) {
-          isRequestValid = true;
-        } else if (input.entityId === ctx.user.entityId) {
-          isRequestValid = true;
-        }
+          ) || input.entityId === ctx.user.entityId;
       } else if (input.linkId && input.linkToken && input.entityId) {
         const link = await ctx.db.query.links.findFirst({
           where: and(
@@ -136,134 +130,84 @@ export const movementsRouter = createTRPCRouter({
             gte(links.expiration, new Date()),
           ),
         });
-
-        if (link) {
-          isRequestValid = true;
-        }
+        isRequestValid = !!link;
       }
 
       if (!isRequestValid) {
-        if (ctx.user) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message:
-              "El usuario no tiene los permisos suficientes para ver esta cuenta",
-          });
-        } else {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "El usuario no está registrado o el link no es válido",
-          });
-        }
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: ctx.user
+            ? "El usuario no tiene los permisos suficientes para ver esta cuenta"
+            : "El usuario no está registrado o el link no es válido",
+        });
       }
 
       const selectedEntityObject = alias(entities, "selectedEntity");
       const otherEntityObject = alias(entities, "otherEntity");
 
-      if (input.entityTag) {
-        // Agarro el ultimo balance de todas las entidades del grupo Maika con otras entidades, pueden ser del mismo grupo
-        const balancesData = await ctx.db
-          .selectDistinctOn([
-            balances.selectedEntityId,
-            balances.otherEntityId,
-            balances.account,
-            balances.currency,
-          ])
-          .from(balances)
-          .leftJoin(
-            selectedEntityObject,
-            eq(selectedEntityObject.id, balances.selectedEntityId),
+      // Common query conditions
+      const dateCondition = input.dayInPast
+        ? lte(
+            balances.date,
+            moment(input.dayInPast, dateFormatting.day).startOf("day").toDate(),
           )
-          .leftJoin(
-            otherEntityObject,
-            eq(otherEntityObject.id, balances.otherEntityId),
+        : lte(balances.date, new Date());
+
+      const accountCondition =
+        typeof input.account === "boolean"
+          ? eq(balances.account, input.account)
+          : undefined;
+
+      const entityCondition = input.entityTag
+        ? or(
+            eq(selectedEntityObject.tagName, input.entityTag),
+            eq(otherEntityObject.tagName, input.entityTag),
           )
-          .where(
-            and(
-              isNull(balances.tagName),
-              or(
-                eq(selectedEntityObject.tagName, input.entityTag),
-                eq(otherEntityObject.tagName, input.entityTag),
-              ),
-              typeof input.account === "boolean"
-                ? eq(balances.account, input.account)
-                : undefined,
-              input.dayInPast
-                ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day)
-                      .startOf("day")
-                      .toDate(),
-                  )
-                : lte(balances.date, new Date()),
-            ),
-          )
-          .orderBy(
-            balances.selectedEntityId,
-            balances.otherEntityId,
-            balances.account,
-            balances.currency,
-            desc(balances.date),
+        : or(
+            eq(selectedEntityObject.id, input.entityId ?? 0),
+            eq(otherEntityObject.id, input.entityId ?? 0),
           );
 
-        const balancesTransformed = balancesData.map((b) => ({
-          ...b.Balances,
-          selectedEntity: b.selectedEntity!,
-          otherEntity: b.otherEntity!,
-        }));
+      const balancesQuery = ctx.db
+        .selectDistinctOn([
+          balances.selectedEntityId,
+          balances.otherEntityId,
+          balances.account,
+          balances.currency,
+        ])
+        .from(balances)
+        .leftJoin(
+          selectedEntityObject,
+          eq(selectedEntityObject.id, balances.selectedEntityId),
+        )
+        .leftJoin(
+          otherEntityObject,
+          eq(otherEntityObject.id, balances.otherEntityId),
+        )
+        .where(
+          and(
+            isNull(balances.tagName),
+            entityCondition,
+            accountCondition,
+            dateCondition,
+          ),
+        )
+        .orderBy(
+          balances.selectedEntityId,
+          balances.otherEntityId,
+          balances.account,
+          balances.currency,
+          desc(balances.date),
+        )
+        .prepare("balancesQuery");
 
-        return balancesTransformed;
-      } else {
-        const balancesData = await ctx.db
-          .selectDistinctOn([
-            balances.selectedEntityId,
-            balances.otherEntityId,
-            balances.account,
-            balances.currency,
-          ])
-          .from(balances)
-          .leftJoin(
-            selectedEntityObject,
-            eq(selectedEntityObject.id, balances.selectedEntityId),
-          )
-          .leftJoin(
-            otherEntityObject,
-            eq(otherEntityObject.id, balances.otherEntityId),
-          )
-          .where(
-            and(
-              isNull(balances.tagName),
-              or(
-                eq(selectedEntityObject.id, input.entityId ?? 0),
-                eq(otherEntityObject.id, input.entityId ?? 0),
-              ),
-              typeof input.account === "boolean"
-                ? eq(balances.account, input.account)
-                : undefined,
-              input.dayInPast
-                ? lte(
-                    balances.date,
-                    moment(input.dayInPast, dateFormatting.day).toDate(),
-                  )
-                : lte(balances.date, new Date()),
-            ),
-          )
-          .orderBy(
-            balances.selectedEntityId,
-            balances.otherEntityId,
-            balances.account,
-            balances.currency,
-            desc(balances.date),
-          );
+      const balancesData = await balancesQuery.execute();
 
-        const balancesTransformed = balancesData.map((b) => ({
-          ...b.Balances,
-          selectedEntity: b.selectedEntity!,
-          otherEntity: b.otherEntity!,
-        }));
-
-        return balancesTransformed;
-      }
+      return balancesData.map((b) => ({
+        ...b.Balances,
+        selectedEntity: b.selectedEntity!,
+        otherEntity: b.otherEntity!,
+      }));
     }),
   getBalancesByEntitiesForCard: publicProcedure
     .input(
