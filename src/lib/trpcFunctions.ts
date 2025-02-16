@@ -1190,8 +1190,6 @@ export const currentAccountsProcedure = async (
       .where(and(movementsConditions, mainConditions))
       .prepare("movements_count");
 
-    const [movementsCount] = await movementsCountQuery.execute();
-
     const movementsQuery = transaction
       .select()
       .from(movements)
@@ -1210,10 +1208,13 @@ export const currentAccountsProcedure = async (
       .limit(sql.placeholder("queryLimit"))
       .prepare("movements_query");
 
-    const movementsData = await movementsQuery.execute({
-      queryOffset: (input.pageNumber - 1) * input.pageSize,
-      queryLimit: input.pageSize,
-    });
+    const [movementsData, [movementsCount]] = await Promise.all([
+      movementsQuery.execute({
+        queryOffset: (input.pageNumber - 1) * input.pageSize,
+        queryLimit: input.pageSize,
+      }),
+      movementsCountQuery.execute(),
+    ]);
 
     const tableDataType = z.object({
       id: z.number(),
@@ -1246,14 +1247,16 @@ export const currentAccountsProcedure = async (
       let entitiesRelated: number[] = [];
       // Voy a probar hacerme un array de ids de todos las entidades pertenecientes al tag
       if (input.account && input.entityTag) {
-        const entitiesQuery = await transaction
+        const entitiesQuery = transaction
           .select({ id: entities.id })
           .from(entities)
-          .where(eq(entities.tagName, input.entityTag));
-        entitiesRelated = entitiesQuery.map((e) => e.id);
+          .where(eq(entities.tagName, input.entityTag))
+          .prepare("entities_query");
+        const entitiesQueryResult = await entitiesQuery.execute();
+        entitiesRelated = entitiesQueryResult.map((e) => e.id);
       }
 
-      const tagBalanceMovements = await transaction
+      const tagBalanceMovementsQuery = transaction
         .select({
           entitiesMovementId: movements.entitiesMovementId,
           balance: movements.balance,
@@ -1273,21 +1276,18 @@ export const currentAccountsProcedure = async (
               ? inArray(cashBalances.entityId, entitiesRelated)
               : eq(cashBalances.entityId, input.entityId!),
           ),
-        );
-
-      console.log({ ids, tagBalanceMovements });
+        )
+        .prepare("tag_balance_movements_query");
+      const tagBalanceMovements = await tagBalanceMovementsQuery.execute();
+      const tagBalanceMovementsMap = new Map(
+        tagBalanceMovements.map((mv) => [mv.entitiesMovementId, mv.balance]),
+      );
 
       const nestedData = movementsData
-        .filter((obj) =>
-          tagBalanceMovements.find(
-            (mv) => mv.entitiesMovementId === obj.Movements!.id,
-          ),
-        )
+        .filter((obj) => tagBalanceMovementsMap.has(obj.Movements!.id))
         .map((obj) => ({
           ...obj.Movements!,
-          balance: tagBalanceMovements.find(
-            (mv) => mv.entitiesMovementId === obj.Movements!.id,
-          )!.balance,
+          balance: tagBalanceMovementsMap.get(obj.Movements!.id)!,
           transaction: {
             ...obj.Transactions!,
             transactionMetadata: obj.TransactionsMetadata,

@@ -122,8 +122,6 @@ const ExchangesList: FC<ExchangesListProps> = ({ initialExchangeRates }) => {
     });
   };
 
-  console.log({ groupedData });
-
   return (
     <div className="flex flex-col gap-y-4">
       <div className="flex flex-row items-end gap-4 py-4">

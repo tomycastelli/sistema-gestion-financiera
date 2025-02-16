@@ -215,10 +215,30 @@ export const getOperationsProcedure = async (
       .orderBy(desc(schema.operations.id))
       .prepare("operations_query");
 
-    const operationsData = await mainQuery.execute({
-      queryLimit: input.limit,
-      queryOffset: (input.page - 1) * input.limit,
-    });
+    const countTransactionsQuery = transaction
+      .selectDistinct({ operationId: schema.transactions.operationId })
+      .from(schema.transactions)
+      .where(transactionsWhere)
+      .orderBy(desc(schema.transactions.operationId));
+
+    const countQuery = transaction
+      .select({ count: count(schema.operations.id) })
+      .from(schema.operations)
+      .where(
+        and(
+          operationsWhere,
+          inArray(schema.operations.id, countTransactionsQuery),
+        ),
+      )
+      .prepare("operations_count");
+
+    const [operationsData, [countResult]] = await Promise.all([
+      mainQuery.execute({
+        queryLimit: input.limit,
+        queryOffset: (input.page - 1) * input.limit,
+      }),
+      countQuery.execute(),
+    ]);
 
     const nestedOperationType = schema.returnedOperationsSchema.extend({
       transactions: schema.returnedTransactionsSchema
@@ -311,25 +331,9 @@ export const getOperationsProcedure = async (
       [] as z.infer<typeof nestedOperationType>[],
     );
 
-    const countTransactionsQuery = transaction
-      .selectDistinct({ operationId: schema.transactions.operationId })
-      .from(schema.transactions)
-      .where(transactionsWhere)
-      .orderBy(desc(schema.transactions.operationId));
-
-    const [countQuery] = await transaction
-      .select({ count: count(schema.operations.id) })
-      .from(schema.operations)
-      .where(
-        and(
-          operationsWhere,
-          inArray(schema.operations.id, countTransactionsQuery),
-        ),
-      );
-
     return {
       operationsQuery: nestedOperations,
-      idsThatSatisfy: countQuery!.count,
+      idsThatSatisfy: countResult!.count,
     };
   });
 
