@@ -1,9 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
 import {
+  deletePattern,
   generateMovements,
   getAllEntities,
   logIO,
@@ -459,6 +460,113 @@ export const editingOperationsRouter = createTRPCRouter({
           isolationLevel: "serializable",
           deferrable: true,
         },
+      );
+
+      return response;
+    }),
+  deleteEntityOperations: protectedLoggedProcedure
+    .input(
+      z.object({
+        entityId: z.number().int(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        ctx.user.email !== "christian@ifc.com.ar" &&
+        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: `User with email: ${ctx.user.email} is not authorized to delete entities`,
+        });
+      }
+
+      const response = await ctx.db.transaction(
+        async (transaction) => {
+          // Get all operations where the entity is involved
+          const relatedOperations = await transaction
+            .select()
+            .from(operations)
+            .innerJoin(
+              transactions,
+              eq(transactions.operationId, operations.id),
+            )
+            .where(
+              or(
+                eq(transactions.fromEntityId, input.entityId),
+                eq(transactions.toEntityId, input.entityId),
+                eq(transactions.operatorEntityId, input.entityId),
+              ),
+            );
+
+          // For each operation
+          for (const operation of relatedOperations) {
+            // Get all transactions for this operation
+            const fromEntity = alias(entities, "fromEntity");
+            const toEntity = alias(entities, "toEntity");
+            const operationTxs = await transaction
+              .select()
+              .from(transactions)
+              .where(eq(transactions.operationId, operation.Operations.id))
+              .leftJoin(
+                fromEntity,
+                eq(transactions.fromEntityId, fromEntity.id),
+              )
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id));
+
+            // Undo movements for each transaction
+            for (const tx of operationTxs) {
+              await undoMovements(
+                transaction,
+                {
+                  ...tx.Transactions,
+                  fromEntity: tx.fromEntity!,
+                  toEntity: tx.toEntity!,
+                },
+                ctx.redlock,
+              );
+            }
+
+            // Delete transactions metadata
+            await transaction.delete(transactionsMetadata).where(
+              inArray(
+                transactionsMetadata.transactionId,
+                operationTxs.map((tx) => tx.Transactions.id),
+              ),
+            );
+
+            // Delete transactions
+            await transaction
+              .delete(transactions)
+              .where(eq(transactions.operationId, operation.Operations.id));
+
+            // Delete operation
+            await transaction
+              .delete(operations)
+              .where(eq(operations.id, operation.Operations.id));
+          }
+
+          // Finally delete the entity
+          await transaction
+            .delete(entities)
+            .where(eq(entities.id, input.entityId));
+
+          await deletePattern(ctx.redis, "entities*");
+
+          return { success: true, deletedOperations: relatedOperations.length };
+        },
+        {
+          isolationLevel: "serializable",
+          deferrable: true,
+        },
+      );
+
+      await logIO(
+        ctx.dynamodb,
+        ctx.user.id,
+        "Eliminar operaciones de entidad",
+        input,
+        response,
       );
 
       return response;

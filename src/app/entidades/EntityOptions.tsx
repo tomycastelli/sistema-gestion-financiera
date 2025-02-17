@@ -1,6 +1,8 @@
 "use client";
 
+import type { User } from "lucia";
 import { type FC } from "react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import { Icons } from "../components/ui/Icons";
@@ -17,49 +19,65 @@ import {
 } from "../components/ui/alert-dialog";
 import { Button } from "../components/ui/button";
 import ChangeEntityForm from "./ChangeEntityForm";
-import { toast } from "sonner";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
   tags: RouterOutputs["tags"]["getFiltered"];
+  user: User;
 }
 
-const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
+const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags, user }) => {
   const utils = api.useContext();
 
-  const { mutateAsync: deleteAsync } = api.entities.deleteOne.useMutation({
-    async onMutate() {
-      // Doing the Optimistic update
-      await utils.entities.getAll.cancel();
+  const { mutateAsync: deleteAsync } =
+    api.editingOperations.deleteEntityOperations.useMutation({
+      async onMutate(newOperation) {
+        // Doing the Optimistic update
+        await utils.entities.getAll.cancel();
 
-      const prevData = utils.entities.getAll.getData();
+        const prevData = utils.entities.getAll.getData();
 
-      utils.entities.getAll.setData(undefined, (old) =>
-        old?.filter((item) => item.id !== entity.id),
-      );
+        utils.entities.getAll.setData(
+          undefined,
+          (old) => old?.filter((item) => item.id !== newOperation.entityId),
+        );
 
-      return { prevData };
-    },
-    onError(err, newOperation, ctx) {
-      utils.entities.getAll.setData(undefined, ctx?.prevData);
+        return { prevData };
+      },
+      onError(err, newOperation, ctx) {
+        utils.entities.getAll.setData(undefined, ctx?.prevData);
 
-      toast.error(`No se pudo eliminar la entidad ${newOperation.entityId}`, {
-        description: JSON.stringify(err.message),
-      });
-    },
-    onSettled() {
-      void utils.entities.getAll.invalidate();
-    },
-    onSuccess(data) {
-      toast.success(`Entidad ${data.id} eliminada`);
-    },
-  });
+        toast.error(`No se pudo eliminar la entidad ${newOperation.entityId}`, {
+          description: JSON.stringify(err.message),
+        });
+      },
+      onSettled() {
+        void utils.entities.getAll.invalidate();
+      },
+      onSuccess(data, variables) {
+        toast.success(
+          `Entidad ${variables.entityId} eliminada, ${data.deletedOperations} operaciones eliminadas.`,
+        );
+      },
+    });
 
   return (
     <div className="mx-auto flex w-2/3 flex-row space-x-4">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="outline" className="border-transparent p-1">
+          <Button
+            disabled={
+              (user.email !== "christian@ifc.com.ar" &&
+                user.email !== "tomas.castelli@ifc.com.ar") ||
+              entity.name === "Pilar" ||
+              entity.name === "Centro" ||
+              entity.name === "Nordelta" ||
+              entity.name === "BBVA" ||
+              entity.name === "Madrid"
+            }
+            variant="outline"
+            className="border-transparent p-1"
+          >
             <Icons.cross className="h-6 text-red" />
           </Button>
         </AlertDialogTrigger>
@@ -67,8 +85,11 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará la entidad (si la misma no tiene transacciones
-              relacionadas)
+              Se eliminará la entidad y{" "}
+              <span className="font-semibold">
+                todas sus operaciones relacionadas con todos los movimientos
+                generados por estas
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -76,7 +97,21 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags }) => {
             <AlertDialogAction
               className="bg-red"
               onClick={() =>
-                deleteAsync({ entityId: entity.id, tag: entity.tag.name })
+                toast.warning(
+                  "Tenés 20 segundos para detener esta eliminación",
+                  {
+                    duration: 20000,
+                    action: {
+                      label: "Detener",
+                      onClick: () => {
+                        return;
+                      },
+                    },
+                    onAutoClose: () => {
+                      void deleteAsync({ entityId: entity.id });
+                    },
+                  },
+                )
               }
             >
               Eliminar

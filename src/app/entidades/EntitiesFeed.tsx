@@ -1,6 +1,8 @@
 "use client";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+import type { User } from "lucia";
+import dynamic from "next/dynamic";
 import { useState, type FC } from "react";
 import useSearch from "~/hooks/useSearch";
 import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
@@ -30,13 +32,13 @@ import { Switch } from "../components/ui/switch";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
 import EntityOptions from "./EntityOptions";
-import dynamic from "next/dynamic";
 
 interface EntitiesFeedProps {
   initialEntities: RouterOutputs["entities"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
   initialTags: RouterOutputs["tags"]["getFiltered"];
   main_name: string;
+  user: User;
 }
 
 const EntitiesFeed: FC<EntitiesFeedProps> = ({
@@ -44,6 +46,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   userPermissions,
   initialTags,
   main_name,
+  user,
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
   const [tagFilterMode, setTagFilterMode] = useState("children");
@@ -220,7 +223,13 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                       entity.tag.name !== "Operadores" &&
                       manageableEntities.find(
                         (item) => item.name === entity.name,
-                      ) && <EntityOptions entity={entity} tags={tags} />}
+                      ) && (
+                        <EntityOptions
+                          entity={entity}
+                          tags={tags}
+                          user={user}
+                        />
+                      )}
                   </div>
                 ))}
             </div>
