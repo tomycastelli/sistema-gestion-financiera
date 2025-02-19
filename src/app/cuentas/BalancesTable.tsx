@@ -163,9 +163,57 @@ const BalancesTable: FC<BalancesTableProps> = ({
               ? balance.otherEntity
               : balance.selectedEntity;
 
-          // Skip transactions between entities with the same tag
           if (myOtherEntity.tagName === myPOVEntity.tagName) {
-            return acc; // Skip this balance entirely
+            let otherEntityEntry = acc.tableData.find(
+              (entry) => entry.entity.id === myOtherEntity.id,
+            );
+            if (!otherEntityEntry) {
+              otherEntityEntry = {
+                entity: myOtherEntity,
+                data: [
+                  {
+                    balance: 0,
+                    currency: "unified",
+                  },
+                ],
+              };
+              acc.tableData.push(otherEntityEntry);
+            }
+            const balanceMultiplier =
+              otherEntityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
+            let dataEntry = otherEntityEntry.data.find(
+              (d) => d.currency === balance.currency,
+            );
+            if (!dataEntry) {
+              dataEntry = {
+                currency: balance.currency,
+                balance: 0,
+              };
+              otherEntityEntry.data.push(dataEntry);
+            }
+            dataEntry.balance += balance.balance * balanceMultiplier;
+            otherEntityEntry.data[0]!.balance += unifyAmount(
+              balance.currency,
+              balance.balance * balanceMultiplier,
+              "entity",
+            );
+            // Update totals
+            let totalEntry = acc.totals.find(
+              (t) => t.currency === dataEntry?.currency,
+            );
+            if (!totalEntry) {
+              totalEntry = {
+                currency: dataEntry.currency,
+                total: 0,
+              };
+              acc.totals.push(totalEntry);
+            }
+            totalEntry.total += balance.balance * balanceMultiplier;
+            acc.totals[0]!.total += unifyAmount(
+              balance.currency,
+              balance.balance * balanceMultiplier,
+              "total",
+            );
           }
 
           // Process myPOVEntity
