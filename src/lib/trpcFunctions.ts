@@ -1123,23 +1123,15 @@ export const currentAccountsProcedure = async (
           gte(
             movements.date,
             moment(input.fromDate)
-              .set({
-                hour: 0,
-                minute: 0,
-                second: 0,
-                millisecond: 0,
-              })
+              .startOf("day")
+              .utc(true) // Keep the same date/time but convert to UTC
               .toDate(),
           ),
           lte(
             movements.date,
             moment(input.toDate)
-              .set({
-                hour: 23,
-                minute: 59,
-                second: 59,
-                millisecond: 999,
-              })
+              .endOf("day")
+              .utc(true) // Keep the same date/time but convert to UTC
               .toDate(),
           ),
         )
@@ -1149,24 +1141,15 @@ export const currentAccountsProcedure = async (
           gte(
             movements.date,
             moment(input.fromDate)
-              .set({
-                hour: 0,
-                minute: 0,
-                second: 0,
-                millisecond: 0,
-              })
+              .startOf("day")
+              .utc(true) // Keep the same date/time but convert to UTC
               .toDate(),
           ),
           lte(
             movements.date,
             moment(input.fromDate)
-              .set({
-                hour: 0,
-                minute: 0,
-                second: 0,
-                millisecond: 0,
-              })
-              .add(1, "day")
+              .endOf("day")
+              .utc(true) // Keep the same date/time but convert to UTC
               .toDate(),
           ),
         )
