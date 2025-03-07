@@ -82,13 +82,7 @@ export const filesRouter = createTRPCRouter({
               : mv.type === "confirmation"
               ? "Confirmación"
               : "Cancelación"
-          } de ${mv.txType} - Nro ${mv.id}${
-            // @ts-ignore
-            mv.metadata && isNumeric(mv.metadata.exchange_rate)
-              ? // @ts-ignore
-                ` - $${mv.metadata.exchange_rate}`
-              : ""
-          }`,
+          } de ${mv.txType}`,
           // @ts-ignore
           tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
           divisa: mv.currency,

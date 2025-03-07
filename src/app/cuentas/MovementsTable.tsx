@@ -145,6 +145,10 @@ const MovementsTable = ({
     searchParams,
   ]);
 
+  useEffect(() => {
+    console.log({ dayInPast });
+  }, [dayInPast]);
+
   const { data, refetch, isFetching } =
     api.movements.getCurrentAccounts.useQuery(
       {
@@ -160,9 +164,7 @@ const MovementsTable = ({
         toDate: toDate,
         pageNumber: movementsTablePage,
         pageSize: pageSize,
-        dayInPast: dayInPast
-          ? moment(dayInPast).format("DD-MM-YYYY")
-          : undefined,
+        dayInPast: dayInPast ? dayInPast : undefined,
         groupInTag,
         dateOrdering,
         ignoreSameTag,
