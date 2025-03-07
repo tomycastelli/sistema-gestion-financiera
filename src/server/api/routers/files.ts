@@ -72,7 +72,7 @@ export const filesRouter = createTRPCRouter({
           operacionId: mv.operationId,
           transaccionId: mv.transactionId,
           movementId: mv.id,
-          fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
+          fecha: mv.date,
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
           detalle: mv.observations ?? "",
@@ -112,7 +112,7 @@ export const filesRouter = createTRPCRouter({
         const data = tableData.map((mv) => ({
           transaccionId: mv.transactionId,
           id: mv.id,
-          fecha: moment(mv.date, "DD-MM-YYYY HH:mm").format("DD-MM-YYYY"),
+          fecha: moment(mv.date).format("DD-MM-YY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
           detalle: {
@@ -472,7 +472,7 @@ export const filesRouter = createTRPCRouter({
           return {
             id: operation.id,
             txId: transaction.id,
-            fecha: moment(operation.date).format("DD-MM-YY HH:mm"),
+            fecha: operation.date,
             tipo: transaction.type,
             operador: transaction.operatorEntity.name,
             origen: transaction.fromEntity.name,
@@ -545,7 +545,7 @@ export const filesRouter = createTRPCRouter({
                   `<tr key="${index}">
                 <td>${tx.id}</td>
                 <td>${tx.txId}</td>
-                <td>${tx.fecha}</td>
+                <td>${moment(tx.fecha).format("DD-MM-YY HH:mm:ss")}</td>
                 <td>${tx.tipo}</td>
                 <td>${tx.operador}</td>
                 <td>${tx.origen}</td>

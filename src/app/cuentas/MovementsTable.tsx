@@ -256,6 +256,7 @@ const MovementsTable = ({
     {
       accessorKey: "date",
       header: "Fecha",
+      accessorFn: (row) => moment(row.date).format("DD-MM-YY"),
     },
     {
       accessorKey: "selectedEntity",

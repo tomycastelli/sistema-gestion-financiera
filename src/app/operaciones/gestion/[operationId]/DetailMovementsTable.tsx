@@ -19,7 +19,7 @@ const DetailMovementsTable: FC<DetailMovementsTableProps> = ({ movements }) => {
   const tableData = movements
     .flatMap((movement) => ({
       id: movement.id,
-      date: moment(movement.date).format("DD/MM/YYYY HH:mm"),
+      date: moment(movement.date).format("DD-MM-YY"),
       transactionId: movement.transactionId,
       cuenta: movement.account ? "Caja" : "Cuenta corriente",
       type: movement.type,

@@ -1201,7 +1201,7 @@ export const currentAccountsProcedure = async (
 
     const tableDataType = z.object({
       id: z.number(),
-      date: z.string(),
+      date: z.date(),
       operationId: z.number(),
       transactionId: z.number(),
       observations: z.string().nullish(),
@@ -1318,7 +1318,7 @@ export const currentAccountsProcedure = async (
 
           const tableData: z.infer<typeof tableDataType> = {
             id: mv.id,
-            date: moment(mv.date).format(dateFormat),
+            date: mv.date,
             operationId: mv.transaction.operationId,
             transactionId: mv.transaction.id,
             type: mv.type,
@@ -1396,7 +1396,7 @@ export const currentAccountsProcedure = async (
 
         const tableData: z.infer<typeof tableDataType> = {
           id: mv.id,
-          date: moment(mv.date).format("DD-MM-YYYY"),
+          date: mv.date,
           operationId: mv.transaction.operationId,
           transactionId: mv.transaction.id,
           type: mv.type,
