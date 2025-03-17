@@ -42,10 +42,9 @@ const transformedBalancesSchema = z.object({
   totals: z.array(z.object({ currency: z.string(), total: z.number() })),
 });
 
-interface BalancesTableProps {
+interface CashBalancesTableProps {
   balances: RouterOutputs["movements"]["getBalancesByEntities"];
   isInverted: boolean;
-  accountType: boolean;
   uiColor: string | undefined;
   isFetching: boolean;
   selectedEntityId: number | undefined;
@@ -55,10 +54,9 @@ interface BalancesTableProps {
   main_name: string;
 }
 
-const BalancesTable: FC<BalancesTableProps> = ({
+const CashBalancesTable: FC<CashBalancesTableProps> = ({
   balances,
   isInverted,
-  accountType,
   isFetching,
   uiColor,
   selectedEntityId,
@@ -95,13 +93,11 @@ const BalancesTable: FC<BalancesTableProps> = ({
     const rate =
       latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
     if (currency === "usdt") {
-      if (type === "entity" && accountType) return 0;
+      if (type === "entity") return 0;
       return amount * (1 + rate / 100);
     }
     return amount / rate;
   };
-
-  console.log({ balances: balances.filter((b) => b.currency === "gbp") });
 
   const transformedBalances: z.infer<typeof transformedBalancesSchema> =
     balances.reduce(
@@ -606,4 +602,4 @@ const BalancesTable: FC<BalancesTableProps> = ({
   );
 };
 
-export default BalancesTable;
+export default CashBalancesTable;

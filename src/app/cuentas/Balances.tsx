@@ -5,8 +5,8 @@ import { type FC, useEffect } from "react";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import BalancesTable from "./BalancesTable";
-import DetailedBalances from "./DetailedBalances";
+import CashBalancesTable from "./CashBalancesTable";
+import CurrentAccountsBalancesTable from "./CurrentAccountsBalancesTable";
 
 interface BalancesProps {
   initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
@@ -69,8 +69,6 @@ const Balances: FC<BalancesProps> = ({
       { initialData: initialBalances, refetchOnWindowFocus: false },
     );
 
-  const { showCurrentAccountTotals } = useCuentasStore();
-
   const { data: latestExchangeRates } =
     api.exchangeRates.getLatestExchangeRates.useQuery(
       { dayInPast },
@@ -79,12 +77,11 @@ const Balances: FC<BalancesProps> = ({
 
   return (
     <div className="flex flex-col space-y-4">
-      {accountType || showCurrentAccountTotals ? (
-        <BalancesTable
+      {accountType ? (
+        <CashBalancesTable
           balances={balances}
           selectedEntityId={selectedEntity?.id}
           selectedTag={selectedTag}
-          accountType={accountType}
           isInverted={isInverted}
           isFetching={isFetching}
           uiColor={uiColor}
@@ -93,7 +90,7 @@ const Balances: FC<BalancesProps> = ({
           main_name={main_name}
         />
       ) : (
-        <DetailedBalances
+        <CurrentAccountsBalancesTable
           isFetching={isFetching}
           entities={entities}
           uiColor={uiColor}

@@ -37,7 +37,7 @@ import {
   TooltipTrigger,
 } from "../components/ui/tooltip";
 
-interface DetailedBalancesProps {
+interface CurrentAccountsBalancesTableProps {
   entities: RouterOutputs["entities"]["getAll"];
   uiColor: string | undefined;
   isFetching: boolean;
@@ -48,7 +48,7 @@ interface DetailedBalancesProps {
   initialLatestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
 }
 
-const DetailedBalances: FC<DetailedBalancesProps> = ({
+const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
   entities,
   uiColor,
   isFetching,
@@ -69,6 +69,7 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     isInverted,
     setMovementsTablePage,
     dayInPast,
+    showCurrentAccountTotals,
   } = useCuentasStore();
 
   const [detailedBalancesPage, setDetailedBalancesPage] = useState<number>(1);
@@ -165,57 +166,146 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
       [] as z.infer<typeof transformedBalancesSchema>[],
     );
   } else if (selectedTag) {
-    // Quiero que aparezcan dos asientos en el caso de el tag ser el mismo
-    detailedBalances = balances
-      .filter((obj) => obj.selectedEntity.tagName !== obj.otherEntity.tagName)
-      .reduce(
-        (acc, balance) => {
-          const myPOVEntity =
-            selectedTag === balance.selectedEntity.tagName
-              ? balance.otherEntity
-              : balance.selectedEntity;
-          let entityEntry = acc.find(
-            (entry) => entry.entity.id === myPOVEntity.id,
-          );
-
-          if (!entityEntry) {
-            entityEntry = {
-              entity: myPOVEntity,
-              data: [
-                {
-                  currency: "unified",
-                  balance: 0,
-                },
-              ],
-            };
-            acc.push(entityEntry);
-          }
-
-          const balanceMultiplier =
-            entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
-
-          let dataEntry = entityEntry.data.find(
-            (d) => d.currency === balance.currency,
-          );
-
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0,
-            };
-            entityEntry.data.push(dataEntry);
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier;
-          entityEntry.data[0]!.balance += unifyAmount(
-            balance.currency,
-            balance.balance * balanceMultiplier,
-          );
-
-          return acc;
+    if (showCurrentAccountTotals) {
+      const totals = {
+        entity: {
+          id: 0,
+          name: "Total",
+          tagName: selectedTag,
         },
-        [] as z.infer<typeof transformedBalancesSchema>[],
-      );
+        data: [{ currency: "unified", balance: 0 }],
+      };
+
+      detailedBalances = balances
+        // Filter out internal transactions first
+        .filter((obj) => obj.selectedEntity.tagName !== obj.otherEntity.tagName)
+        .reduce(
+          (acc, balance) => {
+            // Only process if one of the entities is from our tag
+            if (
+              balance.selectedEntity.tagName === selectedTag ||
+              balance.otherEntity.tagName === selectedTag
+            ) {
+              const tagEntity =
+                balance.selectedEntity.tagName === selectedTag
+                  ? balance.selectedEntity
+                  : balance.otherEntity;
+
+              let entityEntry = acc.find(
+                (entry) => entry.entity.id === tagEntity.id,
+              );
+
+              if (!entityEntry) {
+                entityEntry = {
+                  entity: tagEntity,
+                  data: [
+                    {
+                      currency: "unified",
+                      balance: 0,
+                    },
+                  ],
+                };
+                acc.push(entityEntry);
+              }
+
+              const balanceMultiplier =
+                balance.selectedEntity.id === tagEntity.id ? 1 : -1;
+
+              let dataEntry = entityEntry.data.find(
+                (d) => d.currency === balance.currency,
+              );
+
+              if (!dataEntry) {
+                dataEntry = {
+                  currency: balance.currency,
+                  balance: 0,
+                };
+                entityEntry.data.push(dataEntry);
+              }
+
+              dataEntry.balance += balance.balance * balanceMultiplier;
+              entityEntry.data[0]!.balance += unifyAmount(
+                balance.currency,
+                balance.balance * balanceMultiplier,
+              );
+
+              // Update totals
+              let totalEntry = totals.data.find(
+                (t) => t.currency === balance.currency,
+              );
+              if (!totalEntry) {
+                totalEntry = {
+                  currency: balance.currency,
+                  balance: 0,
+                };
+                totals.data.push(totalEntry);
+              }
+              totalEntry.balance += balance.balance * balanceMultiplier;
+              totals.data[0]!.balance += unifyAmount(
+                balance.currency,
+                balance.balance * balanceMultiplier,
+              );
+            }
+
+            return acc;
+          },
+          [] as z.infer<typeof transformedBalancesSchema>[],
+        );
+
+      // Add totals as the last row
+      detailedBalances.push(totals);
+    } else {
+      detailedBalances = balances
+        .filter((obj) => obj.selectedEntity.tagName !== obj.otherEntity.tagName)
+        .reduce(
+          (acc, balance) => {
+            const myPOVEntity =
+              selectedTag === balance.selectedEntity.tagName
+                ? balance.otherEntity
+                : balance.selectedEntity;
+            let entityEntry = acc.find(
+              (entry) => entry.entity.id === myPOVEntity.id,
+            );
+
+            if (!entityEntry) {
+              entityEntry = {
+                entity: myPOVEntity,
+                data: [
+                  {
+                    currency: "unified",
+                    balance: 0,
+                  },
+                ],
+              };
+              acc.push(entityEntry);
+            }
+
+            const balanceMultiplier =
+              entityEntry.entity.id === balance.selectedEntity?.id ? -1 : 1;
+
+            let dataEntry = entityEntry.data.find(
+              (d) => d.currency === balance.currency,
+            );
+
+            if (!dataEntry) {
+              dataEntry = {
+                currency: balance.currency,
+                balance: 0,
+              };
+              entityEntry.data.push(dataEntry);
+            }
+
+            dataEntry.balance += balance.balance * balanceMultiplier;
+            entityEntry.data[0]!.balance += unifyAmount(
+              balance.currency,
+              balance.balance * balanceMultiplier,
+            );
+
+            return acc;
+          },
+          [] as z.infer<typeof transformedBalancesSchema>[],
+        );
+    }
   }
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
@@ -732,12 +822,19 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
             <div
               key={item.entity.id}
               style={{
-                backgroundColor: uiColor
-                  ? index % 2 === 0
-                    ? lightenColor(uiColor, isDark ? 60 : 20)
-                    : lightenColor(uiColor, isDark ? 40 : 10)
-                  : undefined,
+                backgroundColor:
+                  item.entity.name === "Total"
+                    ? undefined
+                    : uiColor
+                    ? index % 2 === 0
+                      ? lightenColor(uiColor, isDark ? 60 : 20)
+                      : lightenColor(uiColor, isDark ? 40 : 10)
+                    : undefined,
                 gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
+                borderTop:
+                  item.entity.name === "Total"
+                    ? `2px solid ${uiColor}`
+                    : undefined,
               }}
               className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
@@ -776,21 +873,26 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
               )}
               <Button
                 onClick={() => {
-                  if (
-                    destinationEntityId === item.entity.id &&
-                    !selectedCurrency
-                  ) {
-                    setDestinationEntityId(undefined);
-                    setMovementsTablePage(1);
-                  } else {
-                    setSelectedCurrency(undefined);
-                    setDestinationEntityId(item.entity.id);
-                    setMovementsTablePage(1);
+                  if (item.entity.name !== "Total") {
+                    // Disable click for total row
+                    if (
+                      destinationEntityId === item.entity.id &&
+                      !selectedCurrency
+                    ) {
+                      setDestinationEntityId(undefined);
+                      setMovementsTablePage(1);
+                    } else {
+                      setSelectedCurrency(undefined);
+                      setDestinationEntityId(item.entity.id);
+                      setMovementsTablePage(1);
+                    }
                   }
                 }}
                 className={cn(
                   "col-span-2 border-transparent",
-                  item.entity.name.length < 12
+                  item.entity.name === "Total"
+                    ? "text-xl font-bold"
+                    : item.entity.name.length < 12
                     ? "text-xl"
                     : item.entity.name.length < 22
                     ? "text-lg"
@@ -908,4 +1010,4 @@ const DetailedBalances: FC<DetailedBalancesProps> = ({
     </div>
   );
 };
-export default DetailedBalances;
+export default CurrentAccountsBalancesTable;
