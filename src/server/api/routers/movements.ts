@@ -77,8 +77,9 @@ export const movementsRouter = createTRPCRouter({
           entityTag: z.string().optional().nullable(),
           linkId: z.number().optional().nullable(),
           linkToken: z.string().optional().nullable(),
-          account: z.boolean().optional().nullable(),
+          account: z.boolean(),
           dayInPast: z.string().optional(),
+          balanceType: z.enum(["1", "2", "3", "4"]),
         })
         .superRefine((obj, ctx) => {
           if (!obj.entityId && !obj.entityTag) {
@@ -142,8 +143,10 @@ export const movementsRouter = createTRPCRouter({
         });
       }
 
-      const selectedEntityObject = alias(entities, "selectedEntity");
-      const otherEntityObject = alias(entities, "otherEntity");
+      const allTags = await getAllTags(ctx.redis, ctx.db);
+      const allChildrenTags = Array.from(
+        getAllChildrenTags(input.entityTag, allTags),
+      );
 
       // Common query conditions
       const dateCondition = input.dayInPast
@@ -153,48 +156,40 @@ export const movementsRouter = createTRPCRouter({
           )
         : lte(balances.date, new Date());
 
-      const accountCondition =
-        typeof input.account === "boolean"
-          ? eq(balances.account, input.account)
-          : undefined;
-
-      const entityCondition = input.entityTag
-        ? or(
-            eq(selectedEntityObject.tagName, input.entityTag),
-            eq(otherEntityObject.tagName, input.entityTag),
-          )
-        : or(
-            eq(selectedEntityObject.id, input.entityId ?? 0),
-            eq(otherEntityObject.id, input.entityId ?? 0),
-          );
-
       const balancesQuery = ctx.db
         .selectDistinctOn([
-          balances.selectedEntityId,
-          balances.otherEntityId,
+          balances.tag,
+          balances.ent_a,
+          balances.ent_b,
           balances.account,
           balances.currency,
         ])
         .from(balances)
-        .leftJoin(
-          selectedEntityObject,
-          eq(selectedEntityObject.id, balances.selectedEntityId),
-        )
-        .leftJoin(
-          otherEntityObject,
-          eq(otherEntityObject.id, balances.otherEntityId),
-        )
         .where(
           and(
-            isNull(balances.tagName),
-            entityCondition,
-            accountCondition,
+            eq(balances.account, input.account),
             dateCondition,
+            input.balanceType === "1"
+              ? eq(balances.type, "1")
+              : input.balanceType === "2"
+              ? eq(balances.type, "2")
+              : input.balanceType === "3"
+              ? eq(balances.type, "3")
+              : eq(balances.type, "4"),
+            input.entityId
+              ? or(
+                  eq(balances.ent_a, input.entityId),
+                  eq(balances.ent_b, input.entityId),
+                )
+              : input.entityTag
+              ? inArray(balances.tag, allChildrenTags)
+              : undefined,
           ),
         )
         .orderBy(
-          balances.selectedEntityId,
-          balances.otherEntityId,
+          balances.tag,
+          balances.ent_a,
+          balances.ent_b,
           balances.account,
           balances.currency,
           desc(balances.date),
@@ -203,11 +198,7 @@ export const movementsRouter = createTRPCRouter({
 
       const balancesData = await balancesQuery.execute();
 
-      return balancesData.map((b) => ({
-        ...b.Balances,
-        selectedEntity: b.selectedEntity!,
-        otherEntity: b.otherEntity!,
-      }));
+      return balancesData;
     }),
   getBalancesByEntitiesForCard: publicProcedure
     .input(
@@ -280,23 +271,15 @@ export const movementsRouter = createTRPCRouter({
 
         const balancesData = await ctx.db
           .selectDistinctOn([
-            balances.selectedEntityId,
-            balances.otherEntityId,
+            balances.tag,
+            balances.ent_a,
+            balances.ent_b,
             balances.account,
             balances.currency,
           ])
           .from(balances)
-          .leftJoin(
-            selectedEntityObject,
-            eq(selectedEntityObject.id, balances.selectedEntityId),
-          )
-          .leftJoin(
-            otherEntityObject,
-            eq(otherEntityObject.id, balances.otherEntityId),
-          )
           .where(
             and(
-              isNull(balances.tagName),
               or(
                 and(
                   inArray(selectedEntityObject.tagName, allChildrenTags),
