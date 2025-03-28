@@ -74,7 +74,9 @@ export const filesRouter = createTRPCRouter({
           movementId: mv.id,
           fecha: mv.date,
           origen: mv.selectedEntity,
+          origen_id: mv.selectedEntityId,
           cliente: mv.otherEntity,
+          cliente_id: mv.otherEntityId,
           detalle: mv.observations ?? "",
           tipo: `${
             mv.type === "upload"
@@ -316,6 +318,7 @@ export const filesRouter = createTRPCRouter({
           // Add unified balance at the end
           return {
             entidad: entity,
+            entidad_id: detailedBalance.entity.id,
             ...balances,
             unificado: Math.round(unifiedBalance * 100) / 100,
           };
