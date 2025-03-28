@@ -234,7 +234,6 @@ export const movements = pgTable(
     balance_4a_id: integer("balance_4a_id").notNull(),
     balance_4b: decimalNumber("balance_4b").notNull(),
     balance_4b_id: integer("balance_4b_id").notNull(),
-    balanceId: integer("balanceId"),
   },
   (table) => {
     return {
@@ -245,13 +244,6 @@ export const movements = pgTable(
         table.transactionId.asc().nullsLast(),
         table.account.asc().nullsLast(),
       ),
-      movementsBalanceIdBalancesIdFk: foreignKey({
-        columns: [table.balanceId],
-        foreignColumns: [balances.id],
-        name: "Movements_balanceId_Balances_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
       movementsTransactionIdTransactionsIdFk: foreignKey({
         columns: [table.transactionId],
         foreignColumns: [transactions.id],
@@ -378,19 +370,19 @@ export const transactions = pgTable(
   },
   (table) => {
     return {
-      operationIdEntAEntBDateCurreIdx: index(
-        "Transactions_operationId_ent_a_ent_b_date_curre_idx",
+      operationIdFromEntityIdToEntityIdDateCurrencyIdx: index(
+        "Transactions_operationId_fromEntityId_toEntityId_date_currency_idx",
       ).using(
         "btree",
         table.operationId.asc().nullsLast(),
-        table.ent_a.asc().nullsLast(),
-        table.ent_b.asc().nullsLast(),
+        table.fromEntityId.asc().nullsLast(),
+        table.toEntityId.asc().nullsLast(),
         table.currency.asc().nullsLast(),
       ),
-      transactionsEntAEntitiesIdFk: foreignKey({
-        columns: [table.ent_a],
+      transactionsFromEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.fromEntityId],
         foreignColumns: [entities.id],
-        name: "Transactions_ent_a_Entities_id_fk",
+        name: "Transactions_fromEntityId_Entities_id_fk",
       })
         .onUpdate("cascade")
         .onDelete("cascade"),
@@ -408,10 +400,10 @@ export const transactions = pgTable(
       })
         .onUpdate("cascade")
         .onDelete("cascade"),
-      transactionsEntBEntitiesIdFk: foreignKey({
-        columns: [table.ent_b],
+      transactionsToEntityIdEntitiesIdFk: foreignKey({
+        columns: [table.toEntityId],
         foreignColumns: [entities.id],
-        name: "Transactions_ent_b_Entities_id_fk",
+        name: "Transactions_toEntityId_Entities_id_fk",
       })
         .onUpdate("cascade")
         .onDelete("cascade"),
@@ -689,12 +681,12 @@ export const transactionsRelations = relations(
   transactions,
   ({ one, many }) => ({
     fromEntity: one(entities, {
-      fields: [transactions.ent_a],
+      fields: [transactions.fromEntityId],
       references: [entities.id],
       relationName: "fromEntity",
     }),
     toEntity: one(entities, {
-      fields: [transactions.ent_b],
+      fields: [transactions.toEntityId],
       references: [entities.id],
       relationName: "toEntity",
     }),
@@ -719,10 +711,6 @@ export const movementsOneRelations = relations(movements, ({ one }) => ({
   transaction: one(transactions, {
     fields: [movements.transactionId],
     references: [transactions.id],
-  }),
-  balance: one(balances, {
-    fields: [movements.balanceId],
-    references: [balances.id],
   }),
 }));
 

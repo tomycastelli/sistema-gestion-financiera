@@ -401,11 +401,18 @@ const processBalance = async (
   }
 
   // Update all movements whose balance was updated
+  // And their date is after the movement date
   await transaction
     .update(movements)
     // @ts-expect-error
     .set({ [balanceField]: sql`${movements[balanceField]} + ${balanceAmount}` })
-    .where(inArray(movements.balanceId, updatedBalancesIds));
+    .where(
+      and(
+        // @ts-expect-error
+        inArray(movements[balanceIdField], updatedBalancesIds),
+        gt(movements.date, mvDate),
+      ),
+    );
 
   // Store the calculated values in balanceValues
   balanceValues[balanceField] = finalAmount;

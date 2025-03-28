@@ -14,9 +14,9 @@ import {
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
+import { currentAccountsProcedure } from "~/lib/currentAccountsProcedure";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
-  currentAccountsProcedure,
   getAllEntities,
   getAllPermissions,
   getAllTags,
@@ -24,7 +24,6 @@ import {
 import { currenciesOrder, dateFormatting } from "~/lib/variables";
 import {
   balances,
-  cashBalances,
   entities,
   links,
   movements,
@@ -44,18 +43,19 @@ export const getCurrentAccountsInput = z.object({
   sharedEntityId: z.number().optional().nullish(),
   pageSize: z.number().int(),
   pageNumber: z.number().int(),
-  entityId: z.number().int().optional().nullish(), // Change from array to single number
+  entityId: z.number().int().optional().nullish(),
   entityTag: z.string().optional().nullish(),
   originEntityId: z.number().int().optional().nullish(),
   toEntityId: z.number().int().optional().nullish(),
   currency: z.string().optional().nullish(),
-  account: z.boolean().optional(),
+  account: z.boolean(),
   fromDate: z.date().optional().nullish(),
   toDate: z.date().optional().nullish(),
   dayInPast: z.string().optional(),
   groupInTag: z.boolean().default(true),
   dateOrdering: z.enum(["asc", "desc"]).default("desc"),
   ignoreSameTag: z.boolean().default(false),
+  balanceType: z.enum(["1", "2", "3", "4"]),
 });
 
 export const movementsRouter = createTRPCRouter({
@@ -494,12 +494,7 @@ export const movementsRouter = createTRPCRouter({
           .from(movements)
           .leftJoin(transactions, eq(movements.transactionId, transactions.id))
           .leftJoin(operations, eq(transactions.operationId, operations.id))
-          .where(
-            and(
-              eq(operations.id, input.operationId),
-              isNull(movements.entitiesMovementId),
-            ),
-          )
+          .where(and(eq(operations.id, input.operationId)))
           .orderBy(desc(movements.id));
 
         const mvsIds =
