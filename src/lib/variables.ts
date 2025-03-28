@@ -1,3 +1,5 @@
+export const LOCK_MOVEMENTS_KEY = "sharedMovementsKey";
+
 export const dateFormat = "DD-MM-YYYY";
 
 export const dateFormatting = {
