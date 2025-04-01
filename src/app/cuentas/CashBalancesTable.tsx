@@ -22,6 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { Skeleton } from "../components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -239,7 +240,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                 <Icons.download className="h-5" />
               </Button>
             ) : (
-              <p>Cargando...</p>
+              <Skeleton className="h-8 w-12" />
             )}
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
@@ -425,7 +426,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                       )}
                     </p>
                   ) : (
-                    <p>Cargando...</p>
+                    <Skeleton className="h-8 w-14" />
                   )}
                 </Button>
               ) : (

@@ -30,6 +30,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Skeleton } from "../components/ui/skeleton";
 import { Switch } from "../components/ui/switch";
 import {
   Tooltip,
@@ -608,7 +609,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                     <Icons.download className="h-5" />
                   </Button>
                 ) : (
-                  <p>Cargando...</p>
+                  <Skeleton className="mx-2 h-8 w-full" />
                 )}
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
@@ -813,7 +814,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                               )}
                             </p>
                           ) : (
-                            <p>Cargando...</p>
+                            <Skeleton className="h-6 w-16" />
                           )}
                         </Button>
                       </TooltipTrigger>
@@ -869,7 +870,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                           )}
                         </p>
                       ) : (
-                        <p>Cargando...</p>
+                        <Skeleton className="h-6 w-16" />
                       )}
                     </Button>
                   )

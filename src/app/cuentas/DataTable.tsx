@@ -9,8 +9,12 @@ import {
   type ColumnFiltersState,
 } from "@tanstack/react-table";
 
+import moment from "moment";
 import React from "react";
+import { dayGreater } from "~/lib/functions";
 import { cn } from "~/lib/utils";
+import { dateFormat } from "~/lib/variables";
+import { useOperationsPageStore } from "~/stores/OperationsPage";
 import {
   Table,
   TableBody,
@@ -19,10 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { useOperationsPageStore } from "~/stores/OperationsPage";
-import { dayGreater } from "~/lib/functions";
-import moment from "moment";
-import { dateFormat } from "~/lib/variables";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];

@@ -16,7 +16,6 @@ import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import CustomPagination from "../components/CustomPagination";
 import { DateRangePicker } from "../components/DateRangePicker";
-import LoadingAnimation from "../components/LoadingAnimation";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -49,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Skeleton } from "../components/ui/skeleton";
 import { Switch } from "../components/ui/switch";
 import { DataTable } from "./DataTable";
 const OperationDrawer = dynamic(() => import("../components/OperationDrawer"));
@@ -749,7 +749,14 @@ const MovementsTable = ({
             })}
           />
         ) : (
-          <LoadingAnimation text="Cargando movimientos" />
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            {Array(15)
+              .fill(0)
+              .map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+          </div>
         )}
       </div>
       <div className="mt-4 flex w-fit flex-col items-center justify-start space-y-2">

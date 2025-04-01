@@ -7,6 +7,7 @@ import {
   inArray,
   lt,
   lte,
+  or,
   sql,
   type ExtractTablesWithRelations,
 } from "drizzle-orm";
@@ -23,6 +24,46 @@ import {
 } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
+
+// Helper to get the opposite balance field
+const getOppositeBalanceField = (
+  field: string,
+):
+  | "balance_2b"
+  | "balance_2a"
+  | "balance_3b"
+  | "balance_3a"
+  | "balance_4b"
+  | "balance_4a"
+  | null => {
+  if (field.includes("_2a")) return "balance_2b";
+  if (field.includes("_2b")) return "balance_2a";
+  if (field.includes("_3a")) return "balance_3b";
+  if (field.includes("_3b")) return "balance_3a";
+  if (field.includes("_4a")) return "balance_4b";
+  if (field.includes("_4b")) return "balance_4a";
+  return null; // No opposite for balance_1
+};
+
+// Helper to get opposite balance ID field
+const getOppositeBalanceIdField = (
+  field: string,
+):
+  | "balance_2b_id"
+  | "balance_2a_id"
+  | "balance_3b_id"
+  | "balance_3a_id"
+  | "balance_4b_id"
+  | "balance_4a_id"
+  | null => {
+  if (field.includes("_2a_id")) return "balance_2b_id";
+  if (field.includes("_2b_id")) return "balance_2a_id";
+  if (field.includes("_3a_id")) return "balance_3b_id";
+  if (field.includes("_3b_id")) return "balance_3a_id";
+  if (field.includes("_4a_id")) return "balance_4b_id";
+  if (field.includes("_4b_id")) return "balance_4a_id";
+  return null; // No opposite for balance_1_id
+};
 
 export const generateMovements = async (
   transaction: PgTransaction<
@@ -243,8 +284,22 @@ const processBalance = async (
     ent_b?: number;
     tag?: string;
   },
-  balanceField: string,
-  balanceIdField: string,
+  balanceField:
+    | "balance_1"
+    | "balance_2a"
+    | "balance_2b"
+    | "balance_3a"
+    | "balance_3b"
+    | "balance_4a"
+    | "balance_4b",
+  balanceIdField:
+    | "balance_1_id"
+    | "balance_2a_id"
+    | "balance_2b_id"
+    | "balance_3a_id"
+    | "balance_3b_id"
+    | "balance_4a_id"
+    | "balance_4b_id",
 ) => {
   // Construct query condition based on provided entities and type
   const entitiesQuery = and(
@@ -296,7 +351,8 @@ const processBalance = async (
 
   const updatedBalancesIds: number[] = [];
 
-  console.log({ balance, beforeBalance });
+  const oppositeBalanceField = getOppositeBalanceField(balanceField);
+  const oppositeBalanceIdField = getOppositeBalanceIdField(balanceIdField);
 
   if (!balance) {
     // No previous balance, create a new one
@@ -349,24 +405,39 @@ const processBalance = async (
     } else {
       // Search for the previous movement on the oldBalance day which is just before the mvDate
       const [previousMovement] = await transaction
-        // @ts-expect-error
-        .select({ amount: movements[balanceField] })
+        .select()
         .from(movements)
         .where(
           and(
-            // @ts-expect-error
-            eq(movements[balanceIdField], oldBalance.id),
-            lte(movements.date, mvDate),
+            oppositeBalanceIdField
+              ? or(
+                  eq(movements[oppositeBalanceIdField], oldBalance.id),
+                  eq(movements[balanceIdField], oldBalance.id),
+                )
+              : eq(movements[balanceIdField], oldBalance.id),
             eq(movements.account, account),
+            lte(movements.date, mvDate),
           ),
         )
         .orderBy(desc(movements.date), desc(movements.id))
         .limit(1);
 
+      // Determine the amount of the previous movement we are interested in
+      let previousMovementAmount: number | null = null;
+      if (previousMovement) {
+        if (!oppositeBalanceField) {
+          previousMovementAmount = previousMovement.balance_1;
+        } else if (previousMovement[balanceIdField] === oldBalance.id) {
+          previousMovementAmount = previousMovement[balanceField];
+        } else {
+          previousMovementAmount = previousMovement[oppositeBalanceField];
+        }
+      }
+
       updatedBalancesIds.push(oldBalance.id);
       balanceId = oldBalance.id;
-      finalAmount = previousMovement
-        ? previousMovement.amount + balanceAmount
+      finalAmount = previousMovementAmount
+        ? previousMovementAmount + balanceAmount
         : beforeBalance
         ? beforeBalance.amount + balanceAmount
         : balanceAmount;
@@ -399,15 +470,18 @@ const processBalance = async (
       updatedBalancesIds.push(updatedBalance.id);
     }
 
-    // Search for the previous movement on this day
+    // Find the latest movement on this day that is before the current mvDate
     const [previousMovement] = await transaction
-      // @ts-expect-error
-      .select({ amount: movements[balanceField] })
+      .select()
       .from(movements)
       .where(
         and(
-          // @ts-expect-error
-          eq(movements[balanceIdField], balance.id),
+          oppositeBalanceIdField
+            ? or(
+                eq(movements[oppositeBalanceIdField], balance.id),
+                eq(movements[balanceIdField], balance.id),
+              )
+            : eq(movements[balanceIdField], balance.id),
           lte(movements.date, mvDate),
           eq(movements.account, account),
         ),
@@ -415,9 +489,24 @@ const processBalance = async (
       .orderBy(desc(movements.date), desc(movements.id))
       .limit(1);
 
+    let previousMovementAmount: number | null = null;
+    if (previousMovement) {
+      if (!oppositeBalanceField) {
+        previousMovementAmount = previousMovement.balance_1;
+      } else if (previousMovement[balanceIdField] === balance.id) {
+        previousMovementAmount = previousMovement[balanceField];
+      } else {
+        previousMovementAmount = previousMovement[oppositeBalanceField];
+      }
+    }
+
     balanceId = updatedBalance!.id;
     // Exists because we have a balance for this day
-    finalAmount = previousMovement!.amount + balanceAmount;
+    finalAmount = previousMovementAmount
+      ? previousMovementAmount + balanceAmount
+      : beforeBalance
+      ? beforeBalance.amount + balanceAmount
+      : balanceAmount;
   } else {
     // Movement date is after most recent balance
     const [newBalance] = await transaction
@@ -449,11 +538,9 @@ const processBalance = async (
   // And their date is after the movement date
   await transaction
     .update(movements)
-    // @ts-expect-error
     .set({ [balanceField]: sql`${movements[balanceField]} + ${balanceAmount}` })
     .where(
       and(
-        // @ts-expect-error
         inArray(movements[balanceIdField], updatedBalancesIds),
         gt(movements.date, mvDate),
       ),
