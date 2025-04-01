@@ -175,7 +175,6 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-        void utils.movements.getBalancesByEntitiesForCard.invalidate();
       },
       onSuccess(data) {
         const title =

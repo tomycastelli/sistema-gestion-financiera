@@ -1,16 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import {
-  and,
-  count,
-  desc,
-  eq,
-  gte,
-  inArray,
-  lte,
-  not,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, not, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
@@ -24,8 +13,7 @@ import {
   transactionsMetadata,
 } from "~/server/db/schema";
 import { movements } from "../server/db/schema";
-import { getAllChildrenTags, movementBalanceDirection } from "./functions";
-import { getAllTags } from "./trpcFunctions";
+import { movementBalanceDirection } from "./functions";
 import { dateFormatting } from "./variables";
 
 export const currentAccountsProcedure = async (
@@ -61,96 +49,63 @@ export const currentAccountsProcedure = async (
     });
   }
 
-  const tags = await getAllTags(ctx.redis, ctx.db);
-  const tagAndChildrenResponse = getAllChildrenTags(input.entityTag, tags);
-  const tagAndChildren =
-    tagAndChildrenResponse.length > 0 ? tagAndChildrenResponse : [""];
-
   const fromEntity = alias(entities, "fromEntity");
   const toEntity = alias(entities, "toEntity");
 
   // Hay que hacer join con transactions para que funcionen estas conditions
   const mainConditions = and(
-    eq(movements.account, input.account),
-    input.currency ? eq(transactions.currency, input.currency) : undefined,
+    eq(movements.account, sql.placeholder("account")),
+    input.currency
+      ? eq(transactions.currency, sql.placeholder("currency"))
+      : undefined,
     input.dayInPast
-      ? lte(
-          movements.date,
-          moment(input.dayInPast, dateFormatting.day)
-            .set({
-              hour: 23,
-              minute: 59,
-              second: 59,
-              millisecond: 999,
-            })
-            .toDate(),
-        )
+      ? lte(movements.date, sql.placeholder("dayInPastLimit"))
       : undefined,
     input.fromDate && input.toDate
       ? and(
-          gte(
-            movements.date,
-            moment(input.fromDate)
-              .startOf("day")
-              .utc(true) // Keep the same date/time but convert to UTC
-              .toDate(),
-          ),
-          lte(
-            movements.date,
-            moment(input.toDate)
-              .endOf("day")
-              .utc(true) // Keep the same date/time but convert to UTC
-              .toDate(),
-          ),
+          gte(movements.date, sql.placeholder("fromDateStart")),
+          lte(movements.date, sql.placeholder("toDateEnd")),
         )
       : undefined,
     input.fromDate && !input.toDate
       ? and(
-          gte(
-            movements.date,
-            moment(input.fromDate)
-              .startOf("day")
-              .utc(true) // Keep the same date/time but convert to UTC
-              .toDate(),
-          ),
-          lte(
-            movements.date,
-            moment(input.fromDate)
-              .endOf("day")
-              .utc(true) // Keep the same date/time but convert to UTC
-              .toDate(),
-          ),
+          gte(movements.date, sql.placeholder("singleFromDateStart")),
+          lte(movements.date, sql.placeholder("singleFromDateEnd")),
         )
       : undefined,
     // Vemos que bajar segun el tag o la entidad seleccionada
     input.entityId
       ? or(
-          eq(transactions.fromEntityId, input.entityId),
-          eq(transactions.toEntityId, input.entityId),
+          eq(transactions.fromEntityId, sql.placeholder("entityId")),
+          eq(transactions.toEntityId, sql.placeholder("entityId")),
         )
       : undefined,
     input.entityTag
       ? and(
           or(
-            inArray(fromEntity.tagName, tagAndChildren),
-            inArray(toEntity.tagName, tagAndChildren),
+            eq(fromEntity.tagName, sql.placeholder("entityTag")),
+            eq(toEntity.tagName, sql.placeholder("entityTag")),
           ),
           input.originEntityId
             ? or(
-                eq(fromEntity.id, input.originEntityId),
-                eq(toEntity.id, input.originEntityId),
+                eq(fromEntity.id, sql.placeholder("originEntityId")),
+                eq(toEntity.id, sql.placeholder("originEntityId")),
               )
             : undefined,
           input.toEntityId
             ? or(
-                eq(toEntity.id, input.toEntityId),
-                eq(fromEntity.id, input.toEntityId),
+                eq(toEntity.id, sql.placeholder("toEntityId")),
+                eq(fromEntity.id, sql.placeholder("toEntityId")),
               )
             : undefined,
           input.ignoreSameTag
             ? or(
-                not(inArray(fromEntity.tagName, tagAndChildren)),
-                not(inArray(toEntity.tagName, tagAndChildren)),
+                not(
+                  eq(fromEntity.tagName, sql.placeholder("entityTagForIgnore")),
+                ),
+                not(
+                  eq(toEntity.tagName, sql.placeholder("entityTagForIgnore")),
+                ),
               )
             : undefined,
         )
@@ -162,6 +117,8 @@ export const currentAccountsProcedure = async (
       .select({ count: count() })
       .from(movements)
       .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+      .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
       .where(mainConditions)
       .prepare("movements_count");
 
@@ -182,12 +139,61 @@ export const currentAccountsProcedure = async (
       .limit(sql.placeholder("queryLimit"))
       .prepare("movements_query");
 
+    // Create parameters for the prepared statements
+    const queryParams: Record<string, unknown> = {
+      account: input.account,
+      queryOffset: (input.pageNumber - 1) * input.pageSize,
+      queryLimit: input.pageSize,
+    };
+
+    // Add conditional parameters only if they exist in the input
+    if (input.currency) queryParams.currency = input.currency;
+
+    if (input.dayInPast) {
+      queryParams.dayInPastLimit = moment(input.dayInPast, dateFormatting.day)
+        .set({
+          hour: 23,
+          minute: 59,
+          second: 59,
+          millisecond: 999,
+        })
+        .toISOString();
+    }
+
+    if (input.fromDate && input.toDate) {
+      queryParams.fromDateStart = moment(input.fromDate)
+        .startOf("day")
+        .utc(true)
+        .toISOString();
+      queryParams.toDateEnd = moment(input.toDate)
+        .endOf("day")
+        .utc(true)
+        .toISOString();
+    } else if (input.fromDate) {
+      queryParams.singleFromDateStart = moment(input.fromDate)
+        .startOf("day")
+        .utc(true)
+        .toISOString();
+      queryParams.singleFromDateEnd = moment(input.fromDate)
+        .endOf("day")
+        .utc(true)
+        .toISOString();
+    }
+
+    if (input.entityId) queryParams.entityId = input.entityId;
+
+    if (input.entityTag) {
+      queryParams.entityTag = input.entityTag;
+      // Only add this if ignoreSameTag is true to avoid duplication
+      if (input.ignoreSameTag) queryParams.entityTagForIgnore = input.entityTag;
+    }
+
+    if (input.originEntityId) queryParams.originEntityId = input.originEntityId;
+    if (input.toEntityId) queryParams.toEntityId = input.toEntityId;
+
     const [movementsData, [movementsCount]] = await Promise.all([
-      movementsQuery.execute({
-        queryOffset: (input.pageNumber - 1) * input.pageSize,
-        queryLimit: input.pageSize,
-      }),
-      movementsCountQuery.execute(),
+      movementsQuery.execute(queryParams),
+      movementsCountQuery.execute(queryParams),
     ]);
 
     const tableDataType = z.object({
@@ -242,14 +248,20 @@ export const currentAccountsProcedure = async (
               ? mv.transaction.toEntity
               : mv.transaction.fromEntity;
         } else if (input.entityTag) {
-          selectedEntity =
-            mv.transaction.fromEntity.tagName === input.entityTag
+          selectedEntity = input.originEntityId
+            ? mv.transaction.fromEntity.id === input.originEntityId
               ? mv.transaction.fromEntity
-              : mv.transaction.toEntity;
-          otherEntity =
-            mv.transaction.fromEntity.tagName === input.entityTag
+              : mv.transaction.toEntity
+            : mv.transaction.fromEntity.tagName === input.entityTag
+            ? mv.transaction.fromEntity
+            : mv.transaction.toEntity;
+          otherEntity = input.originEntityId
+            ? mv.transaction.fromEntity.id === input.originEntityId
               ? mv.transaction.toEntity
-              : mv.transaction.fromEntity;
+              : mv.transaction.fromEntity
+            : mv.transaction.fromEntity.tagName === input.entityTag
+            ? mv.transaction.toEntity
+            : mv.transaction.fromEntity;
         }
 
         const mvDirection = movementBalanceDirection(

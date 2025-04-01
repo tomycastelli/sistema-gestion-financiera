@@ -3,13 +3,9 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
-import {
-  deletePattern,
-  generateMovements,
-  getAllEntities,
-  logIO,
-  undoMovements,
-} from "~/lib/trpcFunctions";
+import { generateMovements } from "~/lib/generateMovements";
+import { deletePattern, getAllEntities, logIO } from "~/lib/trpcFunctions";
+import { undoMovements } from "~/lib/undoMovements";
 import { currentAccountOnlyTypes } from "~/lib/variables";
 import {
   Status,
@@ -166,12 +162,8 @@ export const editingOperationsRouter = createTRPCRouter({
             operation: newTxResponse!.Operations!,
           };
 
-          const filteredMovements = deletedMovements.filter(
-            (mv) => mv.entitiesMovementId === null,
-          );
-
           // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
-          for (const deletedMovement of filteredMovements) {
+          for (const deletedMovement of deletedMovements) {
             await generateMovements(
               transaction,
               txForMovement,
@@ -364,9 +356,7 @@ export const editingOperationsRouter = createTRPCRouter({
 
         // Para cancelar, vamos a crear los mismos movimientos con los datos de la transaccion invertidos
         for (const tx of transactionsToCancel) {
-          for (const mv of tx.movements.filter(
-            (m) => m.entitiesMovementId === null,
-          )) {
+          for (const mv of tx.movements) {
             await generateMovements(
               transaction,
               tx,
@@ -432,11 +422,7 @@ export const editingOperationsRouter = createTRPCRouter({
                 ctx.redlock,
               );
 
-              const filteredMovements = deletedMvs.filter(
-                (mv) => mv.entitiesMovementId === null,
-              );
-
-              for (const deletedMv of filteredMovements) {
+              for (const deletedMv of deletedMvs) {
                 await generateMovements(
                   transaction,
                   {

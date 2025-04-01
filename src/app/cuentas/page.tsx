@@ -7,14 +7,12 @@ import { type RouterInputs } from "~/trpc/shared";
 import AccountsTab from "./AccountsTab";
 import CurrentAccountsTotalsSwitch from "./CurrentAccountsTotalsSwitch";
 import EntitySwitcher from "./EntitySwitcher";
+import SummaryBalances from "./SummaryBalances";
 import TabSwitcher from "./TabSwitcher";
 import TimeMachine from "./TimeMachine";
 const LoadingAnimation = dynamic(
   () => import("../components/LoadingAnimation"),
 );
-const SummarizedBalances = dynamic(() => import("./SummarizedBalances"), {
-  ssr: false,
-});
 
 const Page = async ({
   searchParams,
@@ -56,16 +54,25 @@ const Page = async ({
     ? filteredTags.find((t) => t.name === selectedTag)
     : undefined;
 
+  const balanceType =
+    selectedTab === "resumen"
+      ? selectedEntityObj?.id
+        ? "2"
+        : "4"
+      : selectedTab === "caja"
+      ? selectedEntityObj?.id
+        ? "2"
+        : "4"
+      : selectedTagObj?.name
+      ? "3"
+      : "1";
+
   const initialBalancesInput: RouterInputs["movements"]["getBalancesByEntities"] =
     {
       entityTag: selectedTagObj?.name,
       entityId: selectedEntityObj?.id,
-      account:
-        selectedTab === "cuenta_corriente"
-          ? false
-          : selectedTab === "caja"
-          ? true
-          : undefined,
+      account: selectedTab === "caja",
+      balanceType,
       linkToken: linkToken,
       linkId: linkId,
       dayInPast: undefined,
@@ -73,30 +80,10 @@ const Page = async ({
   const initialBalances = await api.movements.getBalancesByEntities.query(
     initialBalancesInput,
   );
-
-  const initialBalancesForCard =
-    await api.movements.getBalancesByEntitiesForCard.query({
-      entityId: initialBalancesInput.entityId,
-      entityTag: initialBalancesInput.entityTag,
-      linkId: initialBalancesInput.linkId,
-      linkToken: initialBalancesInput.linkToken,
-      dayInPast: undefined,
-    });
-
-  const movementsAmount = 5;
-
-  const queryInput: RouterInputs["movements"]["getCurrentAccounts"] = {
-    pageSize: movementsAmount,
-    currency: "ars",
-    pageNumber: 1,
-    entityTag: selectedTag,
-    entityId: selectedEntityObj?.id,
-    dayInPast: undefined,
-  };
-
-  const initialMovements = await api.movements.getCurrentAccounts.query(
-    queryInput,
-  );
+  const initialOtherBalances = await api.movements.getBalancesByEntities.query({
+    ...initialBalancesInput,
+    account: selectedTab !== "caja",
+  });
 
   const uiColor = selectedEntityObj
     ? selectedEntityObj.tag.color ?? undefined
@@ -117,12 +104,6 @@ const Page = async ({
     accountingPeriod.months,
     accountingPeriod.graceDays,
   );
-
-  const initialBalanceCharts = await api.movements.balanceChart.query({
-    daysBackAmount: 30,
-    entityId: selectedEntityObj?.id,
-    tagName: selectedTag,
-  });
 
   return mainTags.includes(selectedTag ?? "") ||
     mainTags.includes(selectedEntityObj?.tag.name ?? "") ? (
@@ -163,6 +144,16 @@ const Page = async ({
         {initialBalances ? (
           selectedEntityObj?.id || selectedTagObj?.name ? (
             <div className="mt-4 w-full">
+              {selectedTab === "resumen" && (
+                <SummaryBalances
+                  initialCashBalances={initialOtherBalances}
+                  initialCurrentAccountBalances={initialBalances}
+                  linkId={linkId}
+                  selectedEntityId={selectedEntityObj?.id}
+                  selectedTag={selectedTagObj?.name}
+                  linkToken={linkToken}
+                />
+              )}
               {(selectedTab === "cuenta_corriente" ||
                 selectedTab === "caja") && (
                 <AccountsTab
@@ -179,33 +170,6 @@ const Page = async ({
                   linkId={linkId}
                   linkToken={linkToken}
                 />
-              )}
-              {selectedTab === "resumen" && (
-                <div suppressHydrationWarning={true}>
-                  {initialBalancesForCard && (
-                    <SummarizedBalances
-                      accountingPeriodDate={accountingPeriodDate}
-                      entities={initialEntities}
-                      user={user}
-                      users={users}
-                      mainTags={mainTags}
-                      initialBalancesInput={{
-                        linkToken: linkToken,
-                        linkId: linkId,
-                        entityId: selectedEntityObj?.id,
-                        entityTag: selectedTagObj?.name,
-                        dayInPast: undefined,
-                      }}
-                      uiColor={uiColor}
-                      tags={filteredTags}
-                      initialMovements={initialMovements}
-                      selectedTag={selectedTagObj?.name}
-                      selectedEntity={selectedEntityObj}
-                      initialBalancesForCard={initialBalancesForCard}
-                      initialBalanceCharts={initialBalanceCharts}
-                    />
-                  )}
-                </div>
               )}
             </div>
           ) : (

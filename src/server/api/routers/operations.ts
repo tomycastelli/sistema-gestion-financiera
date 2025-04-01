@@ -15,11 +15,12 @@ import moment from "moment";
 import type postgres from "postgres";
 import { z } from "zod";
 import { findDuplicateObjects } from "~/lib/functions";
+import { generateMovements } from "~/lib/generateMovements";
 import {
   getOperationsInput,
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
-import { generateMovements, logIO } from "~/lib/trpcFunctions";
+import { logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
   entities,

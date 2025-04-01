@@ -43,28 +43,150 @@ const transformedBalancesSchema = z.object({
 });
 
 interface CashBalancesTableProps {
-  balances: RouterOutputs["movements"]["getBalancesByEntities"];
   isInverted: boolean;
   uiColor: string | undefined;
-  isFetching: boolean;
   selectedEntityId: number | undefined;
   selectedTag: string | undefined;
   latestExchangeRates: RouterOutputs["exchangeRates"]["getLatestExchangeRates"];
+  initialBalances: RouterOutputs["movements"]["getBalancesByEntities"];
+  dayInPast: string | undefined;
   user: User | null;
   main_name: string;
+  linkId: number | null;
+  linkToken: string | null;
+  entities: RouterOutputs["entities"]["getAll"];
 }
 
 const CashBalancesTable: FC<CashBalancesTableProps> = ({
-  balances,
   isInverted,
-  isFetching,
   uiColor,
   selectedEntityId,
   selectedTag,
   latestExchangeRates,
+  dayInPast,
+  initialBalances,
   user,
   main_name,
+  linkId,
+  linkToken,
+  entities,
 }) => {
+  const { data: balances, isFetching } =
+    api.movements.getBalancesByEntities.useQuery(
+      {
+        linkId,
+        account: true,
+        entityId: selectedEntityId,
+        dayInPast,
+        entityTag: selectedTag,
+        linkToken,
+        balanceType: "2",
+      },
+      { initialData: initialBalances, refetchOnWindowFocus: false },
+    );
+
+  const unifyAmount = (
+    currency: string,
+    amount: number,
+    type: "entity" | "total",
+  ) => {
+    if (latestExchangeRates.length === 0) return 0;
+    if (currency === "usd") return amount;
+    const rate =
+      latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
+    if (currency === "usdt") {
+      if (type === "entity") return 0;
+      return amount * (1 + rate / 100);
+    } else if (currency === "eur") {
+      return amount * rate;
+    }
+    return amount / rate;
+  };
+
+  const transformBalances = (
+    balances: typeof initialBalances,
+  ): z.infer<typeof transformedBalancesSchema> => {
+    // Group balances by entity
+    const entityBalances = balances.reduce(
+      (acc, balance) => {
+        const entityId = balance.ent_a?.id ?? 0;
+        if (!acc[entityId]) {
+          acc[entityId] = {
+            entity: {
+              id: entityId,
+              name:
+                entities.find((e) => e.id === entityId)?.name ?? "Sin nombre",
+              tagName:
+                entities.find((e) => e.id === entityId)?.name ?? "Sin nombre",
+            },
+            data: [],
+          };
+        }
+        acc[entityId]!.data.push({
+          currency: balance.currency,
+          balance: balance.amount,
+        });
+        return acc;
+      },
+      {} as Record<
+        number,
+        {
+          entity: { id: number; name: string; tagName: string };
+          data: { currency: string; balance: number }[];
+        }
+      >,
+    );
+
+    console.log({ balances });
+
+    // Calculate totals for each currency and add unified totals
+    const totals = balances.reduce(
+      (acc, balance) => {
+        const existingTotal = acc.find((t) => t.currency === balance.currency);
+        if (existingTotal) {
+          existingTotal.total += balance.amount;
+        } else {
+          acc.push({
+            currency: balance.currency,
+            total: balance.amount,
+          });
+        }
+        return acc;
+      },
+      [] as { currency: string; total: number }[],
+    );
+
+    // Add unified total
+    const unifiedTotal = totals.reduce((sum, { currency, total }) => {
+      return sum + unifyAmount(currency, total, "total");
+    }, 0);
+    totals.push({ currency: "unified", total: unifiedTotal });
+
+    // Add unified balance for each entity
+    const tableData = Object.values(entityBalances).map((entity) => {
+      const unifiedBalance = entity.data.reduce(
+        (sum, { currency, balance }) => {
+          return sum + unifyAmount(currency, balance, "entity");
+        },
+        0,
+      );
+      return {
+        ...entity,
+        data: [
+          ...entity.data,
+          { currency: "unified", balance: unifiedBalance },
+        ],
+      };
+    });
+
+    return {
+      tableData,
+      totals,
+    };
+  };
+
+  const transformedBalances = transformBalances(balances);
+
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
       onSuccess(newOperation) {
@@ -82,202 +204,6 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
         });
       },
     });
-
-  const unifyAmount = (
-    currency: string,
-    amount: number,
-    type: "entity" | "total",
-  ) => {
-    if (latestExchangeRates.length === 0) return 0;
-    if (currency === "usd") return amount;
-    const rate =
-      latestExchangeRates.find((rate) => rate.currency === currency)?.rate ?? 0;
-    if (currency === "usdt") {
-      if (type === "entity") return 0;
-      return amount * (1 + rate / 100);
-    }
-    return amount / rate;
-  };
-
-  const transformedBalances: z.infer<typeof transformedBalancesSchema> =
-    balances.reduce(
-      (acc, balance) => {
-        if (selectedEntityId) {
-          let entityEntry = acc.tableData.find(
-            (entry) =>
-              entry.entity.id ===
-              (balance.selectedEntityId === selectedEntityId
-                ? balance.selectedEntityId
-                : balance.otherEntityId),
-          );
-
-          if (!entityEntry) {
-            entityEntry = {
-              entity:
-                selectedEntityId === balance.selectedEntityId
-                  ? balance.selectedEntity
-                  : balance.otherEntity,
-              data: [
-                {
-                  currency: "unified",
-                  balance: 0,
-                },
-              ],
-            };
-            acc.tableData.push(entityEntry);
-          }
-
-          const balanceMultiplier =
-            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-          let dataEntry = entityEntry.data.find(
-            (d) => d.currency === balance.currency,
-          );
-
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0,
-            };
-            entityEntry.data.push(dataEntry);
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier;
-          entityEntry.data[0]!.balance += unifyAmount(
-            balance.currency,
-            balance.balance * balanceMultiplier,
-            "entity",
-          );
-        } else if (selectedTag) {
-          const myPOVEntity =
-            selectedTag === balance.selectedEntity.tagName
-              ? balance.selectedEntity
-              : balance.otherEntity;
-
-          const myOtherEntity =
-            selectedTag === balance.selectedEntity.tagName
-              ? balance.otherEntity
-              : balance.selectedEntity;
-
-          if (myOtherEntity.tagName === myPOVEntity.tagName) {
-            let otherEntityEntry = acc.tableData.find(
-              (entry) => entry.entity.id === myOtherEntity.id,
-            );
-            if (!otherEntityEntry) {
-              otherEntityEntry = {
-                entity: myOtherEntity,
-                data: [
-                  {
-                    balance: 0,
-                    currency: "unified",
-                  },
-                ],
-              };
-              acc.tableData.push(otherEntityEntry);
-            }
-            const balanceMultiplier =
-              otherEntityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-            let dataEntry = otherEntityEntry.data.find(
-              (d) => d.currency === balance.currency,
-            );
-            if (!dataEntry) {
-              dataEntry = {
-                currency: balance.currency,
-                balance: 0,
-              };
-              otherEntityEntry.data.push(dataEntry);
-            }
-            dataEntry.balance += balance.balance * balanceMultiplier;
-            otherEntityEntry.data[0]!.balance += unifyAmount(
-              balance.currency,
-              balance.balance * balanceMultiplier,
-              "entity",
-            );
-            // Update totals
-            let totalEntry = acc.totals.find(
-              (t) => t.currency === dataEntry?.currency,
-            );
-            if (!totalEntry) {
-              totalEntry = {
-                currency: dataEntry.currency,
-                total: 0,
-              };
-              acc.totals.push(totalEntry);
-            }
-            totalEntry.total += balance.balance * balanceMultiplier;
-            acc.totals[0]!.total += unifyAmount(
-              balance.currency,
-              balance.balance * balanceMultiplier,
-              "total",
-            );
-          }
-
-          // Process myPOVEntity
-          let entityEntry = acc.tableData.find(
-            (entry) => entry.entity.id === myPOVEntity.id,
-          );
-
-          if (!entityEntry) {
-            entityEntry = {
-              entity: myPOVEntity,
-              data: [
-                {
-                  currency: "unified",
-                  balance: 0,
-                },
-              ],
-            };
-            acc.tableData.push(entityEntry);
-          }
-
-          const balanceMultiplier =
-            entityEntry.entity.id === balance.selectedEntityId ? 1 : -1;
-
-          let dataEntry = entityEntry.data.find(
-            (d) => d.currency === balance.currency,
-          );
-
-          if (!dataEntry) {
-            dataEntry = {
-              currency: balance.currency,
-              balance: 0,
-            };
-            entityEntry.data.push(dataEntry);
-          }
-
-          dataEntry.balance += balance.balance * balanceMultiplier;
-          entityEntry.data[0]!.balance += unifyAmount(
-            balance.currency,
-            balance.balance * balanceMultiplier,
-            "entity",
-          );
-
-          // Update totals
-          let totalEntry = acc.totals.find(
-            (t) => t.currency === dataEntry?.currency,
-          );
-          if (!totalEntry) {
-            totalEntry = {
-              currency: dataEntry.currency,
-              total: 0,
-            };
-            acc.totals.push(totalEntry);
-          }
-
-          totalEntry.total += balance.balance * balanceMultiplier;
-          acc.totals[0]!.total += unifyAmount(
-            balance.currency,
-            balance.balance * balanceMultiplier,
-            "total",
-          );
-        }
-
-        return acc;
-      },
-      { tableData: [], totals: [{ currency: "unified", total: 0 }] } as z.infer<
-        typeof transformedBalancesSchema
-      >,
-    );
 
   const userCanUnify =
     user?.permissions?.some(

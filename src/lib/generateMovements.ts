@@ -6,6 +6,7 @@ import {
   gt,
   inArray,
   lt,
+  lte,
   sql,
   type ExtractTablesWithRelations,
 } from "drizzle-orm";
@@ -47,24 +48,6 @@ export const generateMovements = async (
   // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
   const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
   const ent_b = tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
-
-  // Initialize all balance values for the movement
-  const balanceValues = {
-    balance_1: 0,
-    balance_1_id: 0,
-    balance_2a: 0,
-    balance_2a_id: 0,
-    balance_2b: 0,
-    balance_2b_id: 0,
-    balance_3a: 0,
-    balance_3a_id: 0,
-    balance_3b: 0,
-    balance_3b_id: 0,
-    balance_4a: 0,
-    balance_4a_id: 0,
-    balance_4b: 0,
-    balance_4b_id: 0,
-  };
 
   // Calculate balance amounts for different types
   // Type 1: Entity to Entity (from perspective of ent_a)
@@ -110,96 +93,103 @@ export const generateMovements = async (
       ? tx.amount * direction
       : -tx.amount * direction;
 
-  // Process Type 1: Entity to Entity
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance1Amount,
-    { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
-    balanceValues,
-    "balance_1",
-    "balance_1_id",
-  );
+  // Process balances concurrently in two groups
+  const group1Results =
+    // Group 1: (1, 2a, 3a)
+    Promise.all([
+      // Process Type 1: Entity to Entity
+      processBalance(
+        transaction,
+        tx,
+        mvDate,
+        account,
+        balance1Amount,
+        { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
+        "balance_1",
+        "balance_1_id",
+      ),
+      // Process Type 2a: Entity A to Rest
+      processBalance(
+        transaction,
+        tx,
+        mvDate,
+        account,
+        balance2aAmount,
+        { type: "2", ent_a: ent_a.id },
+        "balance_2a",
+        "balance_2a_id",
+      ),
+      // Process Type 3a: Tag A to Entity B
+      processBalance(
+        transaction,
+        tx,
+        mvDate,
+        account,
+        balance3aAmount,
+        { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
+        "balance_3a",
+        "balance_3a_id",
+      ),
+    ]);
+  // Group 2: (2b, 3b, 4a)
+  const group2Results = Promise.all([
+    // Process Type 2b: Entity B to Rest
+    processBalance(
+      transaction,
+      tx,
+      mvDate,
+      account,
+      balance2bAmount,
+      { type: "2", ent_a: ent_b.id },
+      "balance_2b",
+      "balance_2b_id",
+    ),
+    // Process Type 3b: Tag B to Entity A
+    processBalance(
+      transaction,
+      tx,
+      mvDate,
+      account,
+      balance3bAmount,
+      { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
+      "balance_3b",
+      "balance_3b_id",
+    ),
+    // Process Type 4a: Tag A to Rest
+    processBalance(
+      transaction,
+      tx,
+      mvDate,
+      account,
+      balance4aAmount,
+      { type: "4", tag: ent_a.tagName },
+      "balance_4a",
+      "balance_4a_id",
+    ),
+  ]);
 
-  // Process Type 2a: Entity A to Rest
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance2aAmount,
-    { type: "2", ent_a: ent_a.id },
-    balanceValues,
-    "balance_2a",
-    "balance_2a_id",
-  );
+  // Extract results
+  const [balance1, balance2a, balance3a] = await group1Results;
+  const [balance2b, balance3b, balance4a] = await group2Results;
+  let balance4b = {
+    amount: 0,
+    id: 0,
+  };
 
-  // Process Type 2b: Entity B to Rest
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance2bAmount,
-    { type: "2", ent_a: ent_b.id },
-    balanceValues,
-    "balance_2b",
-    "balance_2b_id",
-  );
-
-  // Process Type 3a: Tag A to Entity B
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance3aAmount,
-    { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
-    balanceValues,
-    "balance_3a",
-    "balance_3a_id",
-  );
-
-  // Process Type 3b: Tag B to Entity A
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance3bAmount,
-    { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
-    balanceValues,
-    "balance_3b",
-    "balance_3b_id",
-  );
-
-  // Process Type 4a: Tag A to Rest
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance4aAmount,
-    { type: "4", tag: ent_a.tagName },
-    balanceValues,
-    "balance_4a",
-    "balance_4a_id",
-  );
-
-  // Process Type 4b: Tag B to Rest
-  await processBalance(
-    transaction,
-    tx,
-    mvDate,
-    account,
-    balance4bAmount,
-    { type: "4", tag: ent_b.tagName },
-    balanceValues,
-    "balance_4b",
-    "balance_4b_id",
-  );
+  if (ent_a.tagName === ent_b.tagName) {
+    balance4b = balance4a;
+  } else {
+    balance4b = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      account,
+      balance4bAmount,
+      { type: "4", tag: ent_b.tagName },
+      "balance_4b",
+      "balance_4b_id",
+    );
+  }
 
   // Create the movement with all the balance values
   const [createdMovement] = await transaction
@@ -210,7 +200,20 @@ export const generateMovements = async (
       direction,
       type,
       account,
-      ...balanceValues,
+      balance_1: balance1.amount,
+      balance_1_id: balance1.id,
+      balance_2a: balance2a.amount,
+      balance_2a_id: balance2a.id,
+      balance_2b: balance2b.amount,
+      balance_2b_id: balance2b.id,
+      balance_3a: balance3a.amount,
+      balance_3a_id: balance3a.id,
+      balance_3b: balance3b.amount,
+      balance_3b_id: balance3b.id,
+      balance_4a: balance4a.amount,
+      balance_4a_id: balance4a.id,
+      balance_4b: balance4b.amount,
+      balance_4b_id: balance4b.id,
     })
     .returning();
 
@@ -240,7 +243,6 @@ const processBalance = async (
     ent_b?: number;
     tag?: string;
   },
-  balanceValues: Record<string, number | null>,
   balanceField: string,
   balanceIdField: string,
 ) => {
@@ -258,35 +260,43 @@ const processBalance = async (
     balanceSettings.tag ? eq(balances.tag, balanceSettings.tag) : undefined,
   );
 
-  // Find the most recent balance for this entity combination
-  const [balance] = await transaction
-    .select({
-      id: balances.id,
-      amount: balances.amount,
-      date: balances.date,
-    })
-    .from(balances)
-    .where(entitiesQuery)
-    .orderBy(desc(balances.date))
-    .limit(1);
+  // Fetch balance and beforeBalance concurrently
+  const [balanceResult, beforeBalanceResult] = await Promise.all([
+    // Find the most recent balance for this entity combination
+    transaction
+      .select({
+        id: balances.id,
+        amount: balances.amount,
+        date: balances.date,
+      })
+      .from(balances)
+      .where(entitiesQuery)
+      .orderBy(desc(balances.date))
+      .limit(1),
 
-  // Find the most recent balance before the movement date
-  const [beforeBalance] = await transaction
-    .select({ amount: balances.amount })
-    .from(balances)
-    .where(
-      and(
-        entitiesQuery,
-        lt(balances.date, moment(mvDate).startOf("day").toDate()),
-      ),
-    )
-    .orderBy(desc(balances.date))
-    .limit(1);
+    // Find the most recent balance before the movement date
+    transaction
+      .select({ amount: balances.amount })
+      .from(balances)
+      .where(
+        and(
+          entitiesQuery,
+          lt(balances.date, moment(mvDate).startOf("day").toDate()),
+        ),
+      )
+      .orderBy(desc(balances.date))
+      .limit(1),
+  ]);
+
+  const [balance] = balanceResult;
+  const [beforeBalance] = beforeBalanceResult;
 
   let balanceId: number | null = null;
   let finalAmount = 0;
 
   const updatedBalancesIds: number[] = [];
+
+  console.log({ balance, beforeBalance });
 
   if (!balance) {
     // No previous balance, create a new one
@@ -334,14 +344,32 @@ const processBalance = async (
         })
         .returning({ id: balances.id, amount: balances.amount });
 
-      if (newBalance) {
-        balanceId = newBalance.id;
-        finalAmount = newBalance.amount;
-      }
+      balanceId = newBalance!.id;
+      finalAmount = newBalance!.amount;
     } else {
+      // Search for the previous movement on the oldBalance day which is just before the mvDate
+      const [previousMovement] = await transaction
+        // @ts-expect-error
+        .select({ amount: movements[balanceField] })
+        .from(movements)
+        .where(
+          and(
+            // @ts-expect-error
+            eq(movements[balanceIdField], oldBalance.id),
+            lte(movements.date, mvDate),
+            eq(movements.account, account),
+          ),
+        )
+        .orderBy(desc(movements.date), desc(movements.id))
+        .limit(1);
+
       updatedBalancesIds.push(oldBalance.id);
       balanceId = oldBalance.id;
-      finalAmount = oldBalance.amount;
+      finalAmount = previousMovement
+        ? previousMovement.amount + balanceAmount
+        : beforeBalance
+        ? beforeBalance.amount + balanceAmount
+        : balanceAmount;
     }
 
     // Update all balances after this date
@@ -365,14 +393,31 @@ const processBalance = async (
       .update(balances)
       .set({ amount: sql`${balances.amount} + ${balanceAmount}` })
       .where(eq(balances.id, balance.id))
-      .returning({ id: balances.id });
+      .returning({ id: balances.id, amount: balances.amount });
 
     if (updatedBalance) {
       updatedBalancesIds.push(updatedBalance.id);
     }
 
-    balanceId = balance.id;
-    finalAmount = balance.amount + balanceAmount;
+    // Search for the previous movement on this day
+    const [previousMovement] = await transaction
+      // @ts-expect-error
+      .select({ amount: movements[balanceField] })
+      .from(movements)
+      .where(
+        and(
+          // @ts-expect-error
+          eq(movements[balanceIdField], balance.id),
+          lte(movements.date, mvDate),
+          eq(movements.account, account),
+        ),
+      )
+      .orderBy(desc(movements.date), desc(movements.id))
+      .limit(1);
+
+    balanceId = updatedBalance!.id;
+    // Exists because we have a balance for this day
+    finalAmount = previousMovement!.amount + balanceAmount;
   } else {
     // Movement date is after most recent balance
     const [newBalance] = await transaction
@@ -414,7 +459,8 @@ const processBalance = async (
       ),
     );
 
-  // Store the calculated values in balanceValues
-  balanceValues[balanceField] = finalAmount;
-  balanceValues[balanceIdField] = balanceId;
+  return {
+    id: balanceId,
+    amount: finalAmount,
+  };
 };

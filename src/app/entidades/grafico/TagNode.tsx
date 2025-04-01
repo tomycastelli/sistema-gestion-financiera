@@ -17,8 +17,8 @@ import { type RouterOutputs } from "~/trpc/shared";
 
 const TagNode = (props: NodeProps<RouterOutputs["tags"]["getAll"][number]>) => {
   const { data: balancesTag, isLoading: isLoadingTag } =
-    api.movements.getBalancesByEntitiesForCard.useQuery(
-      { entityTag: props.data.name },
+    api.movements.getBalancesByEntities.useQuery(
+      { entityTag: props.data.name, balanceType: "4", account: true },
       { staleTime: 182000 },
     );
 

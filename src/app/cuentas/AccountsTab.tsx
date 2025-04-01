@@ -39,6 +39,14 @@ const AccountsTable = async ({
 
   const pageSize = 20;
 
+  const balanceType = accountType
+    ? selectedEntity?.id
+      ? "2"
+      : "4"
+    : entityTag
+    ? "3"
+    : "1";
+
   const initialMovements = await api.movements.getCurrentAccounts.query({
     linkId: linkId,
     linkToken: linkToken,
@@ -49,6 +57,7 @@ const AccountsTable = async ({
     entityTag: entityTag,
     account: accountType,
     dayInPast: undefined,
+    balanceType,
   });
 
   const latestExchangeRates =

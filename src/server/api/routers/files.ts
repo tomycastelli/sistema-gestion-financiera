@@ -5,12 +5,13 @@ import moment from "moment";
 import XLSX from "xlsx";
 import { z } from "zod";
 import { env } from "~/env.mjs";
+import { currentAccountsProcedure } from "~/lib/currentAccountsProcedure";
 import { isNumeric, numberFormatter } from "~/lib/functions";
 import {
   getOperationsInput,
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
-import { currentAccountsProcedure, getAllEntities } from "~/lib/trpcFunctions";
+import { getAllEntities } from "~/lib/trpcFunctions";
 import { currenciesOrder } from "~/lib/variables";
 import { exchangeRates } from "~/server/db/schema";
 import {
@@ -45,6 +46,7 @@ export const filesRouter = createTRPCRouter({
           groupInTag: input.groupInTag,
           dateOrdering: input.dateOrdering,
           ignoreSameTag: input.ignoreSameTag,
+          balanceType: input.balanceType,
         },
         ctx,
       );

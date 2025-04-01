@@ -1,9 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNumberFormat } from "@react-input/number-format";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { currencies } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
@@ -32,11 +35,8 @@ import {
   HoverCardTrigger,
 } from "../ui/hover-card";
 import { Input } from "../ui/input";
-import CustomSelector from "./CustomSelector";
-import { toast } from "sonner";
-import { useNumberFormat } from "@react-input/number-format";
-import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { Label } from "../ui/label";
+import CustomSelector from "./CustomSelector";
 
 interface UpdateTransactionProps {
   transaction: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -118,7 +118,6 @@ const UpdateTransaction = ({
       void utils.movements.getMovementsByOpId.invalidate();
       void utils.movements.getCurrentAccounts.invalidate();
       void utils.movements.getBalancesByEntities.invalidate();
-      void utils.movements.getBalancesByEntitiesForCard.invalidate();
     },
     onSuccess(data) {
       setIsOpen(false);
@@ -238,7 +237,12 @@ const UpdateTransaction = ({
                             />
                             {watchOperatorEntity && (
                               <EntityCard
-                                entity={tx.operatorEntity}
+                                entity={
+                                  entities.find(
+                                    (e) =>
+                                      e.id.toString() === watchOperatorEntity,
+                                  ) ?? tx.operatorEntity
+                                }
                                 disableLinks={true}
                               />
                             )}
@@ -294,7 +298,12 @@ const UpdateTransaction = ({
                                 />
                                 {watchFromEntity && (
                                   <EntityCard
-                                    entity={tx.fromEntity}
+                                    entity={
+                                      entities.find(
+                                        (e) =>
+                                          e.id.toString() === watchFromEntity,
+                                      ) ?? tx.fromEntity
+                                    }
                                     disableLinks={true}
                                   />
                                 )}
@@ -365,7 +374,11 @@ const UpdateTransaction = ({
                               />
                               {watchToEntity && (
                                 <EntityCard
-                                  entity={tx.toEntity}
+                                  entity={
+                                    entities.find(
+                                      (e) => e.id.toString() === watchToEntity,
+                                    ) ?? tx.toEntity
+                                  }
                                   disableLinks={true}
                                 />
                               )}

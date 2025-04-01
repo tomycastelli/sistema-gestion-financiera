@@ -1,11 +1,11 @@
+import { numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { type RouterOutputs } from "~/trpc/shared";
-import { Separator } from "./ui/separator";
-import { numberFormatter } from "~/lib/functions";
 import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 
 interface BalanceTotalsProps {
-  totals: RouterOutputs["movements"]["getBalancesByEntitiesForCard"];
+  totals: RouterOutputs["movements"]["getBalancesByEntities"];
 }
 
 const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
@@ -16,23 +16,21 @@ const BalanceTotals = ({ totals }: BalanceTotalsProps) => {
           <h1 className="text-lg font-semibold">
             {total.currency.toUpperCase()}
           </h1>
-          {total.balances.map((balance, index) => (
-            <div key={index}>
-              <p>{balance.account ? "Caja" : "Cuenta corriente"}</p>
-              <p
-                className={cn(
-                  "font-bold",
-                  balance.amount > 0
-                    ? "text-green"
-                    : balance.amount < 0
-                      ? "text-red"
-                      : "",
-                )}
-              >
-                $ {numberFormatter(balance.amount === 0 ? 0 : balance.amount)}
-              </p>
-            </div>
-          ))}
+          <div>
+            <p>{total.account ? "Caja" : "Cuenta corriente"}</p>
+            <p
+              className={cn(
+                "font-bold",
+                total.amount > 0
+                  ? "text-green"
+                  : total.amount < 0
+                  ? "text-red"
+                  : "",
+              )}
+            >
+              $ {numberFormatter(total.amount === 0 ? 0 : total.amount)}
+            </p>
+          </div>
           <Separator className="my-1" />
         </div>
       ))}

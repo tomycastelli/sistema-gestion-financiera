@@ -4,6 +4,7 @@ import {
   eq,
   gt,
   inArray,
+  or,
   sql,
   type ExtractTablesWithRelations,
 } from "drizzle-orm";
@@ -11,13 +12,8 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import moment from "moment";
 import type Redlock from "redlock";
-import type { z } from "zod";
 import type * as schema from "../server/db/schema";
-import {
-  balances,
-  movements,
-  type returnedTransactionsSchema,
-} from "../server/db/schema";
+import { balances, movements } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
@@ -27,14 +23,13 @@ export const undoMovements = async (
     typeof schema,
     ExtractTablesWithRelations<typeof schema>
   >,
-  tx: z.infer<typeof returnedTransactionsSchema> & {
-    operation: { date: Date };
+  tx: {
+    id: number;
     fromEntity: { id: number; tagName: string };
     toEntity: { id: number; tagName: string };
+    amount: number;
+    currency: string;
   },
-  account: boolean,
-  direction: number,
-  type: string,
   redlock: Redlock,
 ) => {
   const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 10_000);
@@ -45,114 +40,134 @@ export const undoMovements = async (
     .where(eq(movements.transactionId, tx.id))
     .returning();
 
-  // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
-  const mvDate = account ? new Date() : tx.operation.date;
-
   // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
   const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
   const ent_b = tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
-  // Calculate balance amounts for different types (reversed from original)
-  // Type 1: Entity to Entity (from perspective of ent_a)
-  const balance1Amount =
-    -movementBalanceDirection(tx.fromEntity.id, tx.toEntity.id, direction) *
-    tx.amount;
-
-  // Type 2: Entity to Rest - one for each entity
-  const balance2aAmount =
-    tx.fromEntity.id === ent_a.id
-      ? tx.amount * direction
-      : -tx.amount * direction;
-  const balance2bAmount =
-    tx.toEntity.id === ent_b.id
-      ? -tx.amount * direction
-      : tx.amount * direction;
-
-  // Type 3: Tag to Entity
-  const balance3aAmount =
-    tx.fromEntity.tagName === tx.toEntity.tagName
-      ? 0
-      : tx.fromEntity.id === ent_a.id
-      ? tx.amount * direction
-      : -tx.amount * direction;
-  const balance3bAmount =
-    tx.fromEntity.tagName === tx.toEntity.tagName
-      ? 0
-      : tx.toEntity.id === ent_b.id
-      ? -tx.amount * direction
-      : tx.amount * direction;
-
-  // Type 4: Tag to Rest - one for each tag
-  const balance4aAmount =
-    tx.fromEntity.tagName === tx.toEntity.tagName
-      ? 0
-      : tx.fromEntity.tagName === ent_a.tagName
-      ? tx.amount * direction
-      : -tx.amount * direction;
-  const balance4bAmount =
-    tx.fromEntity.tagName === tx.toEntity.tagName
-      ? 0
-      : tx.toEntity.tagName === ent_b.tagName
-      ? -tx.amount * direction
-      : tx.amount * direction;
-
   for (const movement of deletedMovements) {
-    // Process each balance type using the IDs from the movement
-    await processBalance(
-      transaction,
-      movement.balance_1_id,
-      balance1Amount,
-      mvDate,
-      "balance_1",
-    );
+    // Calculate balance amounts for different types
+    // Type 1: Entity to Entity (from perspective of ent_a)
+    const balance1Amount =
+      movementBalanceDirection(
+        tx.fromEntity.id,
+        tx.toEntity.id,
+        movement.direction,
+      ) * tx.amount;
 
-    await processBalance(
-      transaction,
-      movement.balance_2a_id,
-      balance2aAmount,
-      mvDate,
-      "balance_2a",
-    );
+    // Type 2: Entity to Rest - one for each entity
+    const balance2aAmount =
+      tx.fromEntity.id === ent_a.id
+        ? -tx.amount * movement.direction
+        : tx.amount * movement.direction;
+    const balance2bAmount =
+      tx.toEntity.id === ent_b.id
+        ? tx.amount * movement.direction
+        : -tx.amount * movement.direction;
 
-    await processBalance(
-      transaction,
-      movement.balance_2b_id,
-      balance2bAmount,
-      mvDate,
-      "balance_2b",
-    );
+    // Type 3: Tag to Entity
+    const balance3aAmount =
+      tx.fromEntity.tagName === tx.toEntity.tagName
+        ? 0
+        : tx.fromEntity.id === ent_a.id
+        ? -tx.amount * movement.direction
+        : tx.amount * movement.direction;
+    const balance3bAmount =
+      tx.fromEntity.tagName === tx.toEntity.tagName
+        ? 0
+        : tx.toEntity.id === ent_b.id
+        ? tx.amount * movement.direction
+        : -tx.amount * movement.direction;
 
-    await processBalance(
-      transaction,
-      movement.balance_3a_id,
-      balance3aAmount,
-      mvDate,
-      "balance_3a",
-    );
+    // Type 4: Tag to Rest - one for each tag
+    const balance4aAmount =
+      tx.fromEntity.tagName === tx.toEntity.tagName
+        ? 0
+        : tx.fromEntity.tagName === ent_a.tagName
+        ? -tx.amount * movement.direction
+        : tx.amount * movement.direction;
+    const balance4bAmount =
+      tx.fromEntity.tagName === tx.toEntity.tagName
+        ? 0
+        : tx.toEntity.tagName === ent_b.tagName
+        ? tx.amount * movement.direction
+        : -tx.amount * movement.direction;
 
-    await processBalance(
-      transaction,
-      movement.balance_3b_id,
-      balance3bAmount,
-      mvDate,
-      "balance_3b",
-    );
+    // Process balances concurrently in two groups
+    await Promise.all([
+      // Process Type 1: Entity to Entity
+      processBalance(
+        transaction,
+        movement.balance_1_id,
+        balance1Amount,
+        movement.date,
+        "balance_1",
+        movement.id,
+      ),
+      // Process Type 2a: Entity A to Rest
+      processBalance(
+        transaction,
+        movement.balance_2a_id,
+        balance2aAmount,
+        movement.date,
+        "balance_2a",
+        movement.id,
+      ),
+      // Process Type 3a: Tag A to Entity B
+      processBalance(
+        transaction,
+        movement.balance_3a_id,
+        balance3aAmount,
+        movement.date,
+        "balance_3a",
+        movement.id,
+      ),
+    ]);
 
-    await processBalance(
-      transaction,
-      movement.balance_4a_id,
-      balance4aAmount,
-      mvDate,
-      "balance_4a",
-    );
+    // Group 2: (2b, 3b, 4a)
+    await Promise.all([
+      // Process Type 2b: Entity B to Rest
+      processBalance(
+        transaction,
+        movement.balance_2b_id,
+        balance2bAmount,
+        movement.date,
+        "balance_2b",
+        movement.id,
+      ),
+      // Process Type 3b: Tag B to Entity A
+      processBalance(
+        transaction,
+        movement.balance_3b_id,
+        balance3bAmount,
+        movement.date,
+        "balance_3b",
+        movement.id,
+      ),
+      // Process Type 4a: Tag A to Rest
+      processBalance(
+        transaction,
+        movement.balance_4a_id,
+        balance4aAmount,
+        movement.date,
+        "balance_4a",
+        movement.id,
+      ),
+    ]);
 
-    await processBalance(
-      transaction,
-      movement.balance_4b_id,
-      balance4bAmount,
-      mvDate,
-      "balance_4b",
-    );
+    // Process 4b conditionally depending on if entities have same tag
+    if (tx.fromEntity.tagName === tx.toEntity.tagName) {
+      // If same tag, 4b is the same as 4a, no need to process
+    } else {
+      // Process Type 4b: Tag B to Rest
+      await processBalance(
+        transaction,
+        movement.balance_4b_id,
+        balance4bAmount,
+        movement.date,
+        "balance_4b",
+        movement.id,
+      );
+    }
   }
 
   await lock.release();
@@ -171,6 +186,7 @@ const processBalance = async (
   balanceAmount: number,
   mvDate: Date,
   balanceField: string,
+  movementId: number,
 ) => {
   // Get the balance to be updated
   const [balance] = await transaction
@@ -210,39 +226,32 @@ const processBalance = async (
   // Update the current balance
   await transaction
     .update(balances)
-    .set({ amount: sql`${balances.amount} + ${balanceAmount}` })
+    .set({ amount: sql`${balances.amount} - ${balanceAmount}` })
     .where(eq(balances.id, balanceId));
 
-  // Update all movements related to this balance which come after the deleted balance
+  // Update all future balances
+  const updatedBalances = await transaction
+    .update(balances)
+    .set({ amount: sql`${balances.amount} - ${balanceAmount}` })
+    .where(futureBalancesQuery)
+    .returning({ id: balances.id });
+
+  // Update all movements related to these balances which come after the deleted balance
   await transaction
     .update(movements)
     // @ts-expect-error
     .set({ [balanceField]: sql`${movements[balanceField]} - ${balanceAmount}` })
     .where(
       and(
-        gt(movements.date, moment(mvDate).startOf("day").toDate()),
-        // @ts-expect-error
-        eq(movements[balanceField + "_id"], balanceId),
-      ),
-    );
-
-  // Update all future balances
-  const updatedBalances = await transaction
-    .update(balances)
-    .set({ amount: sql`${balances.amount} + ${balanceAmount}` })
-    .where(futureBalancesQuery)
-    .returning({ id: balances.id });
-
-  // Update all movements related to these balances
-  await transaction
-    .update(movements)
-    // @ts-expect-error
-    .set({ [balanceField]: sql`${movements[balanceField]} - ${balanceAmount}` })
-    .where(
-      inArray(
-        // @ts-expect-error
-        movements[balanceField + "_id"],
-        updatedBalances.map((b) => b.id),
+        or(
+          gt(movements.date, mvDate),
+          and(eq(movements.date, mvDate), gt(movements.id, movementId)),
+        ),
+        inArray(
+          // @ts-expect-error
+          movements[balanceField + "_id"],
+          [...updatedBalances.map((b) => b.id), balanceId],
+        ),
       ),
     );
 };
