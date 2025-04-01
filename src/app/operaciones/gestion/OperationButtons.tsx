@@ -1,8 +1,10 @@
 "use client";
 
+import moment from "moment";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import React, { useState, type FC } from "react";
-import { api } from "~/trpc/react";
-import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,21 +16,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/app/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { Status } from "~/server/db/schema";
-import ShareOperation from "./ShareOperation";
 import { Button } from "~/app/components/ui/button";
-import { Icons } from "~/app/components/ui/Icons";
-import { useRouter } from "next/navigation";
-import moment from "moment";
-import dynamic from "next/dynamic";
-const UpdateOperation = dynamic(() => import("./UpdateOperation"));
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "~/app/components/ui/collapsible";
+import { Icons } from "~/app/components/ui/Icons";
+import { Status } from "~/server/db/schema";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
+import { api } from "~/trpc/react";
+import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import ShareOperation from "./ShareOperation";
+const UpdateOperation = dynamic(() => import("./UpdateOperation"));
 
 interface OperationButtonsProps {
   op: RouterOutputs["operations"]["getOperations"]["operations"][number];
@@ -96,7 +96,6 @@ const OperationButtons: FC<OperationButtonsProps> = ({
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-        void utils.movements.getBalancesByEntitiesForCard.invalidate();
       },
       onSuccess(data, variables) {
         toast.success(
@@ -157,7 +156,6 @@ const OperationButtons: FC<OperationButtonsProps> = ({
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-        void utils.movements.getBalancesByEntitiesForCard.invalidate();
       },
       onSuccess(data) {
         toast.success(

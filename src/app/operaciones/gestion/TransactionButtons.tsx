@@ -1,15 +1,8 @@
 "use client";
-import { type FC } from "react";
 import dynamic from "next/dynamic";
-const UpdateTransaction = dynamic(
-  () => import("~/app/components/forms/UpdateTransaction"),
-);
+import { type FC } from "react";
+import { toast } from "sonner";
 import { Icons } from "~/app/components/ui/Icons";
-import { Button } from "~/app/components/ui/button";
-import { cn } from "~/lib/utils";
-import { Status } from "~/server/db/schema";
-import { useOperationsPageStore } from "~/stores/OperationsPage";
-import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +14,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/app/components/ui/alert-dialog";
+import { Button } from "~/app/components/ui/button";
+import { cn } from "~/lib/utils";
+import { Status } from "~/server/db/schema";
+import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { api } from "~/trpc/react";
-import { toast } from "sonner";
+import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+const UpdateTransaction = dynamic(
+  () => import("~/app/components/forms/UpdateTransaction"),
+);
 
 interface TransactionButtonsProps {
   tx: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -93,7 +93,6 @@ const TransactionButtons: FC<TransactionButtonsProps> = ({
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-        void utils.movements.getBalancesByEntitiesForCard.invalidate();
       },
       onSuccess(data) {
         toast.success(

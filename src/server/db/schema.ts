@@ -36,32 +36,55 @@ export const requestStatus = pgEnum("RequestStatus", [
 
 export const Status = pgEnum("Status", ["cancelled", "confirmed", "pending"]);
 
-export const cashBalances = pgTable(
-  "CashBalances",
+export const balanceType = pgEnum("BalanceType", ["1", "2", "3", "4"]);
+
+export const balances = pgTable(
+  "balances",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    date: timestamp("date", { mode: "date" }).notNull(),
-    balance: decimalNumber("balance").notNull(),
+    type: balanceType("type").notNull(),
+    tag: text("tag"),
+    ent_a: integer("ent_a"),
+    ent_b: integer("ent_b"),
+    account: boolean("account").notNull(),
     currency: text("currency").notNull(),
-    entityId: integer("entityId"),
-    tagName: text("tagName"),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    amount: decimalNumber("amount").notNull(),
   },
   (table) => {
     return {
-      cashBalancesEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.entityId],
+      balancesEntAEntitiesIdFk: foreignKey({
+        columns: [table.ent_a],
         foreignColumns: [entities.id],
-        name: "CashBalances_entityId_Entities_id_fk",
+        name: "Balances_ent_a_Entities_id_fk",
       })
         .onUpdate("cascade")
         .onDelete("cascade"),
-      cashBalancesTagNameTagNameFk: foreignKey({
-        columns: [table.tagName],
+      balancesEntBEntitiesIdFk: foreignKey({
+        columns: [table.ent_b],
+        foreignColumns: [entities.id],
+        name: "Balances_ent_b_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      balancesTagTagNameFk: foreignKey({
+        columns: [table.tag],
         foreignColumns: [tag.name],
-        name: "CashBalances_tagName_Tag_name_fk",
+        name: "Balances_tag_Tag_name_fk",
       })
         .onUpdate("cascade")
         .onDelete("restrict"),
+      dateTypeEntAEntBTagCurrencyIdx: index(
+        "Balances_date_type_ent_a_ent_b_tag_currency_idx",
+      ).using(
+        "btree",
+        table.date.asc().nullsLast(),
+        table.type.asc().nullsLast(),
+        table.ent_a.asc().nullsLast(),
+        table.ent_b.asc().nullsLast(),
+        table.tag.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
+      ),
     };
   },
 );
@@ -195,11 +218,22 @@ export const movements = pgTable(
     direction: integer("direction").notNull(),
     type: text("type").notNull(),
     account: boolean("account").notNull(),
-    balance: decimalNumber("balance").notNull(),
-    balanceId: integer("balanceId"),
-    cashBalanceId: integer("cashBalanceId"),
-    entitiesMovementId: integer("entitiesMovementId"),
     date: timestamp("date", { mode: "date" }).notNull(),
+    // Balance associated data
+    balance_1: decimalNumber("balance_1").notNull(),
+    balance_1_id: integer("balance_1_id").notNull(),
+    balance_2a: decimalNumber("balance_2a").notNull(),
+    balance_2a_id: integer("balance_2a_id").notNull(),
+    balance_2b: decimalNumber("balance_2b").notNull(),
+    balance_2b_id: integer("balance_2b_id").notNull(),
+    balance_3a: decimalNumber("balance_3a").notNull(),
+    balance_3a_id: integer("balance_3a_id").notNull(),
+    balance_3b: decimalNumber("balance_3b").notNull(),
+    balance_3b_id: integer("balance_3b_id").notNull(),
+    balance_4a: decimalNumber("balance_4a").notNull(),
+    balance_4a_id: integer("balance_4a_id").notNull(),
+    balance_4b: decimalNumber("balance_4b").notNull(),
+    balance_4b_id: integer("balance_4b_id").notNull(),
   },
   (table) => {
     return {
@@ -210,20 +244,6 @@ export const movements = pgTable(
         table.transactionId.asc().nullsLast(),
         table.account.asc().nullsLast(),
       ),
-      movementsBalanceIdBalancesIdFk: foreignKey({
-        columns: [table.balanceId],
-        foreignColumns: [balances.id],
-        name: "Movements_balanceId_Balances_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      movementsCashBalanceIdCashBalancesIdFk: foreignKey({
-        columns: [table.cashBalanceId],
-        foreignColumns: [cashBalances.id],
-        name: "Movements_cashBalanceId_CashBalances_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
       movementsTransactionIdTransactionsIdFk: foreignKey({
         columns: [table.transactionId],
         foreignColumns: [transactions.id],
@@ -231,11 +251,6 @@ export const movements = pgTable(
       })
         .onUpdate("cascade")
         .onDelete("cascade"),
-      entitiesMovementFk: foreignKey({
-        columns: [table.entitiesMovementId],
-        foreignColumns: [table.id],
-        name: "entities_movement_fk",
-      }),
     };
   },
 );
@@ -355,8 +370,8 @@ export const transactions = pgTable(
   },
   (table) => {
     return {
-      operationIdFromEntityIdToEntityIdDateCurreIdx: index(
-        "Transactions_operationId_fromEntityId_toEntityId_date_curre_idx",
+      operationIdFromEntityIdToEntityIdDateCurrencyIdx: index(
+        "Transactions_operationId_fromEntityId_toEntityId_date_currency_idx",
       ).using(
         "btree",
         table.operationId.asc().nullsLast(),
@@ -535,56 +550,6 @@ export const user = pgTable(
   },
 );
 
-export const balances = pgTable(
-  "Balances",
-  {
-    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    account: boolean("account").notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
-    balance: decimalNumber("balance").notNull(),
-    otherEntityId: integer("otherEntityId"),
-    selectedEntityId: integer("selectedEntityId"),
-    tagName: text("tagName"),
-    currency: text("currency").notNull(),
-  },
-  (table) => {
-    return {
-      selectedEntityIdOtherEntityIdDateAccountCurrenIdx: index(
-        "Balances_selectedEntityId_otherEntityId_date_account_curren_idx",
-      ).using(
-        "btree",
-        table.account.asc().nullsLast(),
-        table.date.asc().nullsLast(),
-        table.otherEntityId.asc().nullsLast(),
-        table.selectedEntityId.asc().nullsLast(),
-        table.tagName.asc().nullsLast(),
-        table.currency.asc().nullsLast(),
-      ),
-      balancesOtherEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.otherEntityId],
-        foreignColumns: [entities.id],
-        name: "Balances_otherEntityId_Entities_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      balancesSelectedEntityIdEntitiesIdFk: foreignKey({
-        columns: [table.selectedEntityId],
-        foreignColumns: [entities.id],
-        name: "Balances_selectedEntityId_Entities_id_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-      balancesTagNameTagNameFk: foreignKey({
-        columns: [table.tagName],
-        foreignColumns: [tag.name],
-        name: "Balances_tagName_Tag_name_fk",
-      })
-        .onUpdate("cascade")
-        .onDelete("cascade"),
-    };
-  },
-);
-
 export const oauth_account = pgTable(
   "oauth_account",
   {
@@ -641,14 +606,29 @@ export const insertTransactionsSchema = createInsertSchema(transactions).extend(
   { amount: z.number() },
 );
 export const insertMovementsSchema = createInsertSchema(movements).extend({
-  balance: z.number(),
+  balance_1: z.number().optional(),
+  balance_2a: z.number().optional(),
+  balance_2b: z.number().optional(),
+  balance_3a: z.number().optional(),
+  balance_3b: z.number().optional(),
+  balance_4a: z.number().optional(),
+  balance_4b: z.number().optional(),
+});
+export const insertBalancesSchema = createInsertSchema(balances).extend({
+  amount: z.number(),
 });
 
 export const returnedBalancesSchema = createSelectSchema(balances).extend({
-  balance: z.number(),
+  amount: z.number(),
 });
 export const returnedMovementsSchema = createSelectSchema(movements).extend({
-  balance: z.number(),
+  balance_1: z.number().optional(),
+  balance_2a: z.number().optional(),
+  balance_2b: z.number().optional(),
+  balance_3a: z.number().optional(),
+  balance_3b: z.number().optional(),
+  balance_4a: z.number().optional(),
+  balance_4b: z.number().optional(),
 });
 export const returnedTransactionsSchema = createSelectSchema(
   transactions,
@@ -662,6 +642,7 @@ export const returnedTagSchema = createSelectSchema(tag);
 
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
+  balances: many(balances, { relationName: "tagRelation" }),
   children: many(tag, { relationName: "children" }),
   parent: one(tag, {
     fields: [tag.parent],
@@ -672,7 +653,8 @@ export const tagsManyRelations = relations(tag, ({ many, one }) => ({
 
 export const entitiesRelations = relations(entities, ({ many, one }) => ({
   transactions: many(transactions),
-  balances: many(balances),
+  balancesA: many(balances, { relationName: "entA" }),
+  balancesB: many(balances, { relationName: "entB" }),
   links: many(links),
   tag: one(tag, {
     fields: [entities.tagName],
@@ -701,10 +683,12 @@ export const transactionsRelations = relations(
     fromEntity: one(entities, {
       fields: [transactions.fromEntityId],
       references: [entities.id],
+      relationName: "fromEntity",
     }),
     toEntity: one(entities, {
       fields: [transactions.toEntityId],
       references: [entities.id],
+      relationName: "toEntity",
     }),
     operatorEntity: one(entities, {
       fields: [transactions.operatorEntityId],
@@ -727,10 +711,6 @@ export const movementsOneRelations = relations(movements, ({ one }) => ({
   transaction: one(transactions, {
     fields: [movements.transactionId],
     references: [transactions.id],
-  }),
-  balanceId: one(balances, {
-    fields: [movements.balanceId],
-    references: [balances.id],
   }),
 }));
 
@@ -761,13 +741,17 @@ export const transactionsMetadataRelations = relations(
 );
 
 export const balancesRelations = relations(balances, ({ one, many }) => ({
-  selectedEntity: one(entities, {
-    fields: [balances.selectedEntityId],
+  entA: one(entities, {
+    fields: [balances.ent_a],
     references: [entities.id],
   }),
-  otherEntity: one(entities, {
-    fields: [balances.otherEntityId],
+  entB: one(entities, {
+    fields: [balances.ent_b],
     references: [entities.id],
+  }),
+  tagRelation: one(tag, {
+    fields: [balances.tag],
+    references: [tag.name],
   }),
   movements: many(movements),
 }));

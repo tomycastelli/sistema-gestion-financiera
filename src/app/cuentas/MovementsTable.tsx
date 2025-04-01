@@ -83,17 +83,6 @@ const MovementsTable = ({
   users,
   accountingPeriodDate,
 }: CuentasTableProps) => {
-  const utils = api.useContext();
-
-  const searchParams = useSearchParams();
-
-  enum Ordering {
-    ASC = "asc",
-    DESC = "desc",
-  }
-  const [dateOrdering, setDateOrdering] = useState<Ordering>(Ordering.DESC);
-  const [ignoreSameTag, setIgnoreSameTag] = useState(false);
-
   const {
     movementsTablePage,
     setMovementsTablePage,
@@ -112,6 +101,39 @@ const MovementsTable = ({
     setGroupInTag,
     dayInPast,
   } = useCuentasStore();
+  // Como defino los tipos de balance a agarrar de los movimientos:
+  // 1: Balance de entidad a entidad
+  // Cuando hay un entityId seleccionado y la cuenta es false
+  // 2: Balance de entidad a total
+  // Cuando hay un entityId seleccionado y la cuenta es true
+  // 3: Balance de tag a entidad
+  // Cuando hay un entityTag seleccionado y la cuenta es false
+  // 4: Balance de tag a total
+  // Cuando hay un entityTag seleccionado y la cuenta es true
+  const balanceType = accountType
+    ? entityId
+      ? "2"
+      : entityTag
+      ? groupInTag
+        ? "4"
+        : "2"
+      : "4"
+    : entityTag
+    ? groupInTag
+      ? "4"
+      : "3"
+    : "1";
+
+  const utils = api.useContext();
+
+  const searchParams = useSearchParams();
+
+  enum Ordering {
+    ASC = "asc",
+    DESC = "desc",
+  }
+  const [dateOrdering, setDateOrdering] = useState<Ordering>(Ordering.DESC);
+  const [ignoreSameTag, setIgnoreSameTag] = useState(false);
 
   useEffect(() => {
     const cliente_id = searchParams.get("cliente");
@@ -126,14 +148,17 @@ const MovementsTable = ({
     } else {
       setOriginEntityId(undefined);
     }
-    if (entityTag) {
+    if (entityTag && accountType) {
       setGroupInTag(true);
+    } else {
+      setGroupInTag(false);
     }
     setSelectedCurrency(undefined);
     setFromDate(undefined);
     setToDate(undefined);
     setMovementsTablePage(1);
   }, [
+    accountType,
     setOriginEntityId,
     setGroupInTag,
     entityTag,
@@ -168,6 +193,7 @@ const MovementsTable = ({
         groupInTag,
         dateOrdering,
         ignoreSameTag,
+        balanceType,
       },
       {
         initialData: initialMovements,
@@ -213,6 +239,7 @@ const MovementsTable = ({
               toEntityId: destinationEntityId,
               dateOrdering,
               ignoreSameTag,
+              balanceType,
             });
 
             toast.promise(promise, {
@@ -237,6 +264,7 @@ const MovementsTable = ({
         toEntityId: destinationEntityId,
         dateOrdering,
         ignoreSameTag,
+        balanceType,
       });
 
       toast.promise(promise, {
@@ -330,7 +358,7 @@ const MovementsTable = ({
         return amount !== 0 ? (
           <div
             className={cn(
-              "text-right font-medium",
+              "min-w-[120px] text-right font-medium",
               data.movements[row.index]!.transactionStatus === "cancelled"
                 ? "line-through"
                 : "",
@@ -354,7 +382,7 @@ const MovementsTable = ({
         return amount !== 0 ? (
           <div
             className={cn(
-              "text-right font-medium",
+              "min-w-[120px] text-right font-medium",
               data.movements[row.index]!.transactionStatus === "cancelled"
                 ? "line-through"
                 : "",
@@ -378,7 +406,7 @@ const MovementsTable = ({
         return (
           <div
             className={cn(
-              "text-right font-medium",
+              "min-w-[120px] text-right font-medium",
               amount !== 0
                 ? !isInverted
                   ? amount > 0
@@ -640,13 +668,22 @@ const MovementsTable = ({
           </DropdownMenu>
           {entityTag && (
             <div className="flex flex-col justify-start gap-y-1">
-              <Label className="mb-2">Agrupar</Label>
+              <Label className="mb-2">Agrupar por {entityTag}</Label>
               <Button
                 disabled={
                   selectedCurrency === "usdt" && groupInTag && accountType
                 }
                 variant="outline"
                 onClick={() => setGroupInTag(!groupInTag)}
+                tooltip={
+                  accountType
+                    ? groupInTag
+                      ? "Caja unificada de Maika"
+                      : "Caja por entidad de Maika"
+                    : groupInTag
+                    ? "Cuentas Unificadas Maika <-> Todos los clientes"
+                    : "Cuentas Maika <-> Cliente"
+                }
               >
                 <Switch checked={groupInTag} />
               </Button>

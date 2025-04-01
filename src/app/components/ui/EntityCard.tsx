@@ -1,17 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import Link from "next/link";
 import React, { useState } from "react";
 import loadingJson from "~/../public/animations/loading.json";
 import { capitalizeFirstLetter } from "~/lib/functions";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import BalanceTotals from "../BalanceTotals";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
-import { cn } from "~/lib/utils";
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 interface EntityCardProps {
   entity: RouterOutputs["entities"]["getAll"][number];
@@ -25,8 +25,12 @@ const EntityCard = React.memo(
     const [enableQueryTag, setEnableQueryTag] = useState<boolean>(false);
 
     const { data: balances, isLoading } =
-      api.movements.getBalancesByEntitiesForCard.useQuery(
-        { entityId: entity?.id },
+      api.movements.getBalancesByEntities.useQuery(
+        {
+          entityId: entity?.id,
+          balanceType: "2",
+          account: true,
+        },
         {
           enabled: enableQueryId,
           refetchOnWindowFocus: false,
@@ -35,8 +39,12 @@ const EntityCard = React.memo(
       );
 
     const { data: balancesTag, isLoading: isLoadingTag } =
-      api.movements.getBalancesByEntitiesForCard.useQuery(
-        { entityTag: entity.tag.name },
+      api.movements.getBalancesByEntities.useQuery(
+        {
+          entityTag: entity.tag.name,
+          balanceType: "4",
+          account: true,
+        },
         {
           enabled: enableQueryTag,
           refetchOnWindowFocus: false,

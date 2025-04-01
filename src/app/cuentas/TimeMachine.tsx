@@ -37,6 +37,11 @@ const TimeMachine = () => {
               ? moment(dayInPast, "DD-MM-YYYY").startOf("day").toDate()
               : undefined
           }
+          defaultMonth={
+            dayInPast
+              ? moment(dayInPast, "DD-MM-YYYY").startOf("day").toDate()
+              : undefined
+          }
           onSelect={(date) => {
             if (!date) {
               setDayInPast(undefined);

@@ -1,5 +1,4 @@
 import dynamic from "next/dynamic";
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 import Link from "next/link";
 import { Handle, Position, type NodeProps } from "reactflow";
 import loadingJson from "~/../public/animations/loading.json";
@@ -13,13 +12,14 @@ import {
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 const EntityNode = (
   props: NodeProps<RouterOutputs["entities"]["getAll"][number]>,
 ) => {
   const { data: balances, isLoading } =
-    api.movements.getBalancesByEntitiesForCard.useQuery(
-      { entityId: props.data.id },
+    api.movements.getBalancesByEntities.useQuery(
+      { entityId: props.data.id, balanceType: "2", account: true },
       { staleTime: 182000 },
     );
 

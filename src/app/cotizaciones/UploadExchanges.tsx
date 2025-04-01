@@ -245,7 +245,7 @@ const UploadExchanges: FC<UploadExchangesProps> = ({
           {fields.map((field, index) => (
             <div key={field.id}>
               <AmountInput
-                decimals={field.currency === "usdt" ? 4 : 2}
+                decimals={4}
                 placeholder={field.currency === "usdt" ? "%" : "$"}
                 name={`rates.${index}.rate`}
                 label={field.currency.toUpperCase()}

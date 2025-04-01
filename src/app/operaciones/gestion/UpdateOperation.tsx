@@ -105,7 +105,6 @@ const UpdateOperation: FC<UpdateOperationProps> = ({
       void utils.movements.getMovementsByOpId.invalidate();
       void utils.movements.getCurrentAccounts.invalidate();
       void utils.movements.getBalancesByEntities.invalidate();
-      void utils.movements.getBalancesByEntitiesForCard.invalidate();
     },
     onSuccess(data) {
       setIsOpen(false);

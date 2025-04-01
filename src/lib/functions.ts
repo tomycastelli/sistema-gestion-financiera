@@ -476,10 +476,7 @@ export const calculateBeforeAmount = (
     moment(balance.date).isBefore(currentDate, duration),
   );
 
-  return filteredBalances.reduce(
-    (total, balance) => total + balance.balance,
-    0,
-  );
+  return filteredBalances.reduce((total, balance) => total + balance.amount, 0);
 };
 
 export function timeout(delay: number) {

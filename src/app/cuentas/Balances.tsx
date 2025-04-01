@@ -56,19 +56,6 @@ const Balances: FC<BalancesProps> = ({
     }
   }, [mainTags, selectedEntity, selectedTag, setIsInverted]);
 
-  const { data: balances, isFetching } =
-    api.movements.getBalancesByEntities.useQuery(
-      {
-        linkId,
-        account: accountType,
-        entityId: selectedEntity?.id,
-        dayInPast,
-        entityTag: selectedTag,
-        linkToken,
-      },
-      { initialData: initialBalances, refetchOnWindowFocus: false },
-    );
-
   const { data: latestExchangeRates } =
     api.exchangeRates.getLatestExchangeRates.useQuery(
       { dayInPast },
@@ -79,11 +66,14 @@ const Balances: FC<BalancesProps> = ({
     <div className="flex flex-col space-y-4">
       {accountType ? (
         <CashBalancesTable
-          balances={balances}
+          entities={entities}
+          initialBalances={initialBalances}
           selectedEntityId={selectedEntity?.id}
           selectedTag={selectedTag}
           isInverted={isInverted}
-          isFetching={isFetching}
+          linkId={linkId}
+          linkToken={linkToken}
+          dayInPast={dayInPast}
           uiColor={uiColor}
           latestExchangeRates={latestExchangeRates}
           user={user}
@@ -91,14 +81,16 @@ const Balances: FC<BalancesProps> = ({
         />
       ) : (
         <CurrentAccountsBalancesTable
-          isFetching={isFetching}
           entities={entities}
+          initialBalances={initialBalances}
           uiColor={uiColor}
           user={user}
-          balances={balances}
           selectedEntity={selectedEntity}
           selectedTag={selectedTag}
           initialLatestExchangeRates={initialLatestExchangeRates}
+          linkId={linkId}
+          linkToken={linkToken}
+          dayInPast={dayInPast}
         />
       )}
     </div>

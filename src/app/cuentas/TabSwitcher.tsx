@@ -4,11 +4,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, type FC } from "react";
-import {
-  createQueryString,
-  isDarkEnough,
-  removeQueryString,
-} from "~/lib/functions";
+import { createQueryString, isDarkEnough } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { useCuentasStore } from "~/stores/cuentasStore";
 
@@ -27,7 +23,7 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
     setSelectedCurrency,
   } = useCuentasStore();
 
-  const selectedTab = searchParams.get("cuenta");
+  const selectedTab = searchParams.get("cuenta") ?? "resumen";
 
   useEffect(() => {
     if (selectedTab) {
@@ -55,13 +51,18 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
         prefetch={false}
         href={{
           pathname: "/cuentas",
-          query: removeQueryString(searchParams, "cuenta"),
+          query: createQueryString(searchParams, "cuenta", "resumen"),
         }}
-        style={{ backgroundColor: !selectedTab ? uiColor : undefined }}
+        style={{
+          backgroundColor: selectedTab === "resumen" ? uiColor : undefined,
+        }}
         className={cn(
-          !selectedTab && "font-bold",
-          !selectedTab && uiColor && isDarkEnough(uiColor) && "text-white",
-          "flex items-center justify-center rounded-xl p-2 transition-all hover:opacity-80",
+          selectedTab === "resumen" && "bg-muted font-bold",
+          selectedTab === "resumen" &&
+            uiColor &&
+            isDarkEnough(uiColor) &&
+            "text-white",
+          "flex items-center justify-center rounded-xl p-2 transition-all hover:bg-muted",
         )}
       >
         Resumen
@@ -73,10 +74,11 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
           query: createQueryString(searchParams, "cuenta", "caja"),
         }}
         style={{
-          backgroundColor: selectedTab === "caja" ? uiColor : undefined,
+          backgroundColor:
+            selectedTab !== "cuenta_corriente" ? uiColor : undefined,
         }}
         className={cn(
-          selectedTab === "caja" && "font-bold",
+          selectedTab === "caja" && "bg-muted font-bold",
           selectedTab === "caja" &&
             uiColor &&
             isDarkEnough(uiColor) &&
@@ -97,7 +99,7 @@ const TabSwitcher: FC<TabSwitcherProps> = ({ uiColor }) => {
             selectedTab === "cuenta_corriente" ? uiColor : undefined,
         }}
         className={cn(
-          selectedTab === "cuenta_corriente" && "font-bold",
+          selectedTab === "cuenta_corriente" && "bg-muted font-bold",
           selectedTab === "cuenta_corriente" &&
             uiColor &&
             isDarkEnough(uiColor) &&
