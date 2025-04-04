@@ -4,7 +4,6 @@ import {
   desc,
   eq,
   gt,
-  inArray,
   lt,
   lte,
   or,
@@ -343,6 +342,8 @@ const processBalance = async (
       .limit(1),
   ]);
 
+  const mvDateString = mvDate.toISOString();
+
   const [balance] = balanceResult;
   const [beforeBalance] = beforeBalanceResult;
 
@@ -534,17 +535,58 @@ const processBalance = async (
     });
   }
 
-  // Update all movements whose balance was updated
-  // And their date is after the movement date
-  await transaction
-    .update(movements)
-    .set({ [balanceField]: sql`${movements[balanceField]} + ${balanceAmount}` })
-    .where(
-      and(
-        inArray(movements[balanceIdField], updatedBalancesIds),
-        gt(movements.date, mvDate),
-      ),
-    );
+  // Update all movements whose balance was updated in a single query
+  if (updatedBalancesIds.length > 0) {
+    const updateMovements = transaction
+      .update(movements)
+      .set({
+        [balanceField]: sql`${movements[balanceField]} + ${sql.placeholder(
+          "amount",
+        )}`,
+      })
+      .where(
+        and(
+          sql`${movements[balanceIdField]} = ANY(${sql.placeholder(
+            "balanceIds",
+          )})`,
+          gt(movements.date, sql.placeholder("mvDate")),
+        ),
+      )
+      .prepare("updateMovements");
+
+    await updateMovements.execute({
+      amount: balanceAmount,
+      balanceIds: updatedBalancesIds,
+      mvDate: mvDateString,
+    });
+
+    // If this balance type has an opposite type (2a/2b, 3a/3b, 4a/4b),
+    // also update movements that reference the opposite balance ID with the same entities
+    if (oppositeBalanceIdField && oppositeBalanceField) {
+      const updateOppositeMovements = transaction
+        .update(movements)
+        .set({
+          [oppositeBalanceField]: sql`${
+            movements[oppositeBalanceField]
+          } + ${sql.placeholder("amount")}`,
+        })
+        .where(
+          and(
+            sql`${movements[oppositeBalanceIdField]} = ANY(${sql.placeholder(
+              "balanceIds",
+            )})`,
+            gt(movements.date, sql.placeholder("mvDate")),
+          ),
+        )
+        .prepare("updateOppositeMovements");
+
+      await updateOppositeMovements.execute({
+        amount: balanceAmount,
+        balanceIds: updatedBalancesIds,
+        mvDate: mvDateString,
+      });
+    }
+  }
 
   return {
     id: balanceId,

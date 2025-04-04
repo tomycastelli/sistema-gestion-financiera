@@ -348,93 +348,95 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
             </p>
           ))}
         </div>
-        {transformedBalances.tableData.map((item, index) => (
-          <div
-            key={item.entity.id}
-            style={{
-              backgroundColor: uiColor
-                ? index % 2 === 0
-                  ? lightenColor(uiColor, isDark ? 60 : 20)
-                  : lightenColor(uiColor, isDark ? 40 : 10)
-                : undefined,
-              gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
-            }}
-            className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
-          >
-            <Button
-              onClick={() => {
-                if (originEntityId === item.entity.id && !selectedCurrency) {
-                  setOriginEntityId(undefined);
-                  setMovementsTablePage(1);
-                } else {
-                  setSelectedCurrency(undefined);
-                  setOriginEntityId(item.entity.id);
-                  setDestinationEntityId(undefined);
-                  setMovementsTablePage(1);
-                }
+        {transformedBalances.tableData
+          .sort((a, b) => a.entity.id - b.entity.id)
+          .map((item, index) => (
+            <div
+              key={item.entity.id}
+              style={{
+                backgroundColor: uiColor
+                  ? index % 2 === 0
+                    ? lightenColor(uiColor, isDark ? 60 : 20)
+                    : lightenColor(uiColor, isDark ? 40 : 10)
+                  : undefined,
+                gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
               }}
-              variant="outline"
-              className="border-transparent text-xl"
+              className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
             >
-              <p>{item.entity.name}</p>
-            </Button>
-            {tableCurrencies.map((currency) => {
-              const matchingBalance = item.data.find(
-                (balance) => balance.currency === currency,
-              );
+              <Button
+                onClick={() => {
+                  if (originEntityId === item.entity.id && !selectedCurrency) {
+                    setOriginEntityId(undefined);
+                    setMovementsTablePage(1);
+                  } else {
+                    setSelectedCurrency(undefined);
+                    setOriginEntityId(item.entity.id);
+                    setDestinationEntityId(undefined);
+                    setMovementsTablePage(1);
+                  }
+                }}
+                variant="outline"
+                className="border-transparent text-xl"
+              >
+                <p>{item.entity.name}</p>
+              </Button>
+              {tableCurrencies.map((currency) => {
+                const matchingBalance = item.data.find(
+                  (balance) => balance.currency === currency,
+                );
 
-              return matchingBalance && currency !== "usdt" ? (
-                <Button
-                  onClick={() => {
-                    if (currency === "unified") return;
-                    if (
-                      selectedCurrency !== currency ||
-                      originEntityId !== item.entity.id
-                    ) {
-                      setSelectedCurrency(currency);
-                      setOriginEntityId(item.entity.id);
-                      setDestinationEntityId(undefined);
-                      setMovementsTablePage(1);
-                    } else {
-                      setSelectedCurrency(undefined);
-                      setOriginEntityId(undefined);
-                      setMovementsTablePage(1);
-                    }
-                  }}
-                  key={currency}
-                  variant="outline"
-                  className="border-transparent text-xl"
-                >
-                  {!isFetching ? (
-                    <p
-                      className={cn(
-                        matchingBalance.balance !== 0
-                          ? !isInverted
-                            ? matchingBalance.balance > 0
+                return matchingBalance && currency !== "usdt" ? (
+                  <Button
+                    onClick={() => {
+                      if (currency === "unified") return;
+                      if (
+                        selectedCurrency !== currency ||
+                        originEntityId !== item.entity.id
+                      ) {
+                        setSelectedCurrency(currency);
+                        setOriginEntityId(item.entity.id);
+                        setDestinationEntityId(undefined);
+                        setMovementsTablePage(1);
+                      } else {
+                        setSelectedCurrency(undefined);
+                        setOriginEntityId(undefined);
+                        setMovementsTablePage(1);
+                      }
+                    }}
+                    key={currency}
+                    variant="outline"
+                    className="border-transparent text-xl"
+                  >
+                    {!isFetching ? (
+                      <p
+                        className={cn(
+                          matchingBalance.balance !== 0
+                            ? !isInverted
+                              ? matchingBalance.balance > 0
+                                ? "text-green"
+                                : "text-red"
+                              : -matchingBalance.balance > 0
                               ? "text-green"
                               : "text-red"
-                            : -matchingBalance.balance > 0
-                            ? "text-green"
-                            : "text-red"
-                          : undefined,
-                      )}
-                    >
-                      {numberFormatter(
-                        !isInverted
-                          ? matchingBalance.balance
-                          : -matchingBalance.balance,
-                      )}
-                    </p>
-                  ) : (
-                    <Skeleton className="h-8 w-14" />
-                  )}
-                </Button>
-              ) : (
-                <p className="col-span-1" key={currency}></p>
-              );
-            })}
-          </div>
-        ))}
+                            : undefined,
+                        )}
+                      >
+                        {numberFormatter(
+                          !isInverted
+                            ? matchingBalance.balance
+                            : -matchingBalance.balance,
+                        )}
+                      </p>
+                    ) : (
+                      <Skeleton className="h-8 w-14" />
+                    )}
+                  </Button>
+                ) : (
+                  <p className="col-span-1" key={currency}></p>
+                );
+              })}
+            </div>
+          ))}
         {selectedTag && (
           <div
             style={{

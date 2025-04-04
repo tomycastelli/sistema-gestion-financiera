@@ -235,77 +235,76 @@ export const currentAccountsProcedure = async (
         },
       }))
       .map((mv) => {
-        let selectedEntity = { id: 0, name: "", tagName: "" };
-        let otherEntity = { id: 0, name: "", tagName: "" };
+        const { transaction } = mv;
+        const { fromEntity, toEntity } = transaction;
+
+        // Determine which entity is selected and which is the other one
+        let selectedEntity;
+        let otherEntity;
+
         if (input.entityId) {
-          // Mi POV es la entidad del input
-          selectedEntity =
-            mv.transaction.fromEntity.id === input.entityId
-              ? mv.transaction.fromEntity
-              : mv.transaction.toEntity;
-          otherEntity =
-            mv.transaction.fromEntity.id === input.entityId
-              ? mv.transaction.toEntity
-              : mv.transaction.fromEntity;
+          const isFromSelected = fromEntity.id === input.entityId;
+          selectedEntity = isFromSelected ? fromEntity : toEntity;
+          otherEntity = isFromSelected ? toEntity : fromEntity;
         } else if (input.entityTag) {
-          selectedEntity = input.originEntityId
-            ? mv.transaction.fromEntity.id === input.originEntityId
-              ? mv.transaction.fromEntity
-              : mv.transaction.toEntity
-            : mv.transaction.fromEntity.tagName === input.entityTag
-            ? mv.transaction.fromEntity
-            : mv.transaction.toEntity;
-          otherEntity = input.originEntityId
-            ? mv.transaction.fromEntity.id === input.originEntityId
-              ? mv.transaction.toEntity
-              : mv.transaction.fromEntity
-            : mv.transaction.fromEntity.tagName === input.entityTag
-            ? mv.transaction.toEntity
-            : mv.transaction.fromEntity;
+          if (input.originEntityId) {
+            const isFromOrigin = fromEntity.id === input.originEntityId;
+            selectedEntity = isFromOrigin ? fromEntity : toEntity;
+            otherEntity = isFromOrigin ? toEntity : fromEntity;
+          } else {
+            const isFromTagged = fromEntity.tagName === input.entityTag;
+            selectedEntity = isFromTagged ? fromEntity : toEntity;
+            otherEntity = isFromTagged ? toEntity : fromEntity;
+          }
+        } else {
+          selectedEntity = { id: 0, name: "", tagName: "" };
+          otherEntity = { id: 0, name: "", tagName: "" };
         }
 
         const mvDirection = movementBalanceDirection(
-          mv.transaction.fromEntityId,
-          mv.transaction.toEntityId,
+          transaction.fromEntityId,
+          transaction.toEntityId,
           mv.direction,
         );
-        const direction =
-          selectedEntity.id < otherEntity.id ? mvDirection : -mvDirection;
 
-        const is_selected_a = selectedEntity.id < otherEntity.id;
+        const isSelectedA = selectedEntity.id < otherEntity.id;
+        const direction = isSelectedA ? mvDirection : -mvDirection;
 
+        // Calculate balance based on the balance type
         let balance = 0;
         if (input.balanceType === "1") {
-          balance =
-            selectedEntity.id < otherEntity.id ? mv.balance_1 : -mv.balance_1;
+          balance = isSelectedA ? mv.balance_1 : -mv.balance_1;
         } else if (input.balanceType === "2") {
-          balance = is_selected_a ? mv.balance_2a : mv.balance_2b;
+          balance = isSelectedA ? mv.balance_2a : mv.balance_2b;
         } else if (input.balanceType === "3") {
-          balance = is_selected_a ? mv.balance_3a : mv.balance_3b;
+          balance = isSelectedA ? mv.balance_3a : mv.balance_3b;
         } else if (input.balanceType === "4") {
-          balance = is_selected_a ? mv.balance_4a : mv.balance_4b;
+          balance = isSelectedA ? mv.balance_4a : mv.balance_4b;
         }
-        const tableData: z.infer<typeof tableDataType> = {
+
+        // Cache amount for use in calculating ingress and egress
+        const amount = transaction.amount;
+
+        return {
           id: mv.id,
           date: mv.date,
-          operationId: mv.transaction.operationId,
-          transactionId: mv.transaction.id,
+          operationId: transaction.operationId,
+          transactionId: transaction.id,
           type: mv.type,
-          txType: mv.transaction.type,
+          txType: transaction.type,
           account: mv.account,
-          currency: mv.transaction.currency,
-          metadata: mv.transaction.transactionMetadata?.metadata,
-          observations: mv.transaction.operation.observations,
+          currency: transaction.currency,
+          metadata: transaction.transactionMetadata?.metadata,
+          observations: transaction.operation.observations,
           selectedEntity: selectedEntity.name,
           selectedEntityId: selectedEntity.id,
           otherEntity: otherEntity.name,
           otherEntityId: otherEntity.id,
-          ingress: direction === 1 ? mv.transaction.amount : 0,
-          egress: direction === -1 ? mv.transaction.amount : 0,
+          ingress: direction === 1 ? amount : 0,
+          egress: direction === -1 ? amount : 0,
           balance,
-          transactionStatus: mv.transaction.status,
+          transactionStatus: transaction.status,
         };
-        return tableData;
       });
 
     return { movementsQuery: nestedData, totalRows: movementsCount!.count };
