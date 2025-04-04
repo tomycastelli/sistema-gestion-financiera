@@ -62,7 +62,9 @@ const UploadExchanges: FC<UploadExchangesProps> = ({
           );
           return {
             currency,
-            rate: currentRate ? numberFormatter(currentRate?.rate) : undefined,
+            rate: currentRate
+              ? numberFormatter(currentRate?.rate, 4)
+              : undefined,
           };
         }),
     },
@@ -93,7 +95,9 @@ const UploadExchanges: FC<UploadExchangesProps> = ({
           );
           return {
             currency,
-            rate: currentRate ? numberFormatter(currentRate?.rate) : undefined,
+            rate: currentRate
+              ? numberFormatter(currentRate?.rate, 4)
+              : undefined,
           };
         }),
     );
