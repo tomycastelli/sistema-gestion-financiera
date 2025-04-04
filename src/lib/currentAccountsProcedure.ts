@@ -196,28 +196,30 @@ export const currentAccountsProcedure = async (
       movementsCountQuery.execute(queryParams),
     ]);
 
-    const tableDataType = z.object({
-      id: z.number(),
-      date: z.date(),
-      operationId: z.number(),
-      transactionId: z.number(),
-      observations: z.string().nullish(),
-      type: z.string(),
-      account: z.boolean(),
-      currency: z.string(),
-      txType: z.string(),
-      metadata: z.unknown().nullish(),
-      selectedEntityId: z.number(),
-      selectedEntity: z.string(),
-      otherEntityId: z.number(),
-      otherEntity: z.string(),
-      ingress: z.number(),
-      egress: z.number(),
-      balance: z.number(),
-      transactionStatus: z.enum(["pending", "confirmed", "cancelled"]),
-    });
+    const tableDataType = z
+      .object({
+        id: z.number(),
+        date: z.date(),
+        operationId: z.number(),
+        transactionId: z.number(),
+        observations: z.string().nullish(),
+        type: z.string(),
+        account: z.boolean(),
+        currency: z.string(),
+        txType: z.string(),
+        metadata: z.unknown().nullish(),
+        selectedEntityId: z.number(),
+        selectedEntity: z.string(),
+        otherEntityId: z.number(),
+        otherEntity: z.string(),
+        ingress: z.number(),
+        egress: z.number(),
+        balance: z.number(),
+        transactionStatus: z.enum(["pending", "confirmed", "cancelled"]),
+      })
+      .array();
 
-    const nestedData = movementsData
+    const nestedData: z.infer<typeof tableDataType> = movementsData
       .map((obj) => ({
         ...obj.Movements,
         transaction: {
