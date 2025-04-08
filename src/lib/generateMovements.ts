@@ -25,7 +25,7 @@ import { movementBalanceDirection } from "./functions";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 // Helper to get the opposite balance field
-const getOppositeBalanceField = (
+export const getOppositeBalanceField = (
   field: string,
 ):
   | "balance_2b"
@@ -45,7 +45,7 @@ const getOppositeBalanceField = (
 };
 
 // Helper to get opposite balance ID field
-const getOppositeBalanceIdField = (
+export const getOppositeBalanceIdField = (
   field: string,
 ):
   | "balance_2b_id"

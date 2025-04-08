@@ -15,6 +15,10 @@ import type Redlock from "redlock";
 import type * as schema from "../server/db/schema";
 import { balances, movements } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
+import {
+  getOppositeBalanceField,
+  getOppositeBalanceIdField,
+} from "./generateMovements";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 export const undoMovements = async (
@@ -101,6 +105,7 @@ export const undoMovements = async (
         balance1Amount,
         movement.date,
         "balance_1",
+        "balance_1_id",
         movement.id,
       ),
       // Process Type 2a: Entity A to Rest
@@ -110,6 +115,7 @@ export const undoMovements = async (
         balance2aAmount,
         movement.date,
         "balance_2a",
+        "balance_2a_id",
         movement.id,
       ),
       // Process Type 3a: Tag A to Entity B
@@ -119,6 +125,7 @@ export const undoMovements = async (
         balance3aAmount,
         movement.date,
         "balance_3a",
+        "balance_3a_id",
         movement.id,
       ),
     ]);
@@ -132,6 +139,7 @@ export const undoMovements = async (
         balance2bAmount,
         movement.date,
         "balance_2b",
+        "balance_2b_id",
         movement.id,
       ),
       // Process Type 3b: Tag B to Entity A
@@ -141,6 +149,7 @@ export const undoMovements = async (
         balance3bAmount,
         movement.date,
         "balance_3b",
+        "balance_3b_id",
         movement.id,
       ),
       // Process Type 4a: Tag A to Rest
@@ -150,6 +159,7 @@ export const undoMovements = async (
         balance4aAmount,
         movement.date,
         "balance_4a",
+        "balance_4a_id",
         movement.id,
       ),
     ]);
@@ -165,6 +175,7 @@ export const undoMovements = async (
         balance4bAmount,
         movement.date,
         "balance_4b",
+        "balance_4b_id",
         movement.id,
       );
     }
@@ -185,9 +196,26 @@ const processBalance = async (
   balanceId: number,
   balanceAmount: number,
   mvDate: Date,
-  balanceField: string,
+  balanceField:
+    | "balance_1"
+    | "balance_2a"
+    | "balance_2b"
+    | "balance_3a"
+    | "balance_3b"
+    | "balance_4a"
+    | "balance_4b",
+  balanceIdField:
+    | "balance_1_id"
+    | "balance_2a_id"
+    | "balance_2b_id"
+    | "balance_3a_id"
+    | "balance_3b_id"
+    | "balance_4a_id"
+    | "balance_4b_id",
   movementId: number,
 ) => {
+  const oppositeBalanceField = getOppositeBalanceField(balanceField);
+  const oppositeBalanceIdField = getOppositeBalanceIdField(balanceIdField);
   // Get the balance to be updated
   const [balance] = await transaction
     .select({
@@ -236,10 +264,11 @@ const processBalance = async (
     .where(futureBalancesQuery)
     .returning({ id: balances.id });
 
+  const allBalances = [...updatedBalances.map((b) => b.id), balanceId];
+
   // Update all movements related to these balances which come after the deleted balance
   await transaction
     .update(movements)
-    // @ts-expect-error
     .set({ [balanceField]: sql`${movements[balanceField]} - ${balanceAmount}` })
     .where(
       and(
@@ -247,11 +276,21 @@ const processBalance = async (
           gt(movements.date, mvDate),
           and(eq(movements.date, mvDate), gt(movements.id, movementId)),
         ),
-        inArray(
-          // @ts-expect-error
-          movements[balanceField + "_id"],
-          [...updatedBalances.map((b) => b.id), balanceId],
-        ),
+        inArray(movements[balanceIdField], allBalances),
       ),
     );
+
+  if (oppositeBalanceField && oppositeBalanceIdField) {
+    await transaction
+      .update(movements)
+      .set({
+        [oppositeBalanceField]: sql`${movements[oppositeBalanceField]} - ${balanceAmount}`,
+      })
+      .where(
+        and(
+          inArray(movements[oppositeBalanceIdField], allBalances),
+          gt(movements.date, mvDate),
+        ),
+      );
+  }
 };
