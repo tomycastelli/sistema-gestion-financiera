@@ -36,7 +36,10 @@ export const undoMovements = async (
   },
   redlock: Redlock,
 ) => {
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 10_000);
+  const lock = await redlock.acquire(
+    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
+    10_000,
+  );
 
   // Delete the movement
   const deletedMovements = await transaction

@@ -173,14 +173,19 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
       },
       {} as Record<number, DetailedBalance>,
     ),
-  ).map((entity) => {
-    // Add unified balance for each entity
-    const unifiedBalance = entity.data.reduce((sum, { currency, balance }) => {
-      return sum + unifyAmount(currency, balance);
-    }, 0);
-    entity.data.push({ currency: "unified", balance: unifiedBalance });
-    return entity;
-  });
+  )
+    .map((entity) => {
+      // Add unified balance for each entity
+      const unifiedBalance = entity.data.reduce(
+        (sum, { currency, balance }) => {
+          return sum + unifyAmount(currency, balance);
+        },
+        0,
+      );
+      entity.data.push({ currency: "unified", balance: unifiedBalance });
+      return entity;
+    })
+    .filter((e) => e.entity.id !== selectedEntity?.id);
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({

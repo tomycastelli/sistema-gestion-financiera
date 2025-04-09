@@ -80,7 +80,10 @@ export const generateMovements = async (
   type: string,
   redlock: Redlock,
 ) => {
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 10_000);
+  const lock = await redlock.acquire(
+    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
+    10_000,
+  );
 
   // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
   const mvDate = account ? new Date() : tx.operation.date;
@@ -437,11 +440,12 @@ const processBalance = async (
 
       updatedBalancesIds.push(oldBalance.id);
       balanceId = oldBalance.id;
-      finalAmount = previousMovementAmount
-        ? previousMovementAmount + balanceAmount
-        : beforeBalance
-        ? beforeBalance.amount + balanceAmount
-        : balanceAmount;
+      finalAmount =
+        previousMovementAmount !== null && previousMovementAmount !== undefined
+          ? previousMovementAmount + balanceAmount
+          : beforeBalance
+          ? beforeBalance.amount + balanceAmount
+          : balanceAmount;
     }
 
     // Update all balances after this date
@@ -503,11 +507,12 @@ const processBalance = async (
 
     balanceId = updatedBalance!.id;
     // Exists because we have a balance for this day
-    finalAmount = previousMovementAmount
-      ? previousMovementAmount + balanceAmount
-      : beforeBalance
-      ? beforeBalance.amount + balanceAmount
-      : balanceAmount;
+    finalAmount =
+      previousMovementAmount !== null && previousMovementAmount !== undefined
+        ? previousMovementAmount + balanceAmount
+        : beforeBalance
+        ? beforeBalance.amount + balanceAmount
+        : balanceAmount;
   } else {
     // Movement date is after most recent balance
     const [newBalance] = await transaction

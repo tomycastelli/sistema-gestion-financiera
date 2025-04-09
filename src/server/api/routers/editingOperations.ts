@@ -87,10 +87,7 @@ export const editingOperationsRouter = createTRPCRouter({
               amount: input.newTransactionData.amount,
             })
             .where(eq(transactions.id, input.txId))
-            .returning({
-              id: transactions.id,
-              operationId: transactions.operationId,
-            });
+            .returning();
 
           if (!newTxObj) {
             throw new TRPCError({
@@ -144,29 +141,36 @@ export const editingOperationsRouter = createTRPCRouter({
             ctx.redlock,
           );
 
-          const fromEntity = alias(entities, "fromEntity");
-          const toEntity = alias(entities, "toEntity");
+          const newFromEntity = entitiesData.find(
+            (e) => e.id === newTxObj.fromEntityId,
+          )!;
+          const newToEntity = entitiesData.find(
+            (e) => e.id === newTxObj.toEntityId,
+          )!;
 
-          const [newTxResponse] = await transaction
+          const [operation] = await transaction
             .select()
-            .from(transactions)
-            .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-            .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-            .leftJoin(operations, eq(transactions.operationId, operations.id))
-            .where(eq(transactions.id, newTxObj.id));
+            .from(operations)
+            .where(eq(operations.id, newTxObj.operationId));
 
-          const txForMovement = {
-            ...newTxResponse!.Transactions,
-            fromEntity: newTxResponse!.fromEntity!,
-            toEntity: newTxResponse!.toEntity!,
-            operation: newTxResponse!.Operations!,
+          const newTxForMovement = {
+            ...newTxObj,
+            fromEntity: {
+              id: newFromEntity.id,
+              tagName: newFromEntity.tag.name,
+            },
+            toEntity: {
+              id: newToEntity.id,
+              tagName: newToEntity.tag.name,
+            },
+            operation: operation!,
           };
 
           // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
           for (const deletedMovement of deletedMovements) {
             await generateMovements(
               transaction,
-              txForMovement,
+              newTxForMovement,
               deletedMovement.account,
               deletedMovement.direction,
               deletedMovement.type,
@@ -174,7 +178,7 @@ export const editingOperationsRouter = createTRPCRouter({
             );
           }
 
-          return newTxResponse!.Transactions;
+          return newTxObj;
         },
         {
           isolationLevel: "serializable",
