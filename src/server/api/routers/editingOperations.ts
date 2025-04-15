@@ -504,8 +504,14 @@ export const editingOperationsRouter = createTRPCRouter({
               )
               .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id));
 
-            // Undo movements for each transaction
-            for (const tx of operationTxs) {
+            // Undo movements for each transaction involving the entity
+            const involvedTxs = operationTxs.filter(
+              (tx) =>
+                tx.Transactions.fromEntityId === input.entityId ||
+                tx.Transactions.toEntityId === input.entityId ||
+                tx.Transactions.operatorEntityId === input.entityId,
+            );
+            for (const tx of involvedTxs) {
               await undoMovements(
                 transaction,
                 {
@@ -521,19 +527,24 @@ export const editingOperationsRouter = createTRPCRouter({
             await transaction.delete(transactionsMetadata).where(
               inArray(
                 transactionsMetadata.transactionId,
-                operationTxs.map((tx) => tx.Transactions.id),
+                involvedTxs.map((tx) => tx.Transactions.id),
               ),
             );
 
             // Delete transactions
-            await transaction
-              .delete(transactions)
-              .where(eq(transactions.operationId, operation.Operations.id));
+            await transaction.delete(transactions).where(
+              inArray(
+                transactions.id,
+                involvedTxs.map((tx) => tx.Transactions.id),
+              ),
+            );
 
-            // Delete operation
-            await transaction
-              .delete(operations)
-              .where(eq(operations.id, operation.Operations.id));
+            // Delete operation if involvedTxs are all the transactions it had
+            if (operationTxs.length === involvedTxs.length) {
+              await transaction
+                .delete(operations)
+                .where(eq(operations.id, operation.Operations.id));
+            }
           }
 
           // Finally delete the entity
