@@ -559,6 +559,7 @@ const AddOperation = ({
           <div className="flex flex-col gap-y-8">
             <InitialDataOperationForm
               accountingPeriodDate={accountingPeriodDate}
+              user={user}
             />
             <Link href="/operaciones/carga/pendientes">
               <Button className="flex flex-row gap-x-2">

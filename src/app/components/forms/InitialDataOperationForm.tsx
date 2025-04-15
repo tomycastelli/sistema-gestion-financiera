@@ -1,11 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { type User } from "lucia";
 import { CalendarIcon } from "lucide-react";
 import moment from "moment";
+import { type FC } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { cn } from "~/lib/utils";
+import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { Button } from "../ui/button";
 import { Calendar } from "../ui/calendar";
 import {
@@ -18,17 +21,17 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Textarea } from "../ui/textarea";
-import { type FC } from "react";
-import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { Switch } from "../ui/switch";
+import { Textarea } from "../ui/textarea";
 
 interface InitialDataOperationFormProps {
   accountingPeriodDate: Date;
+  user: User;
 }
 
 const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({
   accountingPeriodDate,
+  user,
 }) => {
   const FormSchema = z.object({
     dateMode: z.enum(["now", "custom"]),
@@ -75,6 +78,10 @@ const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({
     }
     setIsInitialDataSubmitted(true);
   };
+
+  const isAdmin =
+    user.permissions?.some((permission) => permission.name === "ADMIN") ??
+    false;
 
   return (
     <Form {...form}>
@@ -133,7 +140,9 @@ const InitialDataOperationForm: FC<InitialDataOperationFormProps> = ({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < accountingPeriodDate}
+                          disabled={(date) =>
+                            date < accountingPeriodDate && !isAdmin
+                          }
                           initialFocus
                         />
                       </PopoverContent>
