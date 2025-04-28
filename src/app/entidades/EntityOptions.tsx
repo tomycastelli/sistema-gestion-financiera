@@ -19,14 +19,21 @@ import {
 } from "../components/ui/alert-dialog";
 import { Button } from "../components/ui/button";
 import ChangeEntityForm from "./ChangeEntityForm";
+import MigrateEntitiesDialog from "./MigrateEntitiesDialog";
 
 interface EntityOptionsProps {
   entity: RouterOutputs["entities"]["getAll"][number];
+  entities: RouterOutputs["entities"]["getAll"];
   tags: RouterOutputs["tags"]["getFiltered"];
   user: User;
 }
 
-const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags, user }) => {
+const EntityOptions: FC<EntityOptionsProps> = ({
+  entity,
+  tags,
+  user,
+  entities,
+}) => {
   const utils = api.useContext();
 
   const { mutateAsync: deleteAsync } =
@@ -62,7 +69,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags, user }) => {
     });
 
   return (
-    <div className="mx-auto flex w-2/3 flex-row space-x-4">
+    <div className="mx-auto flex w-2/3 flex-row justify-center gap-x-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
@@ -87,7 +94,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags, user }) => {
             <AlertDialogDescription>
               Se eliminará la entidad y{" "}
               <span className="font-semibold">
-                todas sus operaciones relacionadas con todos los movimientos
+                todas sus transacciones relacionadas con todos los movimientos
                 generados por estas
               </span>
             </AlertDialogDescription>
@@ -119,8 +126,12 @@ const EntityOptions: FC<EntityOptionsProps> = ({ entity, tags, user }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       <ChangeEntityForm entity={entity} tags={tags} />
+      <MigrateEntitiesDialog
+        originEntity={entity}
+        entities={entities}
+        user={user}
+      />
     </div>
   );
 };

@@ -80,11 +80,6 @@ export const generateMovements = async (
   type: string,
   redlock: Redlock,
 ) => {
-  const lock = await redlock.acquire(
-    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
-    10_000,
-  );
-
   // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
   const mvDate = account ? new Date() : tx.operation.date;
 
@@ -136,133 +131,140 @@ export const generateMovements = async (
       ? tx.amount * direction
       : -tx.amount * direction;
 
-  // Process balances concurrently in two groups
-  const group1Results =
-    // Group 1: (1, 2a, 3a)
-    Promise.all([
-      // Process Type 1: Entity to Entity
+  const lock = await redlock.acquire(
+    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
+    20_000,
+  );
+
+  try {
+    // Process balances concurrently in two groups
+    const group1Results =
+      // Group 1: (1, 2a, 3a)
+      Promise.all([
+        // Process Type 1: Entity to Entity
+        processBalance(
+          transaction,
+          tx,
+          mvDate,
+          account,
+          balance1Amount,
+          { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
+          "balance_1",
+          "balance_1_id",
+        ),
+        // Process Type 2a: Entity A to Rest
+        processBalance(
+          transaction,
+          tx,
+          mvDate,
+          account,
+          balance2aAmount,
+          { type: "2", ent_a: ent_a.id },
+          "balance_2a",
+          "balance_2a_id",
+        ),
+        // Process Type 3a: Tag A to Entity B
+        processBalance(
+          transaction,
+          tx,
+          mvDate,
+          account,
+          balance3aAmount,
+          { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
+          "balance_3a",
+          "balance_3a_id",
+        ),
+      ]);
+    // Group 2: (2b, 3b, 4a)
+    const group2Results = Promise.all([
+      // Process Type 2b: Entity B to Rest
       processBalance(
         transaction,
         tx,
         mvDate,
         account,
-        balance1Amount,
-        { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
-        "balance_1",
-        "balance_1_id",
+        balance2bAmount,
+        { type: "2", ent_a: ent_b.id },
+        "balance_2b",
+        "balance_2b_id",
       ),
-      // Process Type 2a: Entity A to Rest
+      // Process Type 3b: Tag B to Entity A
       processBalance(
         transaction,
         tx,
         mvDate,
         account,
-        balance2aAmount,
-        { type: "2", ent_a: ent_a.id },
-        "balance_2a",
-        "balance_2a_id",
+        balance3bAmount,
+        { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
+        "balance_3b",
+        "balance_3b_id",
       ),
-      // Process Type 3a: Tag A to Entity B
+      // Process Type 4a: Tag A to Rest
       processBalance(
         transaction,
         tx,
         mvDate,
         account,
-        balance3aAmount,
-        { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
-        "balance_3a",
-        "balance_3a_id",
+        balance4aAmount,
+        { type: "4", tag: ent_a.tagName },
+        "balance_4a",
+        "balance_4a_id",
       ),
     ]);
-  // Group 2: (2b, 3b, 4a)
-  const group2Results = Promise.all([
-    // Process Type 2b: Entity B to Rest
-    processBalance(
-      transaction,
-      tx,
-      mvDate,
-      account,
-      balance2bAmount,
-      { type: "2", ent_a: ent_b.id },
-      "balance_2b",
-      "balance_2b_id",
-    ),
-    // Process Type 3b: Tag B to Entity A
-    processBalance(
-      transaction,
-      tx,
-      mvDate,
-      account,
-      balance3bAmount,
-      { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
-      "balance_3b",
-      "balance_3b_id",
-    ),
-    // Process Type 4a: Tag A to Rest
-    processBalance(
-      transaction,
-      tx,
-      mvDate,
-      account,
-      balance4aAmount,
-      { type: "4", tag: ent_a.tagName },
-      "balance_4a",
-      "balance_4a_id",
-    ),
-  ]);
 
-  // Extract results
-  const [balance1, balance2a, balance3a] = await group1Results;
-  const [balance2b, balance3b, balance4a] = await group2Results;
-  let balance4b = {
-    amount: 0,
-    id: 0,
-  };
+    // Extract results
+    const [balance1, balance2a, balance3a] = await group1Results;
+    const [balance2b, balance3b, balance4a] = await group2Results;
+    let balance4b = {
+      amount: 0,
+      id: 0,
+    };
 
-  if (ent_a.tagName === ent_b.tagName) {
-    balance4b = balance4a;
-  } else {
-    balance4b = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      account,
-      balance4bAmount,
-      { type: "4", tag: ent_b.tagName },
-      "balance_4b",
-      "balance_4b_id",
-    );
+    if (ent_a.tagName === ent_b.tagName) {
+      balance4b = balance4a;
+    } else {
+      balance4b = await processBalance(
+        transaction,
+        tx,
+        mvDate,
+        account,
+        balance4bAmount,
+        { type: "4", tag: ent_b.tagName },
+        "balance_4b",
+        "balance_4b_id",
+      );
+    }
+
+    // Create the movement with all the balance values
+    const [createdMovement] = await transaction
+      .insert(movements)
+      .values({
+        transactionId: tx.id,
+        date: mvDate,
+        direction,
+        type,
+        account,
+        balance_1: balance1.amount,
+        balance_1_id: balance1.id,
+        balance_2a: balance2a.amount,
+        balance_2a_id: balance2a.id,
+        balance_2b: balance2b.amount,
+        balance_2b_id: balance2b.id,
+        balance_3a: balance3a.amount,
+        balance_3a_id: balance3a.id,
+        balance_3b: balance3b.amount,
+        balance_3b_id: balance3b.id,
+        balance_4a: balance4a.amount,
+        balance_4a_id: balance4a.id,
+        balance_4b: balance4b.amount,
+        balance_4b_id: balance4b.id,
+      })
+      .returning();
+
+    return [createdMovement];
+  } finally {
+    await lock.release();
   }
-
-  // Create the movement with all the balance values
-  const [createdMovement] = await transaction
-    .insert(movements)
-    .values({
-      transactionId: tx.id,
-      date: mvDate,
-      direction,
-      type,
-      account,
-      balance_1: balance1.amount,
-      balance_1_id: balance1.id,
-      balance_2a: balance2a.amount,
-      balance_2a_id: balance2a.id,
-      balance_2b: balance2b.amount,
-      balance_2b_id: balance2b.id,
-      balance_3a: balance3a.amount,
-      balance_3a_id: balance3a.id,
-      balance_3b: balance3b.amount,
-      balance_3b_id: balance3b.id,
-      balance_4a: balance4a.amount,
-      balance_4a_id: balance4a.id,
-      balance_4b: balance4b.amount,
-      balance_4b_id: balance4b.id,
-    })
-    .returning();
-
-  await lock.release();
-
-  return [createdMovement];
 };
 
 // Helper function to process each balance type

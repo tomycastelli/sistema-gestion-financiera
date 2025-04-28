@@ -572,4 +572,148 @@ export const editingOperationsRouter = createTRPCRouter({
 
       return response;
     }),
+  migrateEntities: protectedLoggedProcedure
+    .input(
+      z.object({
+        originEntityId: z.number().int(),
+        originEntityTag: z.string(),
+        destinationEntityId: z.number().int(),
+        destinationEntityTag: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        !ctx.user.permissions?.some(
+          (p) =>
+            p.name === "ADMIN" ||
+            p.name === "ENTITIES_MANAGE" ||
+            (p.name === "ENTITIES_MANAGE_SOME" &&
+              (p.entitiesIds?.includes(input.originEntityId) ||
+                p.entitiesTags?.includes(input.originEntityTag))),
+        )
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User does not have permission to migrate entities",
+        });
+      }
+      // Chequeamos que no tengan transacciones entre sí
+      const conflictingTransactions = await ctx.db
+        .select({
+          id: transactions.id,
+        })
+        .from(transactions)
+        .where(
+          or(
+            and(
+              eq(transactions.fromEntityId, input.originEntityId),
+              eq(transactions.toEntityId, input.destinationEntityId),
+            ),
+            and(
+              eq(transactions.fromEntityId, input.destinationEntityId),
+              eq(transactions.toEntityId, input.originEntityId),
+            ),
+          ),
+        );
+
+      if (conflictingTransactions.length > 0) {
+        throw new TRPCError({
+          message: "Contains transactions between these two entities",
+          code: "UNPROCESSABLE_CONTENT",
+        });
+      }
+
+      return await ctx.db.transaction(async (tx) => {
+        const [newEntityTxsFrom, newEntityTxsTo] = await Promise.all([
+          tx
+            .update(transactions)
+            .set({
+              fromEntityId: input.destinationEntityId,
+            })
+            .where(eq(transactions.fromEntityId, input.originEntityId))
+            .returning({ id: transactions.id }),
+          tx
+            .update(transactions)
+            .set({
+              toEntityId: input.destinationEntityId,
+            })
+            .where(eq(transactions.toEntityId, input.originEntityId))
+            .returning({ id: transactions.id }),
+        ]);
+
+        const fromEntity = alias(entities, "fromEntity");
+        const toEntity = alias(entities, "toEntity");
+
+        const newEntityTxIds = [...newEntityTxsFrom, ...newEntityTxsTo].map(
+          (t) => t.id,
+        );
+
+        const newEntityTxs = await tx
+          .select()
+          .from(transactions)
+          .where(inArray(transactions.id, newEntityTxIds))
+          .leftJoin(operations, eq(transactions.operationId, operations.id))
+          .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+          .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId));
+
+        for (const newEntityTx of newEntityTxs) {
+          // Chequeamos donde se encuentra la nueva destination entity y la cambiamos por la origin
+          const isFrom =
+            newEntityTx.fromEntity!.id === input.destinationEntityId;
+          // Undo los movimientos de esas transacciones
+          const deletedMovements = await undoMovements(
+            tx,
+            {
+              id: newEntityTx.Transactions.id,
+              fromEntity: {
+                id: isFrom ? input.originEntityId : newEntityTx.fromEntity!.id,
+                tagName: isFrom
+                  ? input.originEntityTag
+                  : newEntityTx.fromEntity!.tagName,
+              },
+              toEntity: {
+                id: isFrom ? newEntityTx.toEntity!.id : input.originEntityId,
+                tagName: isFrom
+                  ? newEntityTx.toEntity!.tagName
+                  : input.originEntityTag,
+              },
+              currency: newEntityTx.Transactions.currency,
+              amount: newEntityTx.Transactions.amount,
+            },
+            ctx.redlock,
+          );
+
+          const newTxForMovement = {
+            ...newEntityTx.Transactions,
+            fromEntity: {
+              id: newEntityTx.fromEntity!.id,
+              tagName: newEntityTx.fromEntity!.tagName,
+            },
+            toEntity: {
+              id: newEntityTx.toEntity!.id,
+              tagName: newEntityTx.toEntity!.tagName,
+            },
+            operation: {
+              date: newEntityTx.Operations!.date,
+            },
+          };
+
+          // Mover todas las transacciones de la entidad a la nueva entidad
+          for (const mv of deletedMovements) {
+            await generateMovements(
+              tx,
+              newTxForMovement,
+              mv.account,
+              mv.direction,
+              mv.type,
+              ctx.redlock,
+            );
+          }
+        }
+
+        return {
+          transactionCount: newEntityTxIds.length,
+        };
+      });
+    }),
 });

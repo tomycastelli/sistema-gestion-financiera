@@ -38,155 +38,159 @@ export const undoMovements = async (
 ) => {
   const lock = await redlock.acquire(
     [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
-    10_000,
+    20_000,
   );
 
-  // Delete the movement
-  const deletedMovements = await transaction
-    .delete(movements)
-    .where(eq(movements.transactionId, tx.id))
-    .returning();
+  try {
+    // Delete the movement
+    const deletedMovements = await transaction
+      .delete(movements)
+      .where(eq(movements.transactionId, tx.id))
+      .returning();
 
-  // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
-  const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
-  const ent_b = tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
+    // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
+    const ent_a =
+      tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
+    const ent_b =
+      tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
-  for (const movement of deletedMovements) {
-    // Calculate balance amounts for different types
-    // Type 1: Entity to Entity (from perspective of ent_a)
-    const balance1Amount =
-      movementBalanceDirection(
-        tx.fromEntity.id,
-        tx.toEntity.id,
-        movement.direction,
-      ) * tx.amount;
+    for (const movement of deletedMovements) {
+      // Calculate balance amounts for different types
+      // Type 1: Entity to Entity (from perspective of ent_a)
+      const balance1Amount =
+        movementBalanceDirection(
+          tx.fromEntity.id,
+          tx.toEntity.id,
+          movement.direction,
+        ) * tx.amount;
 
-    // Type 2: Entity to Rest - one for each entity
-    const balance2aAmount =
-      tx.fromEntity.id === ent_a.id
-        ? -tx.amount * movement.direction
-        : tx.amount * movement.direction;
-    const balance2bAmount =
-      tx.toEntity.id === ent_b.id
-        ? tx.amount * movement.direction
-        : -tx.amount * movement.direction;
+      // Type 2: Entity to Rest - one for each entity
+      const balance2aAmount =
+        tx.fromEntity.id === ent_a.id
+          ? -tx.amount * movement.direction
+          : tx.amount * movement.direction;
+      const balance2bAmount =
+        tx.toEntity.id === ent_b.id
+          ? tx.amount * movement.direction
+          : -tx.amount * movement.direction;
 
-    // Type 3: Tag to Entity
-    const balance3aAmount =
-      tx.fromEntity.tagName === tx.toEntity.tagName
-        ? 0
-        : tx.fromEntity.id === ent_a.id
-        ? -tx.amount * movement.direction
-        : tx.amount * movement.direction;
-    const balance3bAmount =
-      tx.fromEntity.tagName === tx.toEntity.tagName
-        ? 0
-        : tx.toEntity.id === ent_b.id
-        ? tx.amount * movement.direction
-        : -tx.amount * movement.direction;
+      // Type 3: Tag to Entity
+      const balance3aAmount =
+        tx.fromEntity.tagName === tx.toEntity.tagName
+          ? 0
+          : tx.fromEntity.id === ent_a.id
+          ? -tx.amount * movement.direction
+          : tx.amount * movement.direction;
+      const balance3bAmount =
+        tx.fromEntity.tagName === tx.toEntity.tagName
+          ? 0
+          : tx.toEntity.id === ent_b.id
+          ? tx.amount * movement.direction
+          : -tx.amount * movement.direction;
 
-    // Type 4: Tag to Rest - one for each tag
-    const balance4aAmount =
-      tx.fromEntity.tagName === tx.toEntity.tagName
-        ? 0
-        : tx.fromEntity.tagName === ent_a.tagName
-        ? -tx.amount * movement.direction
-        : tx.amount * movement.direction;
-    const balance4bAmount =
-      tx.fromEntity.tagName === tx.toEntity.tagName
-        ? 0
-        : tx.toEntity.tagName === ent_b.tagName
-        ? tx.amount * movement.direction
-        : -tx.amount * movement.direction;
+      // Type 4: Tag to Rest - one for each tag
+      const balance4aAmount =
+        tx.fromEntity.tagName === tx.toEntity.tagName
+          ? 0
+          : tx.fromEntity.tagName === ent_a.tagName
+          ? -tx.amount * movement.direction
+          : tx.amount * movement.direction;
+      const balance4bAmount =
+        tx.fromEntity.tagName === tx.toEntity.tagName
+          ? 0
+          : tx.toEntity.tagName === ent_b.tagName
+          ? tx.amount * movement.direction
+          : -tx.amount * movement.direction;
 
-    // Process balances concurrently in two groups
-    await Promise.all([
-      // Process Type 1: Entity to Entity
-      processBalance(
-        transaction,
-        movement.balance_1_id,
-        balance1Amount,
-        movement.date,
-        "balance_1",
-        "balance_1_id",
-        movement.id,
-      ),
-      // Process Type 2a: Entity A to Rest
-      processBalance(
-        transaction,
-        movement.balance_2a_id,
-        balance2aAmount,
-        movement.date,
-        "balance_2a",
-        "balance_2a_id",
-        movement.id,
-      ),
-      // Process Type 3a: Tag A to Entity B
-      processBalance(
-        transaction,
-        movement.balance_3a_id,
-        balance3aAmount,
-        movement.date,
-        "balance_3a",
-        "balance_3a_id",
-        movement.id,
-      ),
-    ]);
+      // Process balances concurrently in two groups
+      await Promise.all([
+        // Process Type 1: Entity to Entity
+        processBalance(
+          transaction,
+          movement.balance_1_id,
+          balance1Amount,
+          movement.date,
+          "balance_1",
+          "balance_1_id",
+          movement.id,
+        ),
+        // Process Type 2a: Entity A to Rest
+        processBalance(
+          transaction,
+          movement.balance_2a_id,
+          balance2aAmount,
+          movement.date,
+          "balance_2a",
+          "balance_2a_id",
+          movement.id,
+        ),
+        // Process Type 3a: Tag A to Entity B
+        processBalance(
+          transaction,
+          movement.balance_3a_id,
+          balance3aAmount,
+          movement.date,
+          "balance_3a",
+          "balance_3a_id",
+          movement.id,
+        ),
+      ]);
 
-    // Group 2: (2b, 3b, 4a)
-    await Promise.all([
-      // Process Type 2b: Entity B to Rest
-      processBalance(
-        transaction,
-        movement.balance_2b_id,
-        balance2bAmount,
-        movement.date,
-        "balance_2b",
-        "balance_2b_id",
-        movement.id,
-      ),
-      // Process Type 3b: Tag B to Entity A
-      processBalance(
-        transaction,
-        movement.balance_3b_id,
-        balance3bAmount,
-        movement.date,
-        "balance_3b",
-        "balance_3b_id",
-        movement.id,
-      ),
-      // Process Type 4a: Tag A to Rest
-      processBalance(
-        transaction,
-        movement.balance_4a_id,
-        balance4aAmount,
-        movement.date,
-        "balance_4a",
-        "balance_4a_id",
-        movement.id,
-      ),
-    ]);
+      // Group 2: (2b, 3b, 4a)
+      await Promise.all([
+        // Process Type 2b: Entity B to Rest
+        processBalance(
+          transaction,
+          movement.balance_2b_id,
+          balance2bAmount,
+          movement.date,
+          "balance_2b",
+          "balance_2b_id",
+          movement.id,
+        ),
+        // Process Type 3b: Tag B to Entity A
+        processBalance(
+          transaction,
+          movement.balance_3b_id,
+          balance3bAmount,
+          movement.date,
+          "balance_3b",
+          "balance_3b_id",
+          movement.id,
+        ),
+        // Process Type 4a: Tag A to Rest
+        processBalance(
+          transaction,
+          movement.balance_4a_id,
+          balance4aAmount,
+          movement.date,
+          "balance_4a",
+          "balance_4a_id",
+          movement.id,
+        ),
+      ]);
 
-    // Process 4b conditionally depending on if entities have same tag
-    if (tx.fromEntity.tagName === tx.toEntity.tagName) {
-      // If same tag, 4b is the same as 4a, no need to process
-    } else {
-      // Process Type 4b: Tag B to Rest
-      await processBalance(
-        transaction,
-        movement.balance_4b_id,
-        balance4bAmount,
-        movement.date,
-        "balance_4b",
-        "balance_4b_id",
-        movement.id,
-      );
+      // Process 4b conditionally depending on if entities have same tag
+      if (tx.fromEntity.tagName === tx.toEntity.tagName) {
+        // If same tag, 4b is the same as 4a, no need to process
+      } else {
+        // Process Type 4b: Tag B to Rest
+        await processBalance(
+          transaction,
+          movement.balance_4b_id,
+          balance4bAmount,
+          movement.date,
+          "balance_4b",
+          "balance_4b_id",
+          movement.id,
+        );
+      }
     }
+
+    return deletedMovements;
+  } finally {
+    await lock.release();
   }
-
-  await lock.release();
-
-  return deletedMovements;
 };
 
 // Helper function to process each balance type

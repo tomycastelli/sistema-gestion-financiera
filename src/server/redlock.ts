@@ -14,7 +14,7 @@ const redis = new Redis(getRedisUrl(), { enableAutoPipelining: true });
 
 export const redlock = new Redlock([redis], {
   driftFactor: 0.01,
-  retryCount: 10,
-  retryDelay: 200,
-  retryJitter: 200,
+  retryCount: 40,
+  retryDelay: 500,
+  retryJitter: 300,
 });

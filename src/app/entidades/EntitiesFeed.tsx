@@ -225,6 +225,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                         (item) => item.name === entity.name,
                       ) && (
                         <EntityOptions
+                          entities={entities}
                           entity={entity}
                           tags={tags}
                           user={user}
