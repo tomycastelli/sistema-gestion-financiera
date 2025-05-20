@@ -255,6 +255,10 @@ export const gastoCategories = [
             label: "Alarma"
           },
           {
+            value: "Gastos_Bancarios",
+            label: "Gastos Bancarios"
+          },
+          {
             value: "VARIOS",
             label: "Varios"
           }

@@ -57,6 +57,14 @@ const FormSchema = z.object({
             path: ["fromEntityId", "toEntityId"],
           });
         }
+
+        if (val.type === "gasto" && (!val.category || !val.subCategory)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "La categoría es requerida para gastos",
+            path: ["subCategory"],
+          });
+        }
       }),
   ),
 });
@@ -317,6 +325,7 @@ const FlexibleTransactionsForm = ({
                             )}
                             selectedSubValue={field.value}
                           />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
