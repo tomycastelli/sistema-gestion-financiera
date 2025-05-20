@@ -121,6 +121,7 @@ export const filesRouter = createTRPCRouter({
           fecha: moment(mv.date).format("DD-MM-YY"),
           origen: mv.selectedEntity,
           cliente: mv.otherEntity,
+          transactionStatus: mv.transactionStatus,
           detalle: {
             observations: mv.observations ?? "",
             type: `${
@@ -199,8 +200,8 @@ export const filesRouter = createTRPCRouter({
                   </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
-                  <td>${mv.entrada}</td>
-                  <td>${mv.salida}</td>
+                  <td ${mv.transactionStatus === "cancelled" ? "style='text-decoration: line-through;'" : ""}>${mv.entrada}</td>
+                  <td ${mv.transactionStatus === "cancelled" ? "style='text-decoration: line-through;'" : ""}>${mv.salida}</td>
                   <td>${mv.saldo}</td>
                   </tr>`,
               )
