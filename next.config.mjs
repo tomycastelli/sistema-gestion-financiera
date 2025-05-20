@@ -32,11 +32,11 @@ const nextConfig = {
       // Split chunks optimization
       config.optimization.splitChunks = {
         chunks: "all",
-        minSize: 20000,
-        maxSize: 244000,
+        minSize: 10000,
+        maxSize: 700000,
         minChunks: 1,
-        maxAsyncRequests: 30,
-        maxInitialRequests: 30,
+        maxAsyncRequests: 50,
+        maxInitialRequests: 50,
         cacheGroups: {
           defaultVendors: {
             test: /[\\/]node_modules[\\/]/,
