@@ -136,11 +136,13 @@ const FlexibleTransactionsForm = ({
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFormattedFloat(transaction.amount),
-        category: gastoCategories.find((category) =>
-          category.subCategories.some(
-            (subcategory) => subcategory.value === transaction.subCategory,
-          ),
-        )!.value,
+        category: transaction.subCategory
+          ? gastoCategories.find((category) =>
+              category.subCategories.some(
+                (subcategory) => subcategory.value === transaction.subCategory,
+              ),
+            )?.value
+          : undefined,
         subCategory: transaction.subCategory,
       });
     });
