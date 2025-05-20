@@ -1,14 +1,15 @@
 "use client";
 
+import { memo } from "react";
 import EntityCard from "~/app/components/ui/EntityCard";
+import { Icons } from "~/app/components/ui/Icons";
 import { capitalizeFirstLetter, numberFormatter } from "~/lib/functions";
+import { cn } from "~/lib/utils";
+import { gastoCategories } from "~/lib/variables";
+import { Status } from "~/server/db/schema";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import TransactionButtons from "./TransactionButtons";
 import TransactionInfo from "./[operationId]/TransactionInfo";
-import { cn } from "~/lib/utils";
-import { Status } from "~/server/db/schema";
-import { Icons } from "~/app/components/ui/Icons";
-import { memo } from "react";
 
 interface TransactionProps {
   tx: RouterOutputs["operations"]["getOperations"]["operations"][number]["transactions"][number];
@@ -59,7 +60,7 @@ const Transaction = memo(
           </div>
           <div className="flex flex-row items-center gap-x-4">
             <EntityCard entity={mainEntity} />
-            <div className="flex flex-col items-center justify-center gap-y-2">
+            <div className="flex flex-col items-center justify-center gap-y-1">
               {mainEntity.id === tx.toEntityId ? (
                 <Icons.arrowLeft
                   className={cn(
@@ -86,6 +87,13 @@ const Transaction = memo(
               <p className="w-14 text-center">
                 {capitalizeFirstLetter(tx.type)}
               </p>
+              {tx.subCategory && (
+                <p className="text-xs text-center w-14 text-wrap font-light text-muted-foreground">
+                  {gastoCategories.flatMap((category) => category.subCategories).find(
+                    (subCategory) => subCategory.value === tx.subCategory,
+                  )?.label}
+                </p>
+              )}
             </div>
             <EntityCard entity={otherEntity} />
           </div>

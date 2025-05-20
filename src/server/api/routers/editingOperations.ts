@@ -28,6 +28,8 @@ export const editingOperationsRouter = createTRPCRouter({
           operatorEntityId: z.number(),
           currency: z.string(),
           amount: z.number(),
+          category: z.string().optional(),
+          subCategory: z.string().optional(),
         }),
         oldTransactionData: z.object({
           fromEntityId: z.number(),
@@ -35,6 +37,8 @@ export const editingOperationsRouter = createTRPCRouter({
           operatorEntityId: z.number(),
           currency: z.string(),
           amount: z.number(),
+          category: z.string().optional(),
+          subCategory: z.string().optional(),
         }),
       }),
     )
@@ -85,6 +89,8 @@ export const editingOperationsRouter = createTRPCRouter({
               operatorEntityId: input.newTransactionData.operatorEntityId,
               currency: input.newTransactionData.currency,
               amount: input.newTransactionData.amount,
+              category: input.newTransactionData.category,
+              subCategory: input.newTransactionData.subCategory,
             })
             .where(eq(transactions.id, input.txId))
             .returning();

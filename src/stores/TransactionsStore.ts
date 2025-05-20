@@ -13,6 +13,8 @@ const TransactionsStoreSchema = z.array(
     relatedTxId: z.number().int().optional(),
     metadata: z.object({ exchange_rate: z.number().optional() }).optional(),
     status: z.boolean().default(false).optional(),
+    category: z.string().optional(),
+    subCategory: z.string().optional(),
   }),
 );
 

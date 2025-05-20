@@ -62,7 +62,7 @@ const TransactionInfo: FC<TransactionInfoProps> = ({
           />
         </Button>
       </HoverCardTrigger>
-      <HoverCardContent className="flex flex-col items-center space-y-1 px-4">
+      <HoverCardContent className="flex flex-col w-[400px] items-center space-y-1 px-4">
         {!isInFeed && (
           <p className="w-full text-center text-sm">
             Clickeá para resaltar los movimientos relacionados a la transacción
@@ -127,7 +127,7 @@ const TransactionInfo: FC<TransactionInfoProps> = ({
             </p>
           </div>
         )}
-        <div className="flex flex-col space-y-2">
+        <div className="flex flex-col space-y-2 max-w-full">
           {tx.transactionMetadata?.history && (
             <p className="mb-1 mt-2 font-semibold">Cambios</p>
           )}
@@ -168,6 +168,18 @@ const TransactionInfo: FC<TransactionInfoProps> = ({
                                 // @ts-ignore
                                 change.after,
                               )}
+                            </p>
+                          </div>
+                        )}
+                        {change.key === "subCategory" && (
+                          <div className="flex flex-row items-center space-x-2">
+                            <Icons.adjustments className="h-6" />
+                            <p className="font-light">
+                              {change.before}
+                            </p>
+                            <Icons.chevronRight className="h-4" />
+                            <p className="font-semibold">
+                              {change.after}
                             </p>
                           </div>
                         )}

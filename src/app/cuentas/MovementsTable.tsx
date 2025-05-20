@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { isNumeric, numberFormatter, truncateString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
-import { currencies, mvTypeFormatting } from "~/lib/variables";
+import { currencies, gastoCategories, mvTypeFormatting } from "~/lib/variables";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
@@ -317,6 +317,15 @@ const MovementsTable = ({
         const mvId: number = row.getValue("id");
         const txType: string = row.getValue("txType");
         const observations: string = row.getValue("observations");
+        const categoryValue: string = row.getValue("category");
+        const subCategoryValue: string = row.getValue("subCategory");
+
+        const category = gastoCategories
+          .find((c) => c.value === categoryValue)
+          ?.label;
+        const subCategory = gastoCategories
+          .flatMap((c) => c.subCategories)
+          .find((c) => c.value === subCategoryValue)?.label;
 
         return (
           <>
@@ -328,6 +337,11 @@ const MovementsTable = ({
                   `- $${metadata.exchange_rate}`
                 : ""
             }`}</p>
+            {txType === "gasto" && (
+              <p className="font-light text-xs">
+                {category} - {subCategory}
+              </p>
+            )}
           </>
         );
       },
@@ -335,6 +349,14 @@ const MovementsTable = ({
     {
       accessorKey: "txType",
       header: "Transaction type",
+    },
+    {
+      accessorKey: "category",
+      header: "Transaction category",
+    },
+    {
+      accessorKey: "subCategory",
+      header: "Transaction sub-category",
     },
     {
       accessorKey: "observations",

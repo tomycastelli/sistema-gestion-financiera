@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
-import { currencies } from "~/lib/variables";
+import { currencies, gastoCategories } from "~/lib/variables";
 import { api } from "~/trpc/react";
 import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+
 import {
   Form,
   FormControl,
@@ -36,6 +37,7 @@ import {
 } from "../ui/hover-card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import CustomDropdownSelector from "./CustomDropdownSelector";
 import CustomSelector from "./CustomSelector";
 
 interface UpdateTransactionProps {
@@ -50,6 +52,8 @@ const FormSchema = z.object({
   operatorEntityId: z.string(),
   currency: z.string(),
   amount: z.string(),
+  category: z.string().optional(),
+  subCategory: z.string().optional(),
 });
 
 const UpdateTransaction = ({
@@ -60,70 +64,76 @@ const UpdateTransaction = ({
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { mutate } = api.editingOperations.updateTransactionValues.useMutation({
-    async onMutate(newOperation) {
-      reset({
-        fromEntityId: newOperation.newTransactionData.fromEntityId.toString(),
-        toEntityId: newOperation.newTransactionData.toEntityId.toString(),
-        operatorEntityId:
-          newOperation.newTransactionData.operatorEntityId.toString(),
-        currency: newOperation.newTransactionData.currency,
-        amount: newOperation.newTransactionData.amount.toString(),
-      });
+  const { mutate, isLoading } =
+    api.editingOperations.updateTransactionValues.useMutation({
+      async onMutate(newOperation) {
+        reset({
+          fromEntityId: newOperation.newTransactionData.fromEntityId.toString(),
+          toEntityId: newOperation.newTransactionData.toEntityId.toString(),
+          operatorEntityId:
+            newOperation.newTransactionData.operatorEntityId.toString(),
+          currency: newOperation.newTransactionData.currency,
+          amount: newOperation.newTransactionData.amount.toString(),
+          category: newOperation.newTransactionData.category,
+          subCategory: newOperation.newTransactionData.subCategory,
+        });
 
-      await utils.operations.getOperations.cancel();
+        await utils.operations.getOperations.cancel();
 
-      const prevData =
-        utils.operations.getOperations.getData(operationsQueryInput);
+        const prevData =
+          utils.operations.getOperations.getData(operationsQueryInput);
 
-      utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
-        ...old!,
-        operations: old!.operations.map((operation) => {
-          const updatedTransactions = operation.transactions.map(
-            (transaction) => {
-              if (newOperation.txId === transaction.id) {
-                return {
-                  ...transaction,
-                  fromEntityId: newOperation.newTransactionData.fromEntityId,
-                  toEntityId: newOperation.newTransactionData.toEntityId,
-                  operatorEntityId:
-                    newOperation.newTransactionData.operatorEntityId,
-                  currency: newOperation.newTransactionData.currency,
-                  amount: newOperation.newTransactionData.amount,
-                };
-              }
-              return transaction;
-            },
-          );
-          return {
-            ...operation,
-            transactions: updatedTransactions,
-          };
-        }),
-      }));
+        utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
+          ...old!,
+          operations: old!.operations.map((operation) => {
+            const updatedTransactions = operation.transactions.map(
+              (transaction) => {
+                if (newOperation.txId === transaction.id) {
+                  return {
+                    ...transaction,
+                    fromEntityId: newOperation.newTransactionData.fromEntityId,
+                    toEntityId: newOperation.newTransactionData.toEntityId,
+                    operatorEntityId:
+                      newOperation.newTransactionData.operatorEntityId,
+                    currency: newOperation.newTransactionData.currency,
+                    amount: newOperation.newTransactionData.amount,
+                    category: newOperation.newTransactionData.category ?? null,
+                    subCategory:
+                      newOperation.newTransactionData.subCategory ?? null,
+                  };
+                }
+                return transaction;
+              },
+            );
+            return {
+              ...operation,
+              transactions: updatedTransactions,
+            };
+          }),
+        }));
 
-      return { prevData };
-    },
-    onError(err) {
-      const prevData =
-        utils.operations.getOperations.getData(operationsQueryInput);
-      // Doing some ui actions
-      toast.error("No se pudieron actualizar las transacciones", {
-        description: err.message,
-      });
-      return { prevData };
-    },
-    onSettled() {
-      void utils.operations.getOperations.invalidate();
-      void utils.movements.getMovementsByOpId.invalidate();
-      void utils.movements.getCurrentAccounts.invalidate();
-      void utils.movements.getBalancesByEntities.invalidate();
-    },
-    onSuccess(data) {
-      setIsOpen(false);
-      toast.success(`Transacción ${data.id} editada`);
-    },
-  });
+        return { prevData };
+      },
+      onError(err) {
+        const prevData =
+          utils.operations.getOperations.getData(operationsQueryInput);
+        // Doing some ui actions
+        toast.error("No se pudieron actualizar las transacciones", {
+          description: err.message,
+        });
+        return { prevData };
+      },
+      onSettled() {
+        void utils.operations.getOperations.invalidate();
+        void utils.movements.getMovementsByOpId.invalidate();
+        void utils.movements.getCurrentAccounts.invalidate();
+        void utils.movements.getBalancesByEntities.invalidate();
+      },
+      onSuccess(data) {
+        setIsOpen(false);
+        toast.success(`Transacción ${data.id} editada`);
+      },
+    });
 
   const defaultTxValues = useMemo(
     () => ({
@@ -132,6 +142,8 @@ const UpdateTransaction = ({
       operatorEntityId: tx.operatorEntityId.toString(),
       currency: tx.currency,
       amount: numberFormatter(tx.amount),
+      category: tx.category ?? undefined,
+      subCategory: tx.subCategory ?? undefined,
     }),
     [
       tx.amount,
@@ -139,6 +151,8 @@ const UpdateTransaction = ({
       tx.fromEntityId,
       tx.operatorEntityId,
       tx.toEntityId,
+      tx.category,
+      tx.subCategory,
     ],
   );
 
@@ -147,7 +161,7 @@ const UpdateTransaction = ({
     defaultValues: defaultTxValues,
   });
 
-  const { handleSubmit, control, watch, reset } = form;
+  const { handleSubmit, control, watch, reset, setValue } = form;
 
   const watchFromEntity = watch("fromEntityId");
   const watchToEntity = watch("toEntityId");
@@ -163,6 +177,8 @@ const UpdateTransaction = ({
         operatorEntityId: parseInt(values.operatorEntityId),
         currency: values.currency,
         amount: parseFormattedFloat(values.amount),
+        category: values.category,
+        subCategory: values.subCategory,
       },
       oldTransactionData: {
         fromEntityId: tx.fromEntityId,
@@ -170,6 +186,8 @@ const UpdateTransaction = ({
         operatorEntityId: tx.operatorEntityId,
         currency: tx.currency,
         amount: tx.amount,
+        category: tx.category ?? undefined,
+        subCategory: tx.subCategory ?? undefined,
       },
     });
   };
@@ -354,6 +372,37 @@ const UpdateTransaction = ({
                           )}
                         />
                       </div>
+                      {tx.type === "gasto" && (
+                        <div className="flex flex-col items-center space-y-2">
+                          <Label>Categoria</Label>
+                          <FormField
+                            control={control}
+                            name={"subCategory"}
+                            render={({ field }) => (
+                              <FormItem>
+                                <CustomDropdownSelector
+                                  data={gastoCategories.map((category) => ({
+                                    value: category.value,
+                                    label: category.label,
+                                    subData: category.subCategories,
+                                  }))}
+                                  onSelect={(value, subValue) => {
+                                    if (value && subValue) {
+                                      setValue("category", value);
+                                      field.onChange(subValue);
+                                    } else {
+                                      setValue("category", undefined);
+                                      field.onChange(null);
+                                    }
+                                  }}
+                                  selectedValue={watch("category")}
+                                  selectedSubValue={field.value}
+                                />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
                     </div>
                     <FormField
                       control={control}
@@ -400,8 +449,8 @@ const UpdateTransaction = ({
                 >
                   Resetear <Icons.undo className="ml-2 h-8" />
                 </Button>
-                <Button className="mt-4" type="submit">
-                  Modificar transacción
+                <Button className="mt-4" type="submit" disabled={isLoading}>
+                  {isLoading ? "Modificando..." : "Modificar transacción"}
                 </Button>
               </div>
             </form>

@@ -367,6 +367,8 @@ export const transactions = pgTable(
     observations: text("observations"),
     status: Status("status").default("pending").notNull(),
     is_approved: boolean("is_approved").notNull(),
+    category: text("category"),
+    subCategory: text("sub_category"),
   },
   (table) => {
     return {

@@ -13,7 +13,7 @@ import {
   findDuplicateObjects,
   numberFormatter,
 } from "~/lib/functions";
-import { currentAccountOnlyTypes } from "~/lib/variables";
+import { currentAccountOnlyTypes, gastoCategories } from "~/lib/variables";
 import { Status } from "~/server/db/schema";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
 import { api } from "~/trpc/react";
@@ -254,13 +254,27 @@ const AddOperation = ({
                               {entitiesMap[transaction.toEntityId]?.name}
                             </Badge>
                           </div>
-                          <div className="flex flex-col items-start space-y-2">
+                          <div className="flex flex-col gap-y-2">
                             <Badge
                               variant="outline"
                               className="mr-auto flex justify-center"
                             >
                               {capitalizeFirstLetter(transaction.type)}
                             </Badge>
+                            {transaction.category && (
+                              <Badge
+                                variant="outline"
+                                className="mr-auto flex justify-center"
+                              >
+                                {gastoCategories
+                                  .flatMap((category) => category.subCategories)
+                                  .find(
+                                    (subcategory) =>
+                                      subcategory.value ===
+                                      transaction.subCategory,
+                                  )?.label ?? transaction.subCategory}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex flex-row justify-between">
                             <div className="flex flex-col justify-start space-y-1">
@@ -341,6 +355,8 @@ const AddOperation = ({
                             toEntityId: transaction.toEntityId,
                             currency: transaction.currency,
                             amount: transaction.amount,
+                            category: transaction.category,
+                            subCategory: transaction.subCategory,
                             metadata: transaction.metadata,
                             relatedTransactionId: transaction.relatedTxId,
                           }),

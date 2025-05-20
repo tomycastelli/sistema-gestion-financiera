@@ -2,13 +2,17 @@
 
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Separator } from "@radix-ui/react-dropdown-menu";
+import { type User } from "lucia";
 import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import AmountInput from "~/app/operaciones/carga/AmountInput";
+import { parseFormattedFloat } from "~/lib/functions";
 import {
   cashAccountOnlyTypes,
   currencies,
   currentAccountOnlyTypes,
+  gastoCategories,
   operationTypes,
 } from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
@@ -24,13 +28,11 @@ import {
   FormLabel,
   FormMessage,
 } from "../ui/form";
-import { Switch } from "../ui/switch";
-import CustomSelector from "./CustomSelector";
-import { type User } from "lucia";
-import { parseFormattedFloat } from "~/lib/functions";
-import AmountInput from "~/app/operaciones/carga/AmountInput";
 import { Label } from "../ui/label";
-import { toast } from "sonner";
+import { Separator } from "../ui/separator";
+import { Switch } from "../ui/switch";
+import CustomDropdownSelector from "./CustomDropdownSelector";
+import CustomSelector from "./CustomSelector";
 
 const FormSchema = z.object({
   transactions: z.array(
@@ -44,6 +46,8 @@ const FormSchema = z.object({
         amount: z.string().min(1),
         direction: z.boolean().optional().default(false),
         time: z.string().optional(),
+        category: z.string().optional(),
+        subCategory: z.string().optional(),
       })
       .superRefine((val, ctx) => {
         if (val.fromEntityId === val.toEntityId) {
@@ -87,7 +91,7 @@ const FlexibleTransactionsForm = ({
     },
   });
 
-  const { handleSubmit, control, watch, reset } = form;
+  const { handleSubmit, control, watch, reset, setValue } = form;
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -132,6 +136,12 @@ const FlexibleTransactionsForm = ({
         operatorId: parseInt(transaction.operatorId),
         currency: transaction.currency,
         amount: parseFormattedFloat(transaction.amount),
+        category: gastoCategories.find((category) =>
+          category.subCategories.some(
+            (subcategory) => subcategory.value === transaction.subCategory,
+          ),
+        )!.value,
+        subCategory: transaction.subCategory,
       });
     });
 
@@ -271,6 +281,45 @@ const FlexibleTransactionsForm = ({
                     )}
                   </div>
                 </div>
+                {watchTransactions[index]?.type === "gasto" && (
+                  <div className="flex flex-col items-center space-y-2">
+                    <Label>Categoria</Label>
+                    <FormField
+                      control={control}
+                      name={`transactions.${index}.subCategory`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <CustomDropdownSelector
+                            data={gastoCategories.map((category) => ({
+                              value: category.value,
+                              label: category.label,
+                              subData: category.subCategories,
+                            }))}
+                            onSelect={(value, subValue) => {
+                              if (value && subValue) {
+                                setValue(
+                                  `transactions.${index}.category`,
+                                  value,
+                                );
+                                field.onChange(subValue);
+                              } else {
+                                setValue(
+                                  `transactions.${index}.category`,
+                                  undefined,
+                                );
+                                field.onChange(null);
+                              }
+                            }}
+                            selectedValue={watch(
+                              `transactions.${index}.category`,
+                            )}
+                            selectedSubValue={field.value}
+                          />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
                 {entities && (
                   <FormField
                     control={control}

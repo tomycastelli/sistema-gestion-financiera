@@ -52,6 +52,8 @@ export function DataTable<TData, TValue>({
         otherEntityId: false,
         selectedEntityId: false,
         txType: false,
+        category: false,
+        subCategory: false,
         metadata: false,
         id: false,
         observations: false,

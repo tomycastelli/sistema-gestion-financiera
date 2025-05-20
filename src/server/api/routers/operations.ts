@@ -21,7 +21,7 @@ import {
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
 import { logIO } from "~/lib/trpcFunctions";
-import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
+import { cashAccountOnlyTypes, currentAccountOnlyTypes, gastoCategories } from "~/lib/variables";
 import {
   entities,
   movements,
@@ -53,6 +53,8 @@ export const operationsRouter = createTRPCRouter({
             toEntityId: z.number().int(),
             currency: z.string(),
             amount: z.number().positive(),
+            category: z.string().optional(),
+            subCategory: z.string().optional(),
             relatedTransactionId: z.number().int().optional(),
             metadata: z
               .object({ exchange_rate: z.number().optional() })

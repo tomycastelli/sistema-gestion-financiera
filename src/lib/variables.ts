@@ -133,6 +133,161 @@ export const operationTypes = [
   },
 ];
 
+export const gastoCategories = [
+      {
+        value: "GASTOS_DE_PERSONAL",
+        label: "Gastos de Personal",
+        subCategories: [
+          {
+            value: "SUELDOS",
+            label: "Sueldos"
+          },
+          {
+            value: "SEGURIDAD_SOCIAL_Y_APORTES",
+            label: "Seguridad Social y Aportes"
+          },
+          {
+            value: "HONORARIOS",
+            label: "Honorarios"
+          },
+          {
+            value: "CAPACITACION",
+            label: "Capacitación"
+          }
+        ]
+      },
+      {
+        value: "GASTOS_DE_ADMINISTRACION",
+        label: "Gastos de Administración",
+        subCategories: [
+          {
+            value: "ALQUILERES",
+            label: "Alquileres"
+          },
+          {
+            value: "EXPENSAS",
+            label: "Expensas"
+          },
+          {
+            value: "LUZ",
+            label: "Luz"
+          },
+          {
+            value: "AGUA",
+            label: "Agua"
+          },
+          {
+            value: "GAS",
+            label: "Gas"
+          },
+          {
+            value: "MATERIALES_DE_OFICINA",
+            label: "Materiales de Oficina"
+          },
+          {
+            value: "PAPELERIA_Y_UTILES",
+            label: "Papelería y útiles"
+          }
+        ]
+      },
+      {
+        value: "GASTOS_DE_COMUNICACION",
+        label: "Gastos de Comunicación",
+        subCategories: [
+          {
+            value: "TELEFONO_INTERNET",
+            label: "Teléfono / Internet"
+          },
+          {
+            value: "PUBLICIDAD_Y_MARKETING",
+            label: "Publicidad y Marketing"
+          },
+          {
+            value: "SUSCRIPCIONES",
+            label: "Suscripciones"
+          }
+        ]
+      },
+      {
+        value: "GASTOS_DE_MANTENIMIENTO",
+        label: "Gastos de Mantenimiento",
+        subCategories: [
+          {
+            value: "LIMPIEZA",
+            label: "Limpieza"
+          },
+          {
+            value: "REPARACIONES_Y_CONSERVACION",
+            label: "Reparaciones y Conservación"
+          }
+        ]
+      },
+      {
+        value: "OTROS_GASTOS_OPERATIVOS",
+        label: "Otros Gastos Operativos",
+        subCategories: [
+          {
+            value: "TRANSPORTE",
+            label: "Transporte"
+          },
+          {
+            value: "COMBUSTIBLE",
+            label: "Combustible"
+          },
+          {
+            value: "ALMACEN",
+            label: "Almacén"
+          },
+          {
+            value: "COMIDA",
+            label: "Comida"
+          },
+          {
+            value: "GASTOS_REPRESENTACION",
+            label: "Gastos Representación"
+          },
+          {
+            value: "SEGUROS",
+            label: "Seguros"
+          },
+          {
+            value: "ALARMA",
+            label: "Alarma"
+          },
+          {
+            value: "VARIOS",
+            label: "Varios"
+          }
+        ]
+      },
+      {
+        value: "MOBILIARIO_Y_EQUIPAMIENTO",
+        label: "Mobiliario y Equipamiento",
+        subCategories: [
+          {
+            value: "COMPUTADORAS",
+            label: "Computadoras"
+          },
+          {
+            value: "TELEFONOS",
+            label: "Teléfonos"
+          },
+          {
+            value: "ELECTRODOMESTICOS",
+            label: "Electrodomésticos"
+          },
+          {
+            value: "MENAJES",
+            label: "Menaje"
+          },
+          {
+            value: "MUEBLES",
+            label: "Muebles"
+          }
+        ]
+      }
+];
+
 export const currentAccountOnlyTypes = new Set([
   "fee",
   "cuenta corriente",

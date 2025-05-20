@@ -12,7 +12,7 @@ import {
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
 import { getAllEntities } from "~/lib/trpcFunctions";
-import { currenciesOrder } from "~/lib/variables";
+import { currenciesOrder, gastoCategories } from "~/lib/variables";
 import { exchangeRates } from "~/server/db/schema";
 import {
   createTRPCRouter,
@@ -89,6 +89,8 @@ export const filesRouter = createTRPCRouter({
           } de ${mv.txType}`,
           // @ts-ignore
           tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+          categoria: mv.category ?? "",
+          subcategoria: mv.subCategory ?? "",
           divisa: mv.currency,
           entrada: mv.ingress,
           salida: mv.egress,
@@ -134,6 +136,13 @@ export const filesRouter = createTRPCRouter({
                   ` - $${mv.metadata.exchange_rate}`
                 : ""
             }`,
+            categorySection: mv.txType === "gasto" ? gastoCategories
+              .find((c) => c.value === mv.category)
+              ?.label +
+              " - " +
+              gastoCategories
+                .flatMap((c) => c.subCategories)
+                .find((c) => c.value === mv.subCategory)?.label : "",
           },
           entrada:
             mv.ingress === 0
@@ -186,6 +195,7 @@ export const filesRouter = createTRPCRouter({
                   <td>
                     <p class="observations-text">${mv.detalle.observations}</p>
                     <p class="details-text">${mv.detalle.type}</p>
+                    ${mv.detalle.categorySection ? `<p class="category-section-text">${mv.detalle.categorySection}</p>` : ""}
                   </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
@@ -225,6 +235,9 @@ export const filesRouter = createTRPCRouter({
           }
           .details-text{
             font-weight: 400;
+          }
+          .category-section-text{
+            font-weight: 300;
           }
           .table-body{font-size: 0.75rem;}
           .header-div{width: 100%; text-align: center;}
@@ -479,6 +492,8 @@ export const filesRouter = createTRPCRouter({
             txId: transaction.id,
             fecha: operation.date,
             tipo: transaction.type,
+            categoria: transaction.category,
+            subcategoria: transaction.subCategory,
             operador: transaction.operatorEntity.name,
             origen: transaction.fromEntity.name,
             destino: transaction.toEntity.name,
