@@ -255,8 +255,12 @@ export const gastoCategories = [
             label: "Alarma"
           },
           {
-            value: "Gastos_Bancarios",
+            value: "GASTOS_BANCARIOS",
             label: "Gastos Bancarios"
+          },
+          {
+            value: "GASTOS_DE_COMISIONES",
+            label: "Gastos de Comisiones"
           },
           {
             value: "VARIOS",
