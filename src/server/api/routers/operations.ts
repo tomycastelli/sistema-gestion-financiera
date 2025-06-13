@@ -463,13 +463,12 @@ export const operationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       if (
         !ctx.user.permissions?.some(
-          (p) => p.name === "OPERATIONS_PENDING_APPROVE" || p.name === "ADMIN",
+          (p) => p.name === "TRANSACTIONS_PENDING_DELETE" || p.name === "ADMIN",
         )
       ) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message:
-            "Only these emails can do this: christian@ifc.com.ar, tomas.castelli@ifc.com.ar",
+          message: "User can't delete pending transactions",
         });
       }
 
@@ -487,7 +486,7 @@ export const operationsRouter = createTRPCRouter({
       if (unapproved?.count !== input.pendingTransactionsIds.length) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Not all pased tx ids are unapproved",
+          message: "Not all pased tx ids are pending",
         });
       }
 

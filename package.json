@@ -68,6 +68,7 @@
     "lucia": "3.1.1",
     "lucide-react": "0.290.0",
     "moment": "2.29.4",
+    "motion": "^12.15.0",
     "next": "14.2.0",
     "next-mdx-remote": "4.4.1",
     "next-themes": "0.2.1",

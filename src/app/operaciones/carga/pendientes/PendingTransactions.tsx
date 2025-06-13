@@ -298,13 +298,11 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
                 }
                 variant="outline"
                 disabled={
-                  pendingTx.type === "cuenta corriente"
-                    ? !cuentaCorrienteAllowedAccounts.includes(user.email)
-                    : !user.permissions?.some(
-                        (p) =>
-                          p.name === "OPERATIONS_PENDING_APPROVE" ||
-                          p.name === "ADMIN",
-                      )
+                  !user.permissions?.some(
+                    (p) =>
+                      p.name === "TRANSACTIONS_PENDING_DELETE" ||
+                      p.name === "ADMIN",
+                  )
                 }
               >
                 <Icons.cross className="h-5 w-5 text-red" />

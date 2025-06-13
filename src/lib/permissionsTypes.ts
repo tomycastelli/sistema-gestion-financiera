@@ -15,6 +15,7 @@ export const PermissionsNames = [
   "TRANSACTIONS_VALIDATE",
   "TRANSACTIONS_VALIDATE_SOME",
   "TRANSACTIONS_DELETE",
+  "TRANSACTIONS_PENDING_DELETE",
   "TRANSACTIONS_DELETE_SOME",
   "TRANSACTIONS_CANCEL",
   "TRANSACTIONS_CANCEL_SOME",
@@ -169,6 +170,11 @@ export const permissionsData: z.infer<typeof permissionsDataSchema> = [
     name: "TRANSACTIONS_DELETE_SOME",
     label: "Eliminar algunas transacciones",
     description: "Eliminar transacciones según la entidad",
+  },
+  {
+    name: "TRANSACTIONS_PENDING_DELETE",
+    label: "Eliminar transacciones pendientes",
+    description: "Eliminar todas las transacciones pendientes",
   },
   {
     name: "TRANSACTIONS_CANCEL",
