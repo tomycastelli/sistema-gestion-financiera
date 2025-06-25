@@ -44,8 +44,8 @@ export async function GET(request: Request) {
     const userSchema = z.object({
       sub: z.string(),
       name: z.string(),
-      given_name: z.string(),
-      family_name: z.string(),
+      given_name: z.string().optional(),
+      family_name: z.string().optional(),
       picture: z.string(),
       email: z.string(),
     });
@@ -76,8 +76,8 @@ export async function GET(request: Request) {
 
     const userId = generateId(15);
 
-    const userFullName =
-      microsoftUser.given_name + " " + microsoftUser.family_name;
+    const userFullName = microsoftUser.given_name ?
+      (microsoftUser.given_name + " " + microsoftUser.family_name) : microsoftUser.name
 
     await db.transaction(async (tx) => {
       const [isOperadoresTag] = await tx
