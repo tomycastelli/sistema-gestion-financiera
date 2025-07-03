@@ -95,6 +95,7 @@ export const filesRouter = createTRPCRouter({
           entrada: mv.ingress,
           salida: mv.egress,
           saldo: mv.balance,
+          isActive: mv.isActive,
         }));
 
         const workbook = XLSX.utils.book_new();

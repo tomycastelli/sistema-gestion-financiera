@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, lte, not, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, count, desc, eq, type ExtractTablesWithRelations, gte, inArray, lte, not, or, sql } from "drizzle-orm";
+import { alias, type PgTransaction } from "drizzle-orm/pg-core";
+import { type PostgresJsQueryResultHKT } from 'drizzle-orm/postgres-js';
 import moment from "moment";
 import { z } from "zod";
 import { type getCurrentAccountsInput } from "~/server/api/routers/movements";
@@ -12,6 +13,7 @@ import {
   transactions,
   transactionsMetadata,
 } from "~/server/db/schema";
+import type * as schema from "../server/db/schema";
 import { movements } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
 import { dateFormatting } from "./variables";
@@ -218,8 +220,30 @@ export const currentAccountsProcedure = async (
         egress: z.number(),
         balance: z.number(),
         transactionStatus: z.enum(["pending", "confirmed", "cancelled"]),
+        isActive: z.boolean(),
       })
       .array();
+
+      const otherEntitiesIds = movementsData.map((mv) => {
+        if (input.entityId) {
+          // Veo cual es el otro entityId
+          if (mv.fromEntity!.id === input.entityId) {
+            return mv.toEntity!.id;
+          } else {
+            return mv.fromEntity!.id;
+          }
+        } else if (input.entityTag) {
+          if (mv.fromEntity!.tagName === input.entityTag) {
+            return mv.toEntity!.id;
+          } else {
+            return mv.fromEntity!.id;
+          }
+        }
+
+        return 0
+      })
+
+    const activeEntities = await getEntitiesActiveStatus(otherEntitiesIds, transaction);
 
     const nestedData: z.infer<typeof tableDataType> = movementsData
       .map((obj) => ({
@@ -310,6 +334,7 @@ export const currentAccountsProcedure = async (
           egress: direction === -1 ? amount : 0,
           balance,
           transactionStatus: transaction.status,
+          isActive: activeEntities[otherEntity.id] ?? false,
         };
       });
 
@@ -322,3 +347,56 @@ export const currentAccountsProcedure = async (
 
   return response;
 };
+
+/**
+ * Checks if each entity in the given array is active (has participated in at least one transaction in the last 6 months).
+ * @param entityIds Array of entity IDs to check
+ * @param db Database instance (should support .select/.from/.where)
+ * @returns Promise<Record<number, boolean>> mapping entityId to active status
+ */
+const getEntitiesActiveStatus = async (
+  entityIds: number[],
+  transaction: PgTransaction<
+    PostgresJsQueryResultHKT,
+    typeof schema,
+    ExtractTablesWithRelations<typeof schema>
+  >,
+): Promise<Record<number, boolean>> => {
+  if (!entityIds.length) return {};
+  const sixMonthsAgo = moment().subtract(6, "months").startOf("day").toDate();
+
+  const fromResults = await transaction
+  .selectDistinct({ entityId: transactions.fromEntityId })
+  .from(transactions)
+  .leftJoin(operations, eq(transactions.operationId, operations.id))
+  .where(
+    and(
+      inArray(transactions.fromEntityId, entityIds),
+      gte(operations.date, sixMonthsAgo)
+    )
+  );
+
+  const toResults = await transaction
+  .selectDistinct({ entityId: transactions.toEntityId })
+  .from(transactions)
+  .leftJoin(operations, eq(transactions.operationId, operations.id))
+  .where(
+    and(
+      inArray(transactions.toEntityId, entityIds),
+      gte(operations.date, sixMonthsAgo)
+    )
+  );
+  
+  // Merge and deduplicate entityIds
+  const activeSet = new Set<number>([
+    ...fromResults.map(r => r.entityId),
+    ...toResults.map(r => r.entityId),
+  ]);
+
+  const status: Record<number, boolean> = {};
+  for (const id of entityIds) {
+    status[id] = activeSet.has(id);
+  }
+  return status;
+};
+
