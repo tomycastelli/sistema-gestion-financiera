@@ -3,7 +3,10 @@ import { and, desc, eq, gte, inArray, lte, not, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import moment from "moment";
 import { z } from "zod";
-import { currentAccountsProcedure } from "~/lib/currentAccountsProcedure";
+import {
+  currentAccountsProcedure,
+  getEntitiesActiveStatus,
+} from "~/lib/currentAccountsProcedure";
 import { getAllChildrenTags } from "~/lib/functions";
 import {
   getAllEntities,
@@ -211,11 +214,50 @@ export const movementsRouter = createTRPCRouter({
           : new Date().toISOString(),
       });
 
-      const mappedBalances = balancesData.map((b) => ({
-        ...b.balances,
-        ent_a: b.ent_a ?? null,
-        ent_b: b.ent_b ?? null,
-      }));
+      let activeEntities: Record<number, boolean> = { 0: true };
+
+      if (["1", "3"].includes(input.balanceType)) {
+        const otherEntityIds = balancesData
+          .map((b) => {
+            if (input.entityId) {
+              return b.balances.ent_a === input.entityId
+                ? b.balances.ent_b!
+                : b.balances.ent_a!;
+            }
+            if (input.entityTag) {
+              return b.balances.ent_a;
+            }
+            return null;
+          })
+          .filter((n): n is number => n !== null);
+
+        const uniqueOtherEntityIds = Array.from(new Set(otherEntityIds));
+
+        activeEntities = await getEntitiesActiveStatus(
+          uniqueOtherEntityIds,
+          ctx.db,
+        );
+      }
+
+      const mappedBalances = balancesData.map((b) => {
+        let otherEntityId = 0;
+        if (["1", "3"].includes(input.balanceType)) {
+          if (input.entityId) {
+            otherEntityId =
+              b.balances.ent_a === input.entityId
+                ? b.balances.ent_b!
+                : b.balances.ent_a!;
+          } else if (input.entityTag) {
+            otherEntityId = b.balances.ent_a!;
+          }
+        }
+        return {
+          ...b.balances,
+          ent_a: b.ent_a ?? null,
+          ent_b: b.ent_b ?? null,
+          status: activeEntities[otherEntityId] ?? false,
+        };
+      });
 
       return mappedBalances;
     }),

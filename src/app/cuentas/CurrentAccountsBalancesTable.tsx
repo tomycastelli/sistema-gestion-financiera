@@ -78,6 +78,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
     );
   const [accountListToAdd, setAccountListToAdd] = useState<number[]>([]);
   const [isListSelection, setIsListSelection] = useState<boolean>(false);
+  const [onlyActiveEntities, setOnlyActiveEntities] = useState<boolean>(true);
 
   const {
     selectedCurrency,
@@ -106,6 +107,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
       id: z.number().int(),
       name: z.string(),
       tagName: z.string(),
+      status: z.boolean(),
     }),
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
@@ -159,6 +161,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                 : selectedEntity
                 ? entity.name
                 : balance.tag ?? "Sin nombre",
+              status: balance.status,
             },
             data: [],
           };
@@ -185,7 +188,11 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
       entity.data.push({ currency: "unified", balance: unifiedBalance });
       return entity;
     })
-    .filter((e) => e.entity.id !== selectedEntity?.id);
+    .filter(
+      (e) =>
+        e.entity.id !== selectedEntity?.id &&
+        (onlyActiveEntities ? e.entity.status : true),
+    );
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
     api.files.detailedBalancesFile.useMutation({
@@ -335,7 +342,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
     ? [...currenciesOrder, "unified"]
     : currenciesOrder;
 
-  const columnAmount = (tableCurrencies.length + 1) * 2 + 1;
+  const columnAmount = (tableCurrencies.length + 1) * 2 + 1 + 1; // The last +1 for the status column
 
   const formatBalance = (balance: number) => {
     if (Math.abs(balance) < 0.000001) {
@@ -349,7 +356,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
       <div className="flex flex-row items-end justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tighter">Cuentas</h1>
-          <div className="flex flex-row flex-wrap gap-4">
+          <div className="flex flex-row flex-wrap items-end gap-4">
             <Input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
@@ -666,6 +673,16 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Filtro de entidades activas */}
+            <div className="flex flex-col justify-start gap-y-1">
+              <Label className="mb-2">Solo activos</Label>
+              <Button
+                variant="outline"
+                onClick={() => setOnlyActiveEntities(!onlyActiveEntities)}
+              >
+                <Switch checked={onlyActiveEntities} />
+              </Button>
+            </div>
           </div>
         </div>
         <CustomPagination
@@ -680,7 +697,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
         <div
           style={{
             borderColor: uiColor,
-            gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${columnAmount}, minmax(0, 1fr))`, // +1 for status column (half width)
           }}
           className="grid justify-items-center rounded-xl border-2 p-2"
         >
@@ -691,6 +708,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
               {currency === "unified" ? "Unificado" : currency.toUpperCase()}
             </p>
           ))}
+          {/* Status column header (empty, half width) */}
+          <p className="col-span-1">Activo</p>
         </div>
         {filteredBalances
           .slice(
@@ -715,7 +734,10 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                     ? `2px solid ${uiColor}`
                     : undefined,
               }}
-              className="grid justify-items-center rounded-xl p-3 text-lg font-semibold"
+              className={cn(
+                "grid justify-items-center rounded-xl p-3 text-lg font-semibold",
+                !item.entity.status && "opacity-50",
+              )}
             >
               {isListSelection || isEditListSelection ? (
                 <Button
@@ -883,6 +905,15 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                   <p className="col-span-2" key={currency}></p>
                 );
               })}
+              {/* Status column: green dot if active, gray if not */}
+              <span className="col-span-1 flex items-center justify-center">
+                <span
+                  className={cn(
+                    "h-4 w-4 rounded-full",
+                    item.entity.status ? "bg-green" : "bg-muted-foreground",
+                  )}
+                ></span>
+              </span>
             </div>
           ))}
       </div>

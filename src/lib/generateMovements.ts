@@ -93,7 +93,7 @@ export const generateMovements = async (
     movementBalanceDirection(tx.fromEntity.id, tx.toEntity.id, direction) *
     tx.amount;
 
-  // Type 2: Entity to Rest - one for each entity
+  // Type 2: Entity to Rest
   const balance2aAmount =
     tx.fromEntity.id === ent_a.id
       ? -tx.amount * direction
@@ -117,7 +117,7 @@ export const generateMovements = async (
       ? tx.amount * direction
       : -tx.amount * direction;
 
-  // Type 4: Tag to Rest - one for each tag
+  // Type 4: Tag to Rest
   const balance4aAmount =
     tx.fromEntity.tagName === tx.toEntity.tagName
       ? 0

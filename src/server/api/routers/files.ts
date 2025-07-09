@@ -95,7 +95,7 @@ export const filesRouter = createTRPCRouter({
           entrada: mv.ingress,
           salida: mv.egress,
           saldo: mv.balance,
-          isActive: mv.isActive,
+          activo: mv.isActive ? "SI" : "NO",
         }));
 
         const workbook = XLSX.utils.book_new();
@@ -138,13 +138,14 @@ export const filesRouter = createTRPCRouter({
                   ` - $${mv.metadata.exchange_rate}`
                 : ""
             }`,
-            categorySection: mv.txType === "gasto" ? gastoCategories
-              .find((c) => c.value === mv.category)
-              ?.label +
-              " - " +
-              gastoCategories
-                .flatMap((c) => c.subCategories)
-                .find((c) => c.value === mv.subCategory)?.label : "",
+            categorySection:
+              mv.txType === "gasto"
+                ? gastoCategories.find((c) => c.value === mv.category)?.label +
+                  " - " +
+                  gastoCategories
+                    .flatMap((c) => c.subCategories)
+                    .find((c) => c.value === mv.subCategory)?.label
+                : "",
           },
           entrada:
             mv.ingress === 0
@@ -197,12 +198,24 @@ export const filesRouter = createTRPCRouter({
                   <td>
                     <p class="observations-text">${mv.detalle.observations}</p>
                     <p class="details-text">${mv.detalle.type}</p>
-                    ${mv.detalle.categorySection ? `<p class="category-section-text">${mv.detalle.categorySection}</p>` : ""}
+                    ${
+                      mv.detalle.categorySection
+                        ? `<p class="category-section-text">${mv.detalle.categorySection}</p>`
+                        : ""
+                    }
                   </td>
                   <td>${mv.origen}</td>
                   ${!input.toEntityId ? `<td>${mv.cliente}</td>` : ""}
-                  <td ${mv.transactionStatus === "cancelled" ? "style='text-decoration: line-through;'" : ""}>${mv.entrada}</td>
-                  <td ${mv.transactionStatus === "cancelled" ? "style='text-decoration: line-through;'" : ""}>${mv.salida}</td>
+                  <td ${
+                    mv.transactionStatus === "cancelled"
+                      ? "style='text-decoration: line-through;'"
+                      : ""
+                  }>${mv.entrada}</td>
+                  <td ${
+                    mv.transactionStatus === "cancelled"
+                      ? "style='text-decoration: line-through;'"
+                      : ""
+                  }>${mv.salida}</td>
                   <td>${mv.saldo}</td>
                   </tr>`,
               )
@@ -293,6 +306,7 @@ export const filesRouter = createTRPCRouter({
               id: z.number().int(),
               name: z.string(),
               tagName: z.string(),
+              status: z.boolean(),
             }),
             data: z.array(
               z.object({ currency: z.string(), balance: z.number() }),
@@ -338,6 +352,7 @@ export const filesRouter = createTRPCRouter({
             entidad_id: detailedBalance.entity.id,
             ...balances,
             unificado: Math.round(unifiedBalance * 100) / 100,
+            activo: detailedBalance.entity.status ? "SI" : "NO",
           };
         });
 

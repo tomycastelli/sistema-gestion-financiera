@@ -36,6 +36,7 @@ const transformedBalancesSchema = z.object({
         id: z.number().int(),
         name: z.string(),
         tagName: z.string(),
+        status: z.boolean(),
       }),
       data: z.array(z.object({ currency: z.string(), balance: z.number() })),
     }),
@@ -119,6 +120,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                 entities.find((e) => e.id === entityId)?.name ?? "Sin nombre",
               tagName:
                 entities.find((e) => e.id === entityId)?.name ?? "Sin nombre",
+              status: true,
             },
             data: [],
           };
@@ -132,7 +134,12 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
       {} as Record<
         number,
         {
-          entity: { id: number; name: string; tagName: string };
+          entity: {
+            id: number;
+            name: string;
+            tagName: string;
+            status: boolean;
+          };
           data: { currency: string; balance: number }[];
         }
       >,
@@ -265,6 +272,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                           id: 0,
                           name: "Total",
                           tagName: main_name,
+                          status: true,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
@@ -308,6 +316,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                           id: 0,
                           name: "Total",
                           tagName: main_name,
+                          status: true,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
