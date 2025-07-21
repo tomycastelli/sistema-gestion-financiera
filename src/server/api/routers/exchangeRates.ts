@@ -129,9 +129,12 @@ export const exchangeRatesRouter = createTRPCRouter({
           })
           .from(exchangeRates)
           .where(
-            input.dayInPast
-              ? sql`${exchangeRates.date} <= TO_CHAR(TO_DATE(${input.dayInPast}, 'DD-MM-YYYY'), 'YYYY-MM-DD')`
-              : undefined,
+            and(
+              input.dayInPast
+                ? sql`${exchangeRates.date} <= TO_CHAR(TO_DATE(${input.dayInPast}, 'DD-MM-YYYY'), 'YYYY-MM-DD')`
+                : undefined,
+              sql`${exchangeRates.rate} != 0`,
+            ),
           ),
       );
 
