@@ -73,19 +73,22 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
   linkToken,
   entities,
 }) => {
-  const { data: balances, isFetching } =
-    api.movements.getBalancesByEntities.useQuery(
-      {
-        linkId,
-        account: true,
-        entityId: selectedEntityId,
-        dayInPast,
-        entityTag: selectedTag,
-        linkToken,
-        balanceType: "2",
-      },
-      { initialData: initialBalances, refetchOnWindowFocus: false },
-    );
+  const {
+    data: balances,
+    isFetching,
+    refetch,
+  } = api.movements.getBalancesByEntities.useQuery(
+    {
+      linkId,
+      account: true,
+      entityId: selectedEntityId,
+      dayInPast,
+      entityTag: selectedTag,
+      linkToken,
+      balanceType: "2",
+    },
+    { initialData: initialBalances, refetchOnWindowFocus: false },
+  );
 
   const unifyAmount = (
     currency: string,
@@ -383,6 +386,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                     setDestinationEntityId(undefined);
                     setMovementsTablePage(1);
                   }
+                  void refetch();
                 }}
                 variant="outline"
                 className="border-transparent text-xl"
@@ -411,6 +415,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                         setOriginEntityId(undefined);
                         setMovementsTablePage(1);
                       }
+                      void refetch();
                     }}
                     key={currency}
                     variant="outline"
@@ -510,6 +515,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                       }
                       setSelectedCurrency(currency);
                     }
+                    void refetch();
                   }}
                   variant="outline"
                   className="text-xl"

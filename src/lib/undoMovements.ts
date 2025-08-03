@@ -36,10 +36,8 @@ export const undoMovements = async (
   },
   redlock: Redlock,
 ) => {
-  const lock = await redlock.acquire(
-    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
-    20_000,
-  );
+  // Use a global lock for all balance calculations to ensure complete serialization
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 30_000);
 
   try {
     // Delete the movement
@@ -102,79 +100,69 @@ export const undoMovements = async (
           ? tx.amount * movement.direction
           : -tx.amount * movement.direction;
 
-      // Process balances concurrently in two groups
-      await Promise.all([
-        // Process Type 1: Entity to Entity
-        processBalance(
-          transaction,
-          movement.balance_1_id,
-          balance1Amount,
-          movement.date,
-          "balance_1",
-          "balance_1_id",
-          movement.id,
-        ),
-        // Process Type 2a: Entity A to Rest
-        processBalance(
-          transaction,
-          movement.balance_2a_id,
-          balance2aAmount,
-          movement.date,
-          "balance_2a",
-          "balance_2a_id",
-          movement.id,
-        ),
-        // Process Type 3a: Tag A to Entity B
-        processBalance(
-          transaction,
-          movement.balance_3a_id,
-          balance3aAmount,
-          movement.date,
-          "balance_3a",
-          "balance_3a_id",
-          movement.id,
-        ),
-      ]);
+      // Process all balances sequentially to ensure consistency
+      await processBalance(
+        transaction,
+        movement.balance_1_id,
+        balance1Amount,
+        movement.date,
+        "balance_1",
+        "balance_1_id",
+        movement.id,
+      );
 
-      // Group 2: (2b, 3b, 4a)
-      await Promise.all([
-        // Process Type 2b: Entity B to Rest
-        processBalance(
-          transaction,
-          movement.balance_2b_id,
-          balance2bAmount,
-          movement.date,
-          "balance_2b",
-          "balance_2b_id",
-          movement.id,
-        ),
-        // Process Type 3b: Tag B to Entity A
-        processBalance(
-          transaction,
-          movement.balance_3b_id,
-          balance3bAmount,
-          movement.date,
-          "balance_3b",
-          "balance_3b_id",
-          movement.id,
-        ),
-        // Process Type 4a: Tag A to Rest
-        processBalance(
-          transaction,
-          movement.balance_4a_id,
-          balance4aAmount,
-          movement.date,
-          "balance_4a",
-          "balance_4a_id",
-          movement.id,
-        ),
-      ]);
+      await processBalance(
+        transaction,
+        movement.balance_2a_id,
+        balance2aAmount,
+        movement.date,
+        "balance_2a",
+        "balance_2a_id",
+        movement.id,
+      );
 
-      // Process 4b conditionally depending on if entities have same tag
-      if (tx.fromEntity.tagName === tx.toEntity.tagName) {
-        // If same tag, 4b is the same as 4a, no need to process
-      } else {
-        // Process Type 4b: Tag B to Rest
+      await processBalance(
+        transaction,
+        movement.balance_2b_id,
+        balance2bAmount,
+        movement.date,
+        "balance_2b",
+        "balance_2b_id",
+        movement.id,
+      );
+
+      await processBalance(
+        transaction,
+        movement.balance_3a_id,
+        balance3aAmount,
+        movement.date,
+        "balance_3a",
+        "balance_3a_id",
+        movement.id,
+      );
+
+      await processBalance(
+        transaction,
+        movement.balance_3b_id,
+        balance3bAmount,
+        movement.date,
+        "balance_3b",
+        "balance_3b_id",
+        movement.id,
+      );
+
+      await processBalance(
+        transaction,
+        movement.balance_4a_id,
+        balance4aAmount,
+        movement.date,
+        "balance_4a",
+        "balance_4a_id",
+        movement.id,
+      );
+
+      // Process 4b only if entities have different tags
+      if (tx.fromEntity.tagName !== tx.toEntity.tagName) {
         await processBalance(
           transaction,
           movement.balance_4b_id,
@@ -223,6 +211,7 @@ const processBalance = async (
 ) => {
   const oppositeBalanceField = getOppositeBalanceField(balanceField);
   const oppositeBalanceIdField = getOppositeBalanceIdField(balanceIdField);
+
   // Get the balance to be updated
   const [balance] = await transaction
     .select({
@@ -276,7 +265,9 @@ const processBalance = async (
   // Update all movements related to these balances which come after the deleted balance
   await transaction
     .update(movements)
-    .set({ [balanceField]: sql`${movements[balanceField]} - ${balanceAmount}` })
+    .set({
+      [balanceField]: sql`${movements[balanceField]} - ${balanceAmount}`,
+    })
     .where(
       and(
         or(

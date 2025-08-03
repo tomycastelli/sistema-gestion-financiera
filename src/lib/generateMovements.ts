@@ -81,7 +81,12 @@ export const generateMovements = async (
   redlock: Redlock,
 ) => {
   // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
-  const mvDate = account ? new Date() : tx.operation.date;
+  // For account transactions, use current time; for regular transactions, use operation date
+  const originalMvDate = account ? new Date() : tx.operation.date;
+
+  // Normalize to start of day in local timezone for balance date consistency
+  // This ensures all balances for the same day have the same date regardless of time
+  const mvDate = moment(originalMvDate).startOf("day").toDate();
 
   // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
   const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
@@ -131,102 +136,94 @@ export const generateMovements = async (
       ? tx.amount * direction
       : -tx.amount * direction;
 
-  const lock = await redlock.acquire(
-    [LOCK_MOVEMENTS_KEY + "_" + tx.currency],
-    20_000,
-  );
+  // Use a global lock for all balance calculations to ensure complete serialization
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 30_000);
 
   try {
-    // Process balances concurrently in two groups
-    const group1Results =
-      // Group 1: (1, 2a, 3a)
-      Promise.all([
-        // Process Type 1: Entity to Entity
-        processBalance(
-          transaction,
-          tx,
-          mvDate,
-          account,
-          balance1Amount,
-          { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
-          "balance_1",
-          "balance_1_id",
-        ),
-        // Process Type 2a: Entity A to Rest
-        processBalance(
-          transaction,
-          tx,
-          mvDate,
-          account,
-          balance2aAmount,
-          { type: "2", ent_a: ent_a.id },
-          "balance_2a",
-          "balance_2a_id",
-        ),
-        // Process Type 3a: Tag A to Entity B
-        processBalance(
-          transaction,
-          tx,
-          mvDate,
-          account,
-          balance3aAmount,
-          { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
-          "balance_3a",
-          "balance_3a_id",
-        ),
-      ]);
-    // Group 2: (2b, 3b, 4a)
-    const group2Results = Promise.all([
-      // Process Type 2b: Entity B to Rest
-      processBalance(
-        transaction,
-        tx,
-        mvDate,
-        account,
-        balance2bAmount,
-        { type: "2", ent_a: ent_b.id },
-        "balance_2b",
-        "balance_2b_id",
-      ),
-      // Process Type 3b: Tag B to Entity A
-      processBalance(
-        transaction,
-        tx,
-        mvDate,
-        account,
-        balance3bAmount,
-        { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
-        "balance_3b",
-        "balance_3b_id",
-      ),
-      // Process Type 4a: Tag A to Rest
-      processBalance(
-        transaction,
-        tx,
-        mvDate,
-        account,
-        balance4aAmount,
-        { type: "4", tag: ent_a.tagName },
-        "balance_4a",
-        "balance_4a_id",
-      ),
-    ]);
+    // Process all balances sequentially to ensure consistency
+    const balance1 = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance1Amount,
+      { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
+      "balance_1",
+      "balance_1_id",
+    );
 
-    // Extract results
-    const [balance1, balance2a, balance3a] = await group1Results;
-    const [balance2b, balance3b, balance4a] = await group2Results;
-    let balance4b = {
-      amount: 0,
-      id: 0,
-    };
+    const balance2a = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance2aAmount,
+      { type: "2", ent_a: ent_a.id },
+      "balance_2a",
+      "balance_2a_id",
+    );
 
+    const balance2b = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance2bAmount,
+      { type: "2", ent_a: ent_b.id },
+      "balance_2b",
+      "balance_2b_id",
+    );
+
+    const balance3a = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance3aAmount,
+      { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
+      "balance_3a",
+      "balance_3a_id",
+    );
+
+    const balance3b = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance3bAmount,
+      { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
+      "balance_3b",
+      "balance_3b_id",
+    );
+
+    const balance4a = await processBalance(
+      transaction,
+      tx,
+      mvDate,
+      originalMvDate,
+      account,
+      balance4aAmount,
+      { type: "4", tag: ent_a.tagName },
+      "balance_4a",
+      "balance_4a_id",
+    );
+
+    // Handle the case where ent_a and ent_b have the same tag
+    let balance4b;
     if (ent_a.tagName === ent_b.tagName) {
-      balance4b = balance4a;
+      // If same tag, balance4b will be the same as balance4a
+      balance4b = { amount: balance4a.amount, id: balance4a.id };
     } else {
       balance4b = await processBalance(
         transaction,
         tx,
         mvDate,
+        originalMvDate,
         account,
         balance4bAmount,
         { type: "4", tag: ent_b.tagName },
@@ -240,7 +237,7 @@ export const generateMovements = async (
       .insert(movements)
       .values({
         transactionId: tx.id,
-        date: mvDate,
+        date: originalMvDate, // Use originalMvDate for movement ordering
         direction,
         type,
         account,
@@ -280,6 +277,7 @@ const processBalance = async (
     toEntity: { id: number; tagName: string };
   },
   mvDate: Date,
+  originalMvDate: Date,
   account: boolean,
   balanceAmount: number,
   balanceSettings: {
@@ -337,17 +335,10 @@ const processBalance = async (
     transaction
       .select({ amount: balances.amount })
       .from(balances)
-      .where(
-        and(
-          entitiesQuery,
-          lt(balances.date, moment(mvDate).startOf("day").toDate()),
-        ),
-      )
+      .where(and(entitiesQuery, lt(balances.date, mvDate)))
       .orderBy(desc(balances.date))
       .limit(1),
   ]);
-
-  const mvDateString = mvDate.toISOString();
 
   const [balance] = balanceResult;
   const [beforeBalance] = beforeBalanceResult;
@@ -368,7 +359,7 @@ const processBalance = async (
         ...balanceSettings,
         account,
         currency: tx.currency,
-        date: moment(mvDate).startOf("day").toDate(),
+        date: mvDate,
         amount: balanceAmount,
       })
       .returning();
@@ -383,12 +374,7 @@ const processBalance = async (
     const [oldBalance] = await transaction
       .update(balances)
       .set({ amount: sql`${balances.amount} + ${balanceAmount}` })
-      .where(
-        and(
-          entitiesQuery,
-          eq(balances.date, moment(mvDate).startOf("day").toDate()),
-        ),
-      )
+      .where(and(entitiesQuery, eq(balances.date, mvDate)))
       .returning({ id: balances.id, amount: balances.amount });
 
     if (!oldBalance) {
@@ -399,7 +385,7 @@ const processBalance = async (
           ...balanceSettings,
           account,
           currency: tx.currency,
-          date: moment(mvDate).startOf("day").toDate(),
+          date: mvDate,
           amount: beforeBalance
             ? beforeBalance.amount + balanceAmount
             : balanceAmount,
@@ -409,7 +395,7 @@ const processBalance = async (
       balanceId = newBalance!.id;
       finalAmount = newBalance!.amount;
     } else {
-      // Search for the previous movement on the oldBalance day which is just before the mvDate
+      // Search for the previous movement on the oldBalance day which is just before the originalMvDate
       const [previousMovement] = await transaction
         .select()
         .from(movements)
@@ -422,7 +408,7 @@ const processBalance = async (
                 )
               : eq(movements[balanceIdField], oldBalance.id),
             eq(movements.account, account),
-            lte(movements.date, mvDate),
+            lte(movements.date, originalMvDate),
           ),
         )
         .orderBy(desc(movements.date), desc(movements.id))
@@ -454,12 +440,7 @@ const processBalance = async (
     const updatedBalances = await transaction
       .update(balances)
       .set({ amount: sql`${balances.amount} + ${balanceAmount}` })
-      .where(
-        and(
-          entitiesQuery,
-          gt(balances.date, moment(mvDate).startOf("day").toDate()),
-        ),
-      )
+      .where(and(entitiesQuery, gt(balances.date, mvDate)))
       .returning({ id: balances.id });
 
     if (updatedBalances) {
@@ -477,7 +458,7 @@ const processBalance = async (
       updatedBalancesIds.push(updatedBalance.id);
     }
 
-    // Find the latest movement on this day that is before the current mvDate
+    // Find the latest movement on this day that is before the current originalMvDate
     const [previousMovement] = await transaction
       .select()
       .from(movements)
@@ -489,7 +470,7 @@ const processBalance = async (
                 eq(movements[balanceIdField], balance.id),
               )
             : eq(movements[balanceIdField], balance.id),
-          lte(movements.date, mvDate),
+          lte(movements.date, originalMvDate),
           eq(movements.account, account),
         ),
       )
@@ -523,7 +504,7 @@ const processBalance = async (
         ...balanceSettings,
         account,
         currency: tx.currency,
-        date: moment(mvDate).startOf("day").toDate(),
+        date: mvDate,
         amount: balance.amount + balanceAmount,
       })
       .returning({ id: balances.id, amount: balances.amount });
@@ -544,6 +525,7 @@ const processBalance = async (
 
   // Update all movements whose balance was updated in a single query
   if (updatedBalancesIds.length > 0) {
+    const originalMvDateString = originalMvDate.toISOString();
     const updateMovements = transaction
       .update(movements)
       .set({
@@ -556,7 +538,7 @@ const processBalance = async (
           sql`${movements[balanceIdField]} = ANY(${sql.placeholder(
             "balanceIds",
           )})`,
-          gt(movements.date, sql.placeholder("mvDate")),
+          gt(movements.date, sql.placeholder("originalMvDate")),
         ),
       )
       .prepare("updateMovements");
@@ -564,7 +546,7 @@ const processBalance = async (
     await updateMovements.execute({
       amount: balanceAmount,
       balanceIds: updatedBalancesIds,
-      mvDate: mvDateString,
+      originalMvDate: originalMvDateString,
     });
 
     // If this balance type has an opposite type (2a/2b, 3a/3b, 4a/4b),
@@ -582,7 +564,7 @@ const processBalance = async (
             sql`${movements[oppositeBalanceIdField]} = ANY(${sql.placeholder(
               "balanceIds",
             )})`,
-            gt(movements.date, sql.placeholder("mvDate")),
+            gt(movements.date, sql.placeholder("originalMvDate")),
           ),
         )
         .prepare("updateOppositeMovements");
@@ -590,7 +572,7 @@ const processBalance = async (
       await updateOppositeMovements.execute({
         amount: balanceAmount,
         balanceIds: updatedBalancesIds,
-        mvDate: mvDateString,
+        originalMvDate: originalMvDateString,
       });
     }
   }
