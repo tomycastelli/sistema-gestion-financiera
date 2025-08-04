@@ -53,6 +53,12 @@ export const undoMovements = async (
       tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
     for (const movement of deletedMovements) {
+      // Normalize movement date to UTC start of day for consistency
+      const normalizedMvDate = moment(movement.date)
+        .utc()
+        .startOf("day")
+        .toDate();
+
       // Calculate balance amounts for different types
       // Type 1: Entity to Entity (from perspective of ent_a)
       const balance1Amount =
@@ -105,7 +111,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_1_id,
         balance1Amount,
-        movement.date,
+        normalizedMvDate,
         "balance_1",
         "balance_1_id",
         movement.id,
@@ -115,7 +121,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_2a_id,
         balance2aAmount,
-        movement.date,
+        normalizedMvDate,
         "balance_2a",
         "balance_2a_id",
         movement.id,
@@ -125,7 +131,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_2b_id,
         balance2bAmount,
-        movement.date,
+        normalizedMvDate,
         "balance_2b",
         "balance_2b_id",
         movement.id,
@@ -135,7 +141,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_3a_id,
         balance3aAmount,
-        movement.date,
+        normalizedMvDate,
         "balance_3a",
         "balance_3a_id",
         movement.id,
@@ -145,7 +151,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_3b_id,
         balance3bAmount,
-        movement.date,
+        normalizedMvDate,
         "balance_3b",
         "balance_3b_id",
         movement.id,
@@ -155,7 +161,7 @@ export const undoMovements = async (
         transaction,
         movement.balance_4a_id,
         balance4aAmount,
-        movement.date,
+        normalizedMvDate,
         "balance_4a",
         "balance_4a_id",
         movement.id,
@@ -167,7 +173,7 @@ export const undoMovements = async (
           transaction,
           movement.balance_4b_id,
           balance4bAmount,
-          movement.date,
+          normalizedMvDate,
           "balance_4b",
           "balance_4b_id",
           movement.id,
@@ -237,6 +243,7 @@ const processBalance = async (
   }
 
   // Construct query condition for future balances
+  // mvDate is normalized to UTC start of day from the calling function
   const futureBalancesQuery = and(
     eq(balances.type, balance.type),
     eq(balances.currency, balance.currency),
@@ -244,7 +251,7 @@ const processBalance = async (
     balance.ent_a ? eq(balances.ent_a, balance.ent_a) : undefined,
     balance.ent_b ? eq(balances.ent_b, balance.ent_b) : undefined,
     balance.tag ? eq(balances.tag, balance.tag) : undefined,
-    gt(balances.date, moment(mvDate).startOf("day").toDate()),
+    gt(balances.date, mvDate),
   );
 
   // Update the current balance
