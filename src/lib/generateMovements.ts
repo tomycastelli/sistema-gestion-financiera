@@ -86,7 +86,8 @@ export const generateMovements = async (
 
   // Normalize to start of day in local timezone for balance date consistency
   // This ensures all balances for the same day have the same date regardless of time
-  const mvDate = moment(originalMvDate).startOf("day").toDate();
+  // Use a consistent timezone (UTC) to avoid GMT-3 issues
+  const mvDate = moment(originalMvDate).utc().startOf("day").toDate();
 
   // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
   const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
@@ -353,6 +354,8 @@ const processBalance = async (
 
   if (!balance) {
     // No previous balance, create a new one
+    // mvDate is already normalized to UTC start of day from generateMovements
+
     const [newBalance] = await transaction
       .insert(balances)
       .values({
@@ -368,7 +371,7 @@ const processBalance = async (
       balanceId = newBalance.id;
       finalAmount = newBalance.amount;
     }
-  } else if (moment(mvDate).isBefore(balance.date, "day")) {
+  } else if (moment(mvDate).utc().isBefore(moment(balance.date).utc(), "day")) {
     // Movement date is before the most recent balance
     // Check if we already have a balance for this exact day
     const [oldBalance] = await transaction
@@ -379,6 +382,8 @@ const processBalance = async (
 
     if (!oldBalance) {
       // No balance for this date, create a new one
+      // mvDate is already normalized to UTC start of day from generateMovements
+
       const [newBalance] = await transaction
         .insert(balances)
         .values({
@@ -446,7 +451,7 @@ const processBalance = async (
     if (updatedBalances) {
       updatedBalancesIds.push(...updatedBalances.map((b) => b.id));
     }
-  } else if (moment(mvDate).isSame(balance.date, "day")) {
+  } else if (moment(mvDate).utc().isSame(moment(balance.date).utc(), "day")) {
     // Movement date is same as most recent balance
     const [updatedBalance] = await transaction
       .update(balances)
@@ -498,6 +503,8 @@ const processBalance = async (
         : balanceAmount;
   } else {
     // Movement date is after most recent balance
+    // mvDate is already normalized to UTC start of day from generateMovements
+
     const [newBalance] = await transaction
       .insert(balances)
       .values({
