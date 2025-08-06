@@ -300,6 +300,8 @@ export const undoMovements = async (
     logtail.info("Lock released", {
       transactionId: tx.id,
     });
+    // Flush logs at the end of the entire operation
+    await logtail.flush();
   }
 };
 
@@ -505,6 +507,4 @@ const processBalance = async (
     balanceId,
     balanceField,
   });
-
-  logtail.flush();
 };

@@ -338,6 +338,8 @@ export const generateMovements = async (
   } finally {
     await lock.release();
     logtail.info("Lock released");
+    // Flush logs at the end of the entire operation
+    await logtail.flush();
   }
 };
 
@@ -792,8 +794,6 @@ const processBalance = async (
     balanceId,
     finalAmount,
   });
-
-  logtail.flush();
 
   return {
     id: balanceId,
