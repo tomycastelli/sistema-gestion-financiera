@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { PermissionSchema } from "~/lib/permissionsTypes";
 import { deletePattern, getAllPermissions } from "~/lib/trpcFunctions";
@@ -52,6 +52,7 @@ export const usersRouter = createTRPCRouter({
     }),
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const response = await ctx.db.query.user.findMany({
+      where: eq(user.active, true),
       with: {
         role: true,
       },
@@ -81,7 +82,7 @@ export const usersRouter = createTRPCRouter({
         const [response] = await ctx.db
           .select({ permissions: user.permissions })
           .from(user)
-          .where(eq(user.id, input.id));
+          .where(and(eq(user.id, input.id), eq(user.active, true)));
 
         if (!response) {
           throw new TRPCError({
@@ -102,7 +103,7 @@ export const usersRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const response = await ctx.db.query.user.findFirst({
-        where: eq(user.id, input.id),
+        where: and(eq(user.id, input.id), eq(user.active, true)),
         with: {
           role: true,
         },
@@ -127,7 +128,7 @@ export const usersRouter = createTRPCRouter({
           .set({
             permissions: input.permissions,
           })
-          .where(eq(user.id, input.id))
+          .where(and(eq(user.id, input.id), eq(user.active, true)))
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
@@ -154,7 +155,7 @@ export const usersRouter = createTRPCRouter({
         const permissionsData: z.infer<typeof PermissionSchema> = await ctx.db
           .select({ permissions: user.permissions })
           .from(user)
-          .where(eq(user.id, input.id));
+          .where(and(eq(user.id, input.id), eq(user.active, true)));
 
         const newPermissions = permissionsData.filter(
           (permission) => !input.permissionNames.includes(permission.name),
@@ -165,7 +166,7 @@ export const usersRouter = createTRPCRouter({
           .set({
             permissions: newPermissions,
           })
-          .where(eq(user.id, input.id))
+          .where(and(eq(user.id, input.id), eq(user.active, true)))
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);
@@ -193,7 +194,7 @@ export const usersRouter = createTRPCRouter({
           .set({
             roleId: input.roleId,
           })
-          .where(eq(user.id, input.userId))
+          .where(and(eq(user.id, input.userId), eq(user.active, true)))
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.userId}`);
@@ -221,7 +222,7 @@ export const usersRouter = createTRPCRouter({
           .set({
             roleId: null,
           })
-          .where(eq(user.id, input.id))
+          .where(and(eq(user.id, input.id), eq(user.active, true)))
           .returning();
 
         await ctx.redis.del(`user_permissions|${input.id}`);

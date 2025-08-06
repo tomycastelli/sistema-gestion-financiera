@@ -76,8 +76,9 @@ export async function GET(request: Request) {
 
     const userId = generateId(15);
 
-    const userFullName = microsoftUser.given_name ?
-      (microsoftUser.given_name + " " + microsoftUser.family_name) : microsoftUser.name
+    const userFullName = microsoftUser.given_name
+      ? microsoftUser.given_name + " " + microsoftUser.family_name
+      : microsoftUser.name;
 
     await db.transaction(async (tx) => {
       const [isOperadoresTag] = await tx
@@ -116,12 +117,21 @@ export async function GET(request: Request) {
             : null,
         });
       } else {
+        // If entity exists, create a new entity with "2" appended to the name
+        const newEntityName = `${userFullName} 2`;
+        const [userEntity] = await tx
+          .insert(entities)
+          .values({
+            name: newEntityName,
+            tagName: "Operadores",
+          })
+          .returning();
         await tx.insert(user).values({
           id: userId,
-          name: userFullName,
+          name: newEntityName,
           photoUrl: microsoftUser.picture,
           email: microsoftUser.email,
-          entityId: existingUserEntity.id,
+          entityId: userEntity!.id,
           permissions: adminsEmails.includes(microsoftUser.email)
             ? [{ name: "ADMIN" }]
             : null,

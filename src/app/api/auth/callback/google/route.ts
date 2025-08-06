@@ -108,12 +108,21 @@ export async function GET(request: Request) {
           entityId: userEntity!.id,
         });
       } else {
+        // If entity exists, create a new entity with "2" appended to the name
+        const newEntityName = `${googleUser.name} 2`;
+        const [userEntity] = await tx
+          .insert(entities)
+          .values({
+            name: newEntityName,
+            tagName: "Operadores",
+          })
+          .returning();
         await tx.insert(user).values({
           id: userId,
-          name: googleUser.name,
+          name: newEntityName,
           photoUrl: googleUser.picture,
           email: googleUser.email,
-          entityId: existingEntity.id,
+          entityId: userEntity!.id,
         });
       }
 

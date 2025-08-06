@@ -514,6 +514,7 @@ export const user = pgTable(
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
+    active: boolean("active").default(true).notNull(),
   },
   (table) => {
     return {
@@ -526,7 +527,7 @@ export const user = pgTable(
         table.name.asc().nullsLast(),
         table.email.asc().nullsLast(),
       ),
-      entityIdKey: uniqueIndex("User_entityId_key").using(
+      entityIdIdx: index("User_entityId_idx").using(
         "btree",
         table.entityId.asc().nullsLast(),
       ),
