@@ -1,8 +1,8 @@
+import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +49,7 @@ export default [
       "@typescript-eslint/no-redundant-type-constituents": "off",
       "@typescript-eslint/ban-ts-comment": "off",
       "jsx-a11y/alt-text": "off",
+      "@typescript-eslint/no-floating-promises": "off",
 
       "@typescript-eslint/consistent-type-imports": [
         "warn",

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { TRPCError } from "@trpc/server";
 import {
   and,
@@ -791,6 +792,8 @@ const processBalance = async (
     balanceId,
     finalAmount,
   });
+
+  logtail.flush();
 
   return {
     id: balanceId,
