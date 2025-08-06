@@ -39,7 +39,7 @@ const TransactionButtons: FC<TransactionButtonsProps> = ({
 
   const utils = api.useContext();
 
-  const { mutateAsync: cancelAsync } =
+  const { mutateAsync: cancelAsync, isLoading } =
     api.editingOperations.cancelTransaction.useMutation({
       async onMutate(newOperation) {
         // Doing the Optimistic update
@@ -155,6 +155,7 @@ const TransactionButtons: FC<TransactionButtonsProps> = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cerrar</AlertDialogCancel>
             <AlertDialogAction
+              disabled={isLoading}
               onClick={async () => {
                 const ids = [tx.id];
                 if (tx.transactionMetadata.relatedTransactionId) {

@@ -95,7 +95,7 @@ const AddOperation = ({
     setObservations,
   } = useTransactionsStore();
 
-  const { mutateAsync: updateStatus } =
+  const { mutateAsync: updateStatus, isLoading: isUpdateStatusLoading } =
     api.editingOperations.updateTransactionStatus.useMutation();
 
   const { mutateAsync, isLoading } = api.operations.insertOperation.useMutation(
@@ -336,6 +336,7 @@ const AddOperation = ({
                           Confirmar todos
                         </Label>
                         <Switch
+                          disabled={isUpdateStatusLoading}
                           onCheckedChange={(bool) =>
                             setAllConfirmationAtUpload(bool)
                           }

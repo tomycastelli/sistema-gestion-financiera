@@ -49,7 +49,7 @@ const OperationButtons: FC<OperationButtonsProps> = ({
 
   const utils = api.useContext();
 
-  const { mutateAsync: cancelAsync } =
+  const { mutateAsync: cancelAsync, isLoading } =
     api.editingOperations.cancelTransaction.useMutation({
       async onMutate(newOperation) {
         // Doing the Optimistic update
@@ -282,6 +282,7 @@ const OperationButtons: FC<OperationButtonsProps> = ({
             <AlertDialogFooter>
               <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
+                disabled={isLoading}
                 onClick={async () => await cancelAsync({ operationId: op.id })}
                 className="bg-red"
               >

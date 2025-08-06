@@ -45,7 +45,7 @@ export const editingOperationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const lock = await ctx.redlock.acquire(
         [`EDITING_TRANSACTION_${input.txId}`],
-        30_000,
+        100_000,
       );
       if (
         input.txType === "cuenta corriente" &&
@@ -219,7 +219,7 @@ export const editingOperationsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const lock = await ctx.redlock.acquire(
         input.transactionIds.map((id) => `EDITING_TRANSACTION_${id}`),
-        30_000,
+        100_000,
       );
       const response = await ctx.db.transaction(async (transaction) => {
         const confirmedTxs = [];
