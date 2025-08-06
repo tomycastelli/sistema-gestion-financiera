@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, not, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
@@ -43,6 +43,10 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const lock = await ctx.redlock.acquire(
+        [`EDITING_TRANSACTION_${input.txId}`],
+        30_000,
+      );
       if (
         input.txType === "cuenta corriente" &&
         ctx.user.email !== "christian@ifc.com.ar" &&
@@ -184,6 +188,8 @@ export const editingOperationsRouter = createTRPCRouter({
             );
           }
 
+          await lock.release();
+
           return newTxObj;
         },
         {
@@ -211,6 +217,10 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const lock = await ctx.redlock.acquire(
+        input.transactionIds.map((id) => `EDITING_TRANSACTION_${id}`),
+        30_000,
+      );
       const response = await ctx.db.transaction(async (transaction) => {
         const confirmedTxs = [];
 
@@ -245,7 +255,7 @@ export const editingOperationsRouter = createTRPCRouter({
           await transaction
             .update(transactions)
             .set({
-              status: "confirmed",
+              status: Status.enumValues[1],
             })
             .where(eq(transactions.id, txId));
 
@@ -287,6 +297,8 @@ export const editingOperationsRouter = createTRPCRouter({
         return confirmedTxs;
       });
 
+      await lock.release();
+
       await logIO(
         ctx.dynamodb,
         ctx.user.id,
@@ -315,6 +327,7 @@ export const editingOperationsRouter = createTRPCRouter({
               input.operationId
                 ? eq(transactions.operationId, input.operationId)
                 : undefined,
+              not(eq(transactions.status, Status.enumValues[0])),
             ),
             with: {
               operation: true,
@@ -323,6 +336,22 @@ export const editingOperationsRouter = createTRPCRouter({
               toEntity: true,
             },
           });
+
+        if (transactionsToCancel.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Estas trasnacciones ya fueron canceladas",
+          });
+        }
+
+        // Acquire locks for the actual transactions that will be canceled
+        const lockKeys = [
+          ...transactionsToCancel.map((tx) => `EDITING_TRANSACTION_${tx.id}`),
+          ...(input.operationId
+            ? [`EDITING_OPERATION_${input.operationId}`]
+            : []),
+        ];
+        const lock = await ctx.redlock.acquire(lockKeys, 30_000);
 
         // Transaction cancellation
         await transaction
@@ -378,6 +407,8 @@ export const editingOperationsRouter = createTRPCRouter({
           }
         }
 
+        await lock.release();
+
         return transactionsToCancel;
       });
 
@@ -400,6 +431,10 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const lock = await ctx.redlock.acquire(
+        [`EDITING_OPERATION_${input.opId}`],
+        30_000,
+      );
       const response = await ctx.db.transaction(
         async (transaction) => {
           const [updatedOperation] = await transaction
@@ -458,6 +493,8 @@ export const editingOperationsRouter = createTRPCRouter({
         },
       );
 
+      await lock.release();
+
       return response;
     }),
   deleteEntityOperations: protectedLoggedProcedure
@@ -494,6 +531,12 @@ export const editingOperationsRouter = createTRPCRouter({
                 eq(transactions.operatorEntityId, input.entityId),
               ),
             );
+
+          // Acquire locks for all affected operations
+          const operationLocks = relatedOperations.map(
+            (op) => `EDITING_OPERATION_${op.Operations.id}`,
+          );
+          const lock = await ctx.redlock.acquire(operationLocks, 30_000);
 
           // For each operation
           for (const operation of relatedOperations) {
@@ -559,6 +602,8 @@ export const editingOperationsRouter = createTRPCRouter({
             .where(eq(entities.id, input.entityId));
 
           await deletePattern(ctx.redis, "entities*");
+
+          await lock.release();
 
           return { success: true, deletedOperations: relatedOperations.length };
         },
@@ -647,6 +692,15 @@ export const editingOperationsRouter = createTRPCRouter({
             .returning({ id: transactions.id }),
         ]);
 
+        // Acquire locks for all affected transactions
+        const allAffectedTxIds = [...newEntityTxsFrom, ...newEntityTxsTo].map(
+          (t) => t.id,
+        );
+        const lock = await ctx.redlock.acquire(
+          allAffectedTxIds.map((id) => `EDITING_TRANSACTION_${id}`),
+          30_000,
+        );
+
         const fromEntity = alias(entities, "fromEntity");
         const toEntity = alias(entities, "toEntity");
 
@@ -716,6 +770,8 @@ export const editingOperationsRouter = createTRPCRouter({
             );
           }
         }
+
+        await lock.release();
 
         return {
           transactionCount: newEntityTxIds.length,
