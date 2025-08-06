@@ -19,6 +19,7 @@ import {
   getOppositeBalanceField,
   getOppositeBalanceIdField,
 } from "./generateMovements";
+import logtail from "./logger";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 export const undoMovements = async (
@@ -36,15 +37,32 @@ export const undoMovements = async (
   },
   redlock: Redlock,
 ) => {
+  logtail.info("undoMovements started", {
+    transactionId: tx.id,
+    fromEntity: { id: tx.fromEntity.id, tagName: tx.fromEntity.tagName },
+    toEntity: { id: tx.toEntity.id, tagName: tx.toEntity.tagName },
+    amount: tx.amount,
+    currency: tx.currency,
+  });
+
   // Use a global lock for all balance calculations to ensure complete serialization
   const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 30_000);
 
   try {
     // Delete the movement
+    logtail.info("Deleting movements for transaction", {
+      transactionId: tx.id,
+    });
     const deletedMovements = await transaction
       .delete(movements)
       .where(eq(movements.transactionId, tx.id))
       .returning();
+
+    logtail.info("Movements deleted", {
+      transactionId: tx.id,
+      deletedMovementsCount: deletedMovements.length,
+      deletedMovementIds: deletedMovements.map((m) => m.id),
+    });
 
     // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
     const ent_a =
@@ -52,12 +70,33 @@ export const undoMovements = async (
     const ent_b =
       tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
+    logtail.info("Entity order determined", {
+      transactionId: tx.id,
+      ent_a: { id: ent_a.id, tagName: ent_a.tagName },
+      ent_b: { id: ent_b.id, tagName: ent_b.tagName },
+    });
+
     for (const movement of deletedMovements) {
+      logtail.info("Processing deleted movement", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        movementDate: movement.date.toISOString(),
+        direction: movement.direction,
+        account: movement.account,
+      });
+
       // Normalize movement date to UTC start of day for consistency
       const normalizedMvDate = moment(movement.date)
         .utc()
         .startOf("day")
         .toDate();
+
+      logtail.info("Movement date normalized", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        originalDate: movement.date.toISOString(),
+        normalizedDate: normalizedMvDate.toISOString(),
+      });
 
       // Calculate balance amounts for different types
       // Type 1: Entity to Entity (from perspective of ent_a)
@@ -106,9 +145,28 @@ export const undoMovements = async (
           ? tx.amount * movement.direction
           : -tx.amount * movement.direction;
 
+      logtail.info("Balance amounts calculated", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balance1Amount,
+        balance2aAmount,
+        balance2bAmount,
+        balance3aAmount,
+        balance3bAmount,
+        balance4aAmount,
+        balance4bAmount,
+      });
+
       // Process all balances sequentially to ensure consistency
+      logtail.info("Processing balance type 1", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_1_id,
+        amount: balance1Amount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_1_id,
         balance1Amount,
         normalizedMvDate,
@@ -117,8 +175,15 @@ export const undoMovements = async (
         movement.id,
       );
 
+      logtail.info("Processing balance type 2a", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_2a_id,
+        amount: balance2aAmount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_2a_id,
         balance2aAmount,
         normalizedMvDate,
@@ -127,8 +192,15 @@ export const undoMovements = async (
         movement.id,
       );
 
+      logtail.info("Processing balance type 2b", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_2b_id,
+        amount: balance2bAmount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_2b_id,
         balance2bAmount,
         normalizedMvDate,
@@ -137,8 +209,15 @@ export const undoMovements = async (
         movement.id,
       );
 
+      logtail.info("Processing balance type 3a", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_3a_id,
+        amount: balance3aAmount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_3a_id,
         balance3aAmount,
         normalizedMvDate,
@@ -147,8 +226,15 @@ export const undoMovements = async (
         movement.id,
       );
 
+      logtail.info("Processing balance type 3b", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_3b_id,
+        amount: balance3bAmount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_3b_id,
         balance3bAmount,
         normalizedMvDate,
@@ -157,8 +243,15 @@ export const undoMovements = async (
         movement.id,
       );
 
+      logtail.info("Processing balance type 4a", {
+        transactionId: tx.id,
+        movementId: movement.id,
+        balanceId: movement.balance_4a_id,
+        amount: balance4aAmount,
+      });
       await processBalance(
         transaction,
+        tx.id,
         movement.balance_4a_id,
         balance4aAmount,
         normalizedMvDate,
@@ -169,8 +262,15 @@ export const undoMovements = async (
 
       // Process 4b only if entities have different tags
       if (tx.fromEntity.tagName !== tx.toEntity.tagName) {
+        logtail.info("Processing balance type 4b", {
+          transactionId: tx.id,
+          movementId: movement.id,
+          balanceId: movement.balance_4b_id,
+          amount: balance4bAmount,
+        });
         await processBalance(
           transaction,
+          tx.id,
           movement.balance_4b_id,
           balance4bAmount,
           normalizedMvDate,
@@ -178,12 +278,27 @@ export const undoMovements = async (
           "balance_4b_id",
           movement.id,
         );
+      } else {
+        logtail.info("Skipping balance type 4b - same tag", {
+          transactionId: tx.id,
+          movementId: movement.id,
+          fromTag: tx.fromEntity.tagName,
+          toTag: tx.toEntity.tagName,
+        });
       }
     }
+
+    logtail.info("undoMovements completed", {
+      transactionId: tx.id,
+      deletedMovementsCount: deletedMovements.length,
+    });
 
     return deletedMovements;
   } finally {
     await lock.release();
+    logtail.info("Lock released", {
+      transactionId: tx.id,
+    });
   }
 };
 
@@ -194,6 +309,7 @@ const processBalance = async (
     typeof schema,
     ExtractTablesWithRelations<typeof schema>
   >,
+  transactionId: number,
   balanceId: number,
   balanceAmount: number,
   mvDate: Date,
@@ -215,10 +331,32 @@ const processBalance = async (
     | "balance_4b_id",
   movementId: number,
 ) => {
+  logtail.info("processBalance started", {
+    transactionId,
+    balanceId,
+    balanceAmount,
+    balanceField,
+    balanceIdField,
+    mvDate: mvDate.toISOString(),
+    movementId,
+  });
+
   const oppositeBalanceField = getOppositeBalanceField(balanceField);
   const oppositeBalanceIdField = getOppositeBalanceIdField(balanceIdField);
 
+  logtail.info("Opposite balance fields determined", {
+    transactionId,
+    balanceField,
+    oppositeBalanceField,
+    balanceIdField,
+    oppositeBalanceIdField,
+  });
+
   // Get the balance to be updated
+  logtail.info("Fetching balance details", {
+    transactionId,
+    balanceId,
+  });
   const [balance] = await transaction
     .select({
       id: balances.id,
@@ -236,11 +374,28 @@ const processBalance = async (
     .limit(1);
 
   if (!balance) {
+    logtail.error("Balance not found", {
+      transactionId,
+      balanceId,
+    });
     throw new TRPCError({
       code: "NOT_FOUND",
       message: `Balance with ID ${balanceId} not found`,
     });
   }
+
+  logtail.info("Balance details fetched", {
+    transactionId,
+    balanceId,
+    balanceAmount: balance.amount,
+    balanceDate: balance.date.toISOString(),
+    balanceType: balance.type,
+    balanceCurrency: balance.currency,
+    balanceAccount: balance.account,
+    balanceEntA: balance.ent_a,
+    balanceEntB: balance.ent_b,
+    balanceTag: balance.tag,
+  });
 
   // Construct query condition for future balances
   // mvDate is normalized to UTC start of day from the calling function
@@ -254,22 +409,60 @@ const processBalance = async (
     gt(balances.date, mvDate),
   );
 
+  logtail.info("Future balances query constructed", {
+    transactionId,
+    balanceId,
+    futureBalancesQuery,
+  });
+
   // Update the current balance
+  logtail.info("Updating current balance", {
+    transactionId,
+    balanceId,
+    currentAmount: balance.amount,
+    amountToSubtract: balanceAmount,
+    newAmount: balance.amount - balanceAmount,
+  });
   await transaction
     .update(balances)
     .set({ amount: sql`${balances.amount} - ${balanceAmount}` })
     .where(eq(balances.id, balanceId));
 
   // Update all future balances
+  logtail.info("Updating future balances", {
+    transactionId,
+    balanceId,
+  });
   const updatedBalances = await transaction
     .update(balances)
     .set({ amount: sql`${balances.amount} - ${balanceAmount}` })
     .where(futureBalancesQuery)
     .returning({ id: balances.id });
 
+  logtail.info("Future balances updated", {
+    transactionId,
+    balanceId,
+    updatedBalancesCount: updatedBalances.length,
+    updatedBalanceIds: updatedBalances.map((b) => b.id),
+  });
+
   const allBalances = [...updatedBalances.map((b) => b.id), balanceId];
 
+  logtail.info("All affected balances", {
+    transactionId,
+    balanceId,
+    allBalances,
+  });
+
   // Update all movements related to these balances which come after the deleted balance
+  logtail.info("Updating movements for balance type", {
+    transactionId,
+    balanceId,
+    balanceField,
+    allBalances,
+    mvDate: mvDate.toISOString(),
+    movementId,
+  });
   await transaction
     .update(movements)
     .set({
@@ -286,6 +479,13 @@ const processBalance = async (
     );
 
   if (oppositeBalanceField && oppositeBalanceIdField) {
+    logtail.info("Updating opposite movements for balance type", {
+      transactionId,
+      balanceId,
+      balanceField,
+      oppositeBalanceField,
+      allBalances,
+    });
     await transaction
       .update(movements)
       .set({
@@ -298,4 +498,10 @@ const processBalance = async (
         ),
       );
   }
+
+  logtail.info("processBalance finished", {
+    transactionId,
+    balanceId,
+    balanceField,
+  });
 };
