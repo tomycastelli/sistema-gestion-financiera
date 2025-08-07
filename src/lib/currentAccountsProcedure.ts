@@ -176,12 +176,8 @@ export const currentAccountsProcedure = async (
 
     if (input.dayInPast) {
       queryParams.dayInPastLimit = moment(input.dayInPast, dateFormatting.day)
-        .set({
-          hour: 23,
-          minute: 59,
-          second: 59,
-          millisecond: 999,
-        })
+        .utc()
+        .endOf("day")
         .toISOString();
     }
 
