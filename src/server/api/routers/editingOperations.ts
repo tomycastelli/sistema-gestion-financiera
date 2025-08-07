@@ -57,6 +57,15 @@ export const editingOperationsRouter = createTRPCRouter({
           message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
         });
       }
+      if (
+        input.newTransactionData.fromEntityId ===
+        input.newTransactionData.toEntityId
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "From and to entities cannot be the same",
+        });
+      }
       const response = await ctx.db.transaction(
         async (transaction) => {
           const [historyResponse2] = await transaction
