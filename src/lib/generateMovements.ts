@@ -342,10 +342,6 @@ const processBalance = async (
     | "balance_4a_id"
     | "balance_4b_id",
 ) => {
-  if (balanceAmount === 0) {
-    // Return a default balance object with amount 0 and id 0
-    return { id: 0, amount: 0 };
-  }
   // Only log for balance type 4a
   if (balanceField === "balance_4a") {
     logtail.info("processBalance started for balance type 4a", {

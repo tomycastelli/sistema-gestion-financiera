@@ -278,9 +278,6 @@ const processBalance = async (
     | "balance_4b_id",
   movementId: number,
 ) => {
-  if (balanceId === 0) {
-    return;
-  }
   // Only log for balance type 4a
   if (balanceField === "balance_4a") {
     logtail.info(

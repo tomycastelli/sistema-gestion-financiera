@@ -21,7 +21,11 @@ import {
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
 import { logIO } from "~/lib/trpcFunctions";
-import { cashAccountOnlyTypes, currentAccountOnlyTypes, gastoCategories } from "~/lib/variables";
+import {
+  cashAccountOnlyTypes,
+  currentAccountOnlyTypes,
+  gastoCategories,
+} from "~/lib/variables";
 import {
   entities,
   movements,
@@ -535,8 +539,10 @@ export const operationsRouter = createTRPCRouter({
       const monthCountSchema = z.array(
         z.object({
           day: z.string().refine((str) => moment(str).toDate()),
-          operationsCount: z.string().refine((str) => Number.parseInt(str)),
-          transactionsCount: z.string().refine((str) => Number.parseInt(str)),
+          operationsCount: z.string().transform((str) => Number.parseInt(str)),
+          transactionsCount: z
+            .string()
+            .transform((str) => Number.parseInt(str)),
         }),
       );
 
