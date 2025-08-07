@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { TRPCError } from "@trpc/server";
 import {
   and,

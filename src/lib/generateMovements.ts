@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { TRPCError } from "@trpc/server";
 import {
   and,
@@ -239,7 +240,7 @@ export const generateMovements = async (
     let balance4b;
     if (ent_a.tagName === ent_b.tagName) {
       // If same tag, balance4b will be the same as balance4a
-      balance4b = { amount: balance4a!.amount, id: balance4a!.id };
+      balance4b = { amount: balance4a.amount, id: balance4a.id };
     } else {
       balance4b = await processBalance(
         transaction,
@@ -256,8 +257,8 @@ export const generateMovements = async (
 
     // Only log balance type 4a processing result
     logtail.info("Balance type 4a processed", {
-      balance4a_id: balance4a!.id,
-      balance4a_amount: balance4a!.amount,
+      balance4a_id: balance4a.id,
+      balance4a_amount: balance4a.amount,
     });
 
     // Create the movement with all the balance values
@@ -269,20 +270,20 @@ export const generateMovements = async (
         direction,
         type,
         account,
-        balance_1: balance1!.amount,
-        balance_1_id: balance1!.id,
-        balance_2a: balance2a!.amount,
-        balance_2a_id: balance2a!.id,
-        balance_2b: balance2b!.amount,
-        balance_2b_id: balance2b!.id,
-        balance_3a: balance3a!.amount,
-        balance_3a_id: balance3a!.id,
-        balance_3b: balance3b!.amount,
-        balance_3b_id: balance3b!.id,
-        balance_4a: balance4a!.amount,
-        balance_4a_id: balance4a!.id,
-        balance_4b: balance4b!.amount,
-        balance_4b_id: balance4b!.id,
+        balance_1: balance1.amount,
+        balance_1_id: balance1.id,
+        balance_2a: balance2a.amount,
+        balance_2a_id: balance2a.id,
+        balance_2b: balance2b.amount,
+        balance_2b_id: balance2b.id,
+        balance_3a: balance3a.amount,
+        balance_3a_id: balance3a.id,
+        balance_3b: balance3b.amount,
+        balance_3b_id: balance3b.id,
+        balance_4a: balance4a.amount,
+        balance_4a_id: balance4a.id,
+        balance_4b: balance4b.amount,
+        balance_4b_id: balance4b.id,
       })
       .returning();
 
