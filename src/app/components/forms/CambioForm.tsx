@@ -105,6 +105,25 @@ const CambioForm = ({
   const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
+    if (
+      values.transactions
+        .flatMap((tx) => [
+          parseFormattedFloat(tx.amountA),
+          parseFormattedFloat(tx.amountB),
+        ])
+        .some((amount) => amount === 0)
+    ) {
+      toast.error("Los montos no pueden ser 0");
+      setError(
+        "transactions",
+        {
+          type: "pattern",
+          message: "Los montos de entrada y salida no pueden ser 0",
+        },
+        { shouldFocus: true },
+      );
+      return;
+    }
     const temporalTxStore: SingleTransactionInStoreSchema[] = [];
     for (const [index, value] of values.transactions.entries()) {
       if (value.entityA === value.entityB) {

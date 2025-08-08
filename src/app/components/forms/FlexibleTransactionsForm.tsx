@@ -111,6 +111,14 @@ const FlexibleTransactionsForm = ({
   const watchTransactions = watch("transactions");
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
+    if (
+      values.transactions
+        .flatMap((tx) => [parseFormattedFloat(tx.amount)])
+        .some((amount) => amount === 0)
+    ) {
+      toast.error("Los montos no pueden ser 0");
+      return;
+    }
     const greatestId = transactionsStore.reduce((maxId, currentObject) => {
       return Math.max(maxId, currentObject.txId);
     }, 0);

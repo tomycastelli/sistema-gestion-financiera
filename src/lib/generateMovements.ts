@@ -95,10 +95,9 @@ export const generateMovements = async (
   // For account transactions, use current time; for regular transactions, use operation date
   const originalMvDate = account ? new Date() : tx.operation.date;
 
-  // Normalize to start of day in local timezone for balance date consistency
-  // This ensures all balances for the same day have the same date regardless of time
-  // Use a consistent timezone (UTC) to avoid GMT-3 issues
-  const mvDate = moment(originalMvDate).utc().startOf("day").toDate();
+  // Normalize to start of day in LOCAL timezone for balance date consistency
+  // This ensures all balances for the same local day share the same date regardless of time
+  const mvDate = moment(originalMvDate).startOf("day").toDate();
 
   // Removed logging for movement dates calculation
 
@@ -158,7 +157,7 @@ export const generateMovements = async (
   });
 
   // Use a global lock for all balance calculations to ensure complete serialization
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 30_000);
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 180_000);
 
   try {
     // Removed lock acquisition logging
@@ -416,7 +415,7 @@ const processBalance = async (
 
   if (!balance) {
     // No previous balance, create a new one
-    // mvDate is already normalized to UTC start of day from generateMovements
+    // mvDate is already normalized to local start of day from generateMovements
     if (balanceField === "balance_4a") {
       logtail.info("No previous balance found, creating new one for type 4a", {
         transactionId: tx.id,
@@ -445,7 +444,7 @@ const processBalance = async (
         });
       }
     }
-  } else if (moment(mvDate).utc().isBefore(moment(balance.date).utc(), "day")) {
+  } else if (moment(mvDate).isBefore(moment(balance.date), "day")) {
     // Movement date is before the most recent balance
     // Check if we already have a balance for this exact day
     if (balanceField === "balance_4a") {
@@ -465,7 +464,7 @@ const processBalance = async (
 
     if (!oldBalance) {
       // No balance for this date, create a new one
-      // mvDate is already normalized to UTC start of day from generateMovements
+      // mvDate is already normalized to local start of day from generateMovements
       if (balanceField === "balance_4a") {
         logtail.info("No balance for this date, creating new one for type 4a", {
           transactionId: tx.id,
@@ -523,17 +522,7 @@ const processBalance = async (
         .orderBy(desc(movements.date), desc(movements.id))
         .limit(1);
 
-      // Determine the amount of the previous movement we are interested in
-      let previousMovementAmount: number | null = null;
-      if (previousMovement) {
-        if (!oppositeBalanceField) {
-          previousMovementAmount = previousMovement.balance_1;
-        } else if (previousMovement[balanceIdField] === oldBalance.id) {
-          previousMovementAmount = previousMovement[balanceField];
-        } else {
-          previousMovementAmount = previousMovement[oppositeBalanceField];
-        }
-      }
+      // Note: previous movement amount is inferred inline below
 
       updatedBalancesIds.push(oldBalance.id);
       balanceId = oldBalance.id;
@@ -598,7 +587,7 @@ const processBalance = async (
         );
       }
     }
-  } else if (moment(mvDate).utc().isSame(moment(balance.date).utc(), "day")) {
+  } else if (moment(mvDate).isSame(moment(balance.date), "day")) {
     // Movement date is same as most recent balance
     if (balanceField === "balance_4a") {
       logtail.info(
@@ -658,16 +647,7 @@ const processBalance = async (
       .orderBy(desc(movements.date), desc(movements.id))
       .limit(1);
 
-    let previousMovementAmount: number | null = null;
-    if (previousMovement) {
-      if (!oppositeBalanceField) {
-        previousMovementAmount = previousMovement.balance_1;
-      } else if (previousMovement[balanceIdField] === balance.id) {
-        previousMovementAmount = previousMovement[balanceField];
-      } else {
-        previousMovementAmount = previousMovement[oppositeBalanceField];
-      }
-    }
+    // Note: previous movement amount is inferred inline below
 
     balanceId = updatedBalance!.id;
     // Exists because we have a balance for this day
@@ -705,7 +685,7 @@ const processBalance = async (
     }
   } else {
     // Movement date is after most recent balance
-    // mvDate is already normalized to UTC start of day from generateMovements
+    // mvDate is already normalized to local start of day from generateMovements
     if (balanceField === "balance_4a") {
       logtail.info(
         "Movement date is after most recent balance, creating new balance for type 4a",
@@ -782,7 +762,7 @@ const processBalance = async (
           gt(movements.date, sql.placeholder("originalMvDate")),
         ),
       )
-      .prepare("updateMovements");
+      .prepare(`updateMovements_${balanceField}`);
 
     await updateMovements.execute({
       amount: balanceAmount,
@@ -815,7 +795,7 @@ const processBalance = async (
             gt(movements.date, sql.placeholder("originalMvDate")),
           ),
         )
-        .prepare("updateOppositeMovements");
+        .prepare(`updateOppositeMovements_${balanceField}`);
 
       await updateOppositeMovements.execute({
         amount: balanceAmount,

@@ -47,7 +47,7 @@ export const undoMovements = async (
   });
 
   // Use a global lock for all balance calculations to ensure complete serialization
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 30_000);
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 180_000);
 
   try {
     // Delete the movement
@@ -70,11 +70,8 @@ export const undoMovements = async (
     for (const movement of deletedMovements) {
       // Removed logging for processing deleted movement
 
-      // Normalize movement date to UTC start of day for consistency
-      const normalizedMvDate = moment(movement.date)
-        .utc()
-        .startOf("day")
-        .toDate();
+      // Normalize movement date to LOCAL start of day for consistency
+      const normalizedMvDate = moment(movement.date).startOf("day").toDate();
 
       // Removed logging for movement date normalization
 
@@ -279,6 +276,20 @@ const processBalance = async (
     | "balance_4b_id",
   movementId: number,
 ) => {
+  // Guard: legacy/invalid movements might reference non-existent balance ids
+  if (balanceId == null || balanceId <= 0) {
+    if (balanceField === "balance_4a") {
+      logtail.info(
+        "Skipping processBalance due to invalid balanceId for type 4a",
+        safeSerialize({
+          transactionId,
+          movementId,
+          balanceId,
+        }) as Record<string, unknown>,
+      );
+    }
+    return;
+  }
   // Only log for balance type 4a
   if (balanceField === "balance_4a") {
     logtail.info(
@@ -351,7 +362,7 @@ const processBalance = async (
   }
 
   // Construct query condition for future balances
-  // normalizedMvDate is normalized to UTC start of day from the calling function
+  // normalizedMvDate is normalized to local start of day from the calling function
   const futureBalancesQuery = and(
     eq(balances.type, balance.type),
     eq(balances.currency, balance.currency),
@@ -434,8 +445,11 @@ const processBalance = async (
     })
     .where(
       and(
-        gt(movements.date, originalMvDate),
         inArray(movements[balanceIdField], allBalances),
+        or(
+          gt(movements.date, originalMvDate),
+          and(eq(movements.date, originalMvDate), gt(movements.id, movementId)),
+        ),
       ),
     );
 
@@ -459,7 +473,13 @@ const processBalance = async (
       .where(
         and(
           inArray(movements[oppositeBalanceIdField], allBalances),
-          gt(movements.date, originalMvDate),
+          or(
+            gt(movements.date, originalMvDate),
+            and(
+              eq(movements.date, originalMvDate),
+              gt(movements.id, movementId),
+            ),
+          ),
         ),
       );
   }

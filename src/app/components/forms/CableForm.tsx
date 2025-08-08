@@ -1,8 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNumberFormat } from "@react-input/number-format";
+import { User } from "lucia";
 import { type FC } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { numberFormatter, parseFormattedFloat } from "~/lib/functions";
 import { currencies } from "~/lib/variables";
@@ -24,9 +27,6 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import CustomSelector from "./CustomSelector";
-import { useNumberFormat } from "@react-input/number-format";
-import { toast } from "sonner";
-import { User } from "lucia";
 
 const FormSchema = z
   .object({
@@ -88,6 +88,14 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
   const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
+    if (parseFormattedFloat(values.amount) === 0) {
+      toast.error("El monto no puede ser 0");
+      setError("amount", {
+        type: "pattern",
+        message: "El monto no puede ser 0",
+      });
+      return;
+    }
     const parsedAmount = parseFormattedFloat(values.amount);
     const parsedReceivingFee = values.receivingFee
       ? parseFormattedFloat(values.receivingFee)
