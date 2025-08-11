@@ -95,9 +95,17 @@ export const generateMovements = async (
   // For account transactions, use current time; for regular transactions, use operation date
   const originalMvDate = account ? new Date() : tx.operation.date;
 
-  // Normalize to start of day in LOCAL timezone for balance date consistency
-  // This ensures all balances for the same local day share the same date regardless of time
-  const mvDate = moment(originalMvDate).startOf("day").toDate();
+  // Normalize to start of day using server's LOCAL timezone (UTC-3)
+  // Construct the Date at local midnight to avoid implicit UTC conversions (e.g. 03:00)
+  const mvDate = new Date(
+    originalMvDate.getFullYear(),
+    originalMvDate.getMonth(),
+    originalMvDate.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
 
   // Removed logging for movement dates calculation
 

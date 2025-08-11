@@ -12,7 +12,6 @@ import {
 } from "drizzle-orm";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
-import moment from "moment";
 import type Redlock from "redlock";
 import type * as schema from "../server/db/schema";
 import { balances, movements } from "../server/db/schema";
@@ -68,10 +67,16 @@ export const undoMovements = async (
     // Removed logging for entity order determination
 
     for (const movement of deletedMovements) {
-      // Removed logging for processing deleted movement
-
-      // Normalize movement date to LOCAL start of day for consistency
-      const normalizedMvDate = moment(movement.date).startOf("day").toDate();
+      // Normalize movement date to local midnight (server's local timezone)
+      const normalizedMvDate = new Date(
+        movement.date.getFullYear(),
+        movement.date.getMonth(),
+        movement.date.getDate(),
+        0,
+        0,
+        0,
+        0,
+      );
 
       // Removed logging for movement date normalization
 
@@ -363,6 +368,7 @@ const processBalance = async (
 
   // Construct query condition for future balances
   // normalizedMvDate is normalized to local start of day from the calling function
+  // Use the actual balance.date as the ripple baseline to include later same-day balances
   const futureBalancesQuery = and(
     eq(balances.type, balance.type),
     eq(balances.currency, balance.currency),
@@ -370,7 +376,7 @@ const processBalance = async (
     balance.ent_a ? eq(balances.ent_a, balance.ent_a) : undefined,
     balance.ent_b ? eq(balances.ent_b, balance.ent_b) : undefined,
     balance.tag ? eq(balances.tag, balance.tag) : undefined,
-    gt(balances.date, normalizedMvDate),
+    gt(balances.date, balance.date),
   );
 
   // Removed logging for future balances query construction
