@@ -28,6 +28,26 @@ const decimalNumber = customType<{ data: number }>({
   },
 });
 
+// Custom timestamp that always truncates time to 00:00:00 when writing to DB
+// Keeps Postgres column type as TIMESTAMP (no timezone), but ensures stored time is midnight
+const midnightTimestamp = customType<{ data: Date; driverData: string }>({
+  dataType() {
+    return "timestamp";
+  },
+  toDriver(value) {
+    if (!(value instanceof Date)) return value as unknown as string;
+    const year = value.getUTCFullYear();
+    const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(value.getUTCDate()).padStart(2, "0");
+    // Write exact midnight string; avoids timezone-dependent serialization
+    return `${year}-${month}-${day} 00:00:00`;
+  },
+  fromDriver(value) {
+    // Return as JS Date; consumers can format as needed
+    return new Date(value);
+  },
+});
+
 export const requestStatus = pgEnum("RequestStatus", [
   "finished",
   "working",
@@ -48,7 +68,7 @@ export const balances = pgTable(
     ent_b: integer("ent_b"),
     account: boolean("account").notNull(),
     currency: text("currency").notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
+    date: midnightTimestamp("date").notNull(),
     amount: decimalNumber("amount").notNull(),
   },
   (table) => {
