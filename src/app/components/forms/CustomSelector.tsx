@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import React from "react";
 import { useFormContext, type FieldElement } from "react-hook-form";
+import { normalizeString, truncateString } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -14,10 +15,9 @@ import {
 } from "../ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
-import { normalizeString, truncateString } from "~/lib/functions";
 
 interface Data {
-  value: string;
+  value: string | number;
   label: string;
 }
 

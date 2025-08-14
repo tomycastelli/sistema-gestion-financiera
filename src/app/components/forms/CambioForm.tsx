@@ -438,6 +438,23 @@ const CambioPair = ({
     exchangeCalculation();
   }, [exchangeCalculation]);
 
+  useEffect(() => {
+    const entityB = entities.find((e) => e.id === parseInt(watchEntityB));
+
+    if (entityB?.sucursalOrigenEntity?.id) {
+      setValue(
+        `transactions.${index}.entityA`,
+        entityB.sucursalOrigenEntity.id.toString(),
+      );
+    }
+    if (entityB?.operadorAsociadoEntity?.id) {
+      setValue(
+        `transactions.${index}.entityOperator`,
+        entityB.operadorAsociadoEntity.id.toString(),
+      );
+    }
+  }, [watchEntityB, setValue, index, entities]);
+
   const appendPair = () => {
     append({
       lockAmountA: true,

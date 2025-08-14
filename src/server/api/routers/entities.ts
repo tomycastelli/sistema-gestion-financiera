@@ -86,6 +86,8 @@ export const entitiesRouter = createTRPCRouter({
       z.object({
         name: z.string(),
         tag: z.string(),
+        sucursalOrigen: z.number().int().optional(),
+        operadorAsociado: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -115,6 +117,8 @@ export const entitiesRouter = createTRPCRouter({
         .values({
           name: input.name,
           tagName: input.tag,
+          sucursalOrigen: input.sucursalOrigen,
+          operadorAsociado: input.operadorAsociado,
         })
         .returning();
 
@@ -204,6 +208,8 @@ export const entitiesRouter = createTRPCRouter({
         id: z.number().int(),
         name: z.string(),
         tagName: z.string(),
+        sucursalOrigen: z.number().int().optional(),
+        operadorAsociado: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -235,6 +241,8 @@ export const entitiesRouter = createTRPCRouter({
         .update(entities)
         .set({
           name: input.name,
+          sucursalOrigen: input.sucursalOrigen,
+          operadorAsociado: input.operadorAsociado,
         })
         .where(eq(entities.id, input.id))
         .returning();

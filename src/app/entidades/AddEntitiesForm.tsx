@@ -3,10 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, type FC } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
+import CustomSelector from "../components/forms/CustomSelector";
+import EntityCard from "../components/ui/EntityCard";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -34,22 +37,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { toast } from "sonner";
 
 const FormSchema = z.object({
   name: z
     .string()
     .max(40, { message: "El nombre tiene que ser menor a 40 caracteres" }),
   tag: z.string().min(1),
+  sucursalOrigen: z.number().int().optional(),
+  operadorAsociado: z.number().int().optional(),
 });
 
 interface AddEntitiesFormProps {
   tags: RouterOutputs["tags"]["getFiltered"];
+  entities: RouterOutputs["entities"]["getAll"];
   userPermissions: RouterOutputs["users"]["getAllPermissions"];
 }
 
 const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
   tags,
+  entities,
   userPermissions,
 }) => {
   const [open, setOpen] = useState<boolean>(false);
@@ -72,6 +78,8 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
           tag: {
             name: newOperation.tag,
           },
+          sucursalOrigen: newOperation.sucursalOrigen,
+          operadorAsociado: newOperation.operadorAsociado,
         },
       ]);
 
@@ -89,7 +97,12 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
     },
     onSuccess(data) {
       setOpen(false);
-      reset({ name: "", tag: "" });
+      reset({
+        name: "",
+        tag: "",
+        sucursalOrigen: undefined,
+        operadorAsociado: undefined,
+      });
       toast.success(`Entidad ${data.name} añadida`);
     },
   });
@@ -98,10 +111,19 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
     resolver: zodResolver(FormSchema),
   });
 
-  const { handleSubmit, control, reset } = form;
+  const { handleSubmit, control, reset, watch } = form;
+
+  const watchOperadorAsociado = watch("operadorAsociado");
+  const watchSucursalOrigen = watch("sucursalOrigen");
+  const watchTag = watch("tag");
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    await mutateAsync({ name: data.name, tag: data.tag });
+    await mutateAsync({
+      name: data.name,
+      tag: data.tag,
+      sucursalOrigen: data.sucursalOrigen,
+      operadorAsociado: data.operadorAsociado,
+    });
   }
 
   return (
@@ -174,6 +196,74 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
                   </FormItem>
                 )}
               />
+              {watchTag === "Clientes" && (
+                <div className="flex w-full flex-row items-start justify-start gap-x-2">
+                  <FormField
+                    control={control}
+                    name="operadorAsociado"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Operador asociado</FormLabel>
+                        <CustomSelector
+                          data={entities
+                            .filter(
+                              (entity) => entity.tag.name === "Operadores",
+                            )
+                            .map((entity) => ({
+                              value: entity.id,
+                              label: entity.name,
+                            }))}
+                          field={field}
+                          fieldName="operadorAsociado"
+                          placeholder="Elegir"
+                        />
+                        {watchOperadorAsociado && (
+                          <EntityCard
+                            disableLinks={true}
+                            entity={
+                              entities.find(
+                                (obj) => obj.id === watchOperadorAsociado,
+                              )!
+                            }
+                          />
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={control}
+                    name="sucursalOrigen"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Sucursal de origen</FormLabel>
+                        <CustomSelector
+                          data={entities
+                            .filter((entity) => entity.tag.name === "Maika")
+                            .map((entity) => ({
+                              value: entity.id,
+                              label: entity.name,
+                            }))}
+                          field={field}
+                          fieldName="sucursalOrigen"
+                          placeholder="Elegir"
+                        />
+                        {watchSucursalOrigen && (
+                          <EntityCard
+                            disableLinks={true}
+                            entity={
+                              entities.find(
+                                (obj) => obj.id === watchSucursalOrigen,
+                              )!
+                            }
+                          />
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild>

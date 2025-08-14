@@ -118,6 +118,8 @@ export const getAllEntities = async (
   const entities = await db.query.entities.findMany({
     with: {
       tag: true,
+      operadorAsociadoEntity: true,
+      sucursalOrigenEntity: true,
     },
     columns: {
       id: true,

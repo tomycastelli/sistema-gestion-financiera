@@ -837,4 +837,45 @@ export const filesRouter = createTRPCRouter({
 
       return { downloadUrl, filename };
     }),
+  getEntities: protectedProcedure.mutation(async ({ ctx }) => {
+    const entities = await getAllEntities(ctx.redis, ctx.db);
+    const csvData = entities.map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      tag: entity.tag.name,
+      sucursalOrigen: entity.sucursalOrigenEntity?.name ?? "",
+      operadorAsociado: entity.operadorAsociadoEntity?.name ?? "",
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(csvData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+    const xlsxBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "buffer",
+    });
+
+    const filename = `entidades_${moment().format("DD-MM-YYYY-HH:mm:ss")}.xlsx`;
+
+    const putCommand = new PutObjectCommand({
+      Bucket: ctx.s3.bucketNames.reports,
+      Key: `entidades/${filename}`,
+      Body: xlsxBuffer,
+      ContentType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    await ctx.s3.client.send(putCommand);
+
+    const getCommand = new GetObjectCommand({
+      Bucket: ctx.s3.bucketNames.reports,
+      Key: `entidades/${filename}`,
+    });
+
+    const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
+      expiresIn: 300,
+    });
+
+    return { downloadUrl, filename };
+  }),
 });

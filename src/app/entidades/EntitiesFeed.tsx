@@ -1,9 +1,12 @@
 "use client";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+import { type ColumnDef } from "@tanstack/react-table";
 import type { User } from "lucia";
+import { MoreHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState, type FC } from "react";
+import { toast } from "sonner";
 import useSearch from "~/hooks/useSearch";
 import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
 import { cn } from "~/lib/utils";
@@ -12,7 +15,16 @@ import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import CustomPagination from "../components/CustomPagination";
 import EntityCard from "../components/ui/EntityCard";
+import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
@@ -29,6 +41,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
+import { DataTable } from "../cuentas/DataTable";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
 import EntityOptions from "./EntityOptions";
@@ -66,27 +79,6 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     },
   );
 
-  const manageableEntities = entities.filter((entity) => {
-    if (
-      userPermissions?.find(
-        (p) => p.name === "ADMIN" || p.name === "ACCOUNTS_VISUALIZE",
-      )
-    ) {
-      return true;
-    } else if (
-      userPermissions?.find(
-        (p) =>
-          p.name === "ACCOUNTS_VISUALIZE_SOME" &&
-          (p.entitiesIds?.includes(entity.id) ||
-            getAllChildrenTags(p.entitiesTags, initialTags).includes(
-              entity.tag.name,
-            )),
-      )
-    ) {
-      return true;
-    }
-  });
-
   const {
     results: filteredEntities,
     searchValue,
@@ -115,6 +107,91 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       ? entity.tag.name === tagFilter
       : getAllChildrenTags(tagFilter, tags).includes(entity.tag.name);
   });
+
+  const { mutateAsync: getUrlAsync, isLoading: isLoadingFile } =
+    api.files.getEntities.useMutation({
+      onSuccess(newOperation) {
+        if (newOperation) {
+          const link = document.createElement("a");
+          link.href = newOperation.downloadUrl;
+          link.download = newOperation.filename;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      },
+      onError(err) {
+        toast.error("Error al generar el archivo", {
+          description: err.message,
+        });
+      },
+    });
+
+  const onDownloadClick = (fileType: "xlsx") => {
+    const promise = getUrlAsync();
+
+    toast.promise(promise, {
+      loading: "Generando archivo...",
+      success(data) {
+        return `Archivo generado: ${data.filename}`;
+      },
+    });
+  };
+
+  const columns: ColumnDef<(typeof entities)[number]>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+    },
+    {
+      accessorKey: "name",
+      header: "Nombre",
+    },
+    {
+      accessorKey: "tag.name",
+      header: "Tag",
+    },
+    {
+      accessorKey: "sucursalOrigenEntity.name",
+      header: "Sucursal de origen",
+    },
+    {
+      accessorKey: "operadorAsociadoEntity.name",
+      header: "Operador asociado",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const entity = row.original;
+
+        if (user)
+          return (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  disabled={entity.tag.name === "Operadores"}
+                >
+                  <span className="sr-only">Abrir menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <EntityOptions
+                  entities={entities}
+                  entity={entity}
+                  tags={tags}
+                  user={user}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+      },
+    },
+  ];
 
   return (
     <div className="mx-auto my-4 flex max-w-4xl flex-col flex-wrap gap-4">
@@ -155,48 +232,35 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="border-transparent bg-transparent p-0 hover:bg-transparent"
-                >
-                  <Switch
-                    id="tagFilterMode"
-                    checked={tagFilterMode === "strict" ? true : false}
-                    onCheckedChange={(checked) =>
-                      setTagFilterMode(checked ? "strict" : "children")
-                    }
-                  />
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent className="flex w-[12rem] flex-row gap-1">
-                <p
-                  className={cn(
-                    tagFilterMode === "strict"
-                      ? "font-semibold"
-                      : "font-light text-gray-300",
-                  )}
-                >
-                  Estricto
-                </p>
-                /
-                <p
-                  className={cn(
-                    tagFilterMode === "children"
-                      ? "font-semibold"
-                      : "font-light text-gray-300",
-                  )}
-                >
-                  Todo el arbol
-                </p>
-              </HoverCardContent>
-            </HoverCard>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                {!isLoading ? (
+                  <Button variant="outline" tooltip="Descargar">
+                    <Icons.download className="h-5" />
+                  </Button>
+                ) : (
+                  <p>Cargando...</p>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuLabel>Extensión</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => onDownloadClick("xlsx")}>
+                    <Icons.excel className="h-4" />
+                    <span>Excel</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         {isSuccess && (
           <div className="flex flex-row space-x-4">
-            <AddEntitiesForm tags={tags} userPermissions={userPermissions} />
+            <AddEntitiesForm
+              entities={entities}
+              tags={tags}
+              userPermissions={userPermissions}
+            />
             <AddTagsForm
               main_name={main_name}
               tags={tags}
@@ -209,31 +273,21 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
         {isLoading ? (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
         ) : filteredEntities.length > 0 ? (
-          <div className="flex flex-col items-start gap-6">
-            <div className="flex flex-wrap justify-center gap-8">
-              {tripleFilteredEntities
-                .slice((page - 1) * pageSize, page * pageSize)
-                .map((entity) => (
-                  <div
-                    key={entity.id}
-                    className="flex flex-col items-center justify-center space-y-2 self-start"
-                  >
-                    <EntityCard entity={entity} />
-                    {isSuccess &&
-                      entity.tag.name !== "Operadores" &&
-                      manageableEntities.find(
-                        (item) => item.name === entity.name,
-                      ) && (
-                        <EntityOptions
-                          entities={entities}
-                          entity={entity}
-                          tags={tags}
-                          user={user}
-                        />
-                      )}
-                  </div>
-                ))}
-            </div>
+          <div className="flex w-full flex-col gap-4">
+            <CustomPagination
+              page={page}
+              totalCount={tripleFilteredEntities.length}
+              pageSize={pageSize}
+              itemName="entidades"
+              changePageState={setPage}
+            />
+            <DataTable
+              columns={columns}
+              data={tripleFilteredEntities.slice(
+                (page - 1) * pageSize,
+                page * pageSize,
+              )}
+            />
             <CustomPagination
               page={page}
               totalCount={tripleFilteredEntities.length}

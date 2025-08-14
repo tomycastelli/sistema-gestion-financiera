@@ -69,7 +69,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({
     });
 
   return (
-    <div className="mx-auto flex w-2/3 flex-row justify-center gap-x-2">
+    <div className="mx-auto flex w-full flex-col justify-center gap-y-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
@@ -83,8 +83,9 @@ const EntityOptions: FC<EntityOptionsProps> = ({
               entity.name === "Madrid"
             }
             variant="outline"
-            className="border-transparent p-1"
+            className="flex flex-row items-center justify-center border-transparent p-1"
           >
+            <p className="mr-1">Eliminar</p>
             <Icons.cross className="h-6 text-red" />
           </Button>
         </AlertDialogTrigger>
@@ -126,7 +127,7 @@ const EntityOptions: FC<EntityOptionsProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <ChangeEntityForm entity={entity} tags={tags} />
+      <ChangeEntityForm entity={entity} tags={tags} entities={entities} />
       <MigrateEntitiesDialog
         originEntity={entity}
         entities={entities}

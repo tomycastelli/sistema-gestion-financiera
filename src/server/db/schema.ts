@@ -281,6 +281,8 @@ export const entities = pgTable(
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     name: text("name").notNull(),
     tagName: text("tagName").notNull(),
+    sucursalOrigen: integer("sucursal_origen"),
+    operadorAsociado: integer("operador_asociado"),
   },
   (table) => {
     return {
@@ -296,6 +298,20 @@ export const entities = pgTable(
         "btree",
         table.tagName.asc().nullsLast(),
       ),
+      entitiesSucursalOrigenEntitiesIdFk: foreignKey({
+        columns: [table.sucursalOrigen],
+        foreignColumns: [table.id],
+        name: "Entities_sucursal_origen_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
+      entitiesOperadorAsociadoEntitiesIdFk: foreignKey({
+        columns: [table.operadorAsociado],
+        foreignColumns: [table.id],
+        name: "Entities_operador_asociado_Entities_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("set null"),
       entitiesTagNameTagNameFk: foreignKey({
         columns: [table.tagName],
         foreignColumns: [tag.name],
@@ -682,6 +698,20 @@ export const entitiesRelations = relations(entities, ({ many, one }) => ({
   tag: one(tag, {
     fields: [entities.tagName],
     references: [tag.name],
+  }),
+  sucursalOrigenEntity: one(entities, {
+    fields: [entities.sucursalOrigen],
+    references: [entities.id],
+    relationName: "sucursalOrigen",
+  }),
+  sucursalOrigenChildren: many(entities, { relationName: "sucursalOrigen" }),
+  operadorAsociadoEntity: one(entities, {
+    fields: [entities.operadorAsociado],
+    references: [entities.id],
+    relationName: "operadorAsociado",
+  }),
+  operadorAsociadoChildren: many(entities, {
+    relationName: "operadorAsociado",
   }),
 }));
 

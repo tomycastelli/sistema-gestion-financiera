@@ -109,8 +109,9 @@ const MigrateEntitiesDialog = ({
           type="button"
           disabled={!filteredEntities.some((e) => e.id === originEntity.id)}
           onClick={() => setIsOpen(true)}
-          className="border-transparent p-1"
+          className="flex flex-row items-center justify-center border-transparent p-1"
         >
+          <p className="mr-1">Migrar</p>
           <Icons.translate className="h-6 text-black dark:text-white" />
         </Button>
       </DialogTrigger>

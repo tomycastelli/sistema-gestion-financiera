@@ -139,11 +139,35 @@ const PendingTransactions: FC<PendingTransactionsProps> = ({
     });
 
   const mainEntity = (
-    fromEntity: RouterOutputs["entities"]["getAll"][number],
-    toEntity: RouterOutputs["entities"]["getAll"][number],
+    fromEntity: {
+      name: string;
+      id: number;
+      tag: {
+        name: string;
+        color: string | null;
+        parent: string | null;
+      };
+    },
+    toEntity: {
+      name: string;
+      id: number;
+      tag: {
+        name: string;
+        color: string | null;
+        parent: string | null;
+      };
+    },
     type: "main" | "other",
     tx: RouterOutputs["operations"]["getPendingTransactions"]["transactions"][number],
-  ): RouterOutputs["entities"]["getAll"][number] => {
+  ): {
+    name: string;
+    id: number;
+    tag: {
+      name: string;
+      color: string | null;
+      parent: string | null;
+    };
+  } => {
     const mainEntity = mainTags.includes(toEntity.tag.name)
       ? toEntity
       : fromEntity;

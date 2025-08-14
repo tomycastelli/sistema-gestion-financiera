@@ -7,14 +7,21 @@ import loadingJson from "~/../public/animations/loading.json";
 import { capitalizeFirstLetter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
 import BalanceTotals from "../BalanceTotals";
 import { Card, CardDescription, CardHeader, CardTitle } from "./card";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 interface EntityCardProps {
-  entity: RouterOutputs["entities"]["getAll"][number];
+  entity: {
+    name: string;
+    id: number;
+    tag: {
+      name: string;
+      color: string | null;
+      parent: string | null;
+    };
+  };
   className?: string;
   disableLinks?: boolean;
 }
