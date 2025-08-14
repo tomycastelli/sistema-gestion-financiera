@@ -83,12 +83,25 @@ export const entitiesRouter = createTRPCRouter({
 
   addOne: protectedLoggedProcedure
     .input(
-      z.object({
-        name: z.string(),
-        tag: z.string(),
-        sucursalOrigen: z.number().int().optional(),
-        operadorAsociado: z.number().int().optional(),
-      }),
+      z
+        .object({
+          name: z.string(),
+          tag: z.string(),
+          sucursalOrigen: z.number().int().optional(),
+          operadorAsociado: z.number().int().optional(),
+        })
+        .refine(
+          (data) => {
+            if (data.tag === "Clientes") {
+              return data.sucursalOrigen && data.operadorAsociado;
+            }
+            return true;
+          },
+          {
+            message:
+              "El cliente debe tener una sucursal de origen y un operador asociado.",
+          },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const userPermissions = await getAllPermissions(
