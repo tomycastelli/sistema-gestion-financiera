@@ -44,179 +44,181 @@ export const editingOperationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const lock = await ctx.redlock.acquire(
-        [`EDITING_TRANSACTION_${input.txId}`],
-        100_000,
-      );
-      if (
-        input.txType === "cuenta corriente" &&
-        ctx.user.email !== "christian@ifc.com.ar" &&
-        ctx.user.email !== "tomas.castelli@ifc.com.ar"
-      ) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
-        });
-      }
-      if (
-        input.newTransactionData.fromEntityId ===
-        input.newTransactionData.toEntityId
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "From and to entities cannot be the same",
-        });
-      }
-      const response = await ctx.db.transaction(
-        async (transaction) => {
-          const [historyResponse2] = await transaction
-            .select({ history: transactionsMetadata.history })
-            .from(transactionsMetadata)
-            .where(eq(transactionsMetadata.transactionId, input.txId));
+        ["EDITING_TRANSACTIONS"],
+        20 * 60 * 1000,
+      ); // 20 minutos
+      try {
+        if (
+          input.txType === "cuenta corriente" &&
+          ctx.user.email !== "christian@ifc.com.ar" &&
+          ctx.user.email !== "tomas.castelli@ifc.com.ar"
+        ) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
+          });
+        }
+        if (
+          input.newTransactionData.fromEntityId ===
+          input.newTransactionData.toEntityId
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "From and to entities cannot be the same",
+          });
+        }
+        const response = await ctx.db.transaction(
+          async (transaction) => {
+            const [historyResponse2] = await transaction
+              .select({ history: transactionsMetadata.history })
+              .from(transactionsMetadata)
+              .where(eq(transactionsMetadata.transactionId, input.txId));
 
-          const oldHistoryJson2 = historyResponse2?.history;
+            const oldHistoryJson2 = historyResponse2?.history;
 
-          const changesMade = findDifferences(
-            input.oldTransactionData,
-            input.newTransactionData,
-            ctx.user.id,
-          );
+            const changesMade = findDifferences(
+              input.oldTransactionData,
+              input.newTransactionData,
+              ctx.user.id,
+            );
 
-          // @ts-ignore
-          let newHistoryJson2 = [];
+            // @ts-ignore
+            let newHistoryJson2 = [];
 
-          if (
-            oldHistoryJson2 &&
-            typeof oldHistoryJson2 === "object" &&
-            Array.isArray(oldHistoryJson2)
-          ) {
-            newHistoryJson2 = [...oldHistoryJson2, changesMade];
-          } else if (oldHistoryJson2 !== undefined) {
-            newHistoryJson2 = [changesMade];
-          }
+            if (
+              oldHistoryJson2 &&
+              typeof oldHistoryJson2 === "object" &&
+              Array.isArray(oldHistoryJson2)
+            ) {
+              newHistoryJson2 = [...oldHistoryJson2, changesMade];
+            } else if (oldHistoryJson2 !== undefined) {
+              newHistoryJson2 = [changesMade];
+            }
 
-          const [newTxObj] = await transaction
-            .update(transactions)
-            .set({
-              fromEntityId: input.newTransactionData.fromEntityId,
-              toEntityId: input.newTransactionData.toEntityId,
-              operatorEntityId: input.newTransactionData.operatorEntityId,
-              currency: input.newTransactionData.currency,
-              amount: input.newTransactionData.amount,
-              category: input.newTransactionData.category,
-              subCategory: input.newTransactionData.subCategory,
-            })
-            .where(eq(transactions.id, input.txId))
-            .returning();
+            const [newTxObj] = await transaction
+              .update(transactions)
+              .set({
+                fromEntityId: input.newTransactionData.fromEntityId,
+                toEntityId: input.newTransactionData.toEntityId,
+                operatorEntityId: input.newTransactionData.operatorEntityId,
+                currency: input.newTransactionData.currency,
+                amount: input.newTransactionData.amount,
+                category: input.newTransactionData.category,
+                subCategory: input.newTransactionData.subCategory,
+              })
+              .where(eq(transactions.id, input.txId))
+              .returning();
 
-          if (!newTxObj) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Transaction to update not found",
-            });
-          }
-          await transaction
-            .update(transactionsMetadata)
-            .set({
-              // @ts-ignore
-              history: newHistoryJson2,
-            })
-            .where(eq(transactionsMetadata.transactionId, input.txId));
+            if (!newTxObj) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Transaction to update not found",
+              });
+            }
+            await transaction
+              .update(transactionsMetadata)
+              .set({
+                // @ts-ignore
+                history: newHistoryJson2,
+              })
+              .where(eq(transactionsMetadata.transactionId, input.txId));
 
-          const entitiesData = await getAllEntities(ctx.redis, ctx.db);
+            const entitiesData = await getAllEntities(ctx.redis, ctx.db);
 
-          const toEntityObj = entitiesData.find(
-            (e) => e.id === input.oldTransactionData.toEntityId,
-          );
+            const toEntityObj = entitiesData.find(
+              (e) => e.id === input.oldTransactionData.toEntityId,
+            );
 
-          const fromEntityObj = entitiesData.find(
-            (e) => e.id === input.oldTransactionData.fromEntityId,
-          );
+            const fromEntityObj = entitiesData.find(
+              (e) => e.id === input.oldTransactionData.fromEntityId,
+            );
 
-          if (!toEntityObj) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
-            });
-          }
-          if (!fromEntityObj) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `La entidad con ID ${input.oldTransactionData.fromEntityId} no fue encontrada`,
-            });
-          }
+            if (!toEntityObj) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `La entidad con ID ${input.oldTransactionData.toEntityId} no fue encontrada`,
+              });
+            }
+            if (!fromEntityObj) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `La entidad con ID ${input.oldTransactionData.fromEntityId} no fue encontrada`,
+              });
+            }
 
-          const deletedMovements = await undoMovements(
-            transaction,
-            {
-              id: newTxObj.id,
-              fromEntity: {
-                id: fromEntityObj.id,
-                tagName: fromEntityObj.tag.name,
-              },
-              toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
-              currency: input.oldTransactionData.currency,
-              amount: input.oldTransactionData.amount,
-            },
-            ctx.redlock,
-          );
-
-          const newFromEntity = entitiesData.find(
-            (e) => e.id === newTxObj.fromEntityId,
-          )!;
-          const newToEntity = entitiesData.find(
-            (e) => e.id === newTxObj.toEntityId,
-          )!;
-
-          const [operation] = await transaction
-            .select()
-            .from(operations)
-            .where(eq(operations.id, newTxObj.operationId));
-
-          const newTxForMovement = {
-            ...newTxObj,
-            fromEntity: {
-              id: newFromEntity.id,
-              tagName: newFromEntity.tag.name,
-            },
-            toEntity: {
-              id: newToEntity.id,
-              tagName: newToEntity.tag.name,
-            },
-            operation: operation!,
-          };
-
-          // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
-          for (const deletedMovement of deletedMovements) {
-            await generateMovements(
+            const deletedMovements = await undoMovements(
               transaction,
-              newTxForMovement,
-              deletedMovement.account,
-              deletedMovement.direction,
-              deletedMovement.type,
+              {
+                id: newTxObj.id,
+                fromEntity: {
+                  id: fromEntityObj.id,
+                  tagName: fromEntityObj.tag.name,
+                },
+                toEntity: { id: toEntityObj.id, tagName: toEntityObj.tag.name },
+                currency: input.oldTransactionData.currency,
+                amount: input.oldTransactionData.amount,
+              },
               ctx.redlock,
             );
-          }
 
-          await lock.release();
+            const newFromEntity = entitiesData.find(
+              (e) => e.id === newTxObj.fromEntityId,
+            )!;
+            const newToEntity = entitiesData.find(
+              (e) => e.id === newTxObj.toEntityId,
+            )!;
 
-          return newTxObj;
-        },
-        {
-          isolationLevel: "serializable",
-          deferrable: true,
-        },
-      );
+            const [operation] = await transaction
+              .select()
+              .from(operations)
+              .where(eq(operations.id, newTxObj.operationId));
 
-      if (response) {
-        await logIO(
-          ctx.dynamodb,
-          ctx.user.id,
-          "Actualizar transacción",
-          input,
-          response,
+            const newTxForMovement = {
+              ...newTxObj,
+              fromEntity: {
+                id: newFromEntity.id,
+                tagName: newFromEntity.tag.name,
+              },
+              toEntity: {
+                id: newToEntity.id,
+                tagName: newToEntity.tag.name,
+              },
+              operation: operation!,
+            };
+
+            // Filtro para loopear los movimientos originales, no los que hacen referencia a los originales
+            for (const deletedMovement of deletedMovements) {
+              await generateMovements(
+                transaction,
+                newTxForMovement,
+                deletedMovement.account,
+                deletedMovement.direction,
+                deletedMovement.type,
+                ctx.redlock,
+              );
+            }
+
+            return newTxObj;
+          },
+          {
+            isolationLevel: "serializable",
+            deferrable: true,
+          },
         );
+
+        if (response) {
+          await logIO(
+            ctx.dynamodb,
+            ctx.user.id,
+            "Actualizar transacción",
+            input,
+            response,
+          );
+        }
+        return response;
+      } finally {
+        await lock.release();
       }
-      return response;
     }),
 
   updateTransactionStatus: protectedLoggedProcedure
@@ -227,96 +229,101 @@ export const editingOperationsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const lock = await ctx.redlock.acquire(
-        input.transactionIds.map((id) => `EDITING_TRANSACTION_${id}`),
-        100_000,
+        ["EDITING_TRANSACTIONS"],
+        20 * 60 * 1000, // 20 minutos
       );
-      const response = await ctx.db.transaction(async (transaction) => {
-        const confirmedTxs = [];
+      try {
+        const response = await ctx.db.transaction(async (transaction) => {
+          const confirmedTxs = [];
 
-        const fromEntity = alias(entities, "fromEntity");
-        const toEntity = alias(entities, "toEntity");
+          const fromEntity = alias(entities, "fromEntity");
+          const toEntity = alias(entities, "toEntity");
 
-        for (const txId of input.transactionIds) {
-          const [transactionData] = await transaction
-            .select()
-            .from(transactions)
-            .leftJoin(fromEntity, eq(transactions.fromEntityId, fromEntity.id))
-            .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
-            .leftJoin(operations, eq(transactions.operationId, operations.id))
-            .where(eq(transactions.id, txId));
+          for (const txId of input.transactionIds) {
+            const [transactionData] = await transaction
+              .select()
+              .from(transactions)
+              .leftJoin(
+                fromEntity,
+                eq(transactions.fromEntityId, fromEntity.id),
+              )
+              .leftJoin(toEntity, eq(transactions.toEntityId, toEntity.id))
+              .leftJoin(operations, eq(transactions.operationId, operations.id))
+              .where(eq(transactions.id, txId));
 
-          if (!transactionData || !transactionData.Operations) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Transaction ${txId} does not exist`,
-            });
+            if (!transactionData || !transactionData.Operations) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Transaction ${txId} does not exist`,
+              });
+            }
+
+            if (
+              transactionData.Transactions.status !== Status.enumValues[2] ||
+              currentAccountOnlyTypes.has(transactionData.Transactions.type)
+            ) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "This transaction cannot be confirmed",
+              });
+            }
+            await transaction
+              .update(transactions)
+              .set({
+                status: Status.enumValues[1],
+              })
+              .where(eq(transactions.id, txId));
+
+            await transaction
+              .update(transactionsMetadata)
+              .set({
+                confirmedBy: ctx.user.id,
+                confirmedDate: new Date(),
+              })
+              .where(eq(transactionsMetadata.transactionId, txId));
+
+            const mappedTransaction = {
+              ...transactionData.Transactions,
+              operation: { date: transactionData.Operations.date },
+              fromEntity: transactionData.fromEntity!,
+              toEntity: transactionData.toEntity!,
+            };
+
+            await generateMovements(
+              transaction,
+              mappedTransaction,
+              false,
+              1,
+              "confirmation",
+              ctx.redlock,
+            );
+            await generateMovements(
+              transaction,
+              mappedTransaction,
+              true,
+              1,
+              "confirmation",
+              ctx.redlock,
+            );
+
+            confirmedTxs.push(mappedTransaction.id);
           }
 
-          if (
-            transactionData.Transactions.status !== Status.enumValues[2] ||
-            currentAccountOnlyTypes.has(transactionData.Transactions.type)
-          ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "This transaction cannot be confirmed",
-            });
-          }
-          await transaction
-            .update(transactions)
-            .set({
-              status: Status.enumValues[1],
-            })
-            .where(eq(transactions.id, txId));
+          return confirmedTxs;
+        });
 
-          await transaction
-            .update(transactionsMetadata)
-            .set({
-              confirmedBy: ctx.user.id,
-              confirmedDate: new Date(),
-            })
-            .where(eq(transactionsMetadata.transactionId, txId));
+        await logIO(
+          ctx.dynamodb,
+          ctx.user.id,
+          "Confirmar transacción",
+          input,
+          response,
+        );
 
-          const mappedTransaction = {
-            ...transactionData.Transactions,
-            operation: { date: transactionData.Operations.date },
-            fromEntity: transactionData.fromEntity!,
-            toEntity: transactionData.toEntity!,
-          };
-
-          await generateMovements(
-            transaction,
-            mappedTransaction,
-            false,
-            1,
-            "confirmation",
-            ctx.redlock,
-          );
-          await generateMovements(
-            transaction,
-            mappedTransaction,
-            true,
-            1,
-            "confirmation",
-            ctx.redlock,
-          );
-
-          confirmedTxs.push(mappedTransaction.id);
-        }
-
-        return confirmedTxs;
-      });
-
-      await lock.release();
-
-      await logIO(
-        ctx.dynamodb,
-        ctx.user.id,
-        "Confirmar transacción",
-        input,
-        response,
-      );
-
-      return response;
+        return response;
+      } finally {
+        await lock.release();
+      }
     }),
   cancelTransaction: protectedLoggedProcedure
     .input(
@@ -326,110 +333,111 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.db.transaction(async (transaction) => {
-        const transactionsToCancel =
-          await transaction.query.transactions.findMany({
-            where: and(
-              input.transactionsId
-                ? inArray(transactions.id, input.transactionsId)
-                : undefined,
-              input.operationId
-                ? eq(transactions.operationId, input.operationId)
-                : undefined,
-              not(eq(transactions.status, Status.enumValues[0])),
-            ),
-            with: {
-              operation: true,
-              movements: true,
-              fromEntity: true,
-              toEntity: true,
-            },
-          });
-
-        if (transactionsToCancel.length === 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Estas trasnacciones ya fueron canceladas",
-          });
-        }
-
-        // Acquire locks for the actual transactions that will be canceled
-        const lockKeys = [
-          ...transactionsToCancel.map((tx) => `EDITING_TRANSACTION_${tx.id}`),
-          ...(input.operationId
-            ? [`EDITING_OPERATION_${input.operationId}`]
-            : []),
-        ];
-        const lock = await ctx.redlock.acquire(lockKeys, 30_000);
-
-        // Transaction cancellation
-        await transaction
-          .update(transactions)
-          .set({ status: Status.enumValues[0] })
-          .where(
-            inArray(
-              transactions.id,
-              transactionsToCancel.map((tx) => tx.id),
-            ),
-          );
-
-        if (input.transactionsId) {
-          await transaction
-            .update(transactionsMetadata)
-            .set({
-              cancelledBy: ctx.user.id,
-              cancelledDate: new Date(),
-            })
-            .where(
-              inArray(transactionsMetadata.transactionId, input.transactionsId),
-            );
-        } else if (input.operationId) {
-          const relatedTxIds = await transaction
-            .select({ id: transactions.id })
-            .from(transactions)
-            .where(eq(transactions.operationId, input.operationId));
-          await transaction
-            .update(transactionsMetadata)
-            .set({
-              cancelledBy: ctx.user.id,
-              cancelledDate: new Date(),
-            })
-            .where(
-              inArray(
-                transactionsMetadata.transactionId,
-                relatedTxIds.map((obj) => obj.id),
-              ),
-            );
-        }
-
-        // Para cancelar, vamos a crear los mismos movimientos con los datos de la transaccion invertidos
-        for (const tx of transactionsToCancel) {
-          for (const mv of tx.movements) {
-            await generateMovements(
-              transaction,
-              tx,
-              mv.account,
-              mv.direction * -1,
-              "cancellation",
-              ctx.redlock,
-            );
-          }
-        }
-
-        await lock.release();
-
-        return transactionsToCancel;
-      });
-
-      await logIO(
-        ctx.dynamodb,
-        ctx.user.id,
-        "Cancelar transacciones",
-        input,
-        response,
+      const lock = await ctx.redlock.acquire(
+        ["EDITING_TRANSACTIONS"],
+        20 * 60 * 1000, // 20 minutos
       );
 
-      return response;
+      try {
+        const response = await ctx.db.transaction(async (transaction) => {
+          const transactionsToCancel =
+            await transaction.query.transactions.findMany({
+              where: and(
+                input.transactionsId
+                  ? inArray(transactions.id, input.transactionsId)
+                  : undefined,
+                input.operationId
+                  ? eq(transactions.operationId, input.operationId)
+                  : undefined,
+                not(eq(transactions.status, Status.enumValues[0])),
+              ),
+              with: {
+                operation: true,
+                movements: true,
+                fromEntity: true,
+                toEntity: true,
+              },
+            });
+
+          if (transactionsToCancel.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Estas trasnacciones ya fueron canceladas",
+            });
+          }
+
+          // Transaction cancellation
+          await transaction
+            .update(transactions)
+            .set({ status: Status.enumValues[0] })
+            .where(
+              inArray(
+                transactions.id,
+                transactionsToCancel.map((tx) => tx.id),
+              ),
+            );
+
+          if (input.transactionsId) {
+            await transaction
+              .update(transactionsMetadata)
+              .set({
+                cancelledBy: ctx.user.id,
+                cancelledDate: new Date(),
+              })
+              .where(
+                inArray(
+                  transactionsMetadata.transactionId,
+                  input.transactionsId,
+                ),
+              );
+          } else if (input.operationId) {
+            const relatedTxIds = await transaction
+              .select({ id: transactions.id })
+              .from(transactions)
+              .where(eq(transactions.operationId, input.operationId));
+            await transaction
+              .update(transactionsMetadata)
+              .set({
+                cancelledBy: ctx.user.id,
+                cancelledDate: new Date(),
+              })
+              .where(
+                inArray(
+                  transactionsMetadata.transactionId,
+                  relatedTxIds.map((obj) => obj.id),
+                ),
+              );
+          }
+
+          // Para cancelar, vamos a crear los mismos movimientos con los datos de la transaccion invertidos
+          for (const tx of transactionsToCancel) {
+            for (const mv of tx.movements) {
+              await generateMovements(
+                transaction,
+                tx,
+                mv.account,
+                mv.direction * -1,
+                "cancellation",
+                ctx.redlock,
+              );
+            }
+          }
+
+          return transactionsToCancel;
+        });
+
+        await logIO(
+          ctx.dynamodb,
+          ctx.user.id,
+          "Cancelar transacciones",
+          input,
+          response,
+        );
+
+        return response;
+      } finally {
+        await lock.release();
+      }
     }),
   changeOpData: protectedLoggedProcedure
     .input(

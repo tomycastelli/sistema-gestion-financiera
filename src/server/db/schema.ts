@@ -94,6 +94,7 @@ export const balances = pgTable(
       })
         .onUpdate("cascade")
         .onDelete("restrict"),
+      // Optimized index for balance lookups in generateMovements
       dateTypeEntAEntBTagCurrencyIdx: index(
         "Balances_date_type_ent_a_ent_b_tag_currency_idx",
       ).using(
@@ -104,6 +105,40 @@ export const balances = pgTable(
         table.ent_b.asc().nullsLast(),
         table.tag.asc().nullsLast(),
         table.currency.asc().nullsLast(),
+      ),
+      // New index for faster balance lookups by type, currency, account, and entities
+      typeCurrencyAccountEntATagIdx: index(
+        "Balances_type_currency_account_ent_a_tag_idx",
+      ).using(
+        "btree",
+        table.type.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
+        table.account.asc().nullsLast(),
+        table.ent_a.asc().nullsLast(),
+        table.tag.asc().nullsLast(),
+        table.date.desc().nullsLast(),
+      ),
+      // New index for balance updates by date range
+      dateTypeCurrencyAccountIdx: index(
+        "Balances_date_type_currency_account_idx",
+      ).using(
+        "btree",
+        table.date.asc().nullsLast(),
+        table.type.asc().nullsLast(),
+        table.currency.asc().nullsLast(),
+        table.account.asc().nullsLast(),
+      ),
+      // Unique constraint for upsert operations in generateMovements
+      balancesUniqueConstraint: uniqueIndex(
+        "Balances_type_currency_account_ent_a_ent_b_tag_date_unique",
+      ).on(
+        table.type,
+        table.currency,
+        table.account,
+        table.ent_a,
+        table.ent_b,
+        table.tag,
+        table.date,
       ),
     };
   },
@@ -263,6 +298,55 @@ export const movements = pgTable(
         "btree",
         table.transactionId.asc().nullsLast(),
         table.account.asc().nullsLast(),
+      ),
+      // New index for movement updates by balance ID and date
+      balanceIdDateIdx: index("Movements_balance_id_date_idx").using(
+        "btree",
+        table.balance_1_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_2a updates
+      balance2aIdDateIdx: index("Movements_balance_2a_id_date_idx").using(
+        "btree",
+        table.balance_2a_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_2b updates
+      balance2bIdDateIdx: index("Movements_balance_2b_id_date_idx").using(
+        "btree",
+        table.balance_2b_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_3a updates
+      balance3aIdDateIdx: index("Movements_balance_3a_id_date_idx").using(
+        "btree",
+        table.balance_3a_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_3b updates
+      balance3bIdDateIdx: index("Movements_balance_3b_id_date_idx").using(
+        "btree",
+        table.balance_3b_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_4a updates
+      balance4aIdDateIdx: index("Movements_balance_4a_id_date_idx").using(
+        "btree",
+        table.balance_4a_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
+      ),
+      // New index for balance_4b updates
+      balance4bIdDateIdx: index("Movements_balance_4b_id_date_idx").using(
+        "btree",
+        table.balance_4b_id.asc().nullsLast(),
+        table.date.asc().nullsLast(),
+        table.id.asc().nullsLast(),
       ),
       movementsTransactionIdTransactionsIdFk: foreignKey({
         columns: [table.transactionId],

@@ -350,11 +350,15 @@ const processBalance = async (
     | "balance_4a_id"
     | "balance_4b_id",
 ) => {
+  const loggingBalanceType = "balance_3a";
+
   // Only log for balance type 4a
-  if (balanceField === "balance_4a") {
+  if (balanceField === loggingBalanceType) {
     logtail.info("processBalance started for balance type 4a", {
       transactionId: tx.id,
       balanceAmount,
+      mvDate,
+      originalMvDate,
     });
   }
 
@@ -401,7 +405,7 @@ const processBalance = async (
   const [beforeBalance] = beforeBalanceResult;
 
   // Only log balance fetch for type 4a
-  if (balanceField === "balance_4a") {
+  if (balanceField === loggingBalanceType) {
     logtail.info("Balance and beforeBalance fetched for type 4a", {
       transactionId: tx.id,
       balance: balance
@@ -424,7 +428,7 @@ const processBalance = async (
   if (!balance) {
     // No previous balance, create a new one
     // mvDate is already normalized to local start of day from generateMovements
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info("No previous balance found, creating new one for type 4a", {
         transactionId: tx.id,
       });
@@ -444,7 +448,7 @@ const processBalance = async (
     if (newBalance) {
       balanceId = newBalance.id;
       finalAmount = newBalance.amount;
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info("New balance created for type 4a", {
           transactionId: tx.id,
           balanceId,
@@ -455,7 +459,7 @@ const processBalance = async (
   } else if (moment(mvDate).isBefore(moment(balance.date), "day")) {
     // Movement date is before the most recent balance
     // Check if we already have a balance for this exact day
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Movement date is before most recent balance, updating existing balance for type 4a",
         {
@@ -473,7 +477,7 @@ const processBalance = async (
     if (!oldBalance) {
       // No balance for this date, create a new one
       // mvDate is already normalized to local start of day from generateMovements
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info("No balance for this date, creating new one for type 4a", {
           transactionId: tx.id,
         });
@@ -494,7 +498,7 @@ const processBalance = async (
 
       balanceId = newBalance!.id;
       finalAmount = newBalance!.amount;
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info("New balance created for this date for type 4a", {
           transactionId: tx.id,
           balanceId,
@@ -503,7 +507,7 @@ const processBalance = async (
       }
     } else {
       // Search for the previous movement on the oldBalance day which is just before the originalMvDate
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info(
           "Previous movement found on oldBalance day, updating balance for type 4a",
           {
@@ -530,6 +534,10 @@ const processBalance = async (
         .orderBy(desc(movements.date), desc(movements.id))
         .limit(1);
 
+      if (previousMovement && balanceField === loggingBalanceType) {
+        console.log("Previous Movement found: ", previousMovement);
+      }
+
       // Note: previous movement amount is inferred inline below
 
       updatedBalancesIds.push(oldBalance.id);
@@ -555,8 +563,12 @@ const processBalance = async (
           : balanceAmount;
       }
 
+      if (balanceField === loggingBalanceType) {
+        console.log("Correct Balance Amount: ", correctBalanceAmount);
+      }
+
       finalAmount = correctBalanceAmount;
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info(
           "Balance updated based on previous movement for type 4a",
           safeSerialize({
@@ -569,7 +581,7 @@ const processBalance = async (
     }
 
     // Update all balances after this date
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Updating balances after this date for type 4a",
         safeSerialize({
@@ -585,7 +597,7 @@ const processBalance = async (
 
     if (updatedBalances) {
       updatedBalancesIds.push(...updatedBalances.map((b) => b.id));
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info(
           "Balances updated after this date for type 4a",
           safeSerialize({
@@ -597,7 +609,7 @@ const processBalance = async (
     }
   } else if (moment(mvDate).isSame(moment(balance.date), "day")) {
     // Movement date is same as most recent balance
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Movement date is same as most recent balance, updating existing balance for type 4a",
         safeSerialize({
@@ -616,7 +628,7 @@ const processBalance = async (
       updatedBalancesIds.push(updatedBalance.id);
       balanceId = updatedBalance.id;
       finalAmount = updatedBalance.amount;
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info(
           "Balance updated for same day for type 4a",
           safeSerialize({
@@ -629,7 +641,7 @@ const processBalance = async (
     }
 
     // Find the latest movement on this day that is before the current originalMvDate
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Finding previous movement on same day for type 4a",
         safeSerialize({
@@ -681,7 +693,7 @@ const processBalance = async (
     }
 
     finalAmount = correctBalanceAmount;
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Balance updated based on previous movement for same day for type 4a",
         safeSerialize({
@@ -694,7 +706,7 @@ const processBalance = async (
   } else {
     // Movement date is after most recent balance
     // mvDate is already normalized to local start of day from generateMovements
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info(
         "Movement date is after most recent balance, creating new balance for type 4a",
         {
@@ -717,7 +729,7 @@ const processBalance = async (
     if (newBalance) {
       balanceId = newBalance.id;
       finalAmount = newBalance.amount;
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info(
           "New balance created for after most recent balance for type 4a",
           {
@@ -748,7 +760,7 @@ const processBalance = async (
 
   // Update all movements whose balance was updated in a single query
   if (updatedBalancesIds.length > 0) {
-    if (balanceField === "balance_4a") {
+    if (balanceField === loggingBalanceType) {
       logtail.info("Updating movements for balance type 4a", {
         transactionId: tx.id,
         updatedBalancesIds,
@@ -781,7 +793,7 @@ const processBalance = async (
     // If this balance type has an opposite type (2a/2b, 3a/3b, 4a/4b),
     // also update movements that reference the opposite balance ID with the same entities
     if (oppositeBalanceIdField && oppositeBalanceField) {
-      if (balanceField === "balance_4a") {
+      if (balanceField === loggingBalanceType) {
         logtail.info("Updating opposite movements for balance type 4a", {
           transactionId: tx.id,
           oppositeBalanceField,
@@ -813,7 +825,7 @@ const processBalance = async (
     }
   }
 
-  if (balanceField === "balance_4a") {
+  if (balanceField === loggingBalanceType) {
     logtail.info("processBalance finished for balance type 4a", {
       transactionId: tx.id,
       balanceId,
