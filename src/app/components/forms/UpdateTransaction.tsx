@@ -64,7 +64,7 @@ const UpdateTransaction = ({
   const utils = api.useContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { mutate, isLoading } =
+  const { mutateAsync, isLoading } =
     api.editingOperations.updateTransactionValues.useMutation({
       async onMutate(newOperation) {
         reset({
@@ -117,10 +117,6 @@ const UpdateTransaction = ({
       onError(err) {
         const prevData =
           utils.operations.getOperations.getData(operationsQueryInput);
-        // Doing some ui actions
-        toast.error("No se pudieron actualizar las transacciones", {
-          description: err.message,
-        });
         return { prevData };
       },
       onSettled() {
@@ -131,7 +127,6 @@ const UpdateTransaction = ({
       },
       onSuccess(data) {
         setIsOpen(false);
-        toast.success(`Transacción ${data.id} editada`);
       },
     });
 
@@ -168,7 +163,7 @@ const UpdateTransaction = ({
   const watchOperatorEntity = watch("operatorEntityId");
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
-    mutate({
+    const promise = mutateAsync({
       txId: tx.id,
       txType: tx.type,
       newTransactionData: {
@@ -189,6 +184,14 @@ const UpdateTransaction = ({
         category: tx.category ?? undefined,
         subCategory: tx.subCategory ?? undefined,
       },
+    });
+
+    toast.promise(promise, {
+      loading: "Modificando transacción...",
+      success: (data) => {
+        return `Transacción ${data.id} modificada`;
+      },
+      error: "No se pudo modificar la transacción",
     });
   };
 

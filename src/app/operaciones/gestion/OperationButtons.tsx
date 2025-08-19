@@ -83,26 +83,12 @@ const OperationButtons: FC<OperationButtonsProps> = ({
           operationsQueryInput,
           ctx?.prevData,
         );
-
-        toast.error(
-          `No se pudo elimianr la operación ${newOperation.operationId} y las transacciones relacionadas`,
-          {
-            description: JSON.stringify(err.message),
-          },
-        );
       },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-      },
-      onSuccess(data, variables) {
-        toast.success(
-          `Operación ${variables.operationId} y ${data.length} ${
-            data.length === 1 ? "transacción" : "transacciones"
-          } cancelada${data.length === 1 ? "" : "s"}`,
-        );
       },
     });
 
@@ -142,13 +128,10 @@ const OperationButtons: FC<OperationButtonsProps> = ({
 
         return { prevData };
       },
-      onError(err) {
+      onError() {
         const prevData =
           utils.operations.getOperations.getData(operationsQueryInput);
 
-        toast.error("Las transacciones no pudieron ser actualizadas", {
-          description: err.message,
-        });
         return { prevData };
       },
       onSettled() {
@@ -156,11 +139,6 @@ const OperationButtons: FC<OperationButtonsProps> = ({
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-      },
-      onSuccess(data) {
-        toast.success(
-          data.length.toString() + " " + "transacciones actualizadas",
-        );
       },
     });
 
@@ -208,14 +186,23 @@ const OperationButtons: FC<OperationButtonsProps> = ({
             <AlertDialogFooter>
               <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() =>
-                  validateAsync({
+                onClick={() => {
+                  const promise = validateAsync({
                     transactionIds: op.transactions.flatMap((tx) => tx.id),
-                  })
-                }
+                  });
+                  toast.promise(promise, {
+                    loading: "Validando transacciones...",
+                    success: (data) => {
+                      return `Operación ${op.id} y ${data.length} ${
+                        data.length === 1 ? "transacción" : "transacciones"
+                      } validada${data.length === 1 ? "" : "s"}`;
+                    },
+                    error: `No se pudo validar la operación ${op.id} y las transacciones relacionadas`,
+                  });
+                }}
                 className="bg-green"
               >
-                Confirmar
+                Confirmar;
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -283,7 +270,18 @@ const OperationButtons: FC<OperationButtonsProps> = ({
               <AlertDialogCancel>Cerrar</AlertDialogCancel>
               <AlertDialogAction
                 disabled={isLoading}
-                onClick={async () => await cancelAsync({ operationId: op.id })}
+                onClick={() => {
+                  const promise = cancelAsync({ operationId: op.id });
+                  toast.promise(promise, {
+                    loading: "Cancelando operación...",
+                    success: (data) => {
+                      return `Operación ${op.id} y ${data.length} ${
+                        data.length === 1 ? "transacción" : "transacciones"
+                      } cancelada${data.length === 1 ? "" : "s"}`;
+                    },
+                    error: `No se pudo elimianr la operación ${op.id} y las transacciones relacionadas`,
+                  });
+                }}
                 className="bg-red"
               >
                 Cancelar
