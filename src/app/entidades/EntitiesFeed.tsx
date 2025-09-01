@@ -9,12 +9,10 @@ import { useState, type FC } from "react";
 import { toast } from "sonner";
 import useSearch from "~/hooks/useSearch";
 import { capitalizeFirstLetter, getAllChildrenTags } from "~/lib/functions";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import loadingJson from "../../../public/animations/loading.json";
 import CustomPagination from "../components/CustomPagination";
-import EntityCard from "../components/ui/EntityCard";
 import { Icons } from "../components/ui/Icons";
 import { Button } from "../components/ui/button";
 import {
@@ -25,11 +23,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "../components/ui/hover-card";
 import { Input } from "../components/ui/input";
 import {
   Select,
@@ -40,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Switch } from "../components/ui/switch";
 import { DataTable } from "../cuentas/DataTable";
 import AddEntitiesForm from "./AddEntitiesForm";
 import AddTagsForm from "./AddTagsForm";
@@ -128,7 +120,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       },
     });
 
-  const onDownloadClick = (fileType: "xlsx") => {
+  const onDownloadClick = () => {
     const promise = getUrlAsync();
 
     toast.promise(promise, {
@@ -153,6 +145,11 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       header: "Tag",
     },
     {
+      accessorKey: "category",
+      header: "Categoría",
+      accessorFn: (row) => capitalizeFirstLetter(row.category ?? ""),
+    },
+    {
       accessorKey: "sucursalOrigenEntity.name",
       header: "Sucursal de origen",
     },
@@ -172,7 +169,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
                 <Button
                   variant="ghost"
                   className="h-8 w-8 p-0"
-                  disabled={entity.tag.name === "Operadores"}
+                  disabled={entity.tag.name === "Maika"}
                 >
                   <span className="sr-only">Abrir menu</span>
                   <MoreHorizontal className="h-4 w-4" />
@@ -245,7 +242,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
               <DropdownMenuContent className="w-56">
                 <DropdownMenuLabel>Extensión</DropdownMenuLabel>
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => onDownloadClick("xlsx")}>
+                  <DropdownMenuItem onClick={() => onDownloadClick()}>
                     <Icons.excel className="h-4" />
                     <span>Excel</span>
                   </DropdownMenuItem>
@@ -282,6 +279,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
               changePageState={setPage}
             />
             <DataTable
+              showCategory={true}
               columns={columns}
               data={tripleFilteredEntities.slice(
                 (page - 1) * pageSize,

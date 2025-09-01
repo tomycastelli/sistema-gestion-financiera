@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { entityCategoryList } from "~/server/db/schema";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import CustomSelector from "../components/forms/CustomSelector";
@@ -28,6 +29,16 @@ import {
   FormMessage,
 } from "../components/ui/form";
 import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 
 interface ChangeEntityFormProps {
   entity: RouterOutputs["entities"]["getAll"][number];
@@ -39,6 +50,8 @@ const FormSchema = z.object({
   name: z.string(),
   sucursalOrigen: z.number().int().optional(),
   operadorAsociado: z.number().int().optional(),
+  enabled: z.boolean(),
+  category: z.enum(entityCategoryList).optional(),
 });
 
 const ChangeEntityForm = ({
@@ -82,6 +95,8 @@ const ChangeEntityForm = ({
                         sucursalOrigenObj.sucursalOrigenEntity?.id ?? null,
                       operadorAsociado:
                         sucursalOrigenObj.operadorAsociadoEntity?.id ?? null,
+                      enabled: sucursalOrigenObj.enabled,
+                      category: sucursalOrigenObj.category,
                     }
                   : null,
                 operadorAsociadoEntity: operadorAsociadoObj
@@ -94,8 +109,12 @@ const ChangeEntityForm = ({
                         operadorAsociadoObj.sucursalOrigenEntity?.id ?? null,
                       operadorAsociado:
                         operadorAsociadoObj.operadorAsociadoEntity?.id ?? null,
+                      enabled: operadorAsociadoObj.enabled,
+                      category: operadorAsociadoObj.category,
                     }
                   : null,
+                category: newOperation.category ?? null,
+                enabled: newOperation.enabled,
               }
             : obj,
         );
@@ -124,6 +143,8 @@ const ChangeEntityForm = ({
       name: entity.name,
       sucursalOrigen: entity.sucursalOrigenEntity?.id,
       operadorAsociado: entity.operadorAsociadoEntity?.id,
+      enabled: entity.enabled,
+      category: entity.category ?? undefined,
     },
   });
 
@@ -139,6 +160,8 @@ const ChangeEntityForm = ({
       tagName: entity.tag.name,
       sucursalOrigen: data.sucursalOrigen,
       operadorAsociado: data.operadorAsociado,
+      category: data.category,
+      enabled: data.enabled,
     });
   }
 
@@ -241,6 +264,56 @@ const ChangeEntityForm = ({
                   />
                 </div>
               )}
+              <FormField
+                control={control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Categoria</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Elegir una categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectLabel>Categorías</SelectLabel>
+                            <SelectItem value="socio">Socio</SelectItem>
+                            <SelectItem value="cliente">Cliente</SelectItem>
+                            <SelectItem value="patrimonial">
+                              Patrimonial
+                            </SelectItem>
+                            <SelectItem value="revisar">Revisar</SelectItem>
+                            <SelectItem value="incobrable">
+                              Incobrable
+                            </SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name="enabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-y-1">
+                    <FormLabel>Habilitado</FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <DialogFooter>
               <DialogClose asChild>

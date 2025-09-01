@@ -10,6 +10,7 @@ import useSearch from "~/hooks/useSearch";
 import { lightenColor, numberFormatter } from "~/lib/functions";
 import { cn } from "~/lib/utils";
 import { currenciesOrder } from "~/lib/variables";
+import { entityCategoryList } from "~/server/db/schema";
 import { useCuentasStore } from "~/stores/cuentasStore";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -108,6 +109,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
       name: z.string(),
       tagName: z.string(),
       status: z.boolean(),
+      enabled: z.boolean(),
+      category: z.enum(entityCategoryList).optional(),
     }),
     data: z.array(z.object({ currency: z.string(), balance: z.number() })),
   });
@@ -162,6 +165,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                 ? entity.name
                 : balance.tag ?? "Sin nombre",
               status: balance.status,
+              enabled: entity.enabled,
+              category: entity.category ?? undefined,
             },
             data: [],
           };
@@ -191,7 +196,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
     .filter(
       (e) =>
         e.entity.id !== selectedEntity?.id &&
-        (onlyActiveEntities ? e.entity.status : true),
+        (onlyActiveEntities ? e.entity.status : true) &&
+        (onlyActiveEntities ? e.entity.enabled : true),
     );
 
   const { mutateAsync: getUrlAsync, isLoading: isUrlLoading } =
@@ -737,6 +743,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
               className={cn(
                 "grid justify-items-center rounded-xl p-3 text-lg font-semibold",
                 !item.entity.status && "opacity-50",
+                !item.entity.enabled && "opacity-20",
               )}
             >
               {isListSelection || isEditListSelection ? (
@@ -910,7 +917,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
                 <span
                   className={cn(
                     "h-4 w-4 rounded-full",
-                    item.entity.status ? "bg-green" : "bg-muted-foreground",
+                    item.entity.status ? "bg-green" : "bg-red",
+                    !item.entity.enabled && "bg-muted-foreground",
                   )}
                 ></span>
               </span>

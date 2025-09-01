@@ -263,7 +263,11 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                     entityTag: selectedTag,
                     detailedBalances: [
                       ...transformedBalances.tableData.map((d) => ({
-                        entity: d.entity,
+                        entity: {
+                          ...d.entity,
+                          enabled: true,
+                          category: undefined,
+                        },
                         data: d.data.map((detail) => ({
                           currency: detail.currency,
                           balance:
@@ -276,6 +280,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                           name: "Total",
                           tagName: main_name,
                           status: true,
+                          enabled: true,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,
@@ -307,7 +312,11 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                     entityTag: selectedTag,
                     detailedBalances: [
                       ...transformedBalances.tableData.map((d) => ({
-                        entity: d.entity,
+                        entity: {
+                          ...d.entity,
+                          enabled: true,
+                          category: undefined,
+                        },
                         data: d.data.map((detail) => ({
                           currency: detail.currency,
                           balance:
@@ -320,6 +329,7 @@ const CashBalancesTable: FC<CashBalancesTableProps> = ({
                           name: "Total",
                           tagName: main_name,
                           status: true,
+                          enabled: true,
                         },
                         data: transformedBalances.totals.map((t) => ({
                           currency: t.currency,

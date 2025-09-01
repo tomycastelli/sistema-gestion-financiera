@@ -8,7 +8,7 @@ import { env } from "~/env.mjs";
 import type { dynamodb } from "~/server/dynamodb";
 import type * as schema from "../server/db/schema";
 import { globalSettings, role } from "../server/db/schema";
-import { getAllChildrenTags } from "./functions";
+import { capitalizeFirstLetter, getAllChildrenTags } from "./functions";
 import { mergePermissions, PermissionSchema } from "./permissionsTypes";
 
 export const getAllPermissions = async (
@@ -124,6 +124,8 @@ export const getAllEntities = async (
     columns: {
       id: true,
       name: true,
+      enabled: true,
+      category: true,
     },
   });
 

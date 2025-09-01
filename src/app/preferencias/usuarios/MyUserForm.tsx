@@ -19,7 +19,7 @@ import {
 } from "~/app/components/ui/form";
 import { Input } from "~/app/components/ui/input";
 import { api } from "~/trpc/react";
-import { RouterOutputs } from "~/trpc/shared";
+import type { RouterOutputs } from "~/trpc/shared";
 
 interface MyUserFormProps {
   user: User;

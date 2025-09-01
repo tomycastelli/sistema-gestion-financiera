@@ -21,11 +21,7 @@ import {
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
 import { logIO } from "~/lib/trpcFunctions";
-import {
-  cashAccountOnlyTypes,
-  currentAccountOnlyTypes,
-  gastoCategories,
-} from "~/lib/variables";
+import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
   entities,
   movements,

@@ -59,7 +59,7 @@ const Page = async () => {
           accountingPeriodDate={accountingPeriodDate}
           tags={tags}
           userPermissions={userPermissions}
-          initialEntities={initialEntities}
+          initialEntities={initialEntities.filter((entity) => entity.enabled)}
           user={user}
           initialOperations={operations}
         />

@@ -145,13 +145,15 @@ const AddOperation = ({
 
   // Create entities map for faster lookups
   const entitiesMap =
-    entities?.reduce(
-      (acc, entity) => {
-        acc[entity.id] = entity;
-        return acc;
-      },
-      {} as Record<number, (typeof entities)[0]>,
-    ) ?? {};
+    entities
+      .filter((entity) => entity.enabled)
+      .reduce(
+        (acc, entity) => {
+          acc[entity.id] = entity;
+          return acc;
+        },
+        {} as Record<number, (typeof entities)[0]>,
+      ) ?? {};
 
   const tabs = ["flexible", "cambio", "cable"];
 
@@ -549,7 +551,7 @@ const AddOperation = ({
                   <FlexibleTransactionsForm
                     mainTags={mainTags}
                     isLoading={isEntitiesLoading}
-                    entities={entities}
+                    entities={entities.filter((entity) => entity.enabled)}
                     user={user}
                   />
                 </TabsContent>
@@ -557,7 +559,7 @@ const AddOperation = ({
                   <CambioForm
                     main_name={main_name}
                     mainTags={mainTags}
-                    entities={entities}
+                    entities={entities.filter((entity) => entity.enabled)}
                     user={user}
                     isLoading={isEntitiesLoading}
                   />
@@ -565,7 +567,7 @@ const AddOperation = ({
                 <TabsContent value="cable">
                   <CableForm
                     mainTags={mainTags}
-                    entities={entities}
+                    entities={entities.filter((entity) => entity.enabled)}
                     user={user}
                   />
                 </TabsContent>
@@ -590,7 +592,7 @@ const AddOperation = ({
       <div className="lg:col-span-1">
         <UploadedUserOperations
           user={user}
-          entities={entities}
+          entities={entities.filter((entity) => entity.enabled)}
           mainTags={mainTags}
           users={users}
           accountingPeriodDate={accountingPeriodDate}

@@ -13,7 +13,7 @@ import {
 } from "~/lib/operationsTrpcFunctions";
 import { getAllEntities } from "~/lib/trpcFunctions";
 import { currenciesOrder, gastoCategories } from "~/lib/variables";
-import { exchangeRates } from "~/server/db/schema";
+import { entityCategoryList, exchangeRates } from "~/server/db/schema";
 import {
   createTRPCRouter,
   protectedLoggedProcedure,
@@ -169,6 +169,10 @@ export const filesRouter = createTRPCRouter({
               input.toEntityId
                 ? "con " + entities.find((e) => e.id === input.toEntityId)?.name
                 : ""
+            } - ${
+              input.entityId
+                ? entities.find((e) => e.id === input.toEntityId)?.category
+                : ""
             }</h1>
           </div>` +
           `
@@ -307,6 +311,8 @@ export const filesRouter = createTRPCRouter({
               name: z.string(),
               tagName: z.string(),
               status: z.boolean(),
+              enabled: z.boolean(),
+              category: z.enum(entityCategoryList).optional(),
             }),
             data: z.array(
               z.object({ currency: z.string(), balance: z.number() }),
@@ -316,7 +322,9 @@ export const filesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const entities = await getAllEntities(ctx.redis, ctx.db);
+      const entities = await getAllEntities(ctx.redis, ctx.db).then((e) =>
+        e.filter((e) => e.enabled),
+      );
       const filename = `saldos_fecha:${moment().format(
         "DD-MM-YYYY-HH:mm:ss",
       )}_entidad:${
@@ -353,6 +361,8 @@ export const filesRouter = createTRPCRouter({
             ...balances,
             unificado: Math.round(unifiedBalance * 100) / 100,
             activo: detailedBalance.entity.status ? "SI" : "NO",
+            habilitado: detailedBalance.entity.enabled ? "SI" : "NO",
+            categoria: detailedBalance.entity.category ?? "",
           };
         });
 
@@ -388,6 +398,7 @@ export const filesRouter = createTRPCRouter({
               .map((currency) => `<p>${currency.toUpperCase()}</p>`)
               .join("")}
             <p>Unificado</p>
+            <p>Categoría</p>
           </div>
           ${input.detailedBalances
             .map((b, index) => {
@@ -421,6 +432,7 @@ export const filesRouter = createTRPCRouter({
                             )
                             .join("")}
                           <p>${numberFormatter(unifiedBalance)}</p>
+                          <p>${b.entity.category ?? ""}</p>
                         </div>`;
             })
             .join("")}
@@ -434,7 +446,7 @@ export const filesRouter = createTRPCRouter({
             }
           .table-row{
           display: grid;
-          grid-template-columns: repeat(${currenciesOrder.length + 2}, 1fr);
+          grid-template-columns: repeat(${currenciesOrder.length + 3}, 1fr);
           gap: 0.1rem;
           border-bottom: 1px solid black;
           padding-bottom: 0.10rem;
@@ -444,7 +456,7 @@ export const filesRouter = createTRPCRouter({
           }
           .table-header{
           display: grid;
-          grid-template-columns: repeat(${currenciesOrder.length + 2}, 1fr);
+          grid-template-columns: repeat(${currenciesOrder.length + 3}, 1fr);
           gap: 0.25rem;
           border-bottom: 2px solid black;
           padding-bottom: 0.25rem;

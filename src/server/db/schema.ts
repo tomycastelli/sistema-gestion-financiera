@@ -359,14 +359,26 @@ export const movements = pgTable(
   },
 );
 
+export const entityCategoryList = [
+  "socio",
+  "cliente",
+  "patrimonial",
+  "revisar",
+  "incobrable",
+] as const;
+
+export const entityCategoryEnum = pgEnum("EntityCategory", entityCategoryList);
+
 export const entities = pgTable(
   "Entities",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     name: text("name").notNull(),
     tagName: text("tagName").notNull(),
+    category: entityCategoryEnum("category"),
     sucursalOrigen: integer("sucursal_origen"),
     operadorAsociado: integer("operador_asociado"),
+    enabled: boolean("enabled").notNull().default(true),
   },
   (table) => {
     return {

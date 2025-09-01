@@ -27,11 +27,13 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  showCategory?: boolean;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  showCategory = false,
 }: DataTableProps<TData, TValue>) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -52,7 +54,7 @@ export function DataTable<TData, TValue>({
         otherEntityId: false,
         selectedEntityId: false,
         txType: false,
-        category: false,
+        category: showCategory,
         subCategory: false,
         metadata: false,
         id: false,

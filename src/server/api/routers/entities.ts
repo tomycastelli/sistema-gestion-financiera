@@ -17,7 +17,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { entities, transactions } from "~/server/db/schema";
+import { entities, entityCategoryList, transactions } from "~/server/db/schema";
 
 export const entitiesRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -27,7 +27,12 @@ export const entitiesRouter = createTRPCRouter({
   }),
 
   getFiltered: protectedProcedure
-    .input(z.object({ permissionName: z.enum(PermissionsNames) }))
+    .input(
+      z.object({
+        permissionName: z.enum(PermissionsNames),
+        enabled: z.boolean().optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const redisKey =
         "entities" + "|" + ctx.user.id + "|" + input.permissionName;
@@ -49,6 +54,9 @@ export const entitiesRouter = createTRPCRouter({
       const entities = await getAllEntities(ctx.redis, ctx.db);
 
       const filteredEntities = entities.filter((entity) => {
+        if (input.enabled && !entity.enabled) {
+          return false;
+        }
         if (
           userPermissions?.find(
             (p) => p.name === "ADMIN" || p.name === input.permissionName,
@@ -223,6 +231,8 @@ export const entitiesRouter = createTRPCRouter({
         tagName: z.string(),
         sucursalOrigen: z.number().int().optional(),
         operadorAsociado: z.number().int().optional(),
+        category: z.enum(entityCategoryList).optional(),
+        enabled: z.boolean(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -256,6 +266,8 @@ export const entitiesRouter = createTRPCRouter({
           name: input.name,
           sucursalOrigen: input.sucursalOrigen,
           operadorAsociado: input.operadorAsociado,
+          category: input.category,
+          enabled: input.enabled,
         })
         .where(eq(entities.id, input.id))
         .returning();
