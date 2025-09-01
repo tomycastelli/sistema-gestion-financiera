@@ -6,7 +6,11 @@ import XLSX from "xlsx";
 import { z } from "zod";
 import { env } from "~/env.mjs";
 import { currentAccountsProcedure } from "~/lib/currentAccountsProcedure";
-import { isNumeric, numberFormatter } from "~/lib/functions";
+import {
+  capitalizeFirstLetter,
+  isNumeric,
+  numberFormatter,
+} from "~/lib/functions";
 import {
   getOperationsInput,
   getOperationsProcedure,
@@ -157,6 +161,7 @@ export const filesRouter = createTRPCRouter({
               : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
           saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
         }));
+        const toEntityObj = entities.find((e) => e.id === input.toEntityId);
         const htmlString =
           `<html>
           <body class="main-container">
@@ -165,13 +170,9 @@ export const filesRouter = createTRPCRouter({
               input.entityId
                 ? entities.find((e) => e.id === input.entityId)?.name
                 : input.entityTag
-            } ${
-              input.toEntityId
-                ? "con " + entities.find((e) => e.id === input.toEntityId)?.name
-                : ""
-            } - ${
-              input.entityId
-                ? entities.find((e) => e.id === input.toEntityId)?.category
+            } ${input.toEntityId ? "con " + toEntityObj?.name : ""} ${
+              input.entityId && toEntityObj?.category
+                ? `${"(" + capitalizeFirstLetter(toEntityObj?.category) + ")"}`
                 : ""
             }</h1>
           </div>` +
@@ -432,7 +433,11 @@ export const filesRouter = createTRPCRouter({
                             )
                             .join("")}
                           <p>${numberFormatter(unifiedBalance)}</p>
-                          <p>${b.entity.category ?? ""}</p>
+                          <p>${
+                            b.entity.category
+                              ? capitalizeFirstLetter(b.entity.category)
+                              : ""
+                          }</p>
                         </div>`;
             })
             .join("")}
