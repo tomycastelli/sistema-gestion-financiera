@@ -3,6 +3,7 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User } from "lucia";
+import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -109,6 +110,52 @@ const FlexibleTransactionsForm = ({
   const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const watchTransactions = watch("transactions");
+
+  // Find the "Gastos" entity
+  const gastosEntity = entities?.find((entity) => entity.name === "Gastos");
+
+  // Effect to automatically change entity to "Gastos" when type is "gasto"
+  useEffect(() => {
+    watchTransactions.forEach((transaction, index) => {
+      if (transaction.type === "gasto" && gastosEntity) {
+        const fromEntity = entities?.find(
+          (e) => e.id.toString() === transaction.fromEntityId,
+        );
+        const toEntity = entities?.find(
+          (e) => e.id.toString() === transaction.toEntityId,
+        );
+
+        // Check if fromEntity is not in mainTags
+        const fromEntityNotInMainTags =
+          fromEntity && !mainTags.includes(fromEntity.tag.name);
+        // Check if toEntity is not in mainTags
+        const toEntityNotInMainTags =
+          toEntity && !mainTags.includes(toEntity.tag.name);
+
+        // If both entities are not in mainTags, prefer changing the toEntity (B)
+        // If only one is not in mainTags, change that one
+        if (fromEntityNotInMainTags && toEntityNotInMainTags) {
+          // Both are not in mainTags, change toEntity (B)
+          setValue(
+            `transactions.${index}.toEntityId`,
+            gastosEntity.id.toString(),
+          );
+        } else if (fromEntityNotInMainTags) {
+          // Only fromEntity is not in mainTags, change it
+          setValue(
+            `transactions.${index}.fromEntityId`,
+            gastosEntity.id.toString(),
+          );
+        } else if (toEntityNotInMainTags) {
+          // Only toEntity is not in mainTags, change it
+          setValue(
+            `transactions.${index}.toEntityId`,
+            gastosEntity.id.toString(),
+          );
+        }
+      }
+    });
+  }, [watchTransactions, entities, mainTags, gastosEntity, setValue]);
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     if (
