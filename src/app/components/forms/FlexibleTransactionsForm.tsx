@@ -3,7 +3,7 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User } from "lucia";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -86,6 +86,9 @@ const FlexibleTransactionsForm = ({
     ? entities?.find((obj) => obj.name === user.name)?.id
     : undefined;
 
+  // Find the "Gastos" entity
+  const gastosEntity = entities?.find((entity) => entity.name === "Gastos");
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -110,52 +113,14 @@ const FlexibleTransactionsForm = ({
   const { addTransactionToStore, transactionsStore } = useTransactionsStore();
 
   const watchTransactions = watch("transactions");
+  const watchType = watch("transactions.0.type");
 
-  // Find the "Gastos" entity
-  const gastosEntity = entities?.find((entity) => entity.name === "Gastos");
-
-  // Effect to automatically change entity to "Gastos" when type is "gasto"
+  // Watch for type changes and automatically set toEntity to "Gastos" when type is "gasto"
   useEffect(() => {
-    watchTransactions.forEach((transaction, index) => {
-      if (transaction.type === "gasto" && gastosEntity) {
-        const fromEntity = entities?.find(
-          (e) => e.id.toString() === transaction.fromEntityId,
-        );
-        const toEntity = entities?.find(
-          (e) => e.id.toString() === transaction.toEntityId,
-        );
-
-        // Check if fromEntity is not in mainTags
-        const fromEntityNotInMainTags =
-          fromEntity && !mainTags.includes(fromEntity.tag.name);
-        // Check if toEntity is not in mainTags
-        const toEntityNotInMainTags =
-          toEntity && !mainTags.includes(toEntity.tag.name);
-
-        // If both entities are not in mainTags, prefer changing the toEntity (B)
-        // If only one is not in mainTags, change that one
-        if (fromEntityNotInMainTags && toEntityNotInMainTags) {
-          // Both are not in mainTags, change toEntity (B)
-          setValue(
-            `transactions.${index}.toEntityId`,
-            gastosEntity.id.toString(),
-          );
-        } else if (fromEntityNotInMainTags) {
-          // Only fromEntity is not in mainTags, change it
-          setValue(
-            `transactions.${index}.fromEntityId`,
-            gastosEntity.id.toString(),
-          );
-        } else if (toEntityNotInMainTags) {
-          // Only toEntity is not in mainTags, change it
-          setValue(
-            `transactions.${index}.toEntityId`,
-            gastosEntity.id.toString(),
-          );
-        }
-      }
-    });
-  }, [watchTransactions, entities, mainTags, gastosEntity, setValue]);
+    if (watchType === "gasto") {
+      setValue(`transactions.0.toEntityId`, gastosEntity?.id.toString() ?? "");
+    }
+  }, [watchType, gastosEntity, setValue]);
 
   const onSubmit = (values: z.infer<typeof FormSchema>) => {
     if (
@@ -239,10 +204,14 @@ const FlexibleTransactionsForm = ({
                         <CustomSelector
                           isLoading={isLoading}
                           placeholder="Entidad"
-                          data={entities.map((entity) => ({
-                            value: entity.id.toString(),
-                            label: entity.name,
-                          }))}
+                          data={entities
+                            .filter(
+                              (entity) => entity.tag.name !== "Operadores",
+                            )
+                            .map((entity) => ({
+                              value: entity.id.toString(),
+                              label: entity.name,
+                            }))}
                           field={field}
                           fieldName={`transactions.${index}.fromEntityId`}
                         />
@@ -423,12 +392,17 @@ const FlexibleTransactionsForm = ({
                         <CustomSelector
                           isLoading={isLoading}
                           placeholder="Entidad"
-                          data={entities.map((entity) => ({
-                            value: entity.id.toString(),
-                            label: entity.name,
-                          }))}
+                          data={entities
+                            .filter(
+                              (entity) => entity.tag.name !== "Operadores",
+                            )
+                            .map((entity) => ({
+                              value: entity.id.toString(),
+                              label: entity.name,
+                            }))}
                           field={field}
                           fieldName={`transactions.${index}.toEntityId`}
+                          disabled={watchTransactions[index]?.type === "gasto"}
                         />
                         {watchTransactions[index]?.toEntityId && (
                           <EntityCard

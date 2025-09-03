@@ -29,6 +29,7 @@ interface CustomSelectorProps {
   buttonClassName?: string;
   isLoading?: boolean;
   isMultiSelect?: boolean;
+  disabled?: boolean;
 }
 
 const CustomSelector = ({
@@ -39,6 +40,7 @@ const CustomSelector = ({
   buttonClassName,
   isLoading,
   isMultiSelect,
+  disabled,
 }: CustomSelectorProps) => {
   const [open, setOpen] = React.useState(false);
   const { setValue } = useFormContext();
@@ -54,6 +56,7 @@ const CustomSelector = ({
             !field.value && "text-muted-foreground",
             buttonClassName,
           )}
+          disabled={disabled}
         >
           {isLoading
             ? "Cargando..."

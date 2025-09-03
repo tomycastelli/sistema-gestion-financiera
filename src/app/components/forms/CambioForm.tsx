@@ -512,7 +512,11 @@ const CambioPair = ({
               <FormLabel>Cliente</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter((entity) => entity.tag.name !== main_name)
+                  .filter(
+                    (entity) =>
+                      entity.tag.name !== main_name &&
+                      entity.tag.name !== "Operadores",
+                  )
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,

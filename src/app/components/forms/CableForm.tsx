@@ -268,10 +268,12 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                   <FormLabel>Entidad Emisora</FormLabel>
                   <>
                     <CustomSelector
-                      data={entities.map((entity) => ({
-                        value: entity.id.toString(),
-                        label: entity.name,
-                      }))}
+                      data={entities
+                        .filter((entity) => entity.tag.name !== "Operadores")
+                        .map((entity) => ({
+                          value: entity.id.toString(),
+                          label: entity.name,
+                        }))}
                       field={field}
                       fieldName="emittingEntity"
                       placeholder="Elegir"
@@ -408,10 +410,12 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                     <FormLabel>Entidad Puente</FormLabel>
                     <>
                       <CustomSelector
-                        data={entities.map((entity) => ({
-                          value: entity.id.toString(),
-                          label: entity.name,
-                        }))}
+                        data={entities
+                          .filter((entity) => entity.tag.name !== "Operadores")
+                          .map((entity) => ({
+                            value: entity.id.toString(),
+                            label: entity.name,
+                          }))}
                         field={field}
                         fieldName="bridgeEntity"
                         placeholder="Elegir"
@@ -463,10 +467,12 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                   <FormLabel>Entidad Receptora</FormLabel>
                   <>
                     <CustomSelector
-                      data={entities.map((entity) => ({
-                        value: entity.id.toString(),
-                        label: entity.name,
-                      }))}
+                      data={entities
+                        .filter((entity) => entity.tag.name !== "Operadores")
+                        .map((entity) => ({
+                          value: entity.id.toString(),
+                          label: entity.name,
+                        }))}
                       field={field}
                       fieldName="receivingEntity"
                       placeholder="Elegir"
