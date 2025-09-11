@@ -108,31 +108,15 @@ const AddOperation = ({
 
         return { prevData };
       },
-      onError(err) {
-        toast.error(
-          "No se pudo cargar la operación y las transacciones relacionadas",
-          {
-            description: err.message,
-          },
-        );
-      },
       onSettled() {
         void utils.operations.getOperations.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
       },
-      onSuccess(data) {
+      onSuccess() {
         setIsInitialDataSubmitted(false);
         resetTransactionsStore();
         resetOperationData();
         resetConfirmationAtUpload();
-        const transaccionesCargadas = data.transactions.length;
-        toast.success(
-          transaccionesCargadas > 1
-            ? transaccionesCargadas.toString() +
-                ` transacciones cargadas a la operación ${data.operation?.id}`
-            : transaccionesCargadas +
-                ` transaccion cargada a la operación ${data.operation?.id}`,
-        );
       },
     },
   );
@@ -348,7 +332,7 @@ const AddOperation = ({
                     <Button
                       className="w-full"
                       disabled={transactionsStore.length === 0}
-                      onClick={async () => {
+                      onClick={() => {
                         const transactionsMapped = transactionsStore.map(
                           (transaction) => ({
                             formId: transaction.txId,
@@ -397,7 +381,7 @@ const AddOperation = ({
                               action: {
                                 label: "Confirmar",
                                 onClick: () => {
-                                  void (async () => {
+                                  const promise = (async () => {
                                     const response = await mutateAsync({
                                       opDate:
                                         opDate.date === "now"
@@ -431,39 +415,69 @@ const AddOperation = ({
                                           .map((tx) => tx.id),
                                       });
                                     }
+                                    return response;
                                   })();
+
+                                  toast.promise(promise, {
+                                    loading: "Cargando operación...",
+                                    success: (data) => {
+                                      const transaccionesCargadas =
+                                        data.transactions.length;
+                                      return transaccionesCargadas > 1
+                                        ? `${transaccionesCargadas} transacciones cargadas a la operación ${data.operation?.id}`
+                                        : `${transaccionesCargadas} transacción cargada a la operación ${data.operation?.id}`;
+                                    },
+                                    error:
+                                      "No se pudo cargar la operación y las transacciones relacionadas",
+                                  });
                                 },
                               },
                             },
                           );
                         } else {
-                          const response = await mutateAsync({
-                            opDate:
-                              opDate.date === "now"
-                                ? new Date()
-                                : moment(
-                                    moment(opDate.data.opDate).format(
-                                      "DD-MM-YYYY",
-                                    ) + opDate.data.opTime,
-                                    "DD-MM-YYYY HH:mm",
-                                  ).toDate(),
-                            opObservations: observations,
-                            opId: selectedOpId,
-                            transactions: transactionsMapped,
-                            confirmRepeatedTransactions: false,
-                          });
-                          if (confirmationAtUpload.length > 0) {
-                            await updateStatus({
-                              transactionIds: response.transactions
-                                .filter(
-                                  (tx) =>
-                                    tx.status === Status.enumValues[2] &&
-                                    !currentAccountOnlyTypes.has(tx.type) &&
-                                    confirmationAtUpload.includes(tx.formId),
-                                )
-                                .map((tx) => tx.id),
+                          const promise = (async () => {
+                            const response = await mutateAsync({
+                              opDate:
+                                opDate.date === "now"
+                                  ? new Date()
+                                  : moment(
+                                      moment(opDate.data.opDate).format(
+                                        "DD-MM-YYYY",
+                                      ) + opDate.data.opTime,
+                                      "DD-MM-YYYY HH:mm",
+                                    ).toDate(),
+                              opObservations: observations,
+                              opId: selectedOpId,
+                              transactions: transactionsMapped,
+                              confirmRepeatedTransactions: false,
                             });
-                          }
+                            if (confirmationAtUpload.length > 0) {
+                              await updateStatus({
+                                transactionIds: response.transactions
+                                  .filter(
+                                    (tx) =>
+                                      tx.status === Status.enumValues[2] &&
+                                      !currentAccountOnlyTypes.has(tx.type) &&
+                                      confirmationAtUpload.includes(tx.formId),
+                                  )
+                                  .map((tx) => tx.id),
+                              });
+                            }
+                            return response;
+                          })();
+
+                          toast.promise(promise, {
+                            loading: "Cargando operación...",
+                            success: (data) => {
+                              const transaccionesCargadas =
+                                data.transactions.length;
+                              return transaccionesCargadas > 1
+                                ? `${transaccionesCargadas} transacciones cargadas a la operación ${data.operation?.id}`
+                                : `${transaccionesCargadas} transacción cargada a la operación ${data.operation?.id}`;
+                            },
+                            error:
+                              "No se pudo cargar la operación y las transacciones relacionadas",
+                          });
                         }
                       }}
                     >

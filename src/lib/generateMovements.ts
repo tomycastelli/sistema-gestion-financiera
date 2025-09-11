@@ -167,7 +167,12 @@ export const generateMovements = async (
   });
 
   // Use a global lock for all balance calculations to ensure complete serialization
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 180_000);
+  // Dynamic lock duration: longer for historical operations that require more database queries
+  const isHistoricalOperation =
+    tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+  const lockDuration = isHistoricalOperation ? 600_000 : 180_000; // 10 minutes for historical, 3 minutes for recent
+
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], lockDuration);
 
   try {
     // Removed lock acquisition logging

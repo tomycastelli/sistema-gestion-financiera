@@ -45,8 +45,10 @@ export const undoMovements = async (
     currency: tx.currency,
   });
 
-  // Use a global lock for all balance calculations to ensure complete serialization
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], 180_000);
+  // Use longer lock duration for undo operations as they can be complex and involve historical data
+  const lockDuration = 300_000; // 5 minutes for undo operations
+
+  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], lockDuration);
 
   try {
     // Delete the movement
