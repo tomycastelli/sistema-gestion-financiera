@@ -331,7 +331,7 @@ const AddOperation = ({
                     )}
                     <Button
                       className="w-full"
-                      disabled={transactionsStore.length === 0}
+                      disabled={transactionsStore.length === 0 || isLoading}
                       onClick={() => {
                         const transactionsMapped = transactionsStore.map(
                           (transaction) => ({
