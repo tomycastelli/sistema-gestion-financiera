@@ -82,6 +82,7 @@ export const generateMovements = async (
   direction: number,
   type: string,
   redlock: Redlock,
+  isMigration = false,
 ) => {
   // Only log essential info for balance type 4a tracking
   logtail.info("generateMovements started", {
@@ -93,7 +94,8 @@ export const generateMovements = async (
 
   // Si es caja, quiero que sea siempre la fecha mas nueva, asi va arriba de todo
   // For account transactions, use current time; for regular transactions, use operation date
-  const originalMvDate = account ? new Date() : tx.operation.date;
+  const originalMvDate =
+    account && !isMigration ? new Date() : tx.operation.date;
 
   // Normalize to start of day using server's LOCAL timezone (UTC-3)
   // Construct the Date at local midnight to avoid implicit UTC conversions (e.g. 03:00)

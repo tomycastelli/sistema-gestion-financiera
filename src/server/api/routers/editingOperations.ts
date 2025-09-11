@@ -43,30 +43,30 @@ export const editingOperationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        input.txType === "cuenta corriente" &&
+        ctx.user.email !== "christian@ifc.com.ar" &&
+        ctx.user.email !== "tomas.castelli@ifc.com.ar"
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
+        });
+      }
+      if (
+        input.newTransactionData.fromEntityId ===
+        input.newTransactionData.toEntityId
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "From and to entities cannot be the same",
+        });
+      }
       const lock = await ctx.redlock.acquire(
         ["EDITING_TRANSACTIONS"],
         20 * 60 * 1000,
       ); // 20 minutos
       try {
-        if (
-          input.txType === "cuenta corriente" &&
-          ctx.user.email !== "christian@ifc.com.ar" &&
-          ctx.user.email !== "tomas.castelli@ifc.com.ar"
-        ) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: `User with email: ${ctx.user.email} is not authorized to update current account transactions`,
-          });
-        }
-        if (
-          input.newTransactionData.fromEntityId ===
-          input.newTransactionData.toEntityId
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "From and to entities cannot be the same",
-          });
-        }
         const response = await ctx.db.transaction(
           async (transaction) => {
             const [historyResponse2] = await transaction
@@ -531,6 +531,11 @@ export const editingOperationsRouter = createTRPCRouter({
         });
       }
 
+      const lock = await ctx.redlock.acquire(
+        ["EDITING_TRANSACTIONS"],
+        30 * 60 * 1000, // 30 minutos
+      );
+
       const response = await ctx.db.transaction(
         async (transaction) => {
           // Get all operations where the entity is involved
@@ -548,12 +553,6 @@ export const editingOperationsRouter = createTRPCRouter({
                 eq(transactions.operatorEntityId, input.entityId),
               ),
             );
-
-          // Acquire locks for all affected operations
-          const operationLocks = relatedOperations.map(
-            (op) => `EDITING_OPERATION_${op.Operations.id}`,
-          );
-          const lock = await ctx.redlock.acquire(operationLocks, 30_000);
 
           // For each operation
           for (const operation of relatedOperations) {
@@ -620,8 +619,6 @@ export const editingOperationsRouter = createTRPCRouter({
 
           await deletePattern(ctx.redis, "entities*");
 
-          await lock.release();
-
           return { success: true, deletedOperations: relatedOperations.length };
         },
         {
@@ -629,7 +626,7 @@ export const editingOperationsRouter = createTRPCRouter({
           deferrable: true,
         },
       );
-
+      await lock.release();
       await logIO(
         ctx.dynamodb,
         ctx.user.id,
@@ -665,6 +662,10 @@ export const editingOperationsRouter = createTRPCRouter({
           message: "User does not have permission to migrate entities",
         });
       }
+      const lock = await ctx.redlock.acquire(
+        ["EDITING_TRANSACTIONS"],
+        30 * 60 * 1000, // 30 minutos
+      ); // 20 minutos
       // Chequeamos que no tengan transacciones entre sí
       const conflictingTransactions = await ctx.db
         .select({
@@ -708,15 +709,6 @@ export const editingOperationsRouter = createTRPCRouter({
             .where(eq(transactions.toEntityId, input.originEntityId))
             .returning({ id: transactions.id }),
         ]);
-
-        // Acquire locks for all affected transactions
-        const allAffectedTxIds = [...newEntityTxsFrom, ...newEntityTxsTo].map(
-          (t) => t.id,
-        );
-        const lock = await ctx.redlock.acquire(
-          allAffectedTxIds.map((id) => `EDITING_TRANSACTION_${id}`),
-          30_000,
-        );
 
         const fromEntity = alias(entities, "fromEntity");
         const toEntity = alias(entities, "toEntity");
@@ -784,6 +776,7 @@ export const editingOperationsRouter = createTRPCRouter({
               mv.direction,
               mv.type,
               ctx.redlock,
+              true,
             );
           }
         }

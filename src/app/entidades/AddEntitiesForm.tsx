@@ -38,14 +38,33 @@ import {
   SelectValue,
 } from "../components/ui/select";
 
-const FormSchema = z.object({
-  name: z
-    .string()
-    .max(40, { message: "El nombre tiene que ser menor a 40 caracteres" }),
-  tag: z.string().min(1),
-  sucursalOrigen: z.number().int().optional(),
-  operadorAsociado: z.number().int().optional(),
-});
+const FormSchema = z
+  .object({
+    name: z
+      .string()
+      .max(40, { message: "El nombre tiene que ser menor a 40 caracteres" }),
+    tag: z.string().min(1),
+    sucursalOrigen: z.number().int().optional(),
+    operadorAsociado: z.number().int().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.tag === "Clientes") {
+      if (!val.sucursalOrigen) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["sucursalOrigen"],
+          message: "El cliente debe tener una sucursal de origen",
+        });
+      }
+      if (!val.operadorAsociado) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["operadorAsociado"],
+          message: "El cliente debe tener un operador asociado",
+        });
+      }
+    }
+  });
 
 interface AddEntitiesFormProps {
   tags: RouterOutputs["tags"]["getFiltered"];
