@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, not, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import moment from "moment";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
 import { generateMovements } from "~/lib/generateMovements";
@@ -259,7 +260,11 @@ export const editingOperationsRouter = createTRPCRouter({
             }
 
             // Chequeamos si alguna operación tiene una fecha en el futuro
-            if (transactionData.Operations.date > new Date()) {
+            if (
+              moment(transactionData.Operations.date)
+                .utc()
+                .isAfter(moment().utc())
+            ) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
                 message:

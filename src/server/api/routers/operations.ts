@@ -87,7 +87,10 @@ export const operationsRouter = createTRPCRouter({
           cashAccountOnlyTypes.has(tx.type) || tx.type === "pago por cta cte",
       );
 
-      if (hasCashMovements && input.opDate > new Date()) {
+      if (
+        hasCashMovements &&
+        moment(input.opDate).utc().isAfter(moment().utc())
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
