@@ -16,6 +16,7 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { findDuplicateObjects } from "~/lib/functions";
 import { generateMovements } from "~/lib/generateMovements";
+import { notificationService } from "~/lib/notifications";
 import {
   getOperationsInput,
   getOperationsProcedure,
@@ -77,6 +78,20 @@ export const operationsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "La cantidad de transacciones de cambio debe ser par",
+        });
+      }
+
+      // Check if any transaction generates cash movements and operation date is in the future
+      const hasCashMovements = input.transactions.some(
+        (tx) =>
+          cashAccountOnlyTypes.has(tx.type) || tx.type === "pago por cta cte",
+      );
+
+      if (hasCashMovements && input.opDate > new Date()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "No se pueden crear operaciones con movimientos de efectivo en fechas futuras",
         });
       }
       const duplicates = findDuplicateObjects(input.transactions, [
@@ -249,6 +264,21 @@ export const operationsRouter = createTRPCRouter({
         input,
         response,
       );
+
+      // Si la operación genero algun movimiento de efectivo en el pasado, se agrega una notificación al usuario de Isabela
+      if (
+        hasCashMovements &&
+        ctx.user.id !== "hvpd693383cli1a" &&
+        input.opDate < new Date(Date.now() - 15 * 60 * 1000)
+      ) {
+        await notificationService.addNotification({
+          message: `${
+            ctx.user.name
+          } insertó una operación con movimientos de efectivo con fecha ${input.opDate.toLocaleDateString()}. Hace click para verla.`,
+          userIds: ["hvpd693383cli1a"],
+          link: `/operaciones/gestion/${response.operation.id}`,
+        });
+      }
 
       return response;
     }),

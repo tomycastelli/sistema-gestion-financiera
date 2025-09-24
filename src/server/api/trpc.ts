@@ -16,8 +16,8 @@ import { db } from "~/server/db";
 import { redis } from "~/server/redis";
 import { getUser } from "../auth";
 import { dynamodb } from "../dynamodb";
-import { s3 } from "../s3";
 import { redlock } from "../redlock";
+import { s3 } from "../s3";
 
 /**
  * 1. CONTEXT

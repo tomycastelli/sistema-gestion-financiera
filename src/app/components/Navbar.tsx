@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { getAllChildrenTags } from "~/lib/functions";
 import { getUser } from "~/server/auth";
 import { api } from "~/trpc/server";
-import ChatsNav from "./ChatsNav";
-import LoadingAnimation from "./LoadingAnimation";
 import NavMenu from "./NavMenu";
+import NotificationsPopover from "./NotificationsPopover";
 import { ThemeToggler } from "./ThemeToggler";
 import {
   Accordion,
@@ -134,11 +132,7 @@ const Navbar = async () => {
         {user && (
           <div className="hidden lg:block">
             <div className="flex flex-row items-center gap-x-4">
-              <Suspense
-                fallback={<LoadingAnimation text="Cargando chats" size="sm" />}
-              >
-                <ChatsNav />
-              </Suspense>
+              <NotificationsPopover />
               <UserInfo user={user} />
               <CommandMenu mainTags={mainTags} />
               <ThemeToggler />
@@ -190,13 +184,7 @@ const Navbar = async () => {
                   </Accordion>
                   <CommandMenu mainTags={mainTags} />
                   <UserInfo user={user} />
-                  <Suspense
-                    fallback={
-                      <LoadingAnimation text="Cargando chats" size="sm" />
-                    }
-                  >
-                    <ChatsNav />
-                  </Suspense>
+                  <NotificationsPopover />
                 </div>
               </SheetContent>
             </Sheet>

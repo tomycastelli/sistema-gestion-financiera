@@ -258,6 +258,15 @@ export const editingOperationsRouter = createTRPCRouter({
               });
             }
 
+            // Chequeamos si alguna operación tiene una fecha en el futuro
+            if (transactionData.Operations.date > new Date()) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "Esta operación tiene una fecha en el futuro. No se pueden añadir movimientos de caja en fechas futuras.",
+              });
+            }
+
             if (
               transactionData.Transactions.status !== Status.enumValues[2] ||
               currentAccountOnlyTypes.has(transactionData.Transactions.type)
@@ -776,7 +785,6 @@ export const editingOperationsRouter = createTRPCRouter({
               mv.direction,
               mv.type,
               ctx.redlock,
-              true,
             );
           }
         }

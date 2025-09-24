@@ -427,8 +427,8 @@ const AddOperation = ({
                                         ? `${transaccionesCargadas} transacciones cargadas a la operación ${data.operation?.id}`
                                         : `${transaccionesCargadas} transacción cargada a la operación ${data.operation?.id}`;
                                     },
-                                    error:
-                                      "No se pudo cargar la operación y las transacciones relacionadas",
+                                    error: (error) =>
+                                      `No se pudo cargar la operación y las transacciones relacionadas: ${error.message}`,
                                   });
                                 },
                               },
@@ -475,8 +475,8 @@ const AddOperation = ({
                                 ? `${transaccionesCargadas} transacciones cargadas a la operación ${data.operation?.id}`
                                 : `${transaccionesCargadas} transacción cargada a la operación ${data.operation?.id}`;
                             },
-                            error:
-                              "No se pudo cargar la operación y las transacciones relacionadas",
+                            error: (error) =>
+                              `No se pudo cargar la operación y las transacciones relacionadas: ${error.message}`,
                           });
                         }
                       }}
