@@ -16,6 +16,7 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { findDuplicateObjects } from "~/lib/functions";
 import { generateMovements } from "~/lib/generateMovements";
+import logtail from "~/lib/logger";
 import { notificationService } from "~/lib/notifications";
 import {
   getOperationsInput,
@@ -87,7 +88,18 @@ export const operationsRouter = createTRPCRouter({
           cashAccountOnlyTypes.has(tx.type) || tx.type === "pago por cta cte",
       );
 
-      if (hasCashMovements && moment(input.opDate).isAfter(moment().add(30, 'minutes'))) {
+      if (
+        hasCashMovements &&
+        moment(input.opDate).isAfter(moment().add(30, "minutes"))
+      ) {
+        void logtail.error(
+          "No se pueden crear operaciones con movimientos de efectivo en fechas futuras",
+          {
+            opDate: input.opDate,
+            now: moment().toDate(),
+            diff: moment(input.opDate).diff(moment(), "minutes"),
+          },
+        );
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
