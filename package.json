@@ -3,7 +3,7 @@
   "version": "v0.6.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
     "lint": "oxlint .",
     "start": "next start",
     "generate": "drizzle-kit generate",
