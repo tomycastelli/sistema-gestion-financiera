@@ -260,7 +260,11 @@ export const editingOperationsRouter = createTRPCRouter({
             }
 
             // Chequeamos si alguna operación tiene una fecha en el futuro
-            if (moment(transactionData.Operations.date).isAfter(moment())) {
+            if (
+              moment(transactionData.Operations.date).isAfter(
+                moment().add(30, "minutes"),
+              )
+            ) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
                 message:
