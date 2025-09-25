@@ -203,7 +203,11 @@ const AddEntitiesForm: FC<AddEntitiesFormProps> = ({
                       </FormControl>
                       <SelectContent>
                         {tags
-                          .filter((tag) => tag.name !== "Operadores")
+                          .filter((tag) =>
+                            userPermissions?.find((p) => p.name === "ADMIN")
+                              ? true
+                              : tag.name !== "Maika",
+                          )
                           .map((tag) => (
                             <SelectItem key={tag.name} value={tag.name}>
                               {capitalizeFirstLetter(tag.name)}
