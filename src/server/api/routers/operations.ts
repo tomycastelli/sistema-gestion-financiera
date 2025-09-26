@@ -287,7 +287,7 @@ export const operationsRouter = createTRPCRouter({
           message: `${
             ctx.user.name
           } insertó una operación con movimientos de efectivo con fecha ${input.opDate.toLocaleDateString()}. Hace click para verla.`,
-          userIds: ["hvpd693383cli1a"],
+          userIds: ["hvpd693383cli1a", "lbk2h0ekf7w3qb3"],
           link: `/operaciones/gestion/${response.operation.id}`,
         });
       }
