@@ -281,7 +281,7 @@ export const operationsRouter = createTRPCRouter({
       if (
         hasCashMovements &&
         ctx.user.id !== "hvpd693383cli1a" &&
-        input.opDate < new Date(Date.now() - 15 * 60 * 1000)
+        moment(input.opDate).isBefore(moment().subtract(30, "minutes"))
       ) {
         await notificationService.addNotification({
           message: `${

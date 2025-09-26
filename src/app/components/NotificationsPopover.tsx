@@ -58,7 +58,7 @@ const NotificationRow = ({
     <div
       style={style}
       className={cn(
-        "flex cursor-pointer items-start gap-3 border-b border-border/50 p-3 transition-colors hover:bg-accent/50",
+        "flex cursor-pointer items-start gap-3 border-b border-border/50 p-4 transition-colors hover:bg-accent/50",
       )}
       onClick={() => onNotificationClick(notification)}
     >
@@ -68,11 +68,11 @@ const NotificationRow = ({
           notification.viewedAt && "bg-gray-600",
         )}
       />
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium text-foreground">
+      <div className="flex h-full min-w-0 flex-1 flex-col justify-between">
+        <p className="text-sm font-medium leading-relaxed text-foreground">
           {notification.message}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {formatTimestamp(notification.timestamp)}
         </p>
       </div>
@@ -110,10 +110,14 @@ export default function NotificationsPopover({}: NotificationsPopoverProps) {
 
   const handlePopoverOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open) {
-      // When popover is closed, refetch notifications and reset unread count
-      void refetchNotifications();
+    if (open) {
+      // Wait 200ms before refetching
+      setTimeout(() => {
+        void refetchUnreadCount();
+      }, 200);
       void refetchUnreadCount();
+    } else {
+      void refetchNotifications();
     }
   };
 
@@ -137,26 +141,30 @@ export default function NotificationsPopover({}: NotificationsPopoverProps) {
           <h3 className="font-semibold text-foreground">Notificationes</h3>
         </div>
         <ScrollArea className="h-96">
-          {isLoadingNotifications ? (
-            <LoadingAnimation text="Cargando notificaciones" />
-          ) : notifications && notifications.length > 0 ? (
-            <List
-              rowComponent={NotificationRow}
-              rowCount={notifications.length}
-              rowHeight={65}
-              rowProps={{
-                notifications,
-                onNotificationClick: handleNotificationClick,
-              }}
-            />
-          ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <Icons.notification className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p className="text-sm">No hay notificaciones</p>
+          <div className="h-full">
+            {isLoadingNotifications ? (
+              <LoadingAnimation text="Cargando notificaciones" />
+            ) : notifications && notifications.length > 0 ? (
+              <List
+                rowComponent={NotificationRow}
+                rowCount={notifications.length}
+                rowHeight={120}
+                rowProps={{
+                  notifications: notifications.sort(
+                    (a, b) => b.timestamp - a.timestamp,
+                  ),
+                  onNotificationClick: handleNotificationClick,
+                }}
+              />
+            ) : (
+              <div className="flex h-32 items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <Icons.notification className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p className="text-sm">No hay notificaciones</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </ScrollArea>
       </PopoverContent>
     </Popover>

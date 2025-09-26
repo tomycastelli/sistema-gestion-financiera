@@ -115,6 +115,7 @@ export class NotificationService {
         };
 
         // Mark as viewed if not already viewed
+        console.log("notification", notification);
         if (!notification.viewedAt) {
           notification.viewedAt = now;
           const notificationKey = `${this.NOTIFICATION_PREFIX}${notification.id}`;

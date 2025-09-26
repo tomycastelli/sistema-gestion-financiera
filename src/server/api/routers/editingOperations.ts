@@ -5,6 +5,7 @@ import moment from "moment";
 import { z } from "zod";
 import { findDifferences } from "~/lib/functions";
 import { generateMovements } from "~/lib/generateMovements";
+import { notificationService } from "~/lib/notifications";
 import { deletePattern, getAllEntities, logIO } from "~/lib/trpcFunctions";
 import { undoMovements } from "~/lib/undoMovements";
 import { currentAccountOnlyTypes } from "~/lib/variables";
@@ -233,6 +234,7 @@ export const editingOperationsRouter = createTRPCRouter({
         ["EDITING_TRANSACTIONS"],
         20 * 60 * 1000, // 20 minutos
       );
+      const confirmedOpsInPast = new Map<number, Date>();
       try {
         const response = await ctx.db.transaction(async (transaction) => {
           const confirmedTxs = [];
@@ -281,6 +283,18 @@ export const editingOperationsRouter = createTRPCRouter({
                 message: "This transaction cannot be confirmed",
               });
             }
+
+            if (
+              moment(transactionData.Operations.date).isBefore(
+                moment().subtract(30, "minutes"),
+              )
+            ) {
+              confirmedOpsInPast.set(
+                transactionData.Operations.id,
+                transactionData.Operations.date,
+              );
+            }
+
             await transaction
               .update(transactions)
               .set({
@@ -333,6 +347,33 @@ export const editingOperationsRouter = createTRPCRouter({
           input,
           response,
         );
+
+        if (confirmedOpsInPast.size > 0 && ctx.user.id !== "hvpd693383cli1a") {
+          let message = "";
+          if (confirmedOpsInPast.size === 1) {
+            message = `${
+              ctx.user.name
+            } confirmó una operación con movimientos de efectivo con fecha ${confirmedOpsInPast
+              .values()
+              .next()
+              .value?.toLocaleDateString()}.`;
+          } else {
+            message = `${
+              ctx.user.name
+            } confirmó operaciones con movimientos de efectivo con fechas ${Array.from(
+              confirmedOpsInPast.values(),
+            )
+              .map((op) => op.toLocaleDateString())
+              .join(", ")}.`;
+          }
+          await notificationService.addNotification({
+            message,
+            userIds: ["hvpd693383cli1a", "lbk2h0ekf7w3qb3"],
+            link: `/operaciones/gestion/${
+              confirmedOpsInPast.keys().next().value
+            }`,
+          });
+        }
 
         return response;
       } finally {
