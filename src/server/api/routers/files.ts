@@ -79,54 +79,145 @@ export const filesRouter = createTRPCRouter({
         }`;
 
         if (input.fileType === "xlsx") {
-          // Process all data in a single sheet with memory optimization
-          const csvData = tableData.map((mv) => ({
-            operacionId: mv.operationId,
-            transaccionId: mv.transactionId,
-            movementId: mv.id,
-            fecha: mv.date,
-            origen: mv.selectedEntity,
-            origen_id: mv.selectedEntityId,
-            cliente: mv.otherEntity,
-            cliente_id: mv.otherEntityId,
-            detalle: mv.observations ?? "",
-            tipo: `${
-              mv.type === "upload"
-                ? "Carga"
-                : mv.type === "confirmation"
-                ? "Confirmación"
-                : "Cancelación"
-            } de ${mv.txType}`,
-            // @ts-ignore
-            tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
-            categoria: mv.category ?? "",
-            subcategoria: mv.subCategory ?? "",
-            divisa: mv.currency,
-            entrada: mv.ingress,
-            salida: mv.egress,
-            saldo: mv.balance,
-            activo: mv.isActive ? "SI" : "NO",
-          }));
+          // Memory-optimized approach for large datasets
+          const LARGE_DATASET_THRESHOLD = 10000;
+          const isLargeDataset = tableData.length > LARGE_DATASET_THRESHOLD;
 
-          const workbook = XLSX.utils.book_new();
-          const worksheet = XLSX.utils.json_to_sheet(csvData);
-          XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+          if (isLargeDataset) {
+            // Use streaming approach for large datasets to reduce memory usage
+            const workbook = XLSX.utils.book_new();
+            const CHUNK_SIZE = 2000; // Smaller chunks for Docker memory constraints
 
-          const xlsxBuffer = XLSX.write(workbook, {
-            bookType: "xlsx",
-            type: "buffer",
-            compression: true, // Enable compression for large files
-          });
+            // Process data in chunks and build worksheet incrementally
+            let processedRows = 0;
+            let allProcessedData: Array<{
+              operacionId: number;
+              transaccionId: number;
+              movementId: number;
+              fecha: Date;
+              origen: string;
+              origen_id: number;
+              cliente: string;
+              cliente_id: number;
+              detalle: string;
+              tipo: string;
+              tipo_de_cambio: string;
+              categoria: string;
+              subcategoria: string;
+              divisa: string;
+              entrada: number;
+              salida: number;
+              saldo: number;
+              activo: string;
+            }> = [];
 
-          const putCommand = new PutObjectCommand({
-            Bucket: ctx.s3.bucketNames.reports,
-            Key: `cuentas/${filename}`,
-            Body: xlsxBuffer,
-            ContentType:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          });
+            for (let i = 0; i < tableData.length; i += CHUNK_SIZE) {
+              const chunk = tableData.slice(i, i + CHUNK_SIZE);
+              const chunkData = chunk.map((mv) => ({
+                operacionId: mv.operationId,
+                transaccionId: mv.transactionId,
+                movementId: mv.id,
+                fecha: mv.date,
+                origen: mv.selectedEntity,
+                origen_id: mv.selectedEntityId,
+                cliente: mv.otherEntity,
+                cliente_id: mv.otherEntityId,
+                detalle: mv.observations ?? "",
+                tipo: `${
+                  mv.type === "upload"
+                    ? "Carga"
+                    : mv.type === "confirmation"
+                    ? "Confirmación"
+                    : "Cancelación"
+                } de ${mv.txType}`,
+                // @ts-ignore
+                tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+                categoria: mv.category ?? "",
+                subcategoria: mv.subCategory ?? "",
+                divisa: mv.currency,
+                entrada: mv.ingress,
+                salida: mv.egress,
+                saldo: mv.balance,
+                activo: mv.isActive ? "SI" : "NO",
+              }));
 
-          await ctx.s3.client.send(putCommand);
+              allProcessedData = allProcessedData.concat(chunkData);
+              processedRows += chunk.length;
+            }
+
+            // Create worksheet from all processed data
+            const worksheet = XLSX.utils.json_to_sheet(allProcessedData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+            // Clear the large array to free memory before writing
+            allProcessedData = [];
+
+            const xlsxBuffer = XLSX.write(workbook, {
+              bookType: "xlsx",
+              type: "buffer",
+              compression: true,
+              cellStyles: false, // Disable cell styles to save memory
+            });
+
+            const putCommand = new PutObjectCommand({
+              Bucket: ctx.s3.bucketNames.reports,
+              Key: `cuentas/${filename}`,
+              Body: xlsxBuffer,
+              ContentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+
+            await ctx.s3.client.send(putCommand);
+          } else {
+            // Standard approach for smaller datasets
+            const csvData = tableData.map((mv) => ({
+              operacionId: mv.operationId,
+              transaccionId: mv.transactionId,
+              movementId: mv.id,
+              fecha: mv.date,
+              origen: mv.selectedEntity,
+              origen_id: mv.selectedEntityId,
+              cliente: mv.otherEntity,
+              cliente_id: mv.otherEntityId,
+              detalle: mv.observations ?? "",
+              tipo: `${
+                mv.type === "upload"
+                  ? "Carga"
+                  : mv.type === "confirmation"
+                  ? "Confirmación"
+                  : "Cancelación"
+              } de ${mv.txType}`,
+              // @ts-ignore
+              tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+              categoria: mv.category ?? "",
+              subcategoria: mv.subCategory ?? "",
+              divisa: mv.currency,
+              entrada: mv.ingress,
+              salida: mv.egress,
+              saldo: mv.balance,
+              activo: mv.isActive ? "SI" : "NO",
+            }));
+
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(csvData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+            const xlsxBuffer = XLSX.write(workbook, {
+              bookType: "xlsx",
+              type: "buffer",
+              compression: true,
+            });
+
+            const putCommand = new PutObjectCommand({
+              Bucket: ctx.s3.bucketNames.reports,
+              Key: `cuentas/${filename}`,
+              Body: xlsxBuffer,
+              ContentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+
+            await ctx.s3.client.send(putCommand);
+          }
         } else if (input.fileType === "pdf") {
           const data = tableData.map((mv) => ({
             transaccionId: mv.transactionId,
