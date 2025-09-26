@@ -35,135 +35,145 @@ export const filesRouter = createTRPCRouter({
         .omit({ pageSize: true, pageNumber: true }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { movementsQuery: tableData } = await currentAccountsProcedure(
-        {
-          entityTag: input.entityTag,
-          entityId: input.entityId,
-          currency: input.currency,
-          account: input.account,
-          fromDate: input.fromDate,
-          toDate: input.toDate,
-          pageSize: 100000,
-          pageNumber: 1,
-          dayInPast: input.dayInPast,
-          toEntityId: input.toEntityId,
-          groupInTag: input.groupInTag,
-          dateOrdering: input.dateOrdering,
-          ignoreSameTag: input.ignoreSameTag,
-          balanceType: input.balanceType,
-        },
-        ctx,
-      );
+      try {
+        const { movementsQuery: tableData } = await currentAccountsProcedure(
+          {
+            entityTag: input.entityTag,
+            entityId: input.entityId,
+            currency: input.currency,
+            account: input.account,
+            fromDate: input.fromDate,
+            toDate: input.toDate,
+            pageSize: 100000,
+            pageNumber: 1,
+            dayInPast: input.dayInPast,
+            toEntityId: input.toEntityId,
+            groupInTag: input.groupInTag,
+            dateOrdering: input.dateOrdering,
+            ignoreSameTag: input.ignoreSameTag,
+            balanceType: input.balanceType,
+          },
+          ctx,
+        );
 
-      const entities = await getAllEntities(ctx.redis, ctx.db);
+        console.log(`Processing ${tableData.length} rows for XLSX generation`);
 
-      const filename = `${
-        input.account === false ? "cuenta_corriente" : "caja"
-      }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${
-        input.entityId
-          ? entities.find((e) => e.id === input.entityId)?.name
-          : input.entityTag
-      }${
-        input.fromDate
-          ? `_desde:${moment(input.fromDate).format("DD-MM-YYYY")}`
-          : ""
-      }${
-        input.toDate
-          ? `_hasta:${moment(input.toDate).format("DD-MM-YYYY")}`
-          : ""
-      }${input.currency ? `_divisa:${input.currency}` : ""}.${input.fileType}`;
+        const entities = await getAllEntities(ctx.redis, ctx.db);
 
-      if (input.fileType === "xlsx") {
-        const csvData = tableData.map((mv) => ({
-          operacionId: mv.operationId,
-          transaccionId: mv.transactionId,
-          movementId: mv.id,
-          fecha: mv.date,
-          origen: mv.selectedEntity,
-          origen_id: mv.selectedEntityId,
-          cliente: mv.otherEntity,
-          cliente_id: mv.otherEntityId,
-          detalle: mv.observations ?? "",
-          tipo: `${
-            mv.type === "upload"
-              ? "Carga"
-              : mv.type === "confirmation"
-              ? "Confirmación"
-              : "Cancelación"
-          } de ${mv.txType}`,
-          // @ts-ignore
-          tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
-          categoria: mv.category ?? "",
-          subcategoria: mv.subCategory ?? "",
-          divisa: mv.currency,
-          entrada: mv.ingress,
-          salida: mv.egress,
-          saldo: mv.balance,
-          activo: mv.isActive ? "SI" : "NO",
-        }));
+        const filename = `${
+          input.account === false ? "cuenta_corriente" : "caja"
+        }_fecha:${moment().format("DD-MM-YYYY-HH:mm:ss")}_entidad:${
+          input.entityId
+            ? entities.find((e) => e.id === input.entityId)?.name
+            : input.entityTag
+        }${
+          input.fromDate
+            ? `_desde:${moment(input.fromDate).format("DD-MM-YYYY")}`
+            : ""
+        }${
+          input.toDate
+            ? `_hasta:${moment(input.toDate).format("DD-MM-YYYY")}`
+            : ""
+        }${input.currency ? `_divisa:${input.currency}` : ""}.${
+          input.fileType
+        }`;
 
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.json_to_sheet(csvData);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-        const xlsxBuffer = XLSX.write(workbook, {
-          bookType: "xlsx",
-          type: "buffer",
-        });
-
-        const putCommand = new PutObjectCommand({
-          Bucket: ctx.s3.bucketNames.reports,
-          Key: `cuentas/${filename}`,
-          Body: xlsxBuffer,
-          ContentType:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-
-        await ctx.s3.client.send(putCommand);
-      } else if (input.fileType === "pdf") {
-        const data = tableData.map((mv) => ({
-          transaccionId: mv.transactionId,
-          id: mv.id,
-          fecha: moment(mv.date).format("DD-MM-YY"),
-          origen: mv.selectedEntity,
-          cliente: mv.otherEntity,
-          transactionStatus: mv.transactionStatus,
-          detalle: {
-            observations: mv.observations ?? "",
-            type: `${
+        if (input.fileType === "xlsx") {
+          // Process all data in a single sheet with memory optimization
+          const csvData = tableData.map((mv) => ({
+            operacionId: mv.operationId,
+            transaccionId: mv.transactionId,
+            movementId: mv.id,
+            fecha: mv.date,
+            origen: mv.selectedEntity,
+            origen_id: mv.selectedEntityId,
+            cliente: mv.otherEntity,
+            cliente_id: mv.otherEntityId,
+            detalle: mv.observations ?? "",
+            tipo: `${
               mv.type === "upload"
                 ? "Carga"
                 : mv.type === "confirmation"
                 ? "Confirmación"
                 : "Cancelación"
-            } de ${mv.txType} - Nro ${mv.id}${
-              // @ts-ignore
-              mv.metadata && isNumeric(mv.metadata.exchange_rate)
-                ? // @ts-ignore
-                  ` - $${mv.metadata.exchange_rate}`
-                : ""
-            }`,
-            categorySection:
-              mv.txType === "gasto"
-                ? gastoCategories.find((c) => c.value === mv.category)?.label +
-                  " - " +
-                  gastoCategories
-                    .flatMap((c) => c.subCategories)
-                    .find((c) => c.value === mv.subCategory)?.label
-                : "",
-          },
-          entrada:
-            mv.ingress === 0
-              ? ""
-              : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
-          salida:
-            mv.egress === 0
-              ? ""
-              : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
-          saldo: mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
-        }));
-        const toEntityObj = entities.find((e) => e.id === input.toEntityId);
-        const htmlString =
-          `<html>
+            } de ${mv.txType}`,
+            // @ts-ignore
+            tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+            categoria: mv.category ?? "",
+            subcategoria: mv.subCategory ?? "",
+            divisa: mv.currency,
+            entrada: mv.ingress,
+            salida: mv.egress,
+            saldo: mv.balance,
+            activo: mv.isActive ? "SI" : "NO",
+          }));
+
+          const workbook = XLSX.utils.book_new();
+          const worksheet = XLSX.utils.json_to_sheet(csvData);
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+          const xlsxBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "buffer",
+            compression: true, // Enable compression for large files
+          });
+
+          const putCommand = new PutObjectCommand({
+            Bucket: ctx.s3.bucketNames.reports,
+            Key: `cuentas/${filename}`,
+            Body: xlsxBuffer,
+            ContentType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+
+          await ctx.s3.client.send(putCommand);
+        } else if (input.fileType === "pdf") {
+          const data = tableData.map((mv) => ({
+            transaccionId: mv.transactionId,
+            id: mv.id,
+            fecha: moment(mv.date).format("DD-MM-YY"),
+            origen: mv.selectedEntity,
+            cliente: mv.otherEntity,
+            transactionStatus: mv.transactionStatus,
+            detalle: {
+              observations: mv.observations ?? "",
+              type: `${
+                mv.type === "upload"
+                  ? "Carga"
+                  : mv.type === "confirmation"
+                  ? "Confirmación"
+                  : "Cancelación"
+              } de ${mv.txType} - Nro ${mv.id}${
+                // @ts-ignore
+                mv.metadata && isNumeric(mv.metadata.exchange_rate)
+                  ? // @ts-ignore
+                    ` - $${mv.metadata.exchange_rate}`
+                  : ""
+              }`,
+              categorySection:
+                mv.txType === "gasto"
+                  ? gastoCategories.find((c) => c.value === mv.category)
+                      ?.label +
+                    " - " +
+                    gastoCategories
+                      .flatMap((c) => c.subCategories)
+                      .find((c) => c.value === mv.subCategory)?.label
+                  : "",
+            },
+            entrada:
+              mv.ingress === 0
+                ? ""
+                : mv.currency.toUpperCase() + " " + numberFormatter(mv.ingress),
+            salida:
+              mv.egress === 0
+                ? ""
+                : mv.currency.toUpperCase() + " " + numberFormatter(mv.egress),
+            saldo:
+              mv.currency.toUpperCase() + " " + numberFormatter(mv.balance),
+          }));
+          const toEntityObj = entities.find((e) => e.id === input.toEntityId);
+          const htmlString =
+            `<html>
           <body class="main-container">
           <div class="header-div">
             <h1 class="title">Cuenta corriente de ${
@@ -176,7 +186,7 @@ export const filesRouter = createTRPCRouter({
                 : ""
             }</h1>
           </div>` +
-          `
+            `
           <div class="table-container">
           <table class="table">
           <thead class="table-header">
@@ -229,7 +239,7 @@ export const filesRouter = createTRPCRouter({
             </body>
             </html>`;
 
-        const cssString = `.table-container{margin-top: 0.5rem;}
+          const cssString = `.table-container{margin-top: 0.5rem;}
           .table{width: 100%; border-collapse: collapse;}
           .table-header{font-size: 1rem; font-weight: 600; text-align: center;}
           .table th,
@@ -267,37 +277,50 @@ export const filesRouter = createTRPCRouter({
             margin: 2rem;
           }`;
 
-        try {
-          await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-api-key": env.LAMBDA_API_KEY,
-            },
-            body: JSON.stringify({
-              htmlString,
-              cssString,
-              bucketName: ctx.s3.bucketNames.reports,
-              fileKey: `cuentas/${filename}`,
-            }),
-          });
-        } catch (e) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: JSON.stringify(e),
-          });
+          try {
+            await fetch(`${env.LAMBDA_API_ENDPOINT}/dev/pdf`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": env.LAMBDA_API_KEY,
+              },
+              body: JSON.stringify({
+                htmlString,
+                cssString,
+                bucketName: ctx.s3.bucketNames.reports,
+                fileKey: `cuentas/${filename}`,
+              }),
+            });
+          } catch (e) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: JSON.stringify(e),
+            });
+          }
         }
+
+        const getCommand = new GetObjectCommand({
+          Bucket: ctx.s3.bucketNames.reports,
+          Key: `cuentas/${filename}`,
+        });
+
+        const downloadUrl = await ctx.s3.getSignedUrl(
+          ctx.s3.client,
+          getCommand,
+          {
+            expiresIn: 300,
+          },
+        );
+        return { downloadUrl, filename };
+      } catch (error) {
+        console.error("Error generating XLSX file:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to generate XLSX file: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        });
       }
-
-      const getCommand = new GetObjectCommand({
-        Bucket: ctx.s3.bucketNames.reports,
-        Key: `cuentas/${filename}`,
-      });
-
-      const downloadUrl = await ctx.s3.getSignedUrl(ctx.s3.client, getCommand, {
-        expiresIn: 300,
-      });
-      return { downloadUrl, filename };
     }),
   detailedBalancesFile: protectedLoggedProcedure
     .input(
