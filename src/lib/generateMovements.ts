@@ -165,7 +165,6 @@ export const generateMovements = async (
   });
 
   // Use a global lock for all balance calculations to ensure complete serialization
-  // Dynamic lock duration: longer for historical operations that require more database queries
   const isHistoricalOperation =
     tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
   const lockDuration = isHistoricalOperation ? 600_000 : 180_000; // 10 minutes for historical, 3 minutes for recent

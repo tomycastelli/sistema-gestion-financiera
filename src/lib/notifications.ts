@@ -20,7 +20,7 @@ export interface NotificationData {
 export class NotificationService {
   private readonly NOTIFICATION_PREFIX = "notification:";
   private readonly USER_NOTIFICATIONS_PREFIX = "user_notifications:";
-  private readonly DEFAULT_EXPIRY_DAYS = 7;
+  private readonly DEFAULT_EXPIRY_DAYS = 14;
 
   /**
    * Add a new notification for multiple users

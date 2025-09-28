@@ -10,17 +10,23 @@ const getRedisUrl = () => {
   throw new Error("REDIS_URL is not defined");
 };
 
-const redis = new Redis(getRedisUrl(), { enableAutoPipelining: true });
+const redis = new Redis(getRedisUrl(), {
+  enableAutoPipelining: true,
+  maxRetriesPerRequest: 10,
+  lazyConnect: true,
+  keepAlive: 60000,
+  connectTimeout: 15000,
+  commandTimeout: 12000,
+  enableReadyCheck: true,
+});
 
 export const redlock = new Redlock([redis], {
   // Clock drift factor - how much clock drift to account for
   driftFactor: 0.01,
 
-  // Improved retry settings for better reliability with single Redis instance
-  retryCount: 25, // Increased from 10 for more attempts
-  retryDelay: 1000, // Reduced from 2000ms to 1000ms for faster retries
-  retryJitter: 500, // Increased jitter from 100ms to 500ms for better distribution
+  retryCount: 200,
+  retryDelay: 500,
+  retryJitter: 200,
 
-  // Automatic lock extension settings
-  automaticExtensionThreshold: 2000, // Extend lock 2 seconds before expiry (increased from 1000ms)
+  automaticExtensionThreshold: 3000, // Extend lock 3 second before expiry
 });
