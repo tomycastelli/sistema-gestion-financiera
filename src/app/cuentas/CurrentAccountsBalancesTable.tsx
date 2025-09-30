@@ -226,6 +226,8 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
     dataSet: detailedBalances,
     keys: ["entity.name"],
     scoreThreshold: 0.55,
+    initialValue:
+      entities.find((e) => e.id === destinationEntityId)?.name ?? "",
   });
 
   const {

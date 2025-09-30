@@ -18,6 +18,46 @@ import {
 } from "~/server/db/schema";
 import { createTRPCRouter, protectedLoggedProcedure } from "../trpc";
 
+// Helper function to format transaction changes for notifications
+const formatTransactionChanges = (
+  changesData: Array<{ key: string; before: unknown; after: unknown }>,
+): string => {
+  if (!changesData || changesData.length === 0) {
+    return "Sin cambios específicos.";
+  }
+
+  const changeDescriptions = changesData.map((change) => {
+    const { key, before, after } = change;
+
+    // Format field names for better readability
+    const fieldNames: Record<string, string> = {
+      fromEntityId: "Origen",
+      toEntityId: "Destino",
+      operatorEntityId: "Operador",
+      currency: "Moneda",
+      amount: "Monto",
+      category: "Categoría",
+      subCategory: "Subcategoría",
+    };
+
+    const fieldName = fieldNames[key] || key;
+
+    // Format values based on type
+    let beforeValue = String(before);
+    let afterValue = String(after);
+
+    if (typeof before === "number" && typeof after === "number") {
+      // Format numbers with proper locale
+      beforeValue = new Intl.NumberFormat("es-AR").format(before);
+      afterValue = new Intl.NumberFormat("es-AR").format(after);
+    }
+
+    return `• ${fieldName}: ${beforeValue} → ${afterValue}`;
+  });
+
+  return changeDescriptions.join("\n");
+};
+
 export const editingOperationsRouter = createTRPCRouter({
   updateTransactionValues: protectedLoggedProcedure
     .input(
@@ -69,6 +109,12 @@ export const editingOperationsRouter = createTRPCRouter({
         20 * 60 * 1000,
       ); // 20 minutos
       try {
+        const changesMade = findDifferences(
+          input.oldTransactionData,
+          input.newTransactionData,
+          ctx.user.id,
+        );
+
         const response = await ctx.db.transaction(
           async (transaction) => {
             const [historyResponse2] = await transaction
@@ -77,12 +123,6 @@ export const editingOperationsRouter = createTRPCRouter({
               .where(eq(transactionsMetadata.transactionId, input.txId));
 
             const oldHistoryJson2 = historyResponse2?.history;
-
-            const changesMade = findDifferences(
-              input.oldTransactionData,
-              input.newTransactionData,
-              ctx.user.id,
-            );
 
             // @ts-ignore
             let newHistoryJson2 = [];
@@ -216,6 +256,29 @@ export const editingOperationsRouter = createTRPCRouter({
             input,
             response,
           );
+
+          if (ctx.user.id !== "hvpd693383cli1a") {
+            const [operation] = await ctx.db
+              .select({ date: operations.date })
+              .from(operations)
+              .where(eq(operations.id, response.operationId));
+
+            const formattedChanges = formatTransactionChanges(
+              changesMade.change_data as Array<{
+                key: string;
+                before: unknown;
+                after: unknown;
+              }>,
+            );
+
+            await notificationService.addNotification({
+              message: `${ctx.user.name} actualizó la transacción ${
+                response.id
+              } con fecha ${operation?.date.toLocaleDateString()}.\n\nCambios realizados:\n${formattedChanges}`,
+              userIds: ["hvpd693383cli1a", "lbk2h0ekf7w3qb3"],
+              link: `/operaciones/gestion/${response.operationId}`,
+            });
+          }
         }
         return response;
       } finally {

@@ -231,6 +231,60 @@ export const requests = pgTable(
   },
 );
 
+export const notifications = pgTable(
+  "Notifications",
+  {
+    id: text("id").primaryKey().notNull(),
+    message: text("message").notNull(),
+    link: text("link"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    viewedAt: timestamp("viewed_at", { mode: "date" }),
+    expiryDays: integer("expiry_days").default(14).notNull(),
+  },
+  (table) => {
+    return {
+      createdAtIdx: index("Notifications_created_at_idx").using(
+        "btree",
+        table.createdAt.desc().nullsLast(),
+      ),
+    };
+  },
+);
+
+export const notificationUsers = pgTable(
+  "NotificationUsers",
+  {
+    notificationId: text("notification_id").notNull(),
+    userId: text("user_id").notNull(),
+  },
+  (table) => {
+    return {
+      notificationUsersNotificationIdNotificationsIdFk: foreignKey({
+        columns: [table.notificationId],
+        foreignColumns: [notifications.id],
+        name: "NotificationUsers_notification_id_Notifications_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      notificationUsersUserIdUserIdFk: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [user.id],
+        name: "NotificationUsers_user_id_User_id_fk",
+      })
+        .onUpdate("cascade")
+        .onDelete("cascade"),
+      notificationUsersNotificationIdUserIdPk: primaryKey({
+        columns: [table.notificationId, table.userId],
+        name: "NotificationUsers_notification_id_user_id_pk",
+      }),
+      userIdIdx: index("NotificationUsers_user_id_idx").using(
+        "btree",
+        table.userId.asc().nullsLast(),
+      ),
+    };
+  },
+);
+
 export const exchangeRates = pgTable(
   "exchange_rates",
   {
@@ -774,6 +828,9 @@ export const returnedTransactionsMetadataSchema =
   createSelectSchema(transactionsMetadata);
 export const returnedUserSchema = createSelectSchema(user);
 export const returnedTagSchema = createSelectSchema(tag);
+export const returnedNotificationsSchema = createSelectSchema(notifications);
+export const returnedNotificationUsersSchema =
+  createSelectSchema(notificationUsers);
 
 export const tagsManyRelations = relations(tag, ({ many, one }) => ({
   entities: many(entities),
@@ -939,3 +996,21 @@ export const requestsOneRelations = relations(requests, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const notificationsRelations = relations(notifications, ({ many }) => ({
+  users: many(notificationUsers),
+}));
+
+export const notificationUsersRelations = relations(
+  notificationUsers,
+  ({ one }) => ({
+    notification: one(notifications, {
+      fields: [notificationUsers.notificationId],
+      references: [notifications.id],
+    }),
+    user: one(user, {
+      fields: [notificationUsers.userId],
+      references: [user.id],
+    }),
+  }),
+);

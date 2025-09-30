@@ -5,14 +5,16 @@ interface IUseSearchProps<T> {
   dataSet: T[];
   keys: string[];
   scoreThreshold?: number;
+  initialValue?: string;
 }
 
 export default function useSearch<T>({
   dataSet,
   keys,
   scoreThreshold = 0.55,
+  initialValue = "",
 }: IUseSearchProps<T>) {
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState(initialValue);
 
   const fuse = useMemo(() => {
     const options = {

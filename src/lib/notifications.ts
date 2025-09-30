@@ -1,227 +1,195 @@
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { redis } from "~/server/redis";
+import { db } from "~/server/db";
+import { notifications, notificationUsers } from "~/server/db/schema";
 
 export interface Notification {
   id: string;
-  timestamp: number;
-  userIds: string[];
+  timestamp: Date;
   message: string;
   link?: string;
-  viewedAt?: number | null;
+  viewedAt?: Date | null;
 }
 
 export interface NotificationData {
   message: string;
   link?: string;
   userIds: string[];
-  expiryDays?: number; // Default 30 days
+  expiryDays?: number; // Default 14 days
 }
 
 export class NotificationService {
-  private readonly NOTIFICATION_PREFIX = "notification:";
-  private readonly USER_NOTIFICATIONS_PREFIX = "user_notifications:";
   private readonly DEFAULT_EXPIRY_DAYS = 14;
+  private readonly MAX_NOTIFICATIONS_PER_USER = 100;
 
   /**
    * Add a new notification for multiple users
-   * Uses Redis Sorted Sets for efficient storage and retrieval
+   * Uses PostgreSQL for persistent storage
    */
   async addNotification(data: NotificationData): Promise<string> {
     const notificationId = this.generateNotificationId();
-    const timestamp = Date.now();
+    const timestamp = new Date();
     const expiryDays = data.expiryDays ?? this.DEFAULT_EXPIRY_DAYS;
-    const expirySeconds = expiryDays * 24 * 60 * 60; // Convert days to seconds
 
-    const notification: Notification = {
+    // Insert the notification
+    await db.insert(notifications).values({
       id: notificationId,
-      timestamp,
-      userIds: data.userIds,
       message: data.message,
       link: data.link,
-      viewedAt: null,
-    };
-
-    // Store the notification data as a hash
-    const notificationKey = `${this.NOTIFICATION_PREFIX}${notificationId}`;
-    await redis.hset(notificationKey, {
-      id: notification.id,
-      timestamp: notification.timestamp.toString(),
-      userIds: JSON.stringify(notification.userIds),
-      message: notification.message,
-      link: notification.link ?? "",
-      viewedAt: "",
+      createdAt: timestamp,
+      expiryDays,
     });
 
-    // Set expiry for the notification data
-    await redis.expire(notificationKey, expirySeconds);
-
-    // Add notification to each user's sorted set (using timestamp as score for sorting)
-    const pipeline = redis.pipeline();
-
-    for (const userId of data.userIds) {
-      const userNotificationsKey = `${this.USER_NOTIFICATIONS_PREFIX}${userId}`;
-      pipeline.zadd(userNotificationsKey, timestamp, notificationId);
-      pipeline.expire(userNotificationsKey, expirySeconds);
+    // Insert user associations
+    if (data.userIds.length > 0) {
+      await db.insert(notificationUsers).values(
+        data.userIds.map((userId) => ({
+          notificationId,
+          userId,
+        })),
+      );
     }
-
-    await pipeline.exec();
 
     return notificationId;
   }
 
   /**
-   * Get all notifications for a user, sorted by timestamp descending
-   * Automatically marks notifications as viewed after retrieval
+   * Get notifications for a user, sorted by creation time descending
+   * Returns the latest 100 notifications and marks unread ones as viewed
    */
   async getNotifications(userId: string): Promise<Notification[]> {
-    const userNotificationsKey = `${this.USER_NOTIFICATIONS_PREFIX}${userId}`;
+    // Get notifications for the user, ordered by creation time descending
+    const userNotifications = await db
+      .select({
+        id: notifications.id,
+        message: notifications.message,
+        link: notifications.link,
+        createdAt: notifications.createdAt,
+        viewedAt: notifications.viewedAt,
+        expiryDays: notifications.expiryDays,
+      })
+      .from(notifications)
+      .innerJoin(
+        notificationUsers,
+        eq(notifications.id, notificationUsers.notificationId),
+      )
+      .where(
+        and(
+          eq(notificationUsers.userId, userId),
+          // Only get notifications that haven't expired
+          sql`${notifications.createdAt} > NOW() - (${notifications.expiryDays} || ' days')::INTERVAL`,
+        ),
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(this.MAX_NOTIFICATIONS_PER_USER);
 
-    // Get notification IDs sorted by timestamp (descending)
-    const notificationIds = await redis.zrevrange(userNotificationsKey, 0, -1);
-
-    if (notificationIds.length === 0) {
+    if (userNotifications.length === 0) {
       return [];
     }
 
-    // Fetch notification data for all IDs
-    const pipeline = redis.pipeline();
-    for (const notificationId of notificationIds) {
-      pipeline.hgetall(`${this.NOTIFICATION_PREFIX}${notificationId}`);
-    }
+    const notificationsToMarkAsViewed: string[] = [];
+    const now = new Date();
 
-    const results = await pipeline.exec();
-    const notifications: Notification[] = [];
-    const now = Date.now();
+    // Convert to Notification interface and mark unread notifications for viewing
+    const result: Notification[] = userNotifications.map((n) => {
+      const notification: Notification = {
+        id: n.id,
+        timestamp: n.createdAt,
+        message: n.message,
+        link: n.link || undefined,
+        viewedAt: n.viewedAt ? n.viewedAt : null,
+      };
 
-    // Process results and mark as viewed
-    const markAsViewedPipeline = redis.pipeline();
-
-    for (let i = 0; i < notificationIds.length; i++) {
-      const notificationData = results?.[i]?.[1] as Record<
-        string,
-        string
-      > | null;
-
-      if (notificationData && Object.keys(notificationData).length > 0) {
-        const notification: Notification = {
-          id: notificationData.id!,
-          timestamp: parseInt(notificationData.timestamp!),
-          userIds: JSON.parse(notificationData.userIds!),
-          message: notificationData.message!,
-          link: notificationData.link || undefined,
-          viewedAt: notificationData.viewedAt
-            ? parseInt(notificationData.viewedAt)
-            : null,
-        };
-
-        // Mark as viewed if not already viewed
-        console.log("notification", notification);
-        if (!notification.viewedAt) {
-          notification.viewedAt = now;
-          const notificationKey = `${this.NOTIFICATION_PREFIX}${notification.id}`;
-          markAsViewedPipeline.hset(
-            notificationKey,
-            "viewedAt",
-            now.toString(),
-          );
-        }
-
-        notifications.push(notification);
-      } else {
-        // Clean up orphaned notification IDs from user's set
-        markAsViewedPipeline.zrem(userNotificationsKey, notificationIds[i]!);
+      // Mark for viewing if not already viewed
+      if (!notification.viewedAt) {
+        notification.viewedAt = now;
+        notificationsToMarkAsViewed.push(n.id);
       }
+
+      return notification;
+    });
+
+    // Mark notifications as viewed in batch
+    if (notificationsToMarkAsViewed.length > 0) {
+      await db
+        .update(notifications)
+        .set({ viewedAt: now })
+        .where(inArray(notifications.id, notificationsToMarkAsViewed));
     }
 
-    // Execute the mark as viewed operations
-    if (markAsViewedPipeline.length > 0) {
-      await markAsViewedPipeline.exec();
-    }
-
-    return notifications;
+    return result;
   }
 
   /**
    * Get unread notifications count for a user
    */
   async getUnreadCount(userId: string): Promise<number> {
-    const userNotificationsKey = `${this.USER_NOTIFICATIONS_PREFIX}${userId}`;
-    const notificationIds = await redis.zrevrange(userNotificationsKey, 0, -1);
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .innerJoin(
+        notificationUsers,
+        eq(notifications.id, notificationUsers.notificationId),
+      )
+      .where(
+        and(
+          eq(notificationUsers.userId, userId),
+          sql`${notifications.viewedAt} IS NULL`,
+          // Only count notifications that haven't expired
+          sql`${notifications.createdAt} > NOW() - (${notifications.expiryDays} || ' days')::INTERVAL`,
+        ),
+      );
 
-    if (notificationIds.length === 0) {
-      return 0;
-    }
-
-    let unreadCount = 0;
-    const pipeline = redis.pipeline();
-
-    for (const notificationId of notificationIds) {
-      pipeline.hget(`${this.NOTIFICATION_PREFIX}${notificationId}`, "viewedAt");
-    }
-
-    const results = await pipeline.exec();
-
-    for (const result of results || []) {
-      const viewedAt = result?.[1] as string | null;
-      if (!viewedAt || viewedAt === "") {
-        unreadCount++;
-      }
-    }
-
-    return unreadCount;
+    return result[0]?.count || 0;
   }
 
   /**
    * Mark a specific notification as viewed
    */
   async markAsViewed(notificationId: string, _userId: string): Promise<void> {
-    const notificationKey = `${this.NOTIFICATION_PREFIX}${notificationId}`;
-    const now = Date.now();
-
-    await redis.hset(notificationKey, "viewedAt", now.toString());
+    await db
+      .update(notifications)
+      .set({ viewedAt: new Date() })
+      .where(eq(notifications.id, notificationId));
   }
 
   /**
    * Delete a notification (removes from all users)
    */
   async deleteNotification(notificationId: string): Promise<void> {
-    const notificationKey = `${this.NOTIFICATION_PREFIX}${notificationId}`;
+    // Delete user associations first (due to foreign key constraints)
+    await db
+      .delete(notificationUsers)
+      .where(eq(notificationUsers.notificationId, notificationId));
 
-    // Get the notification data to find all users
-    const notificationData = await redis.hgetall(notificationKey);
-
-    if (Object.keys(notificationData).length > 0) {
-      const userIds = JSON.parse(notificationData.userIds!);
-
-      // Remove from each user's notification set
-      const pipeline = redis.pipeline();
-      for (const userId of userIds) {
-        const userNotificationsKey = `${this.USER_NOTIFICATIONS_PREFIX}${userId}`;
-        pipeline.zrem(userNotificationsKey, notificationId);
-      }
-
-      // Delete the notification data
-      pipeline.del(notificationKey);
-
-      await pipeline.exec();
-    }
+    // Delete the notification
+    await db.delete(notifications).where(eq(notifications.id, notificationId));
   }
 
   /**
    * Clean up expired notifications (can be called periodically)
    */
   async cleanupExpiredNotifications(): Promise<void> {
-    // Redis TTL handles automatic cleanup, but this method can be used
-    // for additional cleanup if needed
-    const pattern = `${this.NOTIFICATION_PREFIX}*`;
-    const keys = await redis.keys(pattern);
+    // Delete expired notifications and their user associations
+    const expiredNotifications = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        sql`${notifications.createdAt} <= NOW() - (${notifications.expiryDays} || ' days')::INTERVAL`,
+      );
 
-    for (const key of keys) {
-      const ttl = await redis.ttl(key);
-      if (ttl === -1) {
-        // Key exists but has no expiry, set default expiry
-        await redis.expire(key, this.DEFAULT_EXPIRY_DAYS * 24 * 60 * 60);
-      }
+    if (expiredNotifications.length > 0) {
+      const expiredIds = expiredNotifications.map((n) => n.id);
+
+      // Delete user associations first
+      await db
+        .delete(notificationUsers)
+        .where(inArray(notificationUsers.notificationId, expiredIds));
+
+      // Delete the notifications
+      await db
+        .delete(notifications)
+        .where(inArray(notifications.id, expiredIds));
     }
   }
 
@@ -238,22 +206,30 @@ export class NotificationService {
   async getNotificationById(
     notificationId: string,
   ): Promise<Notification | null> {
-    const notificationKey = `${this.NOTIFICATION_PREFIX}${notificationId}`;
-    const notificationData = await redis.hgetall(notificationKey);
+    const notificationData = await db
+      .select({
+        id: notifications.id,
+        message: notifications.message,
+        link: notifications.link,
+        createdAt: notifications.createdAt,
+        viewedAt: notifications.viewedAt,
+      })
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
 
-    if (Object.keys(notificationData).length === 0) {
+    if (notificationData.length === 0) {
       return null;
     }
 
+    const notification = notificationData[0]!;
+
     return {
-      id: notificationData.id!,
-      timestamp: parseInt(notificationData.timestamp!),
-      userIds: JSON.parse(notificationData.userIds!),
-      message: notificationData.message!,
-      link: notificationData.link || undefined,
-      viewedAt: notificationData.viewedAt
-        ? parseInt(notificationData.viewedAt)
-        : null,
+      id: notification.id,
+      timestamp: notification.createdAt,
+      message: notification.message,
+      link: notification.link || undefined,
+      viewedAt: notification.viewedAt ? notification.viewedAt : null,
     };
   }
 }

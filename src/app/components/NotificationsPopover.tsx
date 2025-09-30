@@ -14,11 +14,10 @@ import { ScrollArea } from "./ui/scroll-area";
 
 interface Notification {
   id: string;
-  timestamp: number;
-  userIds: string[];
+  timestamp: Date;
   message: string;
   link?: string;
-  viewedAt?: number | null;
+  viewedAt?: Date | null;
 }
 
 interface NotificationsPopoverProps {}
@@ -36,14 +35,14 @@ const NotificationRow = ({
 
   if (!notification) return null;
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInHours =
+      (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
 
     if (diffInHours < 1) {
       const diffInMinutes = Math.floor(
-        (now.getTime() - date.getTime()) / (1000 * 60),
+        (now.getTime() - timestamp.getTime()) / (1000 * 60),
       );
       return `${diffInMinutes}m`;
     } else if (diffInHours < 24) {
@@ -148,10 +147,10 @@ export default function NotificationsPopover({}: NotificationsPopoverProps) {
               <List
                 rowComponent={NotificationRow}
                 rowCount={notifications.length}
-                rowHeight={120}
+                rowHeight={145}
                 rowProps={{
                   notifications: notifications.sort(
-                    (a, b) => b.timestamp - a.timestamp,
+                    (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
                   ),
                   onNotificationClick: handleNotificationClick,
                 }}
