@@ -141,6 +141,7 @@ const Navbar = async () => {
         )}
         {user && (
           <div className="flex flex-row justify-end gap-x-4 lg:hidden">
+            <NotificationsPopover />
             <ThemeToggler />
             <Sheet>
               <SheetTrigger asChild>
@@ -184,7 +185,6 @@ const Navbar = async () => {
                   </Accordion>
                   <CommandMenu mainTags={mainTags} />
                   <UserInfo user={user} />
-                  <NotificationsPopover />
                 </div>
               </SheetContent>
             </Sheet>

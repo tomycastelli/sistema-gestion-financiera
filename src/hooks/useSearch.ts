@@ -6,6 +6,7 @@ interface IUseSearchProps<T> {
   keys: string[];
   scoreThreshold?: number;
   initialValue?: string;
+  additionalProcess?: (results: T[], searchValue: string) => T[];
 }
 
 export default function useSearch<T>({
@@ -13,6 +14,7 @@ export default function useSearch<T>({
   keys,
   scoreThreshold = 0.55,
   initialValue = "",
+  additionalProcess,
 }: IUseSearchProps<T>) {
   const [searchValue, setSearchValue] = useState(initialValue);
 
@@ -30,13 +32,18 @@ export default function useSearch<T>({
 
     const searchResults = fuse.search(searchValue);
 
-    return searchResults
+    const filteredResults = searchResults
       .filter(
         (fuseResult) =>
           fuseResult.score !== undefined && fuseResult.score < scoreThreshold,
       )
       .map((fuseResult) => fuseResult.item);
-  }, [fuse, searchValue, dataSet, scoreThreshold]);
+
+    // Apply additional filter if provided
+    return additionalProcess
+      ? additionalProcess(filteredResults, searchValue)
+      : filteredResults;
+  }, [fuse, searchValue, dataSet, scoreThreshold, additionalProcess]);
 
   return {
     searchValue,

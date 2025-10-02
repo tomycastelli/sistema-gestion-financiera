@@ -224,10 +224,16 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
     setSearchValue,
   } = useSearch<(typeof detailedBalances)[0]>({
     dataSet: detailedBalances,
-    keys: ["entity.name"],
+    keys: ["entity.name", "entity.id"],
     scoreThreshold: 0.55,
     initialValue:
       entities.find((e) => e.id === destinationEntityId)?.name ?? "",
+    additionalProcess: (results, searchValue) => {
+      if (/^\d+$/.test(searchValue)) {
+        return results.slice(0, 1);
+      }
+      return results;
+    },
   });
 
   const {
@@ -368,7 +374,7 @@ const CurrentAccountsBalancesTable: FC<CurrentAccountsBalancesTableProps> = ({
             <Input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Buscar"
+              placeholder="ID/Nombre"
               className="w-32"
             />
             <DropdownMenu>
