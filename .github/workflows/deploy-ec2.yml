@@ -10,6 +10,7 @@ jobs:
 
     env:
       REDIS_URL: ${{ secrets.REDIS_URL }}
+      REDIS_URL_TWO: ${{ secrets.REDIS_URL_TWO }}
 
     steps:
       - name: Checkout
@@ -47,6 +48,7 @@ jobs:
         run: |
           docker build \
             --build-arg REDIS_URL=${REDIS_URL} \
+            --build-arg REDIS_URL_TWO=${REDIS_URL_TWO} \
             --platform=linux/amd64 \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG_NAME

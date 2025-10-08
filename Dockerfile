@@ -31,6 +31,8 @@ ENV DYNAMODB_TABLE=default16
 
 # These variables are passed on build time
 ARG REDIS_URL
+ARG REDIS_URL_TWO
+
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
