@@ -275,7 +275,15 @@ export const editingOperationsRouter = createTRPCRouter({
               response,
             );
 
-            if (ctx.user.id !== "hvpd693383cli1a") {
+            if (
+              ctx.user.id !== "hvpd693383cli1a" &&
+              (input.newTransactionData.currency === "usdt" ||
+                input.oldTransactionData.currency === "usdt" ||
+                input.newTransactionData.fromEntityId === 2 ||
+                input.newTransactionData.toEntityId === 2 ||
+                input.oldTransactionData.fromEntityId === 2 ||
+                input.oldTransactionData.toEntityId === 2)
+            ) {
               const [operation] = await ctx.db
                 .select({ date: operations.date })
                 .from(operations)
@@ -429,7 +437,12 @@ export const editingOperationsRouter = createTRPCRouter({
                 ctx.redlock,
               );
 
-              confirmedTxs.push(mappedTransaction.id);
+              confirmedTxs.push({
+                id: mappedTransaction.id,
+                currency: mappedTransaction.currency,
+                fromEntityId: mappedTransaction.fromEntityId,
+                toEntityId: mappedTransaction.toEntityId,
+              });
             }
 
             return confirmedTxs;
@@ -445,7 +458,13 @@ export const editingOperationsRouter = createTRPCRouter({
 
           if (
             confirmedOpsInPast.size > 0 &&
-            ctx.user.id !== "hvpd693383cli1a"
+            ctx.user.id !== "hvpd693383cli1a" &&
+            response.some(
+              (tx) =>
+                tx.currency === "usdt" ||
+                tx.fromEntityId === 2 ||
+                tx.toEntityId === 2,
+            )
           ) {
             let message = "";
             if (confirmedOpsInPast.size === 1) {

@@ -281,7 +281,13 @@ export const operationsRouter = createTRPCRouter({
       if (
         hasCashMovements &&
         ctx.user.id !== "hvpd693383cli1a" &&
-        moment(input.opDate).isBefore(moment().subtract(30, "minutes"))
+        moment(input.opDate).isBefore(moment().subtract(30, "minutes")) &&
+        input.transactions.some(
+          (tx) =>
+            tx.fromEntityId === 2 ||
+            tx.toEntityId === 2 ||
+            tx.currency === "usdt",
+        )
       ) {
         await notificationService.addNotification({
           message: `${
