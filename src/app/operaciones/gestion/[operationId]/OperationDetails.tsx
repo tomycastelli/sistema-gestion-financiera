@@ -2,14 +2,14 @@
 
 import { type User } from "lucia";
 import { type FC, useEffect } from "react";
+import { toast } from "sonner";
+import { useFirstRender } from "~/hooks/useFirstRender";
+import { Status } from "~/server/db/schema";
+import { useOperationsPageStore } from "~/stores/OperationsPage";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import DetailMovementsTable from "./DetailMovementsTable";
 import Operation from "../Operation";
-import { useFirstRender } from "~/hooks/useFirstRender";
-import { useOperationsPageStore } from "~/stores/OperationsPage";
-import { Status } from "~/server/db/schema";
-import { toast } from "sonner";
+import DetailMovementsTable from "./DetailMovementsTable";
 
 interface OperationDetailsProps {
   initialOperation: RouterOutputs["operations"]["getOperations"];
@@ -53,65 +53,11 @@ const OperationDetails: FC<OperationDetailsProps> = ({
 
   const { mutateAsync: updateTransaction } =
     api.editingOperations.updateTransactionStatus.useMutation({
-      async onMutate(newOperation) {
-        // Doing the optimistic update
-        await utils.operations.getOperations.cancel();
-
-        const prevData =
-          utils.operations.getOperations.getData(operationsQueryInput);
-
-        utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
-          ...old!,
-          operations: old!.operations.map((operation) => {
-            const updatedTransactions = operation.transactions.map(
-              (transaction) => {
-                if (
-                  newOperation.transactionIds.includes(transaction.id) &&
-                  transaction.transactionMetadata
-                ) {
-                  return {
-                    ...transaction,
-                    status: Status.enumValues[1],
-                    transactionMetadata: {
-                      ...transaction.transactionMetadata,
-                      confirmedBy: user.id,
-                    },
-                  };
-                }
-                return transaction;
-              },
-            );
-
-            return {
-              ...operation,
-              transactions: updatedTransactions,
-            };
-          }),
-        }));
-
-        return { prevData };
-      },
-      onError(err) {
-        const prevData =
-          utils.operations.getOperations.getData(operationsQueryInput);
-        // Doing some ui actions
-        toast.error("No se pudo actualizar", {
-          description: err.message,
-        });
-        return { prevData };
-      },
       onSettled() {
         resetTxIds();
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
-      },
-      onSuccess(data) {
-        const title =
-          data.length > 1
-            ? data.length.toString() + " transacciones actualizadas"
-            : " 1 transacción actualizada";
-        toast.success(title);
       },
     });
 
@@ -124,13 +70,25 @@ const OperationDetails: FC<OperationDetailsProps> = ({
         description: txIdsStore.join(", "),
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
-          onClick: () => void updateTransaction({ transactionIds: txIdsStore }),
+          onClick: () => {
+            const promise = updateTransaction({ transactionIds: txIdsStore });
+            toast.promise(promise, {
+              loading: "Confirmando transacciones...",
+              success: () => {
+                resetTxIds();
+                return "Transacciones confirmadas";
+              },
+              error: (error) => {
+                return `Error al confirmar transacciones: ${error.message}`;
+              },
+            });
+          },
         },
       });
     } else {
       toast.dismiss();
     }
-  }, [txIdsStore, updateTransaction, firstRender]);
+  }, [txIdsStore, updateTransaction, firstRender, resetTxIds]);
 
   return (
     <div>

@@ -17,6 +17,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: z.string(),
 
     REDIS_URL: z.string(),
+    REDIS_URL_TWO: z.string(),
 
     AZURE_AD_CLIENT_ID: z.string(),
     AZURE_AD_CLIENT_SECRET: z.string(),
@@ -57,6 +58,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     REDIS_URL: process.env.REDIS_URL,
+    REDIS_URL_TWO: process.env.REDIS_URL_TWO,
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,

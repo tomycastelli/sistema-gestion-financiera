@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Select,
   SelectContent,
@@ -54,7 +55,8 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
   user,
 }) => {
   const [tagFilter, setTagFilter] = useState("todos");
-  const [tagFilterMode, setTagFilterMode] = useState("children");
+  const [tagFilterMode] = useState("children");
+  const [statusFilter, setStatusFilter] = useState("todas");
   const [page, setPage] = useState<number>(1);
   const pageSize = 20;
 
@@ -77,21 +79,17 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
     setSearchValue,
   } = useSearch<(typeof entities)[0]>({
     dataSet: entities,
-    keys: ["name"],
+    keys: ["name", "id"],
     scoreThreshold: 0.4,
+    additionalProcess: (results, searchValue) => {
+      if (/^\d+$/.test(searchValue)) {
+        return results.slice(0, 1);
+      }
+      return results;
+    },
   });
 
-  const {
-    results: doubleFilteredEntities,
-    searchValue: searchId,
-    setSearchValue: setSearchId,
-  } = useSearch<(typeof entities)[0]>({
-    dataSet: filteredEntities,
-    keys: ["id"],
-    scoreThreshold: 0.001,
-  });
-
-  const tripleFilteredEntities = doubleFilteredEntities.filter((entity) => {
+  const doubleFilteredEntities = filteredEntities.filter((entity) => {
     if (tagFilter === "todos") {
       return true;
     }
@@ -100,25 +98,37 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       : getAllChildrenTags(tagFilter, tags).includes(entity.tag.name);
   });
 
-  const { mutateAsync: getUrlAsync, isLoading: isLoadingFile } =
-    api.files.getEntities.useMutation({
-      onSuccess(newOperation) {
-        if (newOperation) {
-          const link = document.createElement("a");
-          link.href = newOperation.downloadUrl;
-          link.download = newOperation.filename;
-          link.target = "_blank";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      },
-      onError(err) {
-        toast.error("Error al generar el archivo", {
-          description: err.message,
-        });
-      },
-    });
+  const tripleFilteredEntities = doubleFilteredEntities.filter((entity) => {
+    if (statusFilter === "todas") {
+      return true;
+    }
+    if (statusFilter === "habilitadas") {
+      return entity.enabled;
+    }
+    if (statusFilter === "deshabilitadas") {
+      return !entity.enabled;
+    }
+    return true;
+  });
+
+  const { mutateAsync: getUrlAsync } = api.files.getEntities.useMutation({
+    onSuccess(newOperation) {
+      if (newOperation) {
+        const link = document.createElement("a");
+        link.href = newOperation.downloadUrl;
+        link.download = newOperation.filename;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    },
+    onError(err) {
+      toast.error("Error al generar el archivo", {
+        description: err.message,
+      });
+    },
+  });
 
   const onDownloadClick = () => {
     const promise = getUrlAsync();
@@ -192,43 +202,58 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
 
   return (
     <div className="mx-auto my-4 flex max-w-4xl flex-col flex-wrap gap-4">
-      <div className="flex flex-row items-center justify-between gap-4 rounded-xl border border-muted p-4">
+      <div className="flex flex-row items-end justify-between gap-4 rounded-xl border border-muted p-4">
         <div className="flex flex-row gap-4">
-          <Input
-            className="w-36"
-            placeholder="ID"
-            value={searchId}
-            onChange={(e) => {
-              setPage(1);
-              setSearchId(e.target.value);
-            }}
-          />
-          <Input
-            className="w-36"
-            placeholder="Nombre"
-            value={searchValue}
-            onChange={(e) => {
-              setPage(1);
-              setSearchValue(e.target.value);
-            }}
-          />
-          <div className="flex flex-row items-center gap-2">
-            <Select onValueChange={setTagFilter} value={tagFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup defaultValue="todos">
-                  <SelectLabel>Tags</SelectLabel>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {initialTags.map((tag) => (
-                    <SelectItem key={tag.name} value={tag.name}>
-                      {capitalizeFirstLetter(tag.name)}
+          <div className="flex flex-col gap-1">
+            <Label className="mb-1">Búsqueda</Label>
+            <Input
+              className="w-36"
+              placeholder="ID/Nombre"
+              value={searchValue}
+              onChange={(e) => {
+                setPage(1);
+                setSearchValue(e.target.value);
+              }}
+            />
+          </div>
+          <div className="flex flex-row items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <Label className="mb-1">Tags</Label>
+              <Select onValueChange={setTagFilter} value={tagFilter}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup defaultValue="todos">
+                    <SelectLabel>Tags</SelectLabel>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {initialTags.map((tag) => (
+                      <SelectItem key={tag.name} value={tag.name}>
+                        {capitalizeFirstLetter(tag.name)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="mb-1">Estado</Label>
+              <Select onValueChange={setStatusFilter} value={statusFilter}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup defaultValue="todas">
+                    <SelectLabel>Estado</SelectLabel>
+                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="habilitadas">Habilitadas</SelectItem>
+                    <SelectItem value="deshabilitadas">
+                      Deshabilitadas
                     </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 {!isLoading ? (
@@ -269,7 +294,7 @@ const EntitiesFeed: FC<EntitiesFeedProps> = ({
       <div className="flex">
         {isLoading ? (
           <Lottie animationData={loadingJson} className="h-24" loop={true} />
-        ) : filteredEntities.length > 0 ? (
+        ) : tripleFilteredEntities.length > 0 ? (
           <div className="flex w-full flex-col gap-4">
             <CustomPagination
               page={page}

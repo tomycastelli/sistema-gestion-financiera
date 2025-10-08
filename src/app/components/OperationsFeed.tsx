@@ -122,66 +122,12 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
 
   const { mutateAsync: updateTransaction } =
     api.editingOperations.updateTransactionStatus.useMutation({
-      async onMutate(newOperation) {
-        // Doing the optimistic update
-        await utils.operations.getOperations.cancel();
-
-        const prevData =
-          utils.operations.getOperations.getData(operationsQueryInput);
-
-        utils.operations.getOperations.setData(operationsQueryInput, (old) => ({
-          ...old!,
-          operations: old!.operations.map((operation) => {
-            const updatedTransactions = operation.transactions.map(
-              (transaction) => {
-                if (
-                  newOperation.transactionIds.includes(transaction.id) &&
-                  transaction.transactionMetadata
-                ) {
-                  return {
-                    ...transaction,
-                    status: Status.enumValues[1],
-                    transactionMetadata: {
-                      ...transaction.transactionMetadata,
-                      confirmedBy: user.id,
-                    },
-                  };
-                }
-                return transaction;
-              },
-            );
-
-            return {
-              ...operation,
-              transactions: updatedTransactions,
-            };
-          }),
-        }));
-
-        return { prevData };
-      },
-      onError(err) {
-        const prevData =
-          utils.operations.getOperations.getData(operationsQueryInput);
-        // Doing some ui actions
-        toast.error("No se pudo actualizar", {
-          description: err.message,
-        });
-        return { prevData };
-      },
       onSettled() {
         resetTxIds();
         void utils.operations.getOperations.invalidate();
         void utils.movements.getMovementsByOpId.invalidate();
         void utils.movements.getCurrentAccounts.invalidate();
         void utils.movements.getBalancesByEntities.invalidate();
-      },
-      onSuccess(data) {
-        const title =
-          data.length > 1
-            ? data.length.toString() + " transacciones actualizadas"
-            : " 1 transacción actualizada";
-        toast.success(title);
       },
     });
 
@@ -197,8 +143,17 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
         action: txIdsStore.length > 0 && {
           label: "Confirmar transacciones",
           onClick: () => {
-            void updateTransaction({ transactionIds: txIdsStore });
-            resetTxIds();
+            const promise = updateTransaction({ transactionIds: txIdsStore });
+            toast.promise(promise, {
+              loading: "Confirmando transacciones...",
+              success: () => {
+                resetTxIds();
+                return "Transacciones confirmadas";
+              },
+              error: (error) => {
+                return `Error al confirmar transacciones: ${error.message}`;
+              },
+            });
           },
         },
       });

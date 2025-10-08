@@ -17,6 +17,7 @@ import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import moment from "moment";
 import type Redlock from "redlock";
 import type { z } from "zod";
+import { env } from "../env.mjs";
 import type * as schema from "../server/db/schema";
 import {
   balances,
@@ -25,6 +26,7 @@ import {
 } from "../server/db/schema";
 import { movementBalanceDirection } from "./functions";
 import logtail, { safeSerialize } from "./logger";
+import { withLock } from "./redlockUtils";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 // Helper to get the opposite balance field
@@ -113,6 +115,11 @@ export const generateMovements = async (
   const ent_a = tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
   const ent_b = tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
+  // Determine which side to process for types 3 and 4 based on which tag IS the main tag
+  const mainTag = env.MAIN_NAME;
+  const processSideA = ent_a.tagName === mainTag;
+  const processSideB = ent_b.tagName === mainTag;
+
   // Removed logging for entities determination
 
   // Calculate balance amounts for different types
@@ -164,155 +171,164 @@ export const generateMovements = async (
     balance4aAmount,
   });
 
-  // Use a global lock for all balance calculations to ensure complete serialization
-  const isHistoricalOperation =
-    tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-  const lockDuration = isHistoricalOperation ? 600_000 : 180_000; // 10 minutes for historical, 3 minutes for recent
+  const lockDuration =
+    tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      ? 600_000
+      : 180_000;
 
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], lockDuration);
+  return await withLock(
+    redlock,
+    [LOCK_MOVEMENTS_KEY],
+    // Use a global lock for all balance calculations to ensure complete serialization
+    lockDuration,
+    async () => {
+      // Removed lock acquisition logging
 
-  try {
-    // Removed lock acquisition logging
-
-    // Process all balances sequentially to ensure consistency
-    const balance1 = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance1Amount,
-      { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
-      "balance_1",
-      "balance_1_id",
-    );
-
-    const balance2a = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance2aAmount,
-      { type: "2", ent_a: ent_a.id },
-      "balance_2a",
-      "balance_2a_id",
-    );
-
-    const balance2b = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance2bAmount,
-      { type: "2", ent_a: ent_b.id },
-      "balance_2b",
-      "balance_2b_id",
-    );
-
-    const balance3a = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance3aAmount,
-      { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
-      "balance_3a",
-      "balance_3a_id",
-    );
-
-    const balance3b = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance3bAmount,
-      { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
-      "balance_3b",
-      "balance_3b_id",
-    );
-
-    const balance4a = await processBalance(
-      transaction,
-      tx,
-      mvDate,
-      originalMvDate,
-      account,
-      balance4aAmount,
-      { type: "4", tag: ent_a.tagName },
-      "balance_4a",
-      "balance_4a_id",
-    );
-
-    // Handle the case where ent_a and ent_b have the same tag
-    let balance4b;
-    if (ent_a.tagName === ent_b.tagName) {
-      // If same tag, balance4b will be the same as balance4a
-      balance4b = { amount: balance4a.amount, id: balance4a.id };
-    } else {
-      balance4b = await processBalance(
+      // Process all balances sequentially to ensure consistency
+      const balance1 = await processBalance(
         transaction,
         tx,
         mvDate,
         originalMvDate,
         account,
-        balance4bAmount,
-        { type: "4", tag: ent_b.tagName },
-        "balance_4b",
-        "balance_4b_id",
+        balance1Amount,
+        { type: "1", ent_a: ent_a.id, ent_b: ent_b.id },
+        "balance_1",
+        "balance_1_id",
       );
-    }
 
-    // Only log balance type 4a processing result
-    logtail.info("Balance type 4a processed", {
-      balance4a_id: balance4a.id,
-      balance4a_amount: balance4a.amount,
-    });
-
-    // Create the movement with all the balance values
-    const [createdMovement] = await transaction
-      .insert(movements)
-      .values({
-        transactionId: tx.id,
-        date: originalMvDate, // Use originalMvDate for movement ordering
-        direction,
-        type,
+      const balance2a = await processBalance(
+        transaction,
+        tx,
+        mvDate,
+        originalMvDate,
         account,
-        balance_1: balance1.amount,
-        balance_1_id: balance1.id,
-        balance_2a: balance2a.amount,
-        balance_2a_id: balance2a.id,
-        balance_2b: balance2b.amount,
-        balance_2b_id: balance2b.id,
-        balance_3a: balance3a.amount,
-        balance_3a_id: balance3a.id,
-        balance_3b: balance3b.amount,
-        balance_3b_id: balance3b.id,
-        balance_4a: balance4a.amount,
-        balance_4a_id: balance4a.id,
-        balance_4b: balance4b.amount,
-        balance_4b_id: balance4b.id,
-      })
-      .returning();
+        balance2aAmount,
+        { type: "2", ent_a: ent_a.id },
+        "balance_2a",
+        "balance_2a_id",
+      );
 
-    // Only log movement creation with balance type 4a
-    logtail.info("Movement created with balance type 4a", {
-      movementId: createdMovement?.id,
-      transactionId: createdMovement?.transactionId,
-      balance_4a: createdMovement?.balance_4a,
-      balance_4a_id: createdMovement?.balance_4a_id,
-    });
+      const balance2b = await processBalance(
+        transaction,
+        tx,
+        mvDate,
+        originalMvDate,
+        account,
+        balance2bAmount,
+        { type: "2", ent_a: ent_b.id },
+        "balance_2b",
+        "balance_2b_id",
+      );
 
-    return [createdMovement];
-  } finally {
-    await lock.release();
-    // Removed lock release logging
-    // Flush logs at the end of the entire operation
-    await logtail.flush();
-  }
+      // Process balance3a only if ent_a tag is the main tag
+      const balance3a = processSideA
+        ? await processBalance(
+            transaction,
+            tx,
+            mvDate,
+            originalMvDate,
+            account,
+            balance3aAmount,
+            { type: "3", tag: ent_a.tagName, ent_a: ent_b.id },
+            "balance_3a",
+            "balance_3a_id",
+          )
+        : { amount: 0, id: 0 };
+
+      // Process balance3b only if ent_b tag is the main tag
+      const balance3b = processSideB
+        ? await processBalance(
+            transaction,
+            tx,
+            mvDate,
+            originalMvDate,
+            account,
+            balance3bAmount,
+            { type: "3", tag: ent_b.tagName, ent_a: ent_a.id },
+            "balance_3b",
+            "balance_3b_id",
+          )
+        : { amount: 0, id: 0 };
+
+      // Process balance4a only if ent_a tag is the main tag
+      const balance4a = processSideA
+        ? await processBalance(
+            transaction,
+            tx,
+            mvDate,
+            originalMvDate,
+            account,
+            balance4aAmount,
+            { type: "4", tag: ent_a.tagName },
+            "balance_4a",
+            "balance_4a_id",
+          )
+        : { amount: 0, id: 0 };
+
+      // Process balance4b only if ent_b tag is the main tag
+      const balance4b = processSideB
+        ? await processBalance(
+            transaction,
+            tx,
+            mvDate,
+            originalMvDate,
+            account,
+            balance4bAmount,
+            { type: "4", tag: ent_b.tagName },
+            "balance_4b",
+            "balance_4b_id",
+          )
+        : { amount: 0, id: 0 };
+
+      // Only log balance type 4a processing result
+      logtail.info("Balance type 4a processed", {
+        balance4a_id: balance4a.id,
+        balance4a_amount: balance4a.amount,
+      });
+
+      // Create the movement with all the balance values
+      const [createdMovement] = await transaction
+        .insert(movements)
+        .values({
+          transactionId: tx.id,
+          date: originalMvDate, // Use originalMvDate for movement ordering
+          direction,
+          type,
+          account,
+          balance_1: balance1.amount,
+          balance_1_id: balance1.id,
+          balance_2a: balance2a.amount,
+          balance_2a_id: balance2a.id,
+          balance_2b: balance2b.amount,
+          balance_2b_id: balance2b.id,
+          balance_3a: balance3a.amount,
+          balance_3a_id: balance3a.id,
+          balance_3b: balance3b.amount,
+          balance_3b_id: balance3b.id,
+          balance_4a: balance4a.amount,
+          balance_4a_id: balance4a.id,
+          balance_4b: balance4b.amount,
+          balance_4b_id: balance4b.id,
+        })
+        .returning();
+
+      // Only log movement creation with balance type 4a
+      logtail.info("Movement created with balance type 4a", {
+        movementId: createdMovement?.id,
+        transactionId: createdMovement?.transactionId,
+        balance_4a: createdMovement?.balance_4a,
+        balance_4a_id: createdMovement?.balance_4a_id,
+      });
+
+      return [createdMovement];
+    },
+    {
+      operationName: "generate-movements",
+      maxRetries: 3,
+      baseDelay: 1000,
+    },
+  );
 };
 
 // Helper function to process each balance type

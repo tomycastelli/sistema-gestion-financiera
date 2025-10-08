@@ -21,6 +21,7 @@ import {
   getOppositeBalanceIdField,
 } from "./generateMovements";
 import logtail, { safeSerialize } from "./logger";
+import { withLock } from "./redlockUtils";
 import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 export const undoMovements = async (
@@ -45,212 +46,212 @@ export const undoMovements = async (
     currency: tx.currency,
   });
 
-  // Use longer lock duration for undo operations as they can be complex and involve historical data
-  const lockDuration = 300_000; // 5 minutes for undo operations
+  return await withLock(
+    redlock,
+    [LOCK_MOVEMENTS_KEY],
+    300_000, // 5 minutes for undo operations
+    async () => {
+      // Delete the movement
+      // Removed logging for movement deletion
+      const deletedMovements = await transaction
+        .delete(movements)
+        .where(eq(movements.transactionId, tx.id))
+        .returning();
 
-  const lock = await redlock.acquire([LOCK_MOVEMENTS_KEY], lockDuration);
+      // Removed logging for movements deleted
 
-  try {
-    // Delete the movement
-    // Removed logging for movement deletion
-    const deletedMovements = await transaction
-      .delete(movements)
-      .where(eq(movements.transactionId, tx.id))
-      .returning();
+      // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
+      const ent_a =
+        tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
+      const ent_b =
+        tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
 
-    // Removed logging for movements deleted
+      // Removed logging for entity order determination
 
-    // Determine ent_a and ent_b (ent_a is always the one with smaller ID)
-    const ent_a =
-      tx.fromEntity.id < tx.toEntity.id ? tx.fromEntity : tx.toEntity;
-    const ent_b =
-      tx.fromEntity.id < tx.toEntity.id ? tx.toEntity : tx.fromEntity;
+      for (const movement of deletedMovements) {
+        // Normalize movement date to local midnight (server's local timezone)
+        const normalizedMvDate = new Date(
+          movement.date.getFullYear(),
+          movement.date.getMonth(),
+          movement.date.getDate(),
+          0,
+          0,
+          0,
+          0,
+        );
 
-    // Removed logging for entity order determination
+        // Removed logging for movement date normalization
 
-    for (const movement of deletedMovements) {
-      // Normalize movement date to local midnight (server's local timezone)
-      const normalizedMvDate = new Date(
-        movement.date.getFullYear(),
-        movement.date.getMonth(),
-        movement.date.getDate(),
-        0,
-        0,
-        0,
-        0,
-      );
+        // Calculate balance amounts for different types
+        // Type 1: Entity to Entity (from perspective of ent_a)
+        const balance1Amount =
+          movementBalanceDirection(
+            tx.fromEntity.id,
+            tx.toEntity.id,
+            movement.direction,
+          ) * tx.amount;
 
-      // Removed logging for movement date normalization
+        // Type 2: Entity to Rest - one for each entity
+        const balance2aAmount =
+          tx.fromEntity.id === ent_a.id
+            ? -tx.amount * movement.direction
+            : tx.amount * movement.direction;
+        const balance2bAmount =
+          tx.toEntity.id === ent_b.id
+            ? tx.amount * movement.direction
+            : -tx.amount * movement.direction;
 
-      // Calculate balance amounts for different types
-      // Type 1: Entity to Entity (from perspective of ent_a)
-      const balance1Amount =
-        movementBalanceDirection(
-          tx.fromEntity.id,
-          tx.toEntity.id,
-          movement.direction,
-        ) * tx.amount;
+        // Type 3: Tag to Entity
+        const balance3aAmount =
+          tx.fromEntity.tagName === tx.toEntity.tagName
+            ? 0
+            : tx.fromEntity.id === ent_a.id
+            ? -tx.amount * movement.direction
+            : tx.amount * movement.direction;
+        const balance3bAmount =
+          tx.fromEntity.tagName === tx.toEntity.tagName
+            ? 0
+            : tx.toEntity.id === ent_b.id
+            ? tx.amount * movement.direction
+            : -tx.amount * movement.direction;
 
-      // Type 2: Entity to Rest - one for each entity
-      const balance2aAmount =
-        tx.fromEntity.id === ent_a.id
-          ? -tx.amount * movement.direction
-          : tx.amount * movement.direction;
-      const balance2bAmount =
-        tx.toEntity.id === ent_b.id
-          ? tx.amount * movement.direction
-          : -tx.amount * movement.direction;
+        // Type 4: Tag to Rest - one for each tag
+        const balance4aAmount =
+          tx.fromEntity.tagName === tx.toEntity.tagName
+            ? 0
+            : tx.fromEntity.tagName === ent_a.tagName
+            ? -tx.amount * movement.direction
+            : tx.amount * movement.direction;
+        const balance4bAmount =
+          tx.fromEntity.tagName === tx.toEntity.tagName
+            ? 0
+            : tx.toEntity.tagName === ent_b.tagName
+            ? tx.amount * movement.direction
+            : -tx.amount * movement.direction;
 
-      // Type 3: Tag to Entity
-      const balance3aAmount =
-        tx.fromEntity.tagName === tx.toEntity.tagName
-          ? 0
-          : tx.fromEntity.id === ent_a.id
-          ? -tx.amount * movement.direction
-          : tx.amount * movement.direction;
-      const balance3bAmount =
-        tx.fromEntity.tagName === tx.toEntity.tagName
-          ? 0
-          : tx.toEntity.id === ent_b.id
-          ? tx.amount * movement.direction
-          : -tx.amount * movement.direction;
+        // Only log balance type 4a amount
+        logtail.info(
+          "Balance type 4a amount calculated",
+          safeSerialize({
+            transactionId: tx.id,
+            movementId: movement.id,
+            balance4aAmount,
+          }) as Record<string, unknown>,
+        );
 
-      // Type 4: Tag to Rest - one for each tag
-      const balance4aAmount =
-        tx.fromEntity.tagName === tx.toEntity.tagName
-          ? 0
-          : tx.fromEntity.tagName === ent_a.tagName
-          ? -tx.amount * movement.direction
-          : tx.amount * movement.direction;
-      const balance4bAmount =
-        tx.fromEntity.tagName === tx.toEntity.tagName
-          ? 0
-          : tx.toEntity.tagName === ent_b.tagName
-          ? tx.amount * movement.direction
-          : -tx.amount * movement.direction;
-
-      // Only log balance type 4a amount
-      logtail.info(
-        "Balance type 4a amount calculated",
-        safeSerialize({
-          transactionId: tx.id,
-          movementId: movement.id,
-          balance4aAmount,
-        }) as Record<string, unknown>,
-      );
-
-      // Process all balances sequentially to ensure consistency
-      // Removed logging for balance types 1, 2a, 2b, 3a, 3b
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_1_id,
-        balance1Amount,
-        normalizedMvDate,
-        movement.date,
-        "balance_1",
-        "balance_1_id",
-        movement.id,
-      );
-
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_2a_id,
-        balance2aAmount,
-        normalizedMvDate,
-        movement.date,
-        "balance_2a",
-        "balance_2a_id",
-        movement.id,
-      );
-
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_2b_id,
-        balance2bAmount,
-        normalizedMvDate,
-        movement.date,
-        "balance_2b",
-        "balance_2b_id",
-        movement.id,
-      );
-
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_3a_id,
-        balance3aAmount,
-        normalizedMvDate,
-        movement.date,
-        "balance_3a",
-        "balance_3a_id",
-        movement.id,
-      );
-
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_3b_id,
-        balance3bAmount,
-        normalizedMvDate,
-        movement.date,
-        "balance_3b",
-        "balance_3b_id",
-        movement.id,
-      );
-
-      // Only log for balance type 4a
-      logtail.info(
-        "Processing balance type 4a",
-        safeSerialize({
-          transactionId: tx.id,
-          movementId: movement.id,
-          balanceId: movement.balance_4a_id,
-          amount: balance4aAmount,
-        }) as Record<string, unknown>,
-      );
-      await processBalance(
-        transaction,
-        tx.id,
-        movement.balance_4a_id,
-        balance4aAmount,
-        normalizedMvDate,
-        movement.date,
-        "balance_4a",
-        "balance_4a_id",
-        movement.id,
-      );
-
-      // Process 4b only if entities have different tags
-      if (tx.fromEntity.tagName !== tx.toEntity.tagName) {
-        // Removed logging for balance type 4b processing
+        // Process all balances sequentially to ensure consistency
+        // Removed logging for balance types 1, 2a, 2b, 3a, 3b
         await processBalance(
           transaction,
           tx.id,
-          movement.balance_4b_id,
-          balance4bAmount,
+          movement.balance_1_id,
+          balance1Amount,
           normalizedMvDate,
           movement.date,
-          "balance_4b",
-          "balance_4b_id",
+          "balance_1",
+          "balance_1_id",
           movement.id,
         );
-      } else {
-        // Removed logging for skipping balance type 4b
+
+        await processBalance(
+          transaction,
+          tx.id,
+          movement.balance_2a_id,
+          balance2aAmount,
+          normalizedMvDate,
+          movement.date,
+          "balance_2a",
+          "balance_2a_id",
+          movement.id,
+        );
+
+        await processBalance(
+          transaction,
+          tx.id,
+          movement.balance_2b_id,
+          balance2bAmount,
+          normalizedMvDate,
+          movement.date,
+          "balance_2b",
+          "balance_2b_id",
+          movement.id,
+        );
+
+        await processBalance(
+          transaction,
+          tx.id,
+          movement.balance_3a_id,
+          balance3aAmount,
+          normalizedMvDate,
+          movement.date,
+          "balance_3a",
+          "balance_3a_id",
+          movement.id,
+        );
+
+        await processBalance(
+          transaction,
+          tx.id,
+          movement.balance_3b_id,
+          balance3bAmount,
+          normalizedMvDate,
+          movement.date,
+          "balance_3b",
+          "balance_3b_id",
+          movement.id,
+        );
+
+        // Only log for balance type 4a
+        logtail.info(
+          "Processing balance type 4a",
+          safeSerialize({
+            transactionId: tx.id,
+            movementId: movement.id,
+            balanceId: movement.balance_4a_id,
+            amount: balance4aAmount,
+          }) as Record<string, unknown>,
+        );
+        await processBalance(
+          transaction,
+          tx.id,
+          movement.balance_4a_id,
+          balance4aAmount,
+          normalizedMvDate,
+          movement.date,
+          "balance_4a",
+          "balance_4a_id",
+          movement.id,
+        );
+
+        // Process 4b only if entities have different tags
+        if (tx.fromEntity.tagName !== tx.toEntity.tagName) {
+          // Removed logging for balance type 4b processing
+          await processBalance(
+            transaction,
+            tx.id,
+            movement.balance_4b_id,
+            balance4bAmount,
+            normalizedMvDate,
+            movement.date,
+            "balance_4b",
+            "balance_4b_id",
+            movement.id,
+          );
+        } else {
+          // Removed logging for skipping balance type 4b
+        }
       }
-    }
 
-    // Removed logging for undoMovements completion
+      // Removed logging for undoMovements completion
 
-    return deletedMovements;
-  } finally {
-    await lock.release();
-    // Removed lock release logging
-    // Flush logs at the end of the entire operation
-    await logtail.flush();
-  }
+      return deletedMovements;
+    },
+    {
+      operationName: "undo-movements",
+      maxRetries: 3,
+      baseDelay: 1000,
+    },
+  );
 };
 
 // Helper function to process each balance type

@@ -5,6 +5,35 @@
  *
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
+ *
+ * ERROR LOGGING MIDDLEWARE:
+ * This file includes an error logging middleware that automatically captures all TRPCError
+ * exceptions and sends them to Logtail for monitoring and debugging purposes.
+ *
+ * The existing logged procedures now include error logging:
+ * - publicLoggedProcedure: Public procedure with both request timing and error logging
+ * - protectedLoggedProcedure: Protected procedure with both request timing and error logging
+ *
+ * The error logging middleware captures:
+ * - Error code, message, and cause
+ * - Request path, type, and input
+ * - User information (if available)
+ * - Timestamp and environment
+ *
+ * Usage example:
+ * ```typescript
+ * export const exampleRouter = createTRPCRouter({
+ *   example: protectedLoggedProcedure
+ *     .input(z.object({ id: z.string() }))
+ *     .query(async ({ input, ctx }) => {
+ *       // Any TRPCError thrown here will be automatically logged to Logtail
+ *       if (!input.id) {
+ *         throw new TRPCError({ code: "BAD_REQUEST", message: "ID is required" });
+ *       }
+ *       return { success: true };
+ *     }),
+ * });
+ * ```
  */
 
 import { initTRPC, TRPCError } from "@trpc/server";
@@ -12,6 +41,7 @@ import { type NextRequest } from "next/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import logtail, { safeSerialize } from "~/lib/logger";
 import { db } from "~/server/db";
 import { redis } from "~/server/redis";
 import { getUser } from "../auth";
@@ -124,21 +154,57 @@ const loggingMiddleware = t.middleware(async ({ path, type, next, input }) => {
         path,
         input,
         type,
-        result,
         durationMs,
       })
     : console.log("Non-OK request timing", {
         path,
         input,
         type,
-        result,
         durationMs,
       });
   return result;
 });
 
+/** Error logging middleware that captures all TRPCError exceptions and sends them to Logtail */
+const errorLoggingMiddleware = t.middleware(
+  async ({ path, type, next, input, ctx }) => {
+    try {
+      const result = await next();
+      return result;
+    } catch (error) {
+      // Only log TRPCError instances
+      if (error instanceof TRPCError) {
+        const errorData = {
+          error: {
+            code: error.code,
+            message: error.message,
+            cause: error.cause,
+          },
+          request: {
+            path,
+            type,
+            input: safeSerialize(input),
+            userId: ctx.user?.id,
+            userEmail: ctx.user?.email,
+          },
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV,
+        };
+
+        // Send to Logtail (fire and forget)
+        void logtail.error("TRPC Error occurred", errorData);
+      }
+
+      // Re-throw the error to maintain normal error handling flow
+      throw error;
+    }
+  },
+);
+
 export const publicProcedure = t.procedure;
-export const publicLoggedProcedure = t.procedure.use(loggingMiddleware);
+export const publicLoggedProcedure = t.procedure
+  .use(loggingMiddleware)
+  .use(errorLoggingMiddleware);
 
 const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   if (!ctx.user) {
@@ -162,4 +228,5 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
 export const protectedLoggedProcedure = t.procedure
   .use(loggingMiddleware)
+  .use(errorLoggingMiddleware)
   .use(enforceUserIsAuthed);

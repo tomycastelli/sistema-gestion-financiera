@@ -2,31 +2,37 @@ import { Redis } from "ioredis";
 import Redlock from "redlock";
 import { env } from "~/env.mjs";
 
-const getRedisUrl = () => {
-  if (env.REDIS_URL) {
-    return env.REDIS_URL;
-  }
-
-  throw new Error("REDIS_URL is not defined");
+// Create Redis instances with optimized settings for long-running locks
+const createRedisInstance = (url: string) => {
+  return new Redis(url, {
+    enableAutoPipelining: true,
+    maxRetriesPerRequest: 5,
+    lazyConnect: true,
+    keepAlive: 120000, // 2 minutes keepalive for long locks
+    connectTimeout: 20000, // 20 seconds connection timeout
+    commandTimeout: 15000, // 15 seconds command timeout
+    enableReadyCheck: true,
+    // Add connection resilience for long-running operations
+    reconnectOnError: (err) => {
+      return (
+        err.message.includes("READONLY") || err.message.includes("ECONNRESET")
+      );
+    },
+  });
 };
 
-const redis = new Redis(getRedisUrl(), {
-  enableAutoPipelining: true,
-  maxRetriesPerRequest: 10,
-  lazyConnect: true,
-  keepAlive: 60000,
-  connectTimeout: 15000,
-  commandTimeout: 12000,
-  enableReadyCheck: true,
-});
+// Create two Redis instances for proper redlock quorum
+const redis1 = createRedisInstance(env.REDIS_URL);
+const redis2 = createRedisInstance(env.REDIS_URL_TWO);
 
-export const redlock = new Redlock([redis], {
+export const redlock = new Redlock([redis1, redis2], {
   // Clock drift factor - how much clock drift to account for
   driftFactor: 0.01,
 
-  retryCount: 200,
-  retryDelay: 500,
-  retryJitter: 200,
+  // Optimized retry settings for long-running locks
+  retryCount: 100, // Reduced from 200 to prevent excessive retries
+  retryDelay: 1000, // Increased base delay for better quorum chances
+  retryJitter: 500, // Increased jitter for better distribution
 
-  automaticExtensionThreshold: 3000, // Extend lock 3 second before expiry
+  automaticExtensionThreshold: 10000, // Extend lock 10 seconds before expiry for long operations
 });

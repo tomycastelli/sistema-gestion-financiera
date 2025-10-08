@@ -3,6 +3,7 @@ const nextConfig = {
   pageExtensions: ["ts", "tsx"],
   output: "standalone",
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
