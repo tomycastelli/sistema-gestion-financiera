@@ -172,8 +172,8 @@ export const generateMovements = async (
 
   const lockDuration =
     tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      ? 60_000 // 60 seconds for old operations
-      : 20_000; // 20 seconds for recent operations
+      ? 120_000 // 120 seconds for old operations
+      : 60_000; // 60 seconds for recent operations
 
   // Use currency-based locking - only operations on the same currency need to be serialized
   const lockKeys = [`balance_currency_${tx.currency}`];
@@ -325,8 +325,9 @@ export const generateMovements = async (
     },
     {
       operationName: "generate-movements",
-      maxRetries: 3,
-      baseDelay: 1000,
+      maxRetries: 8, // Increased for longer operations
+      baseDelay: 1500, // Increased base delay
+      maxDelay: 12000, // Increased max delay
     },
   );
 };

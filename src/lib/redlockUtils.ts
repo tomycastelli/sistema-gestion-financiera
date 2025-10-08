@@ -20,14 +20,14 @@ export const acquireLockWithRetries = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const {
-    maxRetries = 10,
-    baseDelay = 700,
-    maxDelay = 8000,
+    maxRetries = 15, // Increased for longer operations
+    baseDelay = 1000, // Increased from 700
+    maxDelay = 15000, // Increased from 8000
     operationName = "unknown",
   } = options;
 
   const startTime = Date.now();
-  const maxTotalTime = 60_000; // 1 minute maximum total time
+  const maxTotalTime = 180_000; // 3 minutes maximum total time
 
   let lastError: Error | null = null;
   let currentDelay = baseDelay;
@@ -83,7 +83,7 @@ export const acquireLockWithRetries = async (
         const delay = Math.min(currentDelay + jitter, maxDelay);
 
         await new Promise((resolve) => setTimeout(resolve, delay));
-        currentDelay = Math.min(currentDelay * 1.4, maxDelay); // More aggressive backoff
+        currentDelay = Math.min(currentDelay * 1.3, maxDelay); // Slightly less aggressive backoff
       }
     }
   }
