@@ -165,46 +165,8 @@ const loggingMiddleware = t.middleware(async ({ path, type, next, input }) => {
   return result;
 });
 
-/** Error logging middleware that captures all TRPCError exceptions and sends them to Logtail */
-const errorLoggingMiddleware = t.middleware(
-  async ({ path, type, next, input, ctx }) => {
-    try {
-      const result = await next();
-      return result;
-    } catch (error) {
-      // Only log TRPCError instances
-      if (error instanceof TRPCError) {
-        const errorData = {
-          error: {
-            code: error.code,
-            message: error.message,
-            cause: error.cause,
-          },
-          request: {
-            path,
-            type,
-            input: safeSerialize(input),
-            userId: ctx.user?.id,
-            userEmail: ctx.user?.email,
-          },
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV,
-        };
-
-        // Send to Logtail (fire and forget)
-        void logtail.error("TRPC Error occurred", errorData);
-      }
-
-      // Re-throw the error to maintain normal error handling flow
-      throw error;
-    }
-  },
-);
-
 export const publicProcedure = t.procedure;
-export const publicLoggedProcedure = t.procedure
-  .use(loggingMiddleware)
-  .use(errorLoggingMiddleware);
+export const publicLoggedProcedure = t.procedure.use(loggingMiddleware);
 
 const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
   if (!ctx.user) {
@@ -228,5 +190,4 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);
 export const protectedLoggedProcedure = t.procedure
   .use(loggingMiddleware)
-  .use(errorLoggingMiddleware)
   .use(enforceUserIsAuthed);
