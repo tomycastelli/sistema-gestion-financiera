@@ -325,9 +325,9 @@ export const generateMovements = async (
     },
     {
       operationName: "generate-movements",
-      maxRetries: 8, // Increased for longer operations
-      baseDelay: 1500, // Increased base delay
-      maxDelay: 12000, // Increased max delay
+      maxRetries: 6,
+      baseDelay: 1200,
+      maxDelay: 8000,
     },
   );
 };

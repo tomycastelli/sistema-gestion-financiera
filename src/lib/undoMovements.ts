@@ -51,7 +51,7 @@ export const undoMovements = async (
   return await withLock(
     redlock,
     lockKeys,
-    25_000, // 25 seconds for undo operations
+    45_000, // 45 seconds for undo operations
     async () => {
       // Delete the movement
       const deletedMovements = await transaction

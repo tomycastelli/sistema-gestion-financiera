@@ -20,14 +20,14 @@ export const acquireLockWithRetries = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const {
-    maxRetries = 15, // Increased for longer operations
-    baseDelay = 1000, // Increased from 700
-    maxDelay = 15000, // Increased from 8000
+    maxRetries = 8, // Optimized for 2-minute timeout
+    baseDelay = 1000, // Increased for better distribution
+    maxDelay = 8000, // Reduced to fit 2-minute window
     operationName = "unknown",
   } = options;
 
   const startTime = Date.now();
-  const maxTotalTime = 180_000; // 3 minutes maximum total time
+  const maxTotalTime = 130_000; // 2 minutes maximum total time
 
   let lastError: Error | null = null;
   let currentDelay = baseDelay;
