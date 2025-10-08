@@ -20,18 +20,34 @@ export const acquireLockWithRetries = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const {
-    maxRetries = 5,
-    baseDelay = 1000,
-    maxDelay = 10000,
+    maxRetries = 10,
+    baseDelay = 700,
+    maxDelay = 8000,
     operationName = "unknown",
   } = options;
 
   const startTime = Date.now();
+  const maxTotalTime = 60_000; // 1 minute maximum total time
 
   let lastError: Error | null = null;
   let currentDelay = baseDelay;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    // Check if we've exceeded the maximum total time
+    if (Date.now() - startTime > maxTotalTime) {
+      void logtail.error(`Lock acquisition timed out after ${maxTotalTime}ms`, {
+        operationName,
+        totalDuration: Date.now() - startTime,
+        resources,
+        lastError: lastError?.message,
+      });
+
+      throw new TRPCError({
+        code: "TIMEOUT",
+        message: `Lock acquisition timed out for operation: ${operationName}. Please try again later.`,
+      });
+    }
+
     try {
       void logtail.info(`Attempting to acquire lock`, {
         operationName,
@@ -62,12 +78,12 @@ export const acquireLockWithRetries = async (
       });
 
       if (attempt < maxRetries - 1) {
-        // Exponential backoff with jitter
-        const jitter = Math.random() * 0.1 * currentDelay;
+        // Exponential backoff with jitter to reach closer to 1 minute
+        const jitter = Math.random() * 0.3 * currentDelay;
         const delay = Math.min(currentDelay + jitter, maxDelay);
 
         await new Promise((resolve) => setTimeout(resolve, delay));
-        currentDelay = Math.min(currentDelay * 1.5, maxDelay);
+        currentDelay = Math.min(currentDelay * 1.4, maxDelay); // More aggressive backoff
       }
     }
   }
@@ -96,29 +112,37 @@ export const withLock = async <T>(
   operation: () => Promise<T>,
   options: LockOptions = {},
 ): Promise<T> => {
-  const lock = await acquireLockWithRetries(
-    redlock,
-    resources,
-    duration,
-    options,
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let lock: any = null;
 
   try {
+    lock = await acquireLockWithRetries(redlock, resources, duration, options);
+
     return await operation();
+  } catch (error) {
+    // Log the error before re-throwing
+    void logtail.error(`Operation failed within lock`, {
+      operationName: options.operationName,
+      resources,
+      error: (error as Error).message,
+    });
+    throw error;
   } finally {
-    try {
-      await lock.release();
-      void logtail.info(`Lock released successfully`, {
-        operationName: options.operationName,
-        resources,
-      });
-    } catch (error) {
-      void logtail.error(`Failed to release lock`, {
-        operationName: options.operationName,
-        resources,
-        error: (error as Error).message,
-      });
-      throw error;
+    if (lock) {
+      try {
+        await lock.release();
+        void logtail.info(`Lock released successfully`, {
+          operationName: options.operationName,
+          resources,
+        });
+      } catch (error) {
+        void logtail.error(`Failed to release lock`, {
+          operationName: options.operationName,
+          resources,
+          error: (error as Error).message,
+        });
+        // Don't throw here to avoid masking the original error
+      }
     }
   }
 };

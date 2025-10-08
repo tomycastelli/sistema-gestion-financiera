@@ -9,8 +9,8 @@ const createRedisInstance = (url: string) => {
     maxRetriesPerRequest: 5,
     lazyConnect: true,
     keepAlive: 120000, // 2 minutes keepalive for long locks
-    connectTimeout: 20000, // 20 seconds connection timeout
-    commandTimeout: 15000, // 15 seconds command timeout
+    connectTimeout: 5000, // 5 seconds connection timeout
+    commandTimeout: 5000, // 5 seconds command timeout
     enableReadyCheck: true,
     // Add connection resilience for long-running operations
     reconnectOnError: (err) => {
@@ -29,10 +29,10 @@ export const redlock = new Redlock([redis1, redis2], {
   // Clock drift factor - how much clock drift to account for
   driftFactor: 0.01,
 
-  // Optimized retry settings for long-running locks
-  retryCount: 100, // Reduced from 200 to prevent excessive retries
-  retryDelay: 1000, // Increased base delay for better quorum chances
-  retryJitter: 500, // Increased jitter for better distribution
+  // Optimized retry settings for fast lock acquisition
+  retryCount: 3, // Minimal retries - let redlockUtils handle the retry logic
+  retryDelay: 200, // Fast base delay
+  retryJitter: 100, // Small jitter for distribution
 
-  automaticExtensionThreshold: 10000, // Extend lock 10 seconds before expiry for long operations
+  automaticExtensionThreshold: 5000, // Extend lock 5 seconds before expiry
 });

@@ -27,7 +27,6 @@ import {
 import { movementBalanceDirection } from "./functions";
 import logtail, { safeSerialize } from "./logger";
 import { withLock } from "./redlockUtils";
-import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 // Helper to get the opposite balance field
 export const getOppositeBalanceField = (
@@ -173,17 +172,18 @@ export const generateMovements = async (
 
   const lockDuration =
     tx.operation.date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      ? 600_000
-      : 180_000;
+      ? 60_000 // 60 seconds for old operations
+      : 20_000; // 20 seconds for recent operations
+
+  // Use currency-based locking - only operations on the same currency need to be serialized
+  const lockKeys = [`balance_currency_${tx.currency}`];
 
   return await withLock(
     redlock,
-    [LOCK_MOVEMENTS_KEY],
-    // Use a global lock for all balance calculations to ensure complete serialization
+    lockKeys,
+    // Use currency-based locks to allow parallel processing of different currencies
     lockDuration,
     async () => {
-      // Removed lock acquisition logging
-
       // Process all balances sequentially to ensure consistency
       const balance1 = await processBalance(
         transaction,

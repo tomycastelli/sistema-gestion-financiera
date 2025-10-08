@@ -22,7 +22,6 @@ import {
 } from "./generateMovements";
 import logtail, { safeSerialize } from "./logger";
 import { withLock } from "./redlockUtils";
-import { LOCK_MOVEMENTS_KEY } from "./variables";
 
 export const undoMovements = async (
   transaction: PgTransaction<
@@ -46,13 +45,15 @@ export const undoMovements = async (
     currency: tx.currency,
   });
 
+  // Use currency-based locking - only operations on the same currency need to be serialized
+  const lockKeys = [`balance_currency_${tx.currency}`];
+
   return await withLock(
     redlock,
-    [LOCK_MOVEMENTS_KEY],
-    300_000, // 5 minutes for undo operations
+    lockKeys,
+    25_000, // 25 seconds for undo operations
     async () => {
       // Delete the movement
-      // Removed logging for movement deletion
       const deletedMovements = await transaction
         .delete(movements)
         .where(eq(movements.transactionId, tx.id))
