@@ -204,7 +204,7 @@ export const filesRouter = createTRPCRouter({
             }
 
             // Finalize the workbook (this will close the stream)
-            await worksheet.commit();
+            worksheet.commit();
             await workbook.commit();
 
             // Wait for upload to complete
