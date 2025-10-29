@@ -1,7 +1,10 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { TRPCError } from "@trpc/server";
 import { and, gte, lte } from "drizzle-orm";
+import ExcelJS from "exceljs";
 import moment from "moment";
+import { PassThrough } from "stream";
 import XLSX from "xlsx";
 import { z } from "zod";
 import { env } from "~/env.mjs";
@@ -36,28 +39,6 @@ export const filesRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const { movementsQuery: tableData } = await currentAccountsProcedure(
-          {
-            entityTag: input.entityTag,
-            entityId: input.entityId,
-            currency: input.currency,
-            account: input.account,
-            fromDate: input.fromDate,
-            toDate: input.toDate,
-            pageSize: 100000,
-            pageNumber: 1,
-            dayInPast: input.dayInPast,
-            toEntityId: input.toEntityId,
-            groupInTag: input.groupInTag,
-            dateOrdering: input.dateOrdering,
-            ignoreSameTag: input.ignoreSameTag,
-            balanceType: input.balanceType,
-          },
-          ctx,
-        );
-
-        console.log(`Processing ${tableData.length} rows for XLSX generation`);
-
         const entities = await getAllEntities(ctx.redis, ctx.db);
 
         const filename = `${
@@ -79,97 +60,180 @@ export const filesRouter = createTRPCRouter({
         }`;
 
         if (input.fileType === "xlsx") {
-          // Memory-optimized approach for large datasets
-          const LARGE_DATASET_THRESHOLD = 10000;
-          const isLargeDataset = tableData.length > LARGE_DATASET_THRESHOLD;
+          // Get total count first
+          const { totalRows } = await currentAccountsProcedure(
+            {
+              entityTag: input.entityTag,
+              entityId: input.entityId,
+              currency: input.currency,
+              account: input.account,
+              fromDate: input.fromDate,
+              toDate: input.toDate,
+              pageSize: 1,
+              pageNumber: 1,
+              dayInPast: input.dayInPast,
+              toEntityId: input.toEntityId,
+              groupInTag: input.groupInTag,
+              dateOrdering: input.dateOrdering,
+              ignoreSameTag: input.ignoreSameTag,
+              balanceType: input.balanceType,
+            },
+            ctx,
+          );
 
-          if (isLargeDataset) {
-            // Use streaming approach for large datasets to reduce memory usage
-            const workbook = XLSX.utils.book_new();
-            const CHUNK_SIZE = 2000; // Smaller chunks for Docker memory constraints
+          console.log(`Streaming ${totalRows} rows to XLSX via S3`);
 
-            // Process data in chunks and build worksheet incrementally
-            let processedRows = 0;
-            let allProcessedData: Array<{
-              operacionId: number;
-              transaccionId: number;
-              movementId: number;
-              fecha: Date;
-              origen: string;
-              origen_id: number;
-              cliente: string;
-              cliente_id: number;
-              detalle: string;
-              tipo: string;
-              tipo_de_cambio: string;
-              categoria: string;
-              subcategoria: string;
-              divisa: string;
-              entrada: number;
-              salida: number;
-              saldo: number;
-              activo: string;
-            }> = [];
+          // Use streaming for large datasets (>5000 rows)
+          const STREAMING_THRESHOLD = 5000;
+          const useStreaming = totalRows > STREAMING_THRESHOLD;
 
-            for (let i = 0; i < tableData.length; i += CHUNK_SIZE) {
-              const chunk = tableData.slice(i, i + CHUNK_SIZE);
-              const chunkData = chunk.map((mv) => ({
-                operacionId: mv.operationId,
-                transaccionId: mv.transactionId,
-                movementId: mv.id,
-                fecha: mv.date,
-                origen: mv.selectedEntity,
-                origen_id: mv.selectedEntityId,
-                cliente: mv.otherEntity,
-                cliente_id: mv.otherEntityId,
-                detalle: mv.observations ?? "",
-                tipo: `${
-                  mv.type === "upload"
-                    ? "Carga"
-                    : mv.type === "confirmation"
-                    ? "Confirmación"
-                    : "Cancelación"
-                } de ${mv.txType}`,
-                // @ts-ignore
-                tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
-                categoria: mv.category ?? "",
-                subcategoria: mv.subCategory ?? "",
-                divisa: mv.currency,
-                entrada: mv.ingress,
-                salida: mv.egress,
-                saldo: mv.balance,
-                activo: mv.isActive ? "SI" : "NO",
-              }));
+          if (useStreaming) {
+            // Create a PassThrough stream for piping Excel data to S3
+            const stream = new PassThrough();
 
-              allProcessedData = allProcessedData.concat(chunkData);
-              processedRows += chunk.length;
+            // Create Excel workbook with streaming
+            const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+              stream,
+              useStyles: false,
+              useSharedStrings: false,
+            });
+
+            const worksheet = workbook.addWorksheet("Sheet1");
+
+            // Define columns
+            worksheet.columns = [
+              { header: "operacionId", key: "operacionId", width: 12 },
+              { header: "transaccionId", key: "transaccionId", width: 12 },
+              { header: "movementId", key: "movementId", width: 12 },
+              { header: "fecha", key: "fecha", width: 20 },
+              { header: "origen", key: "origen", width: 30 },
+              { header: "origen_id", key: "origen_id", width: 10 },
+              { header: "cliente", key: "cliente", width: 30 },
+              { header: "cliente_id", key: "cliente_id", width: 10 },
+              { header: "detalle", key: "detalle", width: 40 },
+              { header: "tipo", key: "tipo", width: 25 },
+              { header: "tipo_de_cambio", key: "tipo_de_cambio", width: 15 },
+              { header: "categoria", key: "categoria", width: 20 },
+              { header: "subcategoria", key: "subcategoria", width: 20 },
+              { header: "divisa", key: "divisa", width: 10 },
+              { header: "entrada", key: "entrada", width: 15 },
+              { header: "salida", key: "salida", width: 15 },
+              { header: "saldo", key: "saldo", width: 15 },
+              { header: "activo", key: "activo", width: 10 },
+            ];
+
+            // Start S3 multipart upload
+            const upload = new Upload({
+              client: ctx.s3.client,
+              params: {
+                Bucket: ctx.s3.bucketNames.reports,
+                Key: `cuentas/${filename}`,
+                Body: stream,
+                ContentType:
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              },
+            });
+
+            // Start upload in background
+            const uploadPromise = upload.done();
+
+            // Fetch and stream data in batches
+            const BATCH_SIZE = 5000;
+            const totalPages = Math.ceil(totalRows / BATCH_SIZE);
+
+            for (let page = 1; page <= totalPages; page++) {
+              const { movementsQuery: batch } = await currentAccountsProcedure(
+                {
+                  entityTag: input.entityTag,
+                  entityId: input.entityId,
+                  currency: input.currency,
+                  account: input.account,
+                  fromDate: input.fromDate,
+                  toDate: input.toDate,
+                  pageSize: BATCH_SIZE,
+                  pageNumber: page,
+                  dayInPast: input.dayInPast,
+                  toEntityId: input.toEntityId,
+                  groupInTag: input.groupInTag,
+                  dateOrdering: input.dateOrdering,
+                  ignoreSameTag: input.ignoreSameTag,
+                  balanceType: input.balanceType,
+                },
+                ctx,
+              );
+
+              console.log(
+                `Processing batch ${page}/${totalPages} (${batch.length} rows)`,
+              );
+
+              // Write rows to worksheet
+              for (const mv of batch) {
+                worksheet
+                  .addRow({
+                    operacionId: mv.operationId,
+                    transaccionId: mv.transactionId,
+                    movementId: mv.id,
+                    fecha: mv.date,
+                    origen: mv.selectedEntity,
+                    origen_id: mv.selectedEntityId,
+                    cliente: mv.otherEntity,
+                    cliente_id: mv.otherEntityId,
+                    detalle: mv.observations ?? "",
+                    tipo: `${
+                      mv.type === "upload"
+                        ? "Carga"
+                        : mv.type === "confirmation"
+                        ? "Confirmación"
+                        : "Cancelación"
+                    } de ${mv.txType}`,
+                    // @ts-ignore
+                    tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+                    categoria: mv.category ?? "",
+                    subcategoria: mv.subCategory ?? "",
+                    divisa: mv.currency,
+                    entrada: mv.ingress,
+                    salida: mv.egress,
+                    saldo: mv.balance,
+                    activo: mv.isActive ? "SI" : "NO",
+                  })
+                  .commit();
+              }
+
+              // Allow some time for stream buffer to drain
+              await new Promise((resolve) => setTimeout(resolve, 10));
             }
 
-            // Create worksheet from all processed data
-            const worksheet = XLSX.utils.json_to_sheet(allProcessedData);
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+            // Finalize the workbook (this will close the stream)
+            await worksheet.commit();
+            await workbook.commit();
 
-            // Clear the large array to free memory before writing
-            allProcessedData = [];
+            // Wait for upload to complete
+            await uploadPromise;
 
-            const xlsxBuffer = XLSX.write(workbook, {
-              bookType: "xlsx",
-              type: "buffer",
-              compression: true,
-              cellStyles: false, // Disable cell styles to save memory
-            });
-
-            const putCommand = new PutObjectCommand({
-              Bucket: ctx.s3.bucketNames.reports,
-              Key: `cuentas/${filename}`,
-              Body: xlsxBuffer,
-              ContentType:
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            });
-
-            await ctx.s3.client.send(putCommand);
+            console.log(`Successfully streamed ${totalRows} rows to S3`);
           } else {
-            // Standard approach for smaller datasets
+            // For smaller datasets, use the original non-streaming approach
+            const { movementsQuery: tableData } =
+              await currentAccountsProcedure(
+                {
+                  entityTag: input.entityTag,
+                  entityId: input.entityId,
+                  currency: input.currency,
+                  account: input.account,
+                  fromDate: input.fromDate,
+                  toDate: input.toDate,
+                  pageSize: totalRows || 10000,
+                  pageNumber: 1,
+                  dayInPast: input.dayInPast,
+                  toEntityId: input.toEntityId,
+                  groupInTag: input.groupInTag,
+                  dateOrdering: input.dateOrdering,
+                  ignoreSameTag: input.ignoreSameTag,
+                  balanceType: input.balanceType,
+                },
+                ctx,
+              );
+
             const csvData = tableData.map((mv) => ({
               operacionId: mv.operationId,
               transaccionId: mv.transactionId,
@@ -219,6 +283,27 @@ export const filesRouter = createTRPCRouter({
             await ctx.s3.client.send(putCommand);
           }
         } else if (input.fileType === "pdf") {
+          // For PDF, we still need to load all data (PDFs are harder to stream)
+          const { movementsQuery: tableData } = await currentAccountsProcedure(
+            {
+              entityTag: input.entityTag,
+              entityId: input.entityId,
+              currency: input.currency,
+              account: input.account,
+              fromDate: input.fromDate,
+              toDate: input.toDate,
+              pageSize: 100000,
+              pageNumber: 1,
+              dayInPast: input.dayInPast,
+              toEntityId: input.toEntityId,
+              groupInTag: input.groupInTag,
+              dateOrdering: input.dateOrdering,
+              ignoreSameTag: input.ignoreSameTag,
+              balanceType: input.balanceType,
+            },
+            ctx,
+          );
+
           const data = tableData.map((mv) => ({
             transaccionId: mv.transactionId,
             id: mv.id,
