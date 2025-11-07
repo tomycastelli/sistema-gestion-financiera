@@ -90,144 +90,162 @@ export const filesRouter = createTRPCRouter({
           if (useStreaming) {
             // Create a PassThrough stream for piping Excel data to S3
             const stream = new PassThrough();
+            let upload: Upload | null = null;
+            let uploadPromise: ReturnType<Upload["done"]> | null = null;
 
-            // Create Excel workbook with streaming
-            const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
-              stream,
-              useStyles: false,
-              useSharedStrings: false,
-            });
+            try {
+              // Create Excel workbook with streaming
+              const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+                stream,
+                useStyles: false,
+                useSharedStrings: false,
+              });
 
-            const worksheet = workbook.addWorksheet("Sheet1");
+              const worksheet = workbook.addWorksheet("Sheet1");
 
-            // Define columns
-            worksheet.columns = [
-              { header: "operacionId", key: "operacionId", width: 12 },
-              { header: "transaccionId", key: "transaccionId", width: 12 },
-              { header: "movementId", key: "movementId", width: 12 },
-              { header: "fecha", key: "fecha", width: 20 },
-              { header: "origen", key: "origen", width: 30 },
-              { header: "origen_id", key: "origen_id", width: 10 },
-              { header: "cliente", key: "cliente", width: 30 },
-              { header: "cliente_id", key: "cliente_id", width: 10 },
-              { header: "detalle", key: "detalle", width: 40 },
-              { header: "tipo", key: "tipo", width: 25 },
-              { header: "tipo_de_cambio", key: "tipo_de_cambio", width: 15 },
-              { header: "categoria", key: "categoria", width: 20 },
-              { header: "subcategoria", key: "subcategoria", width: 20 },
-              { header: "divisa", key: "divisa", width: 10 },
-              { header: "entrada", key: "entrada", width: 15 },
-              { header: "salida", key: "salida", width: 15 },
-              { header: "saldo", key: "saldo", width: 15 },
-              { header: "activo", key: "activo", width: 10 },
-            ];
+              // Define columns
+              worksheet.columns = [
+                { header: "operacionId", key: "operacionId", width: 12 },
+                { header: "transaccionId", key: "transaccionId", width: 12 },
+                { header: "movementId", key: "movementId", width: 12 },
+                { header: "fecha", key: "fecha", width: 20 },
+                { header: "origen", key: "origen", width: 30 },
+                { header: "origen_id", key: "origen_id", width: 10 },
+                { header: "cliente", key: "cliente", width: 30 },
+                { header: "cliente_id", key: "cliente_id", width: 10 },
+                { header: "detalle", key: "detalle", width: 40 },
+                { header: "tipo", key: "tipo", width: 25 },
+                { header: "tipo_de_cambio", key: "tipo_de_cambio", width: 15 },
+                { header: "categoria", key: "categoria", width: 20 },
+                { header: "subcategoria", key: "subcategoria", width: 20 },
+                { header: "divisa", key: "divisa", width: 10 },
+                { header: "entrada", key: "entrada", width: 15 },
+                { header: "salida", key: "salida", width: 15 },
+                { header: "saldo", key: "saldo", width: 15 },
+                { header: "activo", key: "activo", width: 10 },
+              ];
 
-            // Start S3 multipart upload
-            const upload = new Upload({
-              client: ctx.s3.client,
-              params: {
-                Bucket: ctx.s3.bucketNames.reports,
-                Key: `cuentas/${filename}`,
-                Body: stream,
-                ContentType:
-                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              },
-            });
-
-            // Start upload in background
-            const uploadPromise = upload.done();
-
-            // Fetch and stream data in batches
-            const BATCH_SIZE = 5000;
-            const totalPages = Math.ceil(totalRows / BATCH_SIZE);
-
-            for (let page = 1; page <= totalPages; page++) {
-              const { movementsQuery: batch } = await currentAccountsProcedure(
-                {
-                  entityTag: input.entityTag,
-                  entityId: input.entityId,
-                  currency: input.currency,
-                  account: input.account,
-                  fromDate: input.fromDate,
-                  toDate: input.toDate,
-                  pageSize: BATCH_SIZE,
-                  pageNumber: page,
-                  dayInPast: input.dayInPast,
-                  toEntityId: input.toEntityId,
-                  groupInTag: input.groupInTag,
-                  dateOrdering: input.dateOrdering,
-                  ignoreSameTag: input.ignoreSameTag,
-                  balanceType: input.balanceType,
+              // Start S3 multipart upload
+              upload = new Upload({
+                client: ctx.s3.client,
+                params: {
+                  Bucket: ctx.s3.bucketNames.reports,
+                  Key: `cuentas/${filename}`,
+                  Body: stream,
+                  ContentType:
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 },
-                ctx,
-              );
+              });
 
-              console.log(
-                `Processing batch ${page}/${totalPages} (${batch.length} rows)`,
-              );
+              // Start upload in background
+              uploadPromise = upload.done();
 
-              // Write rows to worksheet
-              for (const mv of batch) {
-                worksheet
-                  .addRow({
-                    operacionId: mv.operationId,
-                    transaccionId: mv.transactionId,
-                    movementId: mv.id,
-                    fecha: mv.date,
-                    origen: mv.selectedEntity,
-                    origen_id: mv.selectedEntityId,
-                    cliente: mv.otherEntity,
-                    cliente_id: mv.otherEntityId,
-                    detalle: mv.observations ?? "",
-                    tipo: `${
-                      mv.type === "upload"
-                        ? "Carga"
-                        : mv.type === "confirmation"
-                        ? "Confirmación"
-                        : "Cancelación"
-                    } de ${mv.txType}`,
-                    // @ts-ignore
-                    tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
-                    categoria: mv.category ?? "",
-                    subcategoria: mv.subCategory ?? "",
-                    divisa: mv.currency,
-                    entrada: mv.ingress,
-                    salida: mv.egress,
-                    saldo: mv.balance,
-                    activo: mv.isActive ? "SI" : "NO",
-                  })
-                  .commit();
+              // Fetch and stream data in batches
+              const BATCH_SIZE = 5000;
+              const totalPages = Math.ceil(totalRows / BATCH_SIZE);
+
+              for (let page = 1; page <= totalPages; page++) {
+                const { movementsQuery: batch } =
+                  await currentAccountsProcedure(
+                    {
+                      entityTag: input.entityTag,
+                      entityId: input.entityId,
+                      currency: input.currency,
+                      account: input.account,
+                      fromDate: input.fromDate,
+                      toDate: input.toDate,
+                      pageSize: BATCH_SIZE,
+                      pageNumber: page,
+                      dayInPast: input.dayInPast,
+                      toEntityId: input.toEntityId,
+                      groupInTag: input.groupInTag,
+                      dateOrdering: input.dateOrdering,
+                      ignoreSameTag: input.ignoreSameTag,
+                      balanceType: input.balanceType,
+                    },
+                    ctx,
+                  );
+
+                console.log(
+                  `Processing batch ${page}/${totalPages} (${batch.length} rows)`,
+                );
+
+                // Write rows to worksheet
+                for (const mv of batch) {
+                  worksheet
+                    .addRow({
+                      operacionId: mv.operationId,
+                      transaccionId: mv.transactionId,
+                      movementId: mv.id,
+                      fecha: mv.date,
+                      origen: mv.selectedEntity,
+                      origen_id: mv.selectedEntityId,
+                      cliente: mv.otherEntity,
+                      cliente_id: mv.otherEntityId,
+                      detalle: mv.observations ?? "",
+                      tipo: `${
+                        mv.type === "upload"
+                          ? "Carga"
+                          : mv.type === "confirmation"
+                          ? "Confirmación"
+                          : "Cancelación"
+                      } de ${mv.txType}`,
+                      // @ts-ignore
+                      tipo_de_cambio: mv.metadata?.exchange_rate ?? "",
+                      categoria: mv.category ?? "",
+                      subcategoria: mv.subCategory ?? "",
+                      divisa: mv.currency,
+                      entrada: mv.ingress,
+                      salida: mv.egress,
+                      saldo: mv.balance,
+                      activo: mv.isActive ? "SI" : "NO",
+                    })
+                    .commit();
+                }
+
+                // Allow some time for stream buffer to drain
+                await new Promise((resolve) => setTimeout(resolve, 10));
               }
 
-              // Allow some time for stream buffer to drain
-              await new Promise((resolve) => setTimeout(resolve, 10));
-            }
+              // Finalize the workbook (this will close the stream)
+              try {
+                worksheet.commit();
+                await workbook.commit();
+              } catch (commitError) {
+                console.error("Error committing workbook:", commitError);
+                // Stream might already be closed, but we still need to wait for upload
+              }
 
-            // Finalize the workbook (this will close the stream)
-            try {
-              worksheet.commit();
-              await workbook.commit();
-            } catch (commitError) {
-              console.error("Error committing workbook:", commitError);
-              // Stream might already be closed, but we still need to wait for upload
-            }
-
-            // Wait for upload to complete
-            try {
-              await uploadPromise;
-              console.log(`Successfully streamed ${totalRows} rows to S3`);
-              // Small delay to ensure stream is fully settled
-              await new Promise((resolve) => setTimeout(resolve, 300));
-            } catch (uploadError) {
-              console.error("Error during S3 upload:", uploadError);
-              throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: `Failed to upload file to S3: ${
-                  uploadError instanceof Error
-                    ? uploadError.message
-                    : "Unknown error"
-                }`,
-              });
+              // Wait for upload to complete - CRITICAL: must complete before returning
+              if (uploadPromise !== null) {
+                try {
+                  await uploadPromise;
+                  console.log(`Successfully streamed ${totalRows} rows to S3`);
+                  // Small delay to ensure stream is fully settled
+                  await new Promise((resolve) => setTimeout(resolve, 300));
+                } catch (uploadError) {
+                  console.error("Error during S3 upload:", uploadError);
+                  throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: `Failed to upload file to S3: ${
+                      uploadError instanceof Error
+                        ? uploadError.message
+                        : "Unknown error"
+                    }`,
+                  });
+                }
+              }
+            } catch (streamingError) {
+              // If there's an error, try to abort the upload
+              if (upload) {
+                try {
+                  await upload.abort();
+                } catch (abortError) {
+                  console.error("Error aborting upload:", abortError);
+                }
+              }
+              // Re-throw the error
+              throw streamingError;
             }
           } else {
             // For smaller datasets, use the original non-streaming approach
@@ -747,132 +765,149 @@ export const filesRouter = createTRPCRouter({
 
           // Create a PassThrough stream for piping Excel data to S3
           const stream = new PassThrough();
+          let upload: Upload | null = null;
+          let uploadPromise: ReturnType<Upload["done"]> | null = null;
 
-          // Create Excel workbook with streaming
-          const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
-            stream,
-            useStyles: false,
-            useSharedStrings: false,
-          });
-
-          const worksheet = workbook.addWorksheet("Sheet1");
-
-          // Define columns
-          worksheet.columns = [
-            { header: "id", key: "id", width: 12 },
-            { header: "txId", key: "txId", width: 12 },
-            { header: "fecha", key: "fecha", width: 20 },
-            { header: "tipo", key: "tipo", width: 20 },
-            { header: "categoria", key: "categoria", width: 20 },
-            { header: "subcategoria", key: "subcategoria", width: 20 },
-            { header: "operador", key: "operador", width: 30 },
-            { header: "origen", key: "origen", width: 30 },
-            { header: "destino", key: "destino", width: 30 },
-            { header: "detalle", key: "detalle", width: 40 },
-            { header: "divisa", key: "divisa", width: 10 },
-            { header: "monto", key: "monto", width: 15 },
-            { header: "estado", key: "estado", width: 15 },
-            { header: "cargadoPor", key: "cargadoPor", width: 25 },
-            { header: "confirmadoPor", key: "confirmadoPor", width: 25 },
-          ];
-
-          // Start S3 multipart upload
-          const upload = new Upload({
-            client: ctx.s3.client,
-            params: {
-              Bucket: ctx.s3.bucketNames.reports,
-              Key: `transacciones/${filename}`,
-              Body: stream,
-              ContentType:
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            },
-          });
-
-          // Start upload in background
-          const uploadPromise = upload.done();
-
-          // Fetch and stream data in batches
-          const BATCH_SIZE = 500; // Operations per batch
-          const totalPages = Math.ceil(input.operationsCount / BATCH_SIZE);
-          let totalTransactionsProcessed = 0;
-
-          for (let page = 1; page <= totalPages; page++) {
-            const limit = Math.min(
-              BATCH_SIZE,
-              input.operationsCount - (page - 1) * BATCH_SIZE,
-            );
-
-            const { operations } = await getOperationsProcedure(ctx, {
-              ...input,
-              page,
-              limit,
+          try {
+            // Create Excel workbook with streaming
+            const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+              stream,
+              useStyles: false,
+              useSharedStrings: false,
             });
 
-            // Flatten transactions and write to worksheet
-            for (const operation of operations) {
-              for (const transaction of operation.transactions) {
-                worksheet
-                  .addRow({
-                    id: operation.id,
-                    txId: transaction.id,
-                    fecha: operation.date,
-                    tipo: transaction.type,
-                    categoria: transaction.category ?? "",
-                    subcategoria: transaction.subCategory ?? "",
-                    operador: transaction.operatorEntity.name,
-                    origen: transaction.fromEntity.name,
-                    destino: transaction.toEntity.name,
-                    detalle: operation.observations ?? "",
-                    divisa: transaction.currency,
-                    monto: transaction.amount,
-                    estado: transaction.status,
-                    cargadoPor:
-                      transaction.transactionMetadata.uploadedByUser?.name ??
-                      "",
-                    confirmadoPor:
-                      transaction.transactionMetadata.confirmedByUser?.name ??
-                      "",
-                  })
-                  .commit();
-                totalTransactionsProcessed++;
+            const worksheet = workbook.addWorksheet("Sheet1");
+
+            // Define columns
+            worksheet.columns = [
+              { header: "id", key: "id", width: 12 },
+              { header: "txId", key: "txId", width: 12 },
+              { header: "fecha", key: "fecha", width: 20 },
+              { header: "tipo", key: "tipo", width: 20 },
+              { header: "categoria", key: "categoria", width: 20 },
+              { header: "subcategoria", key: "subcategoria", width: 20 },
+              { header: "operador", key: "operador", width: 30 },
+              { header: "origen", key: "origen", width: 30 },
+              { header: "destino", key: "destino", width: 30 },
+              { header: "detalle", key: "detalle", width: 40 },
+              { header: "divisa", key: "divisa", width: 10 },
+              { header: "monto", key: "monto", width: 15 },
+              { header: "estado", key: "estado", width: 15 },
+              { header: "cargadoPor", key: "cargadoPor", width: 25 },
+              { header: "confirmadoPor", key: "confirmadoPor", width: 25 },
+            ];
+
+            // Start S3 multipart upload
+            upload = new Upload({
+              client: ctx.s3.client,
+              params: {
+                Bucket: ctx.s3.bucketNames.reports,
+                Key: `transacciones/${filename}`,
+                Body: stream,
+                ContentType:
+                  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              },
+            });
+
+            // Start upload in background
+            uploadPromise = upload.done();
+
+            // Fetch and stream data in batches
+            const BATCH_SIZE = 500; // Operations per batch
+            const totalPages = Math.ceil(input.operationsCount / BATCH_SIZE);
+            let totalTransactionsProcessed = 0;
+
+            for (let page = 1; page <= totalPages; page++) {
+              const limit = Math.min(
+                BATCH_SIZE,
+                input.operationsCount - (page - 1) * BATCH_SIZE,
+              );
+
+              const { operations } = await getOperationsProcedure(ctx, {
+                ...input,
+                page,
+                limit,
+              });
+
+              // Flatten transactions and write to worksheet
+              for (const operation of operations) {
+                for (const transaction of operation.transactions) {
+                  worksheet
+                    .addRow({
+                      id: operation.id,
+                      txId: transaction.id,
+                      fecha: operation.date,
+                      tipo: transaction.type,
+                      categoria: transaction.category ?? "",
+                      subcategoria: transaction.subCategory ?? "",
+                      operador: transaction.operatorEntity.name,
+                      origen: transaction.fromEntity.name,
+                      destino: transaction.toEntity.name,
+                      detalle: operation.observations ?? "",
+                      divisa: transaction.currency,
+                      monto: transaction.amount,
+                      estado: transaction.status,
+                      cargadoPor:
+                        transaction.transactionMetadata.uploadedByUser?.name ??
+                        "",
+                      confirmadoPor:
+                        transaction.transactionMetadata.confirmedByUser?.name ??
+                        "",
+                    })
+                    .commit();
+                  totalTransactionsProcessed++;
+                }
               }
+
+              console.log(
+                `Processing batch ${page}/${totalPages} (${operations.length} operations, ${totalTransactionsProcessed} total transactions)`,
+              );
+
+              // Allow some time for stream buffer to drain
+              await new Promise((resolve) => setTimeout(resolve, 10));
             }
 
-            console.log(
-              `Processing batch ${page}/${totalPages} (${operations.length} operations, ${totalTransactionsProcessed} total transactions)`,
-            );
+            // Finalize the workbook (this will close the stream)
+            try {
+              worksheet.commit();
+              await workbook.commit();
+            } catch (commitError) {
+              console.error("Error committing workbook:", commitError);
+              // Stream might already be closed, but we still need to wait for upload
+            }
 
-            // Allow some time for stream buffer to drain
-            await new Promise((resolve) => setTimeout(resolve, 10));
-          }
-
-          // Finalize the workbook (this will close the stream)
-          try {
-            worksheet.commit();
-            await workbook.commit();
-          } catch (commitError) {
-            console.error("Error committing workbook:", commitError);
-            // Stream might already be closed, but we still need to wait for upload
-          }
-
-          // Wait for upload to complete
-          try {
-            await uploadPromise;
-            console.log(
-              `Successfully streamed ${totalTransactionsProcessed} transactions to S3`,
-            );
-            // Small delay to ensure stream is fully settled
-            await new Promise((resolve) => setTimeout(resolve, 300));
-          } catch (uploadError) {
-            console.error("Error during S3 upload:", uploadError);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: `Failed to upload file to S3: ${
-                uploadError instanceof Error
-                  ? uploadError.message
-                  : "Unknown error"
-              }`,
-            });
+            // Wait for upload to complete - CRITICAL: must complete before returning
+            if (uploadPromise !== null) {
+              try {
+                await uploadPromise;
+                console.log(
+                  `Successfully streamed ${totalTransactionsProcessed} transactions to S3`,
+                );
+                // Small delay to ensure stream is fully settled
+                await new Promise((resolve) => setTimeout(resolve, 300));
+              } catch (uploadError) {
+                console.error("Error during S3 upload:", uploadError);
+                throw new TRPCError({
+                  code: "INTERNAL_SERVER_ERROR",
+                  message: `Failed to upload file to S3: ${
+                    uploadError instanceof Error
+                      ? uploadError.message
+                      : "Unknown error"
+                  }`,
+                });
+              }
+            }
+          } catch (streamingError) {
+            // If there's an error, try to abort the upload
+            if (upload) {
+              try {
+                await upload.abort();
+              } catch (abortError) {
+                console.error("Error aborting upload:", abortError);
+              }
+            }
+            // Re-throw the error
+            throw streamingError;
           }
         } else {
           // For smaller datasets, use the original non-streaming approach
