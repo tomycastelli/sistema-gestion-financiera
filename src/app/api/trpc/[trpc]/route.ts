@@ -1,13 +1,12 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { type NextRequest } from "next/server";
 
-import { env } from "~/env.mjs";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
 // Increase timeout for long-running operations (e.g., large file exports)
-// 600 seconds = 10 minutes
-export const maxDuration = 600;
+// 300 seconds = 5 minutes
+export const maxDuration = 300;
 
 const handler = (req: NextRequest) =>
   fetchRequestHandler({
@@ -15,14 +14,20 @@ const handler = (req: NextRequest) =>
     req,
     router: appRouter,
     createContext: () => createTRPCContext({ req }),
-    onError:
-      env.NODE_ENV === "development"
-        ? ({ path, error }) => {
-            console.error(
-              `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`,
-            );
-          }
-        : undefined,
+    onError: ({ path, error, input, type, ctx }) => {
+      console.error("❌ tRPC Error:", {
+        path: path ?? "<no-path>",
+        type,
+        error: {
+          code: error.code,
+          message: error.message,
+          cause: error.cause,
+          stack: error.stack,
+        },
+        input,
+        userId: ctx?.user?.id,
+      });
+    },
   });
 
 export { handler as GET, handler as POST };

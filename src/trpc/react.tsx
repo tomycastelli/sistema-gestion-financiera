@@ -23,7 +23,6 @@ export function TRPCReactProvider(props: {
           },
           mutations: {
             // Increase timeout for long-running mutations (e.g., large file exports)
-            // 10 minutes = 600,000ms
             retry: false,
             networkMode: "online",
           },
@@ -47,10 +46,10 @@ export function TRPCReactProvider(props: {
             heads.set("x-trpc-source", "react");
             return Object.fromEntries(heads);
           },
-          // Increase fetch timeout for long-running operations (10 minutes)
+          // Increase fetch timeout for long-running operations (5 minutes)
           fetch: (url, options) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
             // If there's an existing signal, abort our controller when it aborts
             if (options?.signal) {

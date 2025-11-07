@@ -149,19 +149,26 @@ const loggingMiddleware = t.middleware(async ({ path, type, next, input }) => {
   const result = await next();
   const durationMs = Date.now() - start;
 
-  result.ok
-    ? console.log("OK request timing:", {
-        path,
-        input,
-        type,
-        durationMs,
-      })
-    : console.log("Non-OK request timing", {
-        path,
-        input,
-        type,
-        durationMs,
-      });
+  if (result.ok) {
+    console.log("OK request timing:", {
+      path,
+      input,
+      type,
+      durationMs,
+    });
+  } else {
+    console.error("❌ tRPC Error:", {
+      path,
+      input,
+      type,
+      durationMs,
+      error: {
+        code: result.error.code,
+        message: result.error.message,
+        cause: result.error.cause,
+      },
+    });
+  }
   return result;
 });
 
