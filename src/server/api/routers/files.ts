@@ -204,13 +204,31 @@ export const filesRouter = createTRPCRouter({
             }
 
             // Finalize the workbook (this will close the stream)
-            worksheet.commit();
-            await workbook.commit();
+            try {
+              worksheet.commit();
+              await workbook.commit();
+            } catch (commitError) {
+              console.error("Error committing workbook:", commitError);
+              // Stream might already be closed, but we still need to wait for upload
+            }
 
             // Wait for upload to complete
-            await uploadPromise;
-
-            console.log(`Successfully streamed ${totalRows} rows to S3`);
+            try {
+              await uploadPromise;
+              console.log(`Successfully streamed ${totalRows} rows to S3`);
+              // Small delay to ensure stream is fully settled
+              await new Promise((resolve) => setTimeout(resolve, 300));
+            } catch (uploadError) {
+              console.error("Error during S3 upload:", uploadError);
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: `Failed to upload file to S3: ${
+                  uploadError instanceof Error
+                    ? uploadError.message
+                    : "Unknown error"
+                }`,
+              });
+            }
           } else {
             // For smaller datasets, use the original non-streaming approach
             const { movementsQuery: tableData } =
@@ -713,57 +731,228 @@ export const filesRouter = createTRPCRouter({
         .omit({ page: true, limit: true }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { operations } = await getOperationsProcedure(ctx, {
-        ...input,
-        page: 1,
-        limit: input.operationsCount,
-      });
-      const transactionsToPrint = operations.flatMap((operation) => {
-        return operation.transactions.map((transaction) => {
-          return {
-            id: operation.id,
-            txId: transaction.id,
-            fecha: operation.date,
-            tipo: transaction.type,
-            categoria: transaction.category,
-            subcategoria: transaction.subCategory,
-            operador: transaction.operatorEntity.name,
-            origen: transaction.fromEntity.name,
-            destino: transaction.toEntity.name,
-            detalle: operation.observations,
-            divisa: transaction.currency,
-            monto: transaction.amount,
-            estado: transaction.status,
-            cargadoPor: transaction.transactionMetadata.uploadedByUser?.name,
-            confirmadoPor:
-              transaction.transactionMetadata.confirmedByUser?.name,
-          };
-        });
-      });
-
       const filename = `transacciones_${moment().format(
         "DD-MM-YYYY-HH:mm:ss",
       )}.${input.fileType}`;
 
       if (input.fileType === "xlsx") {
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.json_to_sheet(transactionsToPrint);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-        const xlsxBuffer = XLSX.write(workbook, {
-          bookType: "xlsx",
-          type: "buffer",
-        });
+        // Use streaming for large datasets (>1000 operations, which typically means >2000-3000 transactions)
+        const STREAMING_THRESHOLD = 1000;
+        const useStreaming = input.operationsCount > STREAMING_THRESHOLD;
 
-        const putCommand = new PutObjectCommand({
-          Bucket: ctx.s3.bucketNames.reports,
-          Key: `transacciones/${filename}`,
-          Body: xlsxBuffer,
-          ContentType:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
+        if (useStreaming) {
+          console.log(
+            `Streaming ${input.operationsCount} operations to XLSX via S3`,
+          );
 
-        await ctx.s3.client.send(putCommand);
+          // Create a PassThrough stream for piping Excel data to S3
+          const stream = new PassThrough();
+
+          // Create Excel workbook with streaming
+          const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+            stream,
+            useStyles: false,
+            useSharedStrings: false,
+          });
+
+          const worksheet = workbook.addWorksheet("Sheet1");
+
+          // Define columns
+          worksheet.columns = [
+            { header: "id", key: "id", width: 12 },
+            { header: "txId", key: "txId", width: 12 },
+            { header: "fecha", key: "fecha", width: 20 },
+            { header: "tipo", key: "tipo", width: 20 },
+            { header: "categoria", key: "categoria", width: 20 },
+            { header: "subcategoria", key: "subcategoria", width: 20 },
+            { header: "operador", key: "operador", width: 30 },
+            { header: "origen", key: "origen", width: 30 },
+            { header: "destino", key: "destino", width: 30 },
+            { header: "detalle", key: "detalle", width: 40 },
+            { header: "divisa", key: "divisa", width: 10 },
+            { header: "monto", key: "monto", width: 15 },
+            { header: "estado", key: "estado", width: 15 },
+            { header: "cargadoPor", key: "cargadoPor", width: 25 },
+            { header: "confirmadoPor", key: "confirmadoPor", width: 25 },
+          ];
+
+          // Start S3 multipart upload
+          const upload = new Upload({
+            client: ctx.s3.client,
+            params: {
+              Bucket: ctx.s3.bucketNames.reports,
+              Key: `transacciones/${filename}`,
+              Body: stream,
+              ContentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            },
+          });
+
+          // Start upload in background
+          const uploadPromise = upload.done();
+
+          // Fetch and stream data in batches
+          const BATCH_SIZE = 500; // Operations per batch
+          const totalPages = Math.ceil(input.operationsCount / BATCH_SIZE);
+          let totalTransactionsProcessed = 0;
+
+          for (let page = 1; page <= totalPages; page++) {
+            const limit = Math.min(
+              BATCH_SIZE,
+              input.operationsCount - (page - 1) * BATCH_SIZE,
+            );
+
+            const { operations } = await getOperationsProcedure(ctx, {
+              ...input,
+              page,
+              limit,
+            });
+
+            // Flatten transactions and write to worksheet
+            for (const operation of operations) {
+              for (const transaction of operation.transactions) {
+                worksheet
+                  .addRow({
+                    id: operation.id,
+                    txId: transaction.id,
+                    fecha: operation.date,
+                    tipo: transaction.type,
+                    categoria: transaction.category ?? "",
+                    subcategoria: transaction.subCategory ?? "",
+                    operador: transaction.operatorEntity.name,
+                    origen: transaction.fromEntity.name,
+                    destino: transaction.toEntity.name,
+                    detalle: operation.observations ?? "",
+                    divisa: transaction.currency,
+                    monto: transaction.amount,
+                    estado: transaction.status,
+                    cargadoPor:
+                      transaction.transactionMetadata.uploadedByUser?.name ??
+                      "",
+                    confirmadoPor:
+                      transaction.transactionMetadata.confirmedByUser?.name ??
+                      "",
+                  })
+                  .commit();
+                totalTransactionsProcessed++;
+              }
+            }
+
+            console.log(
+              `Processing batch ${page}/${totalPages} (${operations.length} operations, ${totalTransactionsProcessed} total transactions)`,
+            );
+
+            // Allow some time for stream buffer to drain
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+
+          // Finalize the workbook (this will close the stream)
+          try {
+            worksheet.commit();
+            await workbook.commit();
+          } catch (commitError) {
+            console.error("Error committing workbook:", commitError);
+            // Stream might already be closed, but we still need to wait for upload
+          }
+
+          // Wait for upload to complete
+          try {
+            await uploadPromise;
+            console.log(
+              `Successfully streamed ${totalTransactionsProcessed} transactions to S3`,
+            );
+            // Small delay to ensure stream is fully settled
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          } catch (uploadError) {
+            console.error("Error during S3 upload:", uploadError);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Failed to upload file to S3: ${
+                uploadError instanceof Error
+                  ? uploadError.message
+                  : "Unknown error"
+              }`,
+            });
+          }
+        } else {
+          // For smaller datasets, use the original non-streaming approach
+          const { operations } = await getOperationsProcedure(ctx, {
+            ...input,
+            page: 1,
+            limit: input.operationsCount,
+          });
+
+          const transactionsToPrint = operations.flatMap((operation) => {
+            return operation.transactions.map((transaction) => {
+              return {
+                id: operation.id,
+                txId: transaction.id,
+                fecha: operation.date,
+                tipo: transaction.type,
+                categoria: transaction.category,
+                subcategoria: transaction.subCategory,
+                operador: transaction.operatorEntity.name,
+                origen: transaction.fromEntity.name,
+                destino: transaction.toEntity.name,
+                detalle: operation.observations,
+                divisa: transaction.currency,
+                monto: transaction.amount,
+                estado: transaction.status,
+                cargadoPor:
+                  transaction.transactionMetadata.uploadedByUser?.name,
+                confirmadoPor:
+                  transaction.transactionMetadata.confirmedByUser?.name,
+              };
+            });
+          });
+
+          const workbook = XLSX.utils.book_new();
+          const worksheet = XLSX.utils.json_to_sheet(transactionsToPrint);
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+          const xlsxBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "buffer",
+          });
+
+          const putCommand = new PutObjectCommand({
+            Bucket: ctx.s3.bucketNames.reports,
+            Key: `transacciones/${filename}`,
+            Body: xlsxBuffer,
+            ContentType:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+
+          await ctx.s3.client.send(putCommand);
+        }
       } else if (input.fileType === "pdf") {
+        // For PDF, we still need to load all data (PDFs are harder to stream)
+        const { operations } = await getOperationsProcedure(ctx, {
+          ...input,
+          page: 1,
+          limit: input.operationsCount,
+        });
+        const transactionsToPrint = operations.flatMap((operation) => {
+          return operation.transactions.map((transaction) => {
+            return {
+              id: operation.id,
+              txId: transaction.id,
+              fecha: operation.date,
+              tipo: transaction.type,
+              categoria: transaction.category,
+              subcategoria: transaction.subCategory,
+              operador: transaction.operatorEntity.name,
+              origen: transaction.fromEntity.name,
+              destino: transaction.toEntity.name,
+              detalle: operation.observations,
+              divisa: transaction.currency,
+              monto: transaction.amount,
+              estado: transaction.status,
+              cargadoPor: transaction.transactionMetadata.uploadedByUser?.name,
+              confirmadoPor:
+                transaction.transactionMetadata.confirmedByUser?.name,
+            };
+          });
+        });
         const htmlString =
           `<html>
           <body class="main-container">

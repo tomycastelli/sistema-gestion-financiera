@@ -46,3 +46,7 @@ yarn-error.log*
 
 # next build
 .next
+
+# database dumps and init scripts
+*.dump
+/init-db/

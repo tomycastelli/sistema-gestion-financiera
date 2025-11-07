@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: maika-postgres
+    environment:
+      POSTGRES_USER: maika
+      POSTGRES_PASSWORD: Ywh7iABNF9dxzhnfaYOa
+      POSTGRES_DB: maikadb
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d
+      - ./src/server/db/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maika -d maikadb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: maika-redis
+    command: redis-server --requirepass mypassword
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-two:
+    image: redis:7-alpine
+    container_name: maika-redis-two
+    command: redis-server --requirepass mypassword --port 6380
+    ports:
+      - "6380:6380"
+    volumes:
+      - redis_two_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  redis_two_data:
