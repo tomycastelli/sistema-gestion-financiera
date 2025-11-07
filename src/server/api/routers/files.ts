@@ -813,7 +813,7 @@ export const filesRouter = createTRPCRouter({
             uploadPromise = upload.done();
 
             // Fetch and stream data in batches
-            const BATCH_SIZE = 500; // Operations per batch
+            const BATCH_SIZE = 1000; // Operations per batch
             const totalPages = Math.ceil(input.operationsCount / BATCH_SIZE);
             let totalTransactionsProcessed = 0;
 
