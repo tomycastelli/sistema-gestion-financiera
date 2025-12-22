@@ -13,6 +13,7 @@ import {
   useTransactionsStore,
   type SingleTransactionInStoreSchema,
 } from "~/stores/TransactionsStore";
+import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
 import { Icons } from "../ui/Icons";
@@ -53,6 +54,14 @@ interface CableFormProps {
 }
 
 const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
+  const { data: blockOperatorsSetting } = api.globalSettings.get.useQuery({
+    name: "blockOperators",
+  });
+
+  const blockOperatorsEnabled =
+    blockOperatorsSetting?.name === "blockOperators" &&
+    blockOperatorsSetting.data.enabled;
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -269,7 +278,11 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                   <>
                     <CustomSelector
                       data={entities
-                        .filter((entity) => entity.tag.name !== "Operadores")
+                        .filter(
+                          (entity) =>
+                            !blockOperatorsEnabled ||
+                            entity.tag.name !== "Operadores",
+                        )
                         .map((entity) => ({
                           value: entity.id.toString(),
                           label: entity.name,
@@ -377,7 +390,12 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                   <>
                     <CustomSelector
                       data={entities
-                        .filter((e) => mainTags.includes(e.tag.name))
+                        .filter(
+                          (e) =>
+                            mainTags.includes(e.tag.name) &&
+                            (!blockOperatorsEnabled ||
+                              e.tag.name !== "Operadores"),
+                        )
                         .map((entity) => ({
                           value: entity.id.toString(),
                           label: entity.name,
@@ -411,7 +429,11 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                     <>
                       <CustomSelector
                         data={entities
-                          .filter((entity) => entity.tag.name !== "Operadores")
+                          .filter(
+                            (entity) =>
+                              !blockOperatorsEnabled ||
+                              entity.tag.name !== "Operadores",
+                          )
                           .map((entity) => ({
                             value: entity.id.toString(),
                             label: entity.name,
@@ -468,7 +490,11 @@ const CableForm: FC<CableFormProps> = ({ entities, mainTags, user }) => {
                   <>
                     <CustomSelector
                       data={entities
-                        .filter((entity) => entity.tag.name !== "Operadores")
+                        .filter(
+                          (entity) =>
+                            !blockOperatorsEnabled ||
+                            entity.tag.name !== "Operadores",
+                        )
                         .map((entity) => ({
                           value: entity.id.toString(),
                           label: entity.name,

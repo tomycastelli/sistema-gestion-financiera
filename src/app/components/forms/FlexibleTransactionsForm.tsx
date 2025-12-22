@@ -3,7 +3,7 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User } from "lucia";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import {
   operationTypes,
 } from "~/lib/variables";
 import { useTransactionsStore } from "~/stores/TransactionsStore";
+import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 import EntityCard from "../ui/EntityCard";
 import { Icons } from "../ui/Icons";
@@ -88,6 +89,14 @@ const FlexibleTransactionsForm = ({
 
   // Find the "Gastos" entity
   const gastosEntity = entities?.find((entity) => entity.name === "Gastos");
+
+  const { data: blockOperatorsSetting } = api.globalSettings.get.useQuery({
+    name: "blockOperators",
+  });
+
+  const blockOperatorsEnabled =
+    blockOperatorsSetting?.name === "blockOperators" &&
+    blockOperatorsSetting.data.enabled;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -206,7 +215,9 @@ const FlexibleTransactionsForm = ({
                           placeholder="Entidad"
                           data={entities
                             .filter(
-                              (entity) => entity.tag.name !== "Operadores",
+                              (entity) =>
+                                !blockOperatorsEnabled ||
+                                entity.tag.name !== "Operadores",
                             )
                             .map((entity) => ({
                               value: entity.id.toString(),
@@ -394,7 +405,9 @@ const FlexibleTransactionsForm = ({
                           placeholder="Entidad"
                           data={entities
                             .filter(
-                              (entity) => entity.tag.name !== "Operadores",
+                              (entity) =>
+                                !blockOperatorsEnabled ||
+                                entity.tag.name !== "Operadores",
                             )
                             .map((entity) => ({
                               value: entity.id.toString(),

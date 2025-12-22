@@ -1,6 +1,15 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import moment from "moment";
+import { type FC } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { getAccountingPeriodDate } from "~/lib/functions";
+import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
+import { Button } from "../components/ui/button";
 import {
   Form,
   FormControl,
@@ -10,16 +19,8 @@ import {
   FormLabel,
   FormMessage,
 } from "../components/ui/form";
-import { type FC } from "react";
-import { type RouterOutputs } from "~/trpc/shared";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { api } from "~/trpc/react";
-import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { toast } from "sonner";
-import { getAccountingPeriodDate } from "~/lib/functions";
-import moment from "moment";
+import { Switch } from "../components/ui/switch";
 
 const FormSchema = z.object({
   months: z.string().min(1),
@@ -56,6 +57,12 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
             ) {
               return { name: "accountingPeriod", data: newOperation.data };
             }
+            if (
+              newOperation.name === "blockOperators" &&
+              obj.name === "blockOperators"
+            ) {
+              return { name: "blockOperators", data: newOperation.data };
+            }
             return obj;
           }),
       );
@@ -82,6 +89,13 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
   ) as {
     name: string;
     data: { months: number; graceDays: number };
+  };
+
+  const blockOperators = settings.find(
+    (obj) => obj.name === "blockOperators",
+  ) as {
+    name: string;
+    data: { enabled: boolean };
   };
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -168,6 +182,32 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
           Guardar
         </Button>
       </form>
+      <div className="mt-8 flex w-1/3 flex-col justify-start gap-y-4">
+        <h1 className="text-xl">Bloquear operadores</h1>
+        <div className="flex flex-row items-center gap-x-4">
+          <Switch
+            checked={blockOperators.data.enabled}
+            onCheckedChange={async (checked) => {
+              if (!isAdmin) return;
+              await mutateAsync({
+                name: "blockOperators",
+                data: { enabled: checked },
+              });
+            }}
+            disabled={!isAdmin}
+          />
+          <div className="flex flex-col">
+            <p className="text-sm font-medium">
+              {blockOperators.data.enabled ? "Bloqueado" : "No bloqueado"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Cuando está activado, no se pueden crear transacciones con
+              entidades cuyo tag es "Operadores" en las posiciones de origen o
+              destino.
+            </p>
+          </div>
+        </div>
+      </div>
     </Form>
   );
 };

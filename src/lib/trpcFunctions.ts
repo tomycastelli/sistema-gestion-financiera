@@ -186,7 +186,11 @@ export const logIO = async (
   );
 };
 
-export const settingEnum = z.enum(["accountingPeriod", "mainTag"]);
+export const settingEnum = z.enum([
+  "accountingPeriod",
+  "mainTag",
+  "blockOperators",
+]);
 
 const accountingPeriodSchema = z.object({
   name: z.literal(settingEnum.enum.accountingPeriod),
@@ -206,9 +210,17 @@ const mainTagSettingSchema = z.object({
   }),
 });
 
+const blockOperatorsSettingSchema = z.object({
+  name: z.literal(settingEnum.enum.blockOperators),
+  data: z.object({
+    enabled: z.boolean(),
+  }),
+});
+
 export const globalSettingSchema = z.union([
   accountingPeriodSchema,
   mainTagSettingSchema,
+  blockOperatorsSettingSchema,
 ]);
 
 export const getGlobalSettings = async (
@@ -250,6 +262,12 @@ export const getGlobalSettings = async (
       return {
         name: settingEnum.enum.mainTag,
         data: { tag: env.MAIN_NAME },
+      };
+    }
+    if (setting === settingEnum.enum.blockOperators) {
+      return {
+        name: settingEnum.enum.blockOperators,
+        data: { enabled: false },
       };
     }
   }

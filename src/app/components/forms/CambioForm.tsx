@@ -23,6 +23,7 @@ import {
   type SingleTransactionInStoreSchema,
   useTransactionsStore,
 } from "~/stores/TransactionsStore";
+import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -77,6 +78,14 @@ const CambioForm = ({
   const userEntityId = user
     ? entities?.find((obj) => obj.name === user.name)?.id
     : undefined;
+
+  const { data: blockOperatorsSetting } = api.globalSettings.get.useQuery({
+    name: "blockOperators",
+  });
+
+  const blockOperatorsEnabled =
+    blockOperatorsSetting?.name === "blockOperators" &&
+    blockOperatorsSetting.data.enabled;
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -515,7 +524,8 @@ const CambioPair = ({
                   .filter(
                     (entity) =>
                       entity.tag.name !== main_name &&
-                      entity.tag.name !== "Operadores",
+                      (!blockOperatorsEnabled ||
+                        entity.tag.name !== "Operadores"),
                   )
                   .map((entity) => ({
                     value: entity.id.toString(),
@@ -545,7 +555,12 @@ const CambioPair = ({
               <FormLabel>Sucursal</FormLabel>
               <CustomSelector
                 data={entities
-                  .filter((entity) => entity.tag.name === main_name)
+                  .filter(
+                    (entity) =>
+                      entity.tag.name === main_name &&
+                      (!blockOperatorsEnabled ||
+                        entity.tag.name !== "Operadores"),
+                  )
                   .map((entity) => ({
                     value: entity.id.toString(),
                     label: entity.name,

@@ -1,13 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { z } from "zod";
+import { env } from "~/env.mjs";
 import {
   getGlobalSettings,
   globalSettingSchema,
   settingEnum,
 } from "~/lib/trpcFunctions";
 import { globalSettings } from "~/server/db/schema";
-import { env } from "~/env.mjs";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 export const globalSettingsRouter = createTRPCRouter({
   getMainName: publicProcedure.query(() => {
@@ -18,6 +18,9 @@ export const globalSettingsRouter = createTRPCRouter({
 
     const foundPeriod = response.find((obj) => obj.name === "accountingPeriod");
     const foundMainTag = response.find((obj) => obj.name === "mainTag");
+    const foundBlockOperators = response.find(
+      (obj) => obj.name === "blockOperators",
+    );
 
     if (!foundPeriod) {
       response.push({
@@ -29,6 +32,12 @@ export const globalSettingsRouter = createTRPCRouter({
       response.push({
         name: "mainTag",
         data: { tag: env.MAIN_NAME },
+      });
+    }
+    if (!foundBlockOperators) {
+      response.push({
+        name: "blockOperators",
+        data: { enabled: false },
       });
     }
 
@@ -53,6 +62,19 @@ export const globalSettingsRouter = createTRPCRouter({
   set: protectedProcedure
     .input(globalSettingSchema)
     .mutation(async ({ ctx, input }) => {
+      // Only admins can modify global settings
+      const hasAdminPermission = ctx.user.permissions?.some(
+        (p) => p.name === "ADMIN",
+      );
+
+      if (!hasAdminPermission) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "Solo los administradores pueden modificar la configuración global",
+        });
+      }
+
       const [response] = await ctx.db
         .insert(globalSettings)
         .values(input)

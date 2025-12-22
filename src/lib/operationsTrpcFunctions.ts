@@ -155,7 +155,13 @@ export const getOperationsProcedure = async (
   );
 
   const response = await ctx.db.transaction(async (transaction) => {
-    const query = transaction
+    // Create temporary table for filtered operation IDs
+    await transaction.execute(
+      sql`CREATE TEMP TABLE IF NOT EXISTS temp_filtered_operation_ids (operation_id INTEGER PRIMARY KEY) ON COMMIT DROP`,
+    );
+
+    // Insert filtered operation IDs into temporary table
+    const queryResults = await transaction
       .selectDistinct({ operationId: schema.transactions.operationId })
       .from(schema.transactions)
       .leftJoin(
@@ -164,8 +170,17 @@ export const getOperationsProcedure = async (
       )
       .where(and(transactionsWhere, operationsWhere))
       .orderBy(desc(schema.transactions.operationId))
-      .limit(sql.placeholder("queryLimit"))
-      .offset(sql.placeholder("queryOffset"));
+      .limit(input.limit)
+      .offset((input.page - 1) * input.limit);
+
+    if (queryResults.length > 0) {
+      await transaction.execute(
+        sql`INSERT INTO temp_filtered_operation_ids (operation_id) VALUES ${sql.join(
+          queryResults.map((r) => sql`(${r.operationId})`),
+          sql`, `,
+        )} ON CONFLICT (operation_id) DO NOTHING`,
+      );
+    }
 
     const fromEntity = alias(schema.entities, "fromEntity");
     const toEntity = alias(schema.entities, "toEntity");
@@ -211,9 +226,16 @@ export const getOperationsProcedure = async (
         cancelledByUser,
         eq(schema.transactionsMetadata.cancelledBy, cancelledByUser.id),
       )
-      .where(inArray(schema.operations.id, query))
+      .where(
+        sql`${schema.operations.id} IN (SELECT operation_id FROM temp_filtered_operation_ids)`,
+      )
       .orderBy(desc(schema.operations.id))
       .prepare("operations_query");
+
+    // Create temporary table for count operation IDs
+    await transaction.execute(
+      sql`CREATE TEMP TABLE IF NOT EXISTS temp_count_operation_ids (operation_id INTEGER PRIMARY KEY) ON COMMIT DROP`,
+    );
 
     const countTransactionsQuery = transaction
       .selectDistinct({ operationId: schema.transactions.operationId })
@@ -221,22 +243,30 @@ export const getOperationsProcedure = async (
       .where(transactionsWhere)
       .orderBy(desc(schema.transactions.operationId));
 
+    const countTransactionResults = await countTransactionsQuery.execute();
+
+    if (countTransactionResults.length > 0) {
+      await transaction.execute(
+        sql`INSERT INTO temp_count_operation_ids (operation_id) VALUES ${sql.join(
+          countTransactionResults.map((r) => sql`(${r.operationId})`),
+          sql`, `,
+        )} ON CONFLICT (operation_id) DO NOTHING`,
+      );
+    }
+
     const countQuery = transaction
       .select({ count: count(schema.operations.id) })
       .from(schema.operations)
       .where(
         and(
           operationsWhere,
-          inArray(schema.operations.id, countTransactionsQuery),
+          sql`${schema.operations.id} IN (SELECT operation_id FROM temp_count_operation_ids)`,
         ),
       )
       .prepare("operations_count");
 
     const [operationsData, [countResult]] = await Promise.all([
-      mainQuery.execute({
-        queryLimit: input.limit,
-        queryOffset: (input.page - 1) * input.limit,
-      }),
+      mainQuery.execute(),
       countQuery.execute(),
     ]);
 

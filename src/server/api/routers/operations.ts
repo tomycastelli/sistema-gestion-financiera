@@ -22,7 +22,7 @@ import {
   getOperationsInput,
   getOperationsProcedure,
 } from "~/lib/operationsTrpcFunctions";
-import { logIO } from "~/lib/trpcFunctions";
+import { getGlobalSettings, logIO } from "~/lib/trpcFunctions";
 import { cashAccountOnlyTypes, currentAccountOnlyTypes } from "~/lib/variables";
 import {
   entities,
@@ -121,6 +121,52 @@ export const operationsRouter = createTRPCRouter({
             duplicates,
           )}`,
         });
+      }
+
+      // Check if blockOperators is enabled and validate transactions
+      const blockOperatorsSetting = await getGlobalSettings(
+        ctx.redis,
+        ctx.db,
+        "blockOperators",
+      );
+      const blockOperatorsEnabled =
+        blockOperatorsSetting.name === "blockOperators" &&
+        blockOperatorsSetting.data.enabled;
+
+      if (blockOperatorsEnabled) {
+        const entityIds = new Set<number>();
+        input.transactions.forEach((tx) => {
+          entityIds.add(tx.fromEntityId);
+          entityIds.add(tx.toEntityId);
+        });
+
+        const relevantEntities = await ctx.db
+          .select({
+            id: entities.id,
+            tagName: entities.tagName,
+          })
+          .from(entities)
+          .where(inArray(entities.id, Array.from(entityIds)));
+
+        const operatorEntityIds = new Set(
+          relevantEntities
+            .filter((e) => e.tagName === "Operadores")
+            .map((e) => e.id),
+        );
+
+        const invalidTransactions = input.transactions.filter(
+          (tx) =>
+            operatorEntityIds.has(tx.fromEntityId) ||
+            operatorEntityIds.has(tx.toEntityId),
+        );
+
+        if (invalidTransactions.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "No se pueden crear transacciones con entidades cuyo tag es 'Operadores' cuando el bloqueo de operadores está habilitado",
+          });
+        }
       }
 
       const transactionsToInsert = input.transactions.map((tx) => ({

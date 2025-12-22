@@ -138,32 +138,6 @@ export const currentAccountsProcedure = async (
   );
 
   const response = await ctx.db.transaction(async (transaction) => {
-    const movementsCountQuery = transaction
-      .select({ count: count() })
-      .from(movements)
-      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-      .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
-      .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
-      .where(mainConditions)
-      .prepare("movements_count");
-
-    const movementsQuery = transaction
-      .select()
-      .from(movements)
-      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
-      .leftJoin(
-        transactionsMetadata,
-        eq(transactions.id, transactionsMetadata.transactionId),
-      )
-      .leftJoin(operations, eq(transactions.operationId, operations.id))
-      .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
-      .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
-      .where(mainConditions)
-      .orderBy(desc(movements.date), desc(movements.id))
-      .offset(sql.placeholder("queryOffset"))
-      .limit(sql.placeholder("queryLimit"))
-      .prepare("movements_query");
-
     // Create parameters for the prepared statements
     const queryParams: Record<string, unknown> = {
       account: input.account,
@@ -211,6 +185,34 @@ export const currentAccountsProcedure = async (
 
     if (input.originEntityId) queryParams.originEntityId = input.originEntityId;
     if (input.toEntityId) queryParams.toEntityId = input.toEntityId;
+
+    // Use the same mainConditions for both queries to ensure consistency
+    // This avoids the parameter limit issue while still maintaining query optimization
+    const movementsCountQuery = transaction
+      .select({ count: count() })
+      .from(movements)
+      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+      .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+      .where(mainConditions)
+      .prepare("movements_count");
+
+    const movementsQuery = transaction
+      .select()
+      .from(movements)
+      .leftJoin(transactions, eq(movements.transactionId, transactions.id))
+      .leftJoin(
+        transactionsMetadata,
+        eq(transactions.id, transactionsMetadata.transactionId),
+      )
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .leftJoin(fromEntity, eq(fromEntity.id, transactions.fromEntityId))
+      .leftJoin(toEntity, eq(toEntity.id, transactions.toEntityId))
+      .where(mainConditions)
+      .orderBy(desc(movements.date), desc(movements.id))
+      .offset(sql.placeholder("queryOffset"))
+      .limit(sql.placeholder("queryLimit"))
+      .prepare("movements_query");
 
     const [movementsData, [movementsCount]] = await Promise.all([
       movementsQuery.execute(queryParams),
@@ -389,32 +391,34 @@ export const getEntitiesActiveStatus = async (
   if (!entityIds.length) return {};
   const sixMonthsAgo = moment().subtract(6, "months").startOf("day").toDate();
 
-  const fromResults = await transaction
-    .selectDistinct({ entityId: transactions.fromEntityId })
-    .from(transactions)
-    .leftJoin(operations, eq(transactions.operationId, operations.id))
-    .where(
-      and(
-        inArray(transactions.fromEntityId, entityIds),
-        gte(operations.date, sixMonthsAgo),
+  // Execute both queries in parallel for better performance
+  const [fromEntities, toEntities] = await Promise.all([
+    transaction
+      .selectDistinct({ entityId: transactions.fromEntityId })
+      .from(transactions)
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .where(
+        and(
+          inArray(transactions.fromEntityId, entityIds),
+          gte(operations.date, sixMonthsAgo),
+        ),
       ),
-    );
-
-  const toResults = await transaction
-    .selectDistinct({ entityId: transactions.toEntityId })
-    .from(transactions)
-    .leftJoin(operations, eq(transactions.operationId, operations.id))
-    .where(
-      and(
-        inArray(transactions.toEntityId, entityIds),
-        gte(operations.date, sixMonthsAgo),
+    transaction
+      .selectDistinct({ entityId: transactions.toEntityId })
+      .from(transactions)
+      .leftJoin(operations, eq(transactions.operationId, operations.id))
+      .where(
+        and(
+          inArray(transactions.toEntityId, entityIds),
+          gte(operations.date, sixMonthsAgo),
+        ),
       ),
-    );
+  ]);
 
   // Merge and deduplicate entityIds
   const activeSet = new Set<number>([
-    ...fromResults.map((r) => r.entityId),
-    ...toResults.map((r) => r.entityId),
+    ...fromEntities.map((r) => r.entityId),
+    ...toEntities.map((r) => r.entityId),
   ]);
 
   const status: Record<number, boolean> = {};
