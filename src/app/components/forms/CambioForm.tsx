@@ -244,6 +244,7 @@ const CambioForm = ({
             entities={entities}
             userEntityId={userEntityId}
             main_name={main_name}
+            blockOperatorsEnabled={blockOperatorsEnabled}
           />
         ))}
         <Button type="submit" className="mx-auto mt-6">
@@ -265,6 +266,7 @@ interface CambioPairProps {
   append: UseFieldArrayAppend<z.infer<typeof FormSchema>>;
   remove: UseFieldArrayRemove;
   main_name: string;
+  blockOperatorsEnabled: boolean;
 }
 
 const CambioPair = ({
@@ -275,6 +277,7 @@ const CambioPair = ({
   append,
   remove,
   main_name,
+  blockOperatorsEnabled,
 }: CambioPairProps) => {
   const { watch, control, setValue } = form;
 

@@ -202,8 +202,8 @@ const SettingsForm: FC<SettingsFormProps> = ({ initialSettings, isAdmin }) => {
             </p>
             <p className="text-sm text-muted-foreground">
               Cuando está activado, no se pueden crear transacciones con
-              entidades cuyo tag es "Operadores" en las posiciones de origen o
-              destino.
+              entidades cuyo tag es &quot;Operadores&quot; en las posiciones de
+              origen o destino.
             </p>
           </div>
         </div>
