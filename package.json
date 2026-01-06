@@ -109,7 +109,6 @@
     "@eslint/js": "9.9.1",
     "@tailwindcss/typography": "0.5.10",
     "@testcontainers/postgresql": "^11.5.1",
-    "@types/better-sqlite3": "^7.6.8",
     "@types/eslint": "8.44.2",
     "@types/eslint__eslintrc": "2.1.2",
     "@types/eslint__js": "8.42.3",
@@ -137,9 +136,6 @@
     "turbo": "1.13.2",
     "typescript": "5.9.0-beta",
     "vitest": "^1.0.0"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "^9.2.2"
   },
   "ct3aMetadata": {
     "initVersion": "7.22.0"
