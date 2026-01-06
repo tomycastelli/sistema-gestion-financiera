@@ -94,27 +94,22 @@ export const getOperationsProcedure = async (
       : undefined,
   );
 
-  const txMetadataIds: number[] = [0];
-
-  if (input.uploadedById || input.confirmedById) {
-    const transactionsWithMetadata = await ctx.db
-      .select({ transactionId: schema.transactionsMetadata.transactionId })
-      .from(schema.transactionsMetadata)
-      .where(
-        and(
-          input.uploadedById
-            ? eq(schema.transactionsMetadata.uploadedBy, input.uploadedById)
-            : undefined,
-          input.confirmedById
-            ? eq(schema.transactionsMetadata.confirmedBy, input.confirmedById)
-            : undefined,
-        ),
-      );
-
-    txMetadataIds.push(
-      ...transactionsWithMetadata.map((obj) => obj.transactionId),
-    );
-  }
+  // Build subquery for filtering by uploadedById/confirmedById to avoid parameter limits
+  const metadataFilterCondition =
+    input.uploadedById || input.confirmedById
+      ? sql`${schema.transactions.id} IN (
+          SELECT ${schema.transactionsMetadata.transactionId} 
+          FROM ${schema.transactionsMetadata} 
+          WHERE ${and(
+            input.uploadedById
+              ? eq(schema.transactionsMetadata.uploadedBy, input.uploadedById)
+              : undefined,
+            input.confirmedById
+              ? eq(schema.transactionsMetadata.confirmedBy, input.confirmedById)
+              : undefined,
+          )}
+        )`
+      : undefined;
 
   const transactionsWhere = and(
     input.transactionId
@@ -149,9 +144,7 @@ export const getOperationsProcedure = async (
     input.amountIsLesser
       ? lte(schema.transactions.amount, input.amountIsLesser)
       : undefined,
-    input.uploadedById || input.confirmedById
-      ? inArray(schema.transactions.id, txMetadataIds)
-      : undefined,
+    metadataFilterCondition,
   );
 
   const response = await ctx.db.transaction(async (transaction) => {
@@ -245,13 +238,18 @@ export const getOperationsProcedure = async (
 
     const countTransactionResults = await countTransactionsQuery.execute();
 
-    if (countTransactionResults.length > 0) {
-      await transaction.execute(
-        sql`INSERT INTO temp_count_operation_ids (operation_id) VALUES ${sql.join(
-          countTransactionResults.map((r) => sql`(${r.operationId})`),
-          sql`, `,
-        )} ON CONFLICT (operation_id) DO NOTHING`,
-      );
+    // Batch inserts to avoid exceeding PostgreSQL's 65534 parameter limit
+    const BATCH_SIZE = 10000;
+    for (let i = 0; i < countTransactionResults.length; i += BATCH_SIZE) {
+      const batch = countTransactionResults.slice(i, i + BATCH_SIZE);
+      if (batch.length > 0) {
+        await transaction.execute(
+          sql`INSERT INTO temp_count_operation_ids (operation_id) VALUES ${sql.join(
+            batch.map((r) => sql`(${r.operationId})`),
+            sql`, `,
+          )} ON CONFLICT (operation_id) DO NOTHING`,
+        );
+      }
     }
 
     const countQuery = transaction
