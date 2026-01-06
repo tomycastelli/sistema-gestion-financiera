@@ -225,43 +225,26 @@ export const getOperationsProcedure = async (
       .orderBy(desc(schema.operations.id))
       .prepare("operations_query");
 
-    // Create temporary table for count operation IDs
-    await transaction.execute(
-      sql`CREATE TEMP TABLE IF NOT EXISTS temp_count_operation_ids (operation_id INTEGER PRIMARY KEY) ON COMMIT DROP`,
-    );
-
-    const countTransactionsQuery = transaction
-      .selectDistinct({ operationId: schema.transactions.operationId })
-      .from(schema.transactions)
-      .where(transactionsWhere)
-      .orderBy(desc(schema.transactions.operationId));
-
-    const countTransactionResults = await countTransactionsQuery.execute();
-
-    // Batch inserts to avoid exceeding PostgreSQL's 65534 parameter limit
-    const BATCH_SIZE = 10000;
-    for (let i = 0; i < countTransactionResults.length; i += BATCH_SIZE) {
-      const batch = countTransactionResults.slice(i, i + BATCH_SIZE);
-      if (batch.length > 0) {
-        await transaction.execute(
-          sql`INSERT INTO temp_count_operation_ids (operation_id) VALUES ${sql.join(
-            batch.map((r) => sql`(${r.operationId})`),
-            sql`, `,
-          )} ON CONFLICT (operation_id) DO NOTHING`,
-        );
-      }
-    }
-
-    const countQuery = transaction
-      .select({ count: count(schema.operations.id) })
-      .from(schema.operations)
-      .where(
-        and(
-          operationsWhere,
-          sql`${schema.operations.id} IN (SELECT operation_id FROM temp_count_operation_ids)`,
-        ),
-      )
-      .prepare("operations_count");
+    // Count query using COUNT(DISTINCT) directly in SQL - avoids loading all IDs into JS memory
+    const countQuery = operationsWhere
+      ? transaction
+          .select({
+            count: sql<number>`COUNT(DISTINCT ${schema.transactions.operationId})`,
+          })
+          .from(schema.transactions)
+          .innerJoin(
+            schema.operations,
+            eq(schema.transactions.operationId, schema.operations.id),
+          )
+          .where(and(transactionsWhere, operationsWhere))
+          .prepare("operations_count")
+      : transaction
+          .select({
+            count: sql<number>`COUNT(DISTINCT ${schema.transactions.operationId})`,
+          })
+          .from(schema.transactions)
+          .where(transactionsWhere)
+          .prepare("operations_count");
 
     const [operationsData, [countResult]] = await Promise.all([
       mainQuery.execute(),

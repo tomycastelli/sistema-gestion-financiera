@@ -41,7 +41,7 @@ const OperationDrawer: FC<OperationDrawerProps> = ({
     { operationId: op ? op.id : opId!, limit: 1, page: 1 },
     {
       refetchOnWindowFocus: false,
-      enabled: isOpen,
+      enabled: isOpen && !op, // Only fetch if we don't have op data already
       initialData: op ? { operations: [op], count: 1 } : undefined,
     },
   );
@@ -76,7 +76,8 @@ const OperationDrawer: FC<OperationDrawerProps> = ({
             </div>
           </div>
           {!isOperationsRefetching ? (
-            isOperationSuccess && (
+            (isOperationSuccess || op) &&
+            data && (
               <Operation
                 op={data.operations[0]!}
                 users={users}

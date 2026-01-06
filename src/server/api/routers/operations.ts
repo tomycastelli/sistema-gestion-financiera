@@ -31,6 +31,7 @@ import {
   tag,
   transactions,
   transactionsMetadata,
+  user,
 } from "~/server/db/schema";
 import {
   createTRPCRouter,
