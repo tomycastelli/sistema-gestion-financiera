@@ -58,7 +58,7 @@
     "@tanstack/react-table": "8.10.7",
     "@trpc/client": "10.37.1",
     "@trpc/react-query": "10.37.1",
-    "@trpc/server": ">=10.45.3",
+    "@trpc/server": "10.45.3",
     "@vercel/analytics": "1.1.1",
     "arctic": "1.2.1",
     "bufferutil": "4.0.8",

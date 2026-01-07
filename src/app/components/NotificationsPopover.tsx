@@ -33,7 +33,7 @@ const NotificationRow = ({
 }>) => {
   const notification = notifications[index];
 
-  if (!notification) return null;
+  if (!notification) return <div style={style} />;
 
   const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
@@ -149,8 +149,9 @@ export default function NotificationsPopover({}: NotificationsPopoverProps) {
                 rowCount={notifications.length}
                 rowHeight={145}
                 rowProps={{
-                  notifications: notifications.sort(
-                    (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+                  notifications: [...notifications].sort(
+                    (a: Notification, b: Notification) =>
+                      b.timestamp.getTime() - a.timestamp.getTime(),
                   ),
                   onNotificationClick: handleNotificationClick,
                 }}
