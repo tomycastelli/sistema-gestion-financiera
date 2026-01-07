@@ -10,13 +10,18 @@
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "REDIS_URL",
+        "REDIS_URL_TWO",
         "AZURE_AD_CLIENT_ID",
         "AZURE_AD_CLIENT_SECRET",
         "AZURE_AD_TENANT_ID",
         "S3_PUBLIC_KEY",
         "S3_SECRET_KEY",
         "LAMBDA_API_ENDPOINT",
-        "LAMBDA_API_KEY"
+        "LAMBDA_API_KEY",
+        "DYNAMODB_TABLE",
+        "MAIN_NAME",
+        "MAIN_URL",
+        "CHAT_URL"
       ]
     },
     "lint": {},
