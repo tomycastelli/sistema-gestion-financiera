@@ -76,7 +76,8 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
     });
 
   const onDownloadClick = (fileType: "pdf" | "xlsx") => {
-    if (data.count > 1000) {
+    const operationsCount = Number(data.count);
+    if (operationsCount > 1000) {
       toast.warning("Vas a generar un archivo con mas de 1000 operaciones", {
         action: {
           label: "Generar",
@@ -84,7 +85,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
             const promise = getUrlAsync({
               ...operationsQueryInput,
               fileType,
-              operationsCount: data.count,
+              operationsCount,
             });
 
             toast.promise(promise, {
@@ -103,7 +104,7 @@ const OperationsFeed: FC<OperationsFeedProps> = ({
       const promise = getUrlAsync({
         ...operationsQueryInput,
         fileType,
-        operationsCount: data.count,
+        operationsCount,
       });
 
       toast.promise(promise, {
